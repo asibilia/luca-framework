@@ -7,7 +7,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | --- | --- |
 | `src/core/decide.ts` | **The decision step.** Pure: journal in, every action that can run now out (`decideSteps`); `decide` gives the first. |
 | `src/core/decide-build.ts` | The build half of the decision step: each ticket's spine, the join queue, rebases after a clash, the PR, and removing worktrees. Its parts: [decide-build modules](#decide-build-modules). |
-| `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. |
+| `src/core/decide-final-review.ts` | The final review's half of the decision step: its rounds, the five lenses at once, its fix rounds, and passed, stuck, or shipped. Its parts: [decide-final-review modules](#decide-final-review-modules). |
 | `src/core/loop-caps.ts` | The caps of every fix loop (`MAX_FIX_ROUNDS`, ...), shared by the ticket steps and the final review. |
 | `src/core/decide-plan.ts` | The plan half of the decision step: limit waits and billing stops. |
 | `src/core/decide-crashes.ts` | The crash half of the decision step: a run-level step cut off by `MAX_CRASHES` crashes in a row stops the run for good. |
@@ -58,6 +58,20 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/decide-red-green.ts` | Tests, red check, code, gates, and their commits. |
 | `src/core/decide-ticket-review.ts` | The ticket review and its fix rounds. |
 | `src/core/decide-rejoin.ts` | Joining the run branch, and rebases with test updates. |
+| `src/core/decide-build-view.ts` | What the build half reads about a run's tickets (`buildViewOf`): the tickets in order, each one's progress, and whether it is skipped, pushed, already done, finished, or stuck. |
+| `src/core/decide-build-early.ts` | The steps that settle the run before any ticket moves: a `stop` reply or an open PR winds it down, and the run branch's install, which a failure holds every ticket back on. |
+| `src/core/decide-build-tickets.ts` | Each ticket's next step, with the join queue picking which approved ticket joins the run branch. |
+| `src/core/decide-build-ending.ts` | The steps once no ticket can move: closing the already-done tickets, the final review, the changeset, and the PR. |
+
+## decide-final-review modules
+
+`src/core/decide-final-review.ts` keeps `decideFinalReview` and the lens step, and re-exports these types, so importers don't change.
+
+| Module | What it does |
+| --- | --- |
+| `src/core/final-review-action.ts` | The final review's actions (`FinalReviewAction`, `isFinalReviewAction`), where it stands (`FinalReviewDecision`), what its decision reads, and the stuck step. |
+| `src/core/final-failure-cap.ts` | The cap on a role's failed tries in the final review: the stuck step once its tries, or its engine failures in a row, are used up. |
+| `src/core/decide-final-fix.ts` | The final review's fix round: the fixers, the gates and their fix loop, the fix commit, and the push. |
 
 ## stuck-text modules
 

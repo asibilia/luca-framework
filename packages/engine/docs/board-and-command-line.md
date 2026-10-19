@@ -8,7 +8,7 @@ appended, verbatim: the event *is* the record (`seq`, `time`, `kind`,
 the engine computes nothing for the board. Every kind above maps onto the
 board, the decision model's included (only counted, since shadow mode
 decides nothing); see
-"The board's vocabulary" in `packages/board/README.md`.
+"The board's vocabulary" in `packages/board/docs/vocabulary.md`.
 
 `runEngine` takes an optional `board` (from `createBoardSync`) and syncs it
 once before its first step, so a resumed run catches the board up, and after

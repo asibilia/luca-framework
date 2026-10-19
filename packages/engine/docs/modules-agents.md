@@ -12,7 +12,16 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act (sending and receiving agent messages too), return a result or a failure, and record each launch and follow-up with its session and what it was handed. |
 | `src/agents/message-tool.ts` | The engine's in-process MCP server `luca` with its `send_message` tool, and the hook that hands messages over after each tool call. |
 | `src/agents/role-results.ts` | Each **role**'s result, as Zod schemas. |
-| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids, its address for messages, and the run's newest **run notes**), and its section after a clash: the clashed tests, the clashed code, or "re-review only the new changes". |
+| `src/agents/role-prompts.ts` | The prompt each agent starts with (spec, ticket, criterion ids, its address for messages, and the run's newest **run notes**), and each role's task; re-exports the modules below ([role-prompts modules](#role-prompts-modules)). |
+
+## role-prompts modules
+
+The modules split out of `src/agents/role-prompts.ts`. It re-exports them.
+
+| Module | What it does |
+| --- | --- |
+| `src/agents/rejoin-prompts.ts` | The sections for a ticket sent back onto the run branch: after a clash or failed gates (`rejoinSection`), and after a rebase made its tests wrong (`testUpdateSection`). |
+| `src/agents/prompt-sections.ts` | The sections the decision step adds to a prompt: the run notes, the prepare command, the feature map, and the changesets. |
 
 ## role-instructions modules
 

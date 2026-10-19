@@ -4,16 +4,22 @@ import { dirname, join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 
 /**
- * The engine's docs: `README.md`, a short index, and its topic pages under
- * `docs/`. Every relative link in them must point to a file that exists.
+ * The engine's docs and the board's: each package's `README.md`, a short
+ * index, and its topic pages under `docs/`. Every relative link in them must
+ * point to a file that exists.
  */
 
 const ENGINE_DIR = join(import.meta.dir, '..')
+const BOARD_DIR = join(ENGINE_DIR, '..', 'board')
 
-/** The README and every page under `docs/`, relative to the package. */
+/** The READMEs and every page under `docs/`, relative to the engine package. */
 const PAGES = [
     'README.md',
     ...new Bun.Glob('docs/*.md').scanSync({ cwd: ENGINE_DIR }),
+    '../board/README.md',
+    ...[...new Bun.Glob('docs/*.md').scanSync({ cwd: BOARD_DIR })].map(
+        (page) => `../board/${page}`
+    ),
 ].toSorted()
 
 /**
@@ -30,7 +36,7 @@ const relativeLinks = (text: string): string[] =>
         )
         .map((target) => target.split('#')[0] ?? '')
 
-describe("the engine's docs", () => {
+describe("the engine's and the board's docs", () => {
     test('every relative link in README.md and docs/*.md points to a file that exists', async () => {
         const links = (
             await Promise.all(

@@ -48,6 +48,8 @@ Tests:
 - `packages/engine/src/cli/run-args.test.ts`
 - `packages/engine/src/cli/run-modes.test.ts`
 - `packages/engine/src/cli/run-modes.e2e.test.ts`
+- `packages/engine/src/cli/run-modes-spec.e2e.test.ts`
+- `packages/engine/src/cli/run-modes-clef.e2e.test.ts`
 - `packages/engine/src/cli/run-version.e2e.test.ts`
 - `packages/engine/src/config/luca-version.test.ts`
 - `packages/engine/src/core/decide-luca-version.test.ts`

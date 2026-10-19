@@ -119,4 +119,5 @@ A finished run, or a folder with no journal, is not listed. The board
 plugin calls it when Paseo starts and every 15 s after that, for its runs
 whose engine process is gone. It restarts the ones with `restart: true`
 with `--resume <run-id> --repo <repo> --board-plugin luca-board`, and shows
-the rest as "engine stopped" (see the board's README, "Restarts").
+the rest as "engine stopped" (see the board's docs, "Restarts" in
+`packages/board/docs/restarts-and-resume.md`).

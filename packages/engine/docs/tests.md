@@ -63,7 +63,8 @@ then both launch again with the same prompts and the run builds to its PR.
 new workspace dependency and checks the moved worktree's frozen install.
 `src/core/decide-many-tickets.test.ts` covers the same rules at the decision
 step, limits and billing stops with two tickets in flight included.
-`src/core/decide-stuck.test.ts` covers stuck work at the decision step: the
+`src/core/decide-stuck.test.ts`, with the `decide-stuck-*.test.ts` files
+beside it, covers stuck work at the decision step: the
 comment, other tickets building, the join undone, each reply word, named
 tickets when several are stuck, replies from others ignored, retry with and
 without ticket edits, skip with dependents and the PR, stop, a test setup
@@ -75,7 +76,7 @@ PR that starts with the open findings. `src/core/run-stuck.e2e.test.ts` runs it 
 scripted person replying on the in-memory tracker through a fake clock:
 retry keeping the owner's fix, retry after a ticket edit, and skip while
 another ticket builds and pushes. `src/core/decide-stuck.test.ts` checks
-`stop` and a test setup change, and both run end to end in
+`stop` and `src/core/decide-stuck-setup-file.test.ts` a test setup change, and both run end to end in
 `src/core/run-session-close.e2e.test.ts`. The other
 end-to-end tests stop at the first `wait_for_reply` (the practice harnesses'
 default `stop_before`).
@@ -136,11 +137,12 @@ connection; no test reaches a real MuninnDB.
 arrive in seq order, a board that restarted gets a replay, and a failing board
 never breaks the run. `src/board/board-sync.e2e.test.ts` runs a practice repo
 and checks that a slow test-writer turn reaches the board while it runs.
-`src/cli/run-modes.e2e.test.ts` runs the demo, and the
-real-run path with the in-memory tracker and a scripted stand-in for the
-Claude launcher: it builds to a PR and closes the sessions, asks Clef
+`src/cli/run-modes.e2e.test.ts` runs the demo and resumes a journal;
+`src/cli/run-modes-spec.e2e.test.ts` and `src/cli/run-modes-clef.e2e.test.ts`
+run the real-run path with the in-memory tracker and a scripted stand-in for
+the Claude launcher: it builds to a PR and closes the sessions, asks Clef
 through a fake `fetch` with the config's model, turns the decision model off
-with no credentials, ends on a launcher stop, and resumes a journal.
+with no credentials, and ends on a launcher stop.
 `src/cli/run-modes.test.ts` keeps what needs no practice repo: a repo with no
 config, a run id with no journal, an empty journal, and the unfinished-runs
 list. The `--resume` test in `run-modes.e2e.test.ts` crashes a real run after its red commit, lists it
