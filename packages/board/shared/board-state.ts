@@ -20,6 +20,7 @@ import {
     MessageCountsSchema,
     NO_MEMORY,
 } from './board-state-counts'
+import { LiveFeedEntrySchema } from './board-state-live'
 import { FinalReviewSchema } from './board-state-review'
 import {
     DEFAULT_CONFIDENCE_BAR,
@@ -144,6 +145,12 @@ export const BoardStateSchema = z.object({
         .default([]),
     /** The newest of `run_steps`, `null` when none runs. */
     current_step: CurrentStepSchema.nullable().default(null),
+    /**
+     * The run's last actions across tickets, oldest first, from its live
+     * file (#634), never from the journal. Defaulted, so a board state
+     * from before it still parses.
+     */
+    feed: z.array(LiveFeedEntrySchema).default([]),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */

@@ -12,6 +12,7 @@ import { Text, View } from 'react-native'
 import { FOR_A_PERSON, TICKET_STAGES, type Key } from './board-panel-stages'
 import { makeStyles } from './board-panel-styles'
 import { FinalReviewStack } from './final-review-stack'
+import { LiveFeed } from './live-feed'
 import { NeedsYouSection } from './needs-you-section'
 import { SharedBubbles } from './one-line'
 import { RunFooter } from './run-footer'
@@ -30,12 +31,13 @@ import {
  * limit-wait banner, "Needs you" pinned on top, the tickets as a stack of
  * stages (Blocked → Building → Reviewing → Testing → Fixing → Joining → Done
  * → Skipped) with step dots, then the final review's 5 lenses as a second
- * stack. It polls `board.read`.
+ * stack, then the live feed, folded. It polls `board.read`.
  *
  * The sections are in their own modules: `run-header.tsx` (the top, with
  * `run-picker.tsx` and `usage-line.tsx`), `needs-you-section.tsx`,
  * `ticket-stack.tsx` (with `ticket-card-view.tsx`, `ticket-detail.tsx` and
- * `step-dots.tsx`), `final-review-stack.tsx` and `run-footer.tsx`. They share
+ * `step-dots.tsx`), `final-review-stack.tsx`, `live-feed.tsx` and
+ * `run-footer.tsx`. They share
  * `board-panel-styles.ts`, `board-panel-stages.ts` and `board-panel-parts.tsx`,
  * and `one-line.tsx` keeps one bubble open at a time across the panel.
  * This module keeps what a person has opened, folded and picked.
@@ -76,6 +78,7 @@ export const BoardPanel = ({
                 FOR_A_PERSON,
             ])
     )
+    const [feedFolded, setFeedFolded] = useState(true)
     const look = { theme, styles }
     const state = board.data?.selected ?? null
 
@@ -131,6 +134,12 @@ export const BoardPanel = ({
                         <FinalReviewStack state={state} {...look} />
                     </>
                 ) : null}
+                <LiveFeed
+                    state={state}
+                    folded={feedFolded}
+                    onToggle={() => setFeedFolded((was) => !was)}
+                    {...look}
+                />
                 <RunFooter state={state} {...look} />
             </SharedBubbles>
         </ScrollView>

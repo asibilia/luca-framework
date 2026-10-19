@@ -1,7 +1,8 @@
 /**
  * The run's **live file** (#628): `live.json` in the run folder, what each
  * agent in a turn is doing now, for the board to show between journal
- * records. It is never journaled and never replayed: each write replaces
+ * records, and the run's last 50 actions across tickets, its live feed
+ * (#634). It is never journaled and never replayed: each write replaces
  * the whole file (written aside, then renamed), at most once a second
  * while something changed, and at least every 5 seconds while the engine
  * runs, each with its `written_at` time.
@@ -38,6 +39,9 @@ export const runLiveFilePath = ({
     run_id: string
 }): string => join(runs_dir, run_id, LIVE_FILE)
 
+/** The live feed keeps this many of the run's latest actions (#634). */
+export const LIVE_FEED_SIZE = 50
+
 /** One agent in a turn, as the live file has it. */
 type LiveAgent = {
     ticket: number
@@ -47,6 +51,25 @@ type LiveAgent = {
     action: ProgressAction | null
     open_call: ProgressOpenCall | null
 }
+
+/** One action of the live feed: who did it, on which model, and what. */
+type LiveFeedEntry = {
+    at: string
+    ticket: number
+    role: string
+    model: string | null
+    tool: string
+    target: string
+}
+
+const sameAction = (
+    left: ProgressAction | null,
+    right: ProgressAction
+): boolean =>
+    left !== null &&
+    left.tool === right.tool &&
+    left.target === right.target &&
+    left.at === right.at
 
 /**
  * Keeps the live file at `file` from the moment it is made until `close`,
@@ -62,6 +85,7 @@ type LiveAgent = {
 export const createLiveFile = ({ file }: { file: string }) => {
     const agents = new Map<number, LiveAgent>()
     let plan_usage: Record<string, unknown> | null = null
+    let feed: LiveFeedEntry[] = []
     let changed = false
     let last = 0
     let next = 0
@@ -74,6 +98,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
             written_at: new Date(at).toISOString(),
             plan_usage,
             agents: [...agents.values()],
+            feed,
         })
         try {
             mkdirSync(dirname(file), { recursive: true })
@@ -97,6 +122,14 @@ export const createLiveFile = ({ file }: { file: string }) => {
     const heard = (key: number, progress: TurnProgress): void => {
         const agent = agents.get(key)
         if (agent === undefined) return
+        const { action } = progress
+        // A message that only adds tokens repeats the action it was on.
+        if (action !== null && !sameAction(agent.action, action)) {
+            const { ticket, role, model } = agent
+            feed = [...feed, { ...action, ticket, role, model }].slice(
+                -LIVE_FEED_SIZE
+            )
+        }
         agents.set(key, {
             ...agent,
             tokens: progress.tokens,

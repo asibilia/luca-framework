@@ -30,3 +30,15 @@ export const LiveAgentSchema = z.object({
 })
 
 export type LiveAgent = z.infer<typeof LiveAgentSchema>
+
+/** One action of the run's live feed (#634): when, who, on which model, and what. */
+export const LiveFeedEntrySchema = z.object({
+    at: z.string(),
+    ticket: z.number().int().nullable(),
+    role: z.string(),
+    model: z.string().nullable().default(null),
+    tool: z.string(),
+    target: z.string(),
+})
+
+export type LiveFeedEntry = z.infer<typeof LiveFeedEntrySchema>

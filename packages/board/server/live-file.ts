@@ -13,7 +13,11 @@ import { z } from 'zod'
 import { RateLimitReadingSchema } from './board-vocabulary-shapes'
 import { usageAfter } from './reduce-board-usage'
 
-import { LiveAgentSchema, type BoardState } from '../shared/board-state'
+import {
+    LiveAgentSchema,
+    LiveFeedEntrySchema,
+    type BoardState,
+} from '../shared/board-state'
 
 /** The live file's name inside a run folder. */
 export const LIVE_FILE = 'live.json'
@@ -34,6 +38,20 @@ const LiveFileSchema = z.object({
         .transform((agents) =>
             agents.flatMap((agent) => {
                 const parsed = LiveAgentSchema.safeParse(agent)
+                return parsed.success ? [parsed.data] : []
+            })
+        ),
+    /**
+     * The run's last actions, oldest first (#634); one that doesn't read is
+     * left out, and a file from before it has none.
+     */
+    feed: z
+        .array(z.unknown())
+        .catch([])
+        .default([])
+        .transform((feed) =>
+            feed.flatMap((entry) => {
+                const parsed = LiveFeedEntrySchema.safeParse(entry)
                 return parsed.success ? [parsed.data] : []
             })
         ),
@@ -60,8 +78,8 @@ export const readLiveFile = async ({
 
 /**
  * The state with its live file laid over it: each card gets its agent's
- * entry (or none), and the plan usage, with no reading yet, fills in from
- * the file's first one.
+ * entry (or none), the feed is the file's, and the plan usage, with no
+ * reading yet, fills in from the file's first one.
  */
 export const withLive = ({
     state,
@@ -78,6 +96,7 @@ export const withLive = ({
             ...card,
             live: agents.find((agent) => agent.ticket === card.number) ?? null,
         })),
+        feed: live?.feed ?? [],
         usage:
             state.usage ??
             (reading === null || live === null

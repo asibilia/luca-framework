@@ -95,6 +95,7 @@ export const createBoardState = ({
     shared_git_changed: 0,
     run_steps: [],
     current_step: null,
+    feed: [],
     event_count: 0,
     latest: null,
     latest_at: null,

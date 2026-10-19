@@ -19,7 +19,13 @@ const TOOL_WORDS: Record<string, { icon: string; verb: string }> = {
 }
 
 /** A tool call in words, with its icon first: "✎ editing gate-runner.ts". */
-const callWords = ({ tool, target }: { tool: string; target: string }) => {
+export const callWords = ({
+    tool,
+    target,
+}: {
+    tool: string
+    target: string
+}) => {
     const { icon, verb } = TOOL_WORDS[tool] ?? { icon: '•', verb: tool }
     return [icon, verb, target].filter((part) => part !== '').join(' ')
 }
