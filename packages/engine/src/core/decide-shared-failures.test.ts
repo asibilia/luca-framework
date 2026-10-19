@@ -292,6 +292,129 @@ describe('shared failures: a lone rerun (#544)', () => {
     })
 })
 
+/** #12's writer answers `environment` on a follow-up turn (#613). */
+const blamesEnvironment = (
+    role: 'test-writer' | 'implementer'
+): JournalEntry[] => [
+    agentStarted({ ticket: 12, role, follow_up_of: SESSIONS[role] }),
+    {
+        kind: 'agent_finished',
+        ticket: 12,
+        role,
+        content: {
+            role,
+            session_id: SESSIONS[role],
+            result: {
+                outcome: 'environment',
+                environment: { evidence: 'EADDRINUSE on port 4000.' },
+                summary: 'Not this ticket.',
+            },
+        },
+    } as JournalEntry,
+]
+
+/** #12's red check, failing on the old test, as a lone rerun with `exclusive`. */
+const redFailedOnOld = ({
+    exclusive,
+}: {
+    exclusive?: boolean
+}): JournalEntry => ({
+    kind: 'red_check',
+    ticket: 12,
+    role: null,
+    content: {
+        ok: false,
+        problems: [`"${OLD.full_name}" in ${OLD.file} no longer passes`],
+        notes: [],
+        tests: {
+            ...emptyTestRun(),
+            ok: false,
+            exit_code: 1,
+            no_test_files: false,
+            cases: [
+                { ...OLD, status: 'failed' },
+                { ...NEW, status: 'failed' },
+            ],
+            output: '2 fail',
+        },
+        ...(exclusive === true ? { exclusive: true } : {}),
+    },
+})
+
+/**
+ * #12's check failed at minute 0, before any other ticket failed the old
+ * test, and its writer answered `environment`; then #11's gates failed on
+ * the old test at minute 1, and #12's rerun failed the same way at minute
+ * 2, now shared.
+ */
+const environmentRerunShared = ({
+    check,
+}: {
+    check: 'gates' | 'red_check'
+}): JournalEntry[] => {
+    const failed = (minute: number) =>
+        at(
+            minute,
+            check === 'gates'
+                ? gates({ ticket: 12, failed: [OLD] })
+                : redFailedOnOld({})
+        )
+    return [
+        runBranchCreated(),
+        ...upToGates({ ticket: 11 }),
+        ticketWorktreeCreated({ ticket: 12 }),
+        baseline({ ticket: 12, passed: [OLD] }),
+        testsWritten({ ticket: 12 }),
+        ...(check === 'gates'
+            ? [
+                  redCheck({ ticket: 12, ok: true }),
+                  leftoverScan({ ticket: 12, stage: 'red' }),
+                  commitMade({ ticket: 12, stage: 'red' }),
+                  implemented({ ticket: 12 }),
+              ]
+            : []),
+        failed(0),
+        ...blamesEnvironment(check === 'gates' ? 'implementer' : 'test-writer'),
+        at(1, gates({ ticket: 11, failed: [OLD] })),
+        failed(2),
+    ]
+}
+
+describe('shared failures after an environment answer (#544, #613)', () => {
+    test('gates whose environment rerun fails the same way on a shared old test are rerun alone, not stuck', () => {
+        const shared = environmentRerunShared({ check: 'gates' })
+        expect(stepOf12(shared)).toMatchObject(LONE_GATES)
+
+        expect(
+            stepOf12([
+                ...shared,
+                at(3, gates({ ticket: 12, failed: [OLD], exclusive: true })),
+            ])
+        ).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 12,
+            reason: 'environment_failed',
+        })
+    })
+
+    test('a red check whose environment rerun fails the same way on a shared old test is rerun alone, not stuck', () => {
+        const shared = environmentRerunShared({ check: 'red_check' })
+        expect(stepOf12(shared)).toMatchObject({
+            type: 'run_red_check',
+            ticket: 12,
+            exclusive: true,
+        })
+
+        expect(
+            stepOf12([...shared, at(3, redFailedOnOld({ exclusive: true }))])
+        ).toMatchObject({
+            type: 'mark_stuck',
+            ticket: 12,
+            reason: 'environment_failed',
+        })
+    })
+})
+
 describe('shared failures: the journal (#544)', () => {
     test("a ticket's and a join's gates_run keep their failed test cases, and an old one without them still parses", () => {
         for (const target of ['ticket', 'run_branch'] as const) {
