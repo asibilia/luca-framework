@@ -77,6 +77,16 @@ final_review_stuck
   same way (#617), and its `retry` starts the fix round over. The stuck
   text calls it "a change only you may make", and says "test setup file"
   only when the file is one of the config's.
+- **Environment failures (#613).** A test-writer or implementer that finds a
+  failed red check or failed gates aren't its ticket's fault (a port already
+  in use, an old test that fails at baseline too) answers `environment`, with
+  its evidence. The engine reruns the failed check once, without using a fix
+  round, and goes on if it passes. A rerun that fails the same way (the same
+  red check problems, or the same failed gates), or an `environment` answer
+  past `MAX_ENVIRONMENT_RERUNS` (2 per ticket), makes the ticket stuck
+  (`environment_failed`), with the evidence and the clipped output. The
+  final review's implementer fixer can do the same for the final gates, with
+  the same cap. A `retry` gives fresh counts.
 - The tracker's `comment` returns the new comment's id, and `listComments`
   reads an issue's comments after an id. The GitHub tracker posts and lists
   through `gh api`, and reads each issue's author.

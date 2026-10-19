@@ -49,6 +49,18 @@ Tests:
 - `packages/engine/src/core/run-one-ticket-install.e2e.test.ts`
 - `packages/engine/src/core/run-one-ticket-messages.e2e.test.ts`
 
+## Environment failures
+
+A test-writer or implementer can answer `environment`, with evidence, when a failed red check or failed gates are not its ticket's fault; the engine reruns the check once without using a fix round, and a rerun that fails the same way, or a third such answer, is stuck as `environment_failed`. The final review's fixer can do the same for the final gates.
+
+Reached by: a writer's `environment` outcome; the spec issue's stuck comment shows its evidence.
+
+Tests:
+
+- `packages/engine/src/agents/environment-answer.test.ts`
+- `packages/engine/src/core/decide-environment.test.ts`
+- `packages/engine/src/core/decide-final-environment.test.ts`
+
 ## The red check and honest new tests
 
 The red check proves a ticket's new tests fail before any code is written and every old test still passes, and sends back a new test that checks nothing. A test the ticket only moved to another test file is an old test, so a test-writer can split a too-big test file.

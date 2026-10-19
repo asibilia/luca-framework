@@ -11,6 +11,7 @@ import {
     type StepArgs,
 } from './build-action'
 import { launch } from './build-launch'
+import { environmentFailedDetail } from './environment-rerun'
 import { failedChecks, gateFixMessage, redFixMessage } from './fix-loop-text'
 import { MAX_BAD_TEST_BOUNCES, MAX_FIX_ROUNDS } from './loop-caps'
 import { badTestDetail, badTestTwiceText } from './stuck-text'
@@ -143,6 +144,21 @@ export const testStep = ({
             detail:
                 `The test-writer says this ticket changes no behavior, so no new test can fail first: ${test_writer.summary || 'no reason given'}\n` +
                 `A ticket like that is a refactor ticket: add the \`${REFACTOR_LABEL}\` label and retry it.`,
+        })
+    }
+    const blamed = environmentFailedDetail({
+        environment:
+            progress.environment?.check === 'red_check'
+                ? progress.environment
+                : null,
+        reruns: progress.environment_reruns,
+        latest: red_check,
+    })
+    if (blamed !== null) {
+        return stuck({
+            ticket: number,
+            reason: 'environment_failed',
+            detail: blamed,
         })
     }
     if (red_check === null) {
@@ -281,7 +297,9 @@ const emptyTestStep = ({
 /**
  * The ticket's gates and their fix loop: failed gates go back to the same
  * implementer session (a fresh one with the same message if it is gone),
- * up to `MAX_FIX_ROUNDS` follow-ups. `null` once the gates pass.
+ * up to `MAX_FIX_ROUNDS` follow-ups. An `environment` answer reruns them
+ * without a fix round; a rerun that fails the same way, or one past
+ * `MAX_ENVIRONMENT_RERUNS`, is stuck (#613). `null` once the gates pass.
  */
 export const gateStep = ({
     snapshot,
@@ -291,6 +309,21 @@ export const gateStep = ({
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
     const { gates } = progress
+    const blamed = environmentFailedDetail({
+        environment:
+            progress.environment?.check === 'gates'
+                ? progress.environment
+                : null,
+        reruns: progress.environment_reruns,
+        latest: gates,
+    })
+    if (blamed !== null) {
+        return stuck({
+            ticket: number,
+            reason: 'environment_failed',
+            detail: blamed,
+        })
+    }
     if (gates === null) {
         return { type: 'run_gates', ticket: number, target: 'ticket' }
     }

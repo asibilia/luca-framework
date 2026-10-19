@@ -18,6 +18,8 @@ const FINAL_REASON_LINES: Partial<Record<StuckReason, string>> = {
     agent_failed: 'A final review agent failed on every try it had.',
     crashed:
         'The engine crashed in the same final review step, again and again.',
+    environment_failed:
+        "A fixer says the final checks' failure is not the branch's fault, but the rerun failed the same way, or its reruns ran out.",
 }
 
 /** What the owner could do about the stuck final review, per reason. */

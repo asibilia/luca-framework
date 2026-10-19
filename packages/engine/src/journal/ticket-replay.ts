@@ -123,6 +123,8 @@ const progressChange = ({
                     ...progress.assumptions,
                     ...assumptionsOf(finished),
                 ],
+                // Only a new `environment` answer opens another rerun.
+                environment: null,
                 ...resultChange({ progress, finished, seq: record.seq }),
             }
         }
@@ -185,6 +187,7 @@ const progressChange = ({
                 implementer: null,
                 gates: null,
                 gate_fix_rounds: 0,
+                environment: null,
                 leftovers: { red: null, green: null, fix: null },
                 commits: { ...progress.commits, red: null },
                 sessions: omit(progress.sessions, [

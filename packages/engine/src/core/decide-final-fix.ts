@@ -3,6 +3,7 @@
  * fix loop, the fix commit, and the push, after the lenses found blocking
  * findings. Pure.
  */
+import { environmentFailedDetail } from './environment-rerun'
 import { failureCap } from './final-failure-cap'
 import {
     stuck,
@@ -102,7 +103,8 @@ const failedFixerStep = ({
  * A final review fix round, once every due lens finished and some finding
  * blocks: start the round, a fresh test-writer for the test findings, then
  * a fresh implementer for the code findings, the gates (and their fix loop
- * in the implementer's session), the fix commit, and the push. `null` once
+ * in the implementer's session, or a rerun when it answers `environment`,
+ * #613), the fix commit, and the push. `null` once
  * the fixes are pushed.
  */
 export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
@@ -142,6 +144,14 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
         })
     }
     const { gates } = review
+    const blamed = environmentFailedDetail({
+        environment: review.environment,
+        reruns: review.environment_reruns,
+        latest: gates,
+    })
+    if (blamed !== null) {
+        return stuck({ reason: 'environment_failed', detail: blamed })
+    }
     if (gates === null) return { type: 'run_final_gates' }
     if (!gates.ok) {
         if (review.gate_fix_rounds >= MAX_FIX_ROUNDS) {

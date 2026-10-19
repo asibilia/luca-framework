@@ -81,6 +81,20 @@ export type ReplayedGates = {
 export type ReplayedRedCheck = RedCheckResult & { output: string }
 
 /**
+ * A writer's `environment` answer to a failed check (#613): who gave it,
+ * its evidence, and the failed check it blamed on the environment. The
+ * check runs again; a rerun that fails the same way makes it stuck. It
+ * stays until the next agent answers.
+ */
+export type EnvironmentRerun = {
+    role: 'test-writer' | 'implementer'
+    evidence: string
+} & (
+    | { check: 'red_check'; failed: ReplayedRedCheck }
+    | { check: 'gates'; failed: ReplayedGates }
+)
+
+/**
  * The open review fix round: the blockers and should-fixes the latest ticket
  * review sent back, and which fixers have answered. Test findings go to a
  * fresh test-writer first, then code findings to the implementer.
@@ -152,6 +166,13 @@ export type TicketProgress = {
     implementer: ImplementerResult | null
     /** Follow-ups the implementer answered after failed gates. */
     gate_fix_rounds: number
+    /**
+     * `environment` answers to a failed red check or failed gates (#613),
+     * each a rerun that used no fix round.
+     */
+    environment_reruns: number
+    /** The latest `environment` answer, until the next agent answers. */
+    environment: EnvironmentRerun | null
     /**
      * How many times a test was sent back as bad, by the implementer or by
      * the engine, which found a mapped test that passes with no `expect()`
@@ -289,6 +310,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     red_fix_rounds: 0,
     implementer: null,
     gate_fix_rounds: 0,
+    environment_reruns: 0,
+    environment: null,
     bad_test_bounces: 0,
     bad_test: null,
     bad_test_sources: [],

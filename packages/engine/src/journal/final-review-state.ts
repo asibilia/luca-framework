@@ -5,6 +5,7 @@
 import type { AgentFailure, StuckReason } from './journal-record'
 import type {
     DeclinedFinding,
+    EnvironmentRerun,
     ReplayedGates,
     ReviewFix,
     TicketProgress,
@@ -78,6 +79,13 @@ export type FinalReviewState = {
     /** The open fix round's gates, and its gate fix follow-ups. */
     gates: ReplayedGates | null
     gate_fix_rounds: number
+    /**
+     * The fixer's `environment` answers to failed gates (#613), over the
+     * whole final review, each a rerun that used no gate fix round.
+     */
+    environment_reruns: number
+    /** The latest `environment` answer, until the next agent answers. */
+    environment: EnvironmentRerun | null
     /** The open fix round's leftover scan and commit. */
     leftovers: LeftoverHit[] | null
     commit: { sha: string; files: string[] } | null
@@ -136,6 +144,8 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     engine_failures: {},
     gates: null,
     gate_fix_rounds: 0,
+    environment_reruns: 0,
+    environment: null,
     leftovers: null,
     commit: null,
     pushed: null,

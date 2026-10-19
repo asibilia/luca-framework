@@ -43,6 +43,7 @@ export type {
 } from './run-state'
 export type {
     DeclinedFinding,
+    EnvironmentRerun,
     ReplayedGates,
     ReplayedInstall,
     ReplayedRedCheck,

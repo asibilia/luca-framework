@@ -13,6 +13,8 @@ import { ENTRY_FIELDS } from './entry-fields'
  * fix loop reaches its cap, and a bad test only on its second bounce.
  * `undo_refused`: undoing its join would have rewound the run branch over
  * other work, so the engine left the run branch alone (#519).
+ * `environment_failed`: a writer said a failure was not its ticket's fault,
+ * and the rerun failed the same way, or its reruns ran out (#613).
  */
 export const StuckReasonSchema = z.enum([
     'agent_failed',
@@ -29,6 +31,7 @@ export const StuckReasonSchema = z.enum([
     'setup_change_needed',
     'crashed',
     'undo_refused',
+    'environment_failed',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>

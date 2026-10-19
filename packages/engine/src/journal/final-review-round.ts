@@ -208,6 +208,22 @@ export const finalResultChange = ({
             }
         }
         if (review.gates === null) return review
+        // An `environment` answer to failed gates reruns them, using no
+        // gate fix round (#613).
+        if (result.outcome === 'environment' && !review.gates.ok) {
+            return {
+                ...review,
+                setup_change,
+                gates: null,
+                environment_reruns: review.environment_reruns + 1,
+                environment: {
+                    role: 'implementer',
+                    evidence: result.environment?.evidence ?? '',
+                    check: 'gates',
+                    failed: review.gates,
+                },
+            }
+        }
         return {
             ...review,
             setup_change,

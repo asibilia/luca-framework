@@ -80,6 +80,10 @@ _Avoid_: fail-first check
 The capped rounds in which an agent fixes what a gate or a reviewer reported. Reaching the cap makes the run stuck.
 _Avoid_: retry loop
 
+**Environment failure**:
+A failed red check or failed gates that a test-writer or implementer says are not its ticket's fault, such as a port already in use. It answers `environment` with its evidence, and the engine reruns the check once without using a fix round. A rerun that fails the same way makes the ticket stuck as `environment_failed`.
+_Avoid_: flaky failure, infra error
+
 **Leftover scan**:
 The gate that stops files an agent left behind, such as scratch scripts or stray notes, from being committed.
 _Avoid_: shadow scan, cleanliness check

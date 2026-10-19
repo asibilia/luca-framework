@@ -37,6 +37,8 @@ const REASON_LINES: Record<StuckReason, string> = {
     crashed: 'The engine crashed in the same step, again and again.',
     undo_refused:
         'Undoing its join would have rewound the run branch over other work, so the run branch was left alone.',
+    environment_failed:
+        "An agent says a failure is not the ticket's fault (the machine or another ticket), but the rerun failed the same way, or its reruns ran out.",
 }
 
 /**
@@ -84,6 +86,8 @@ const suggestion = ({
             return `Read the engine's log for why it crashed, fix what trips it, then reply ${retry} to take the step again with a fresh agent.`
         case 'undo_refused':
             return `Put the run branch back so this ticket's join is on top (or take its join off by hand), then reply ${retry}; or reply \`skip #${n}\`.`
+        case 'environment_failed':
+            return `Read the agent's evidence and the output. If the machine is at fault (a port in use, another process, a test that fails on the base branch too), fix that, then reply ${retry}. If the ticket's code is at fault, fix it in the worktree or make the ticket clearer, then reply ${retry}; or reply \`skip #${n}\`.`
     }
 }
 
