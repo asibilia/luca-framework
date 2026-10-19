@@ -84,6 +84,9 @@ Reached by: `checks` in a repo's `.luca/config.json`; the gates run after every 
 Tests:
 
 - `packages/engine/src/gates/gate-runner.test.ts`
+- `packages/engine/src/gates/gate-runner-slow-tests.test.ts`
+- `packages/engine/src/gates/gate-runner-own-slow-tests.test.ts`
+- `packages/engine/src/gates/gate-runner-speed-limit.test.ts`
 - `packages/engine/src/gates/test-runner.test.ts`
 - `packages/engine/src/shell/run-command.test.ts`
 - `packages/engine/src/config/test-commands.test.ts`
@@ -115,6 +118,9 @@ Tests:
 
 - `packages/engine/src/config/prepare-command.test.ts`
 - `packages/engine/src/gates/gate-runner.test.ts`
+- `packages/engine/src/gates/gate-runner-slow-tests.test.ts`
+- `packages/engine/src/gates/gate-runner-own-slow-tests.test.ts`
+- `packages/engine/src/gates/gate-runner-speed-limit.test.ts`
 - `packages/engine/src/gates/prepare-slots.test.ts`
 - `packages/engine/src/core/run-prepare-command.e2e.test.ts`
 - `packages/engine/src/core/run-prepare-concurrency.e2e.test.ts`
