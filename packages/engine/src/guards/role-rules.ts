@@ -31,7 +31,7 @@ export {
     permissionRules,
 } from './permission-rules'
 export { checkCommands, READ_ONLY_COMMANDS } from './shell-rules'
-export { isInstallPath, LOCKFILES, mayWrite } from './write-rules'
+export { isInstallPath, isTestHelper, LOCKFILES, mayWrite } from './write-rules'
 
 const FileInputSchema = z.object({ file_path: z.string().min(1) })
 

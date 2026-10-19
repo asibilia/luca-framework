@@ -3,9 +3,10 @@ import { PREPARE_SLOTS } from './prepare-slots'
 import {
     fileTestsCommand,
     reportFileFor,
-    runTests,
+    runTestsInHeldSlot,
     TEST_TIMEOUT_HINT,
 } from './test-runner'
+import { inTestSlot } from './test-slots'
 
 import {
     caseLimitOf,
@@ -118,12 +119,70 @@ export const prepareCheck = async ({
 export const FAST_TEST_HINT = ({ limit_ms }: { limit_ms: number }): string =>
     `A fast test may take at most ${limit_ms} ms (\`test_case_timeout_ms\`). Make it faster, or move it to the slow tests.`
 
+/** The fast test speed limit (#580), and the files measured against it. */
+type SpeedLimit = { limit_ms: number; measured_files: string[] }
+
+/**
+ * A `bun` test command's run as a gate check named `name`: it fails on a
+ * failed run, or on a passing test over the fast test speed limit (see
+ * `testChecks`), and it ran from `started` until now.
+ */
+const bunCheck = ({
+    name,
+    run,
+    limit,
+    started,
+}: {
+    name: 'test' | 'slow_test'
+    run: TestRun
+    limit: SpeedLimit | null
+    started: number
+}): GateCheck => {
+    const tooSlow =
+        limit === null
+            ? []
+            : run.cases.filter(
+                  ({ file, status, duration_ms }) =>
+                      status === 'passed' &&
+                      limit.measured_files.includes(file) &&
+                      (duration_ms ?? 0) > limit.limit_ms
+              )
+    const timedOut = /timed out after \d+ms/.test(run.output)
+    const hint =
+        limit === null || (tooSlow.length === 0 && !timedOut)
+            ? ''
+            : `${FAST_TEST_HINT({ limit_ms: limit.limit_ms })}\n`
+    const slowLines = tooSlow
+        .map(
+            ({ file, full_name, duration_ms }) =>
+                `- ${file} > ${full_name}: ${duration_ms} ms`
+        )
+        .join('\n')
+    const ok = run.ok && tooSlow.length === 0
+    return {
+        name,
+        command: run.command,
+        ok,
+        exit_code: run.exit_code,
+        output: ok
+            ? ''
+            : `${hint}${slowLines === '' ? '' : `Too slow for a fast test:\n${slowLines}\n`}${run.output}`,
+        duration_ms: msSince(started),
+    }
+}
+
 /**
  * Runs test commands as gate checks named `name`, in order (see `runGates`).
  * With a `limit` (#580, the fast call only), each `bun` command gets
  * `--timeout=<limit_ms>`, and a passing test in one of `measured_files` that
  * took longer than that fails the check: a test's own timeout option
  * overrides `--timeout`, so only its measured time tells.
+ *
+ * With `test_concurrency` (#544), each command first waits for a test slot
+ * (see `inTestSlot`); its check records the wait as `wait_ms`, and its time
+ * limit and `duration_ms` start after it. With `exclusive` (a lone rerun,
+ * #544), each command waits until no other test run is going, and holds
+ * every slot while it runs.
  */
 const testChecks = async ({
     commands,
@@ -134,6 +193,8 @@ const testChecks = async ({
     first_index,
     timeout_ms,
     limit,
+    test_concurrency,
+    exclusive,
 }: {
     commands: TestCommand[]
     name: 'test' | 'slow_test'
@@ -147,69 +208,55 @@ const testChecks = async ({
      * The fast test speed limit (#580), or `null` for none. Only the fast
      * call has one; slow tests never do.
      */
-    limit: { limit_ms: number; measured_files: string[] } | null
+    limit: SpeedLimit | null
+    /** The config's `test_concurrency`; left out, no cap. */
+    test_concurrency: number | undefined
+    exclusive: boolean
 }): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
     const checks: GateCheck[] = []
     const runs: TestRun[] = []
     for (const [offset, { run: command, results }] of commands.entries()) {
         if (results === 'pass_fail') {
             checks.push(
-                await shellCheck({
-                    name,
-                    command,
-                    cwd,
-                    timeout_ms,
-                    timeout_hint: TEST_TIMEOUT_HINT,
+                await inTestSlot({
+                    test_concurrency,
+                    exclusive,
+                    work: () =>
+                        shellCheck({
+                            name,
+                            command,
+                            cwd,
+                            timeout_ms,
+                            timeout_hint: TEST_TIMEOUT_HINT,
+                        }),
                 })
             )
             continue
         }
-        const started = performance.now()
-        const run = await runTests({
-            cwd,
-            command:
-                limit === null
-                    ? command
-                    : `${command} --timeout=${limit.limit_ms}`,
-            test_files,
-            report_file: reportFileFor({
-                report_file,
-                index: first_index + offset,
-            }),
-            timeout_ms,
-        })
-        runs.push(run)
-        const tooSlow =
-            limit === null
-                ? []
-                : run.cases.filter(
-                      ({ file, status, duration_ms }) =>
-                          status === 'passed' &&
-                          limit.measured_files.includes(file) &&
-                          (duration_ms ?? 0) > limit.limit_ms
-                  )
-        const timedOut = /timed out after \d+ms/.test(run.output)
-        const hint =
-            limit === null || (tooSlow.length === 0 && !timedOut)
-                ? ''
-                : `${FAST_TEST_HINT({ limit_ms: limit.limit_ms })}\n`
-        const slowLines = tooSlow
-            .map(
-                ({ file, full_name, duration_ms }) =>
-                    `- ${file} > ${full_name}: ${duration_ms} ms`
-            )
-            .join('\n')
-        const ok = run.ok && tooSlow.length === 0
-        checks.push({
-            name,
-            command: run.command,
-            ok,
-            exit_code: run.exit_code,
-            output: ok
-                ? ''
-                : `${hint}${slowLines === '' ? '' : `Too slow for a fast test:\n${slowLines}\n`}${run.output}`,
-            duration_ms: msSince(started),
-        })
+        checks.push(
+            await inTestSlot({
+                test_concurrency,
+                exclusive,
+                work: async () => {
+                    const started = performance.now()
+                    const run = await runTestsInHeldSlot({
+                        cwd,
+                        command:
+                            limit === null
+                                ? command
+                                : `${command} --timeout=${limit.limit_ms}`,
+                        test_files,
+                        report_file: reportFileFor({
+                            report_file,
+                            index: first_index + offset,
+                        }),
+                        timeout_ms,
+                    })
+                    runs.push(run)
+                    return bunCheck({ name, run, limit, started })
+                },
+            })
+        )
     }
     return { checks, runs }
 }
@@ -221,7 +268,9 @@ const testChecks = async ({
  * config with no test command. A `bun` test command runs with bun's JUnit
  * reporter; a `pass_fail` one runs as written and is judged by its exit code.
  * Each test command gets the config's time limit (see `testTimeoutOf`);
- * types and lint get the engine's default.
+ * types and lint get the engine's default. With `test_concurrency` (#544),
+ * each test command (the own-files run too) waits for a test slot first,
+ * and its check records the wait as `wait_ms`.
  *
  * With a fast test speed limit (`test_case_timeout_ms`, #580), every `bun`
  * command of `checks.test` gets `--timeout=<limit>`, and the tests in
@@ -245,6 +294,9 @@ const testChecks = async ({
  * `around_prepare`, if given, runs the prepare check (so the engine can see
  * what it made).
  *
+ * With `exclusive` (a lone rerun, #544), each test command waits until no
+ * other test run is going, and holds every test slot while it runs.
+ *
  * @example
  * const { ok, checks, cases } = await runGates({ cwd, config, test_files, report_file, install: null })
  */
@@ -258,6 +310,7 @@ export const runGates = async ({
     with_slow_tests,
     own_test_files,
     measured_files,
+    exclusive = false,
 }: {
     cwd: string
     config: EngineConfig
@@ -283,6 +336,8 @@ export const runGates = async ({
      * `test_case_timeout_ms` by measured time (#580); left out, none.
      */
     measured_files?: string[]
+    /** Run each test command alone (#544). Left out, they don't. */
+    exclusive?: boolean
 }): Promise<{ ok: boolean; checks: GateCheck[]; cases: TestCase[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -302,6 +357,7 @@ export const runGates = async ({
     }
     const { types, lint } = config.checks
     const timeout_ms = testTimeoutOf({ config })
+    const { test_concurrency } = config
     const limit_ms = caseLimitOf({ config })
     const fast = testCommands({ config })
     const fastChecks = await testChecks({
@@ -316,6 +372,8 @@ export const runGates = async ({
             limit_ms === null
                 ? null
                 : { limit_ms, measured_files: measured_files ?? [] },
+        test_concurrency,
+        exclusive,
     })
     checks.push(...fastChecks.checks)
     // The test cases the gates saw, for the empty-test check (#581).
@@ -330,16 +388,32 @@ export const runGates = async ({
             )
     )
     if (unrun.length > 0) {
-        const started = performance.now()
-        const run = await runTests({
-            cwd,
-            command: fileTestsCommand({ files: unrun }),
-            test_files: unrun,
-            report_file: reportFileFor({
-                report_file,
-                index: fast.length + slowTestCommands({ config }).length,
-            }),
-            timeout_ms,
+        const { run, ...check } = await inTestSlot({
+            test_concurrency,
+            exclusive,
+            work: async () => {
+                const started = performance.now()
+                const run = await runTestsInHeldSlot({
+                    cwd,
+                    command: fileTestsCommand({ files: unrun }),
+                    test_files: unrun,
+                    report_file: reportFileFor({
+                        report_file,
+                        index:
+                            fast.length + slowTestCommands({ config }).length,
+                    }),
+                    timeout_ms,
+                })
+                const check: GateCheck = {
+                    name: 'test',
+                    command: run.command,
+                    ok: run.ok,
+                    exit_code: run.exit_code,
+                    output: run.ok ? '' : run.output,
+                    duration_ms: msSince(started),
+                }
+                return { ...check, run }
+            },
         })
         cases.push(...run.cases)
         // A run with no results at all means its files don't load. After a
@@ -347,14 +421,7 @@ export const runGates = async ({
         // slow file's load error shows on the next run, once that is fixed);
         // with every fast run passing, it is a real failure of its own.
         if (run.cases.length > 0 || fastChecks.checks.every(({ ok }) => ok)) {
-            checks.push({
-                name: 'test',
-                command: run.command,
-                ok: run.ok,
-                exit_code: run.exit_code,
-                output: run.ok ? '' : run.output,
-                duration_ms: msSince(started),
-            })
+            checks.push(check)
         }
     }
     if (with_slow_tests === true) {
@@ -367,6 +434,8 @@ export const runGates = async ({
             first_index: fast.length,
             timeout_ms,
             limit: null,
+            test_concurrency,
+            exclusive,
         })
         checks.push(...slow.checks)
     }
@@ -420,6 +489,8 @@ export const runSlowTests = async ({
         first_index: 0,
         timeout_ms: testTimeoutOf({ config }),
         limit: null,
+        test_concurrency: config.test_concurrency,
+        exclusive: false,
     })
     const all = prepared === null ? checks : [prepared, ...checks]
     return { ok: all.every(({ ok }) => ok), checks: all }

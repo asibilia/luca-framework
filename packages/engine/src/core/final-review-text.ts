@@ -5,6 +5,7 @@ import {
     findingList,
     FIX_RULES,
     gateResults,
+    handoffSection,
     responseText,
     RULING_RULES,
 } from './review-text'
@@ -15,13 +16,14 @@ import {
     type PromptRunNote,
 } from '../agents/role-prompts'
 import { lensRole, type Finding, type LensName } from '../agents/role-results'
-import type {
-    FinalFinding,
-    FinalReviewFix,
-    FinalReviewState,
-    ReplayedGates,
-    ReplayedSnapshot,
-    RuleFile,
+import {
+    handoffRole,
+    type FinalFinding,
+    type FinalReviewFix,
+    type FinalReviewState,
+    type ReplayedGates,
+    type ReplayedSnapshot,
+    type RuleFile,
 } from '../journal/replay'
 
 /**
@@ -191,7 +193,8 @@ const findingsSection = ({
 /**
  * The prompt a fresh final review fixer starts with: its task, the spec,
  * every ticket, and its findings (the test findings for the test-writer,
- * the code findings for the implementer). An implementer launched only to
+ * the code findings for the implementer, or the findings the other fixer
+ * answered `other_role`, #616). An implementer launched only to
  * fix failed gates (the round had only test findings) gets the gates'
  * output instead. The engine journals it word for word.
  *
@@ -224,7 +227,13 @@ export const finalFixerPrompt = ({
                   "You are fixing the final review's findings on the whole run branch. The test fixes are in the worktree, uncommitted. The gates failed. Fix the code so every gate passes, then answer.",
                   failedChecks({ gates }),
               ].join('\n\n')
-            : findingsSection({ fix, kind })
+            : handoffRole({ fix }) === role
+              ? handoffSection({
+                    fix,
+                    role,
+                    heading: `Final review fix round ${fix.round}`,
+                })
+              : findingsSection({ fix, kind })
     return [
         `# Your role: ${role}`,
         FIXER_TASKS[role],

@@ -18,6 +18,9 @@ import type { EngineConfig } from './engine-config'
  * - `prepare_concurrency`: how many prepare runs may go at once. The
  *   prepare slots take the limit on each call (`prepareCheck`), so a new
  *   one counts from the next prepare run.
+ * - `test_concurrency`: how many test runs may go at once (#544). The test
+ *   slots take the limit on each call (`inTestSlot`), as the prepare slots
+ *   do, so a new one counts from the next test run.
  * - `test_timeout_ms`: how long each test command may run (#542). Each run
  *   of a test command reads it then, so a new one counts from the next.
  * - `test_case_timeout_ms`: how long one fast test may take (#580). Each run
@@ -30,6 +33,7 @@ export const RELOADED_FIELDS = [
     'prepare',
     'prepare_timeout_ms',
     'prepare_concurrency',
+    'test_concurrency',
     'test_timeout_ms',
     'test_case_timeout_ms',
     'leftover_allow',
@@ -49,6 +53,8 @@ export const RELOADED_FIELDS = [
  *   for the red check).
  * - `test_file_patterns`: which files are tests decides the red check, the
  *   role rules, and which commits were the test-writer's.
+ * - `test_helper_patterns`: which non-test files the test-writer may write
+ *   (#619), as `test_file_patterns` says which test files it may.
  * - `test_setup_files`: part of what the tests are, as `checks` is.
  * - `feature_map`: says which test files belong to which feature (#583), as
  *   `test_file_patterns` says which files are tests: the red check holds a
@@ -63,10 +69,13 @@ export const RELOADED_FIELDS = [
  *   are all of one model and can be scored together.
  * - `models`: the model floors and the confidence bar (#603), so one run's
  *   routing stays consistent.
+ * - `generators`: the commands writers may ask the engine to run (#618),
+ *   whose output is committed with the tickets, as the prompts named them.
  */
 export const FROZEN_FIELDS = [
     'checks',
     'test_file_patterns',
+    'test_helper_patterns',
     'test_setup_files',
     'feature_map',
     'rule_files',
@@ -74,6 +83,7 @@ export const FROZEN_FIELDS = [
     'run_budget_tokens',
     'decision_model',
     'models',
+    'generators',
 ] as const
 
 const positiveInt = z.number().int().positive().nullable()
@@ -97,6 +107,11 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
     }),
     z.object({
         field: z.literal('prepare_concurrency'),
+        from: positiveInt,
+        to: positiveInt,
+    }),
+    z.object({
+        field: z.literal('test_concurrency'),
         from: positiveInt,
         to: positiveInt,
     }),
@@ -152,6 +167,11 @@ export const configChanges = ({
             to: next.prepare_concurrency ?? null,
         },
         {
+            field: 'test_concurrency',
+            from: current.test_concurrency ?? null,
+            to: next.test_concurrency ?? null,
+        },
+        {
             field: 'test_timeout_ms',
             from: current.test_timeout_ms ?? null,
             to: next.test_timeout_ms ?? null,
@@ -190,6 +210,10 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'prepare_concurrency')
                 : { ...config, prepare_concurrency: change.to }
+        case 'test_concurrency':
+            return change.to === null
+                ? omit(config, 'test_concurrency')
+                : { ...config, test_concurrency: change.to }
         case 'test_timeout_ms':
             return change.to === null
                 ? omit(config, 'test_timeout_ms')

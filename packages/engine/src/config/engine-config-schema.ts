@@ -164,6 +164,12 @@ export const EngineConfigSchema = z.object({
      */
     prepare_concurrency: z.number().int().positive().optional(),
     /**
+     * How many test runs may go at once across the run (#544): the
+     * baseline, the red check, the already-done check, and every gate's
+     * test and slow test commands. Left out, no cap.
+     */
+    test_concurrency: z.number().int().positive().optional(),
+    /**
      * How long each test command may run, in milliseconds; left out, the
      * engine's default (`DEFAULT_COMMAND_TIMEOUT_MS`, 5 minutes).
      */
@@ -180,6 +186,14 @@ export const EngineConfigSchema = z.object({
      * `design/*.md`; left out, none.
      */
     leftover_allow: z.array(z.string().min(1)).optional(),
+    /**
+     * The repo's generators (#618): each name a writer may ask the engine to
+     * run (`run_generators`), with its command, such as `bun run gen:parser`.
+     * The engine runs them in the worktree after the writer's turn, before
+     * the checks, and commits their output. Agents never run them. Left out,
+     * none.
+     */
+    generators: z.record(z.string().min(1), z.string().min(1)).optional(),
     /**
      * A markdown file listing each feature and the test files that prove it
      * (#583), relative to the repo root: a path inside the repo, so not an
@@ -198,6 +212,12 @@ export const EngineConfigSchema = z.object({
         })
         .optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
+    /**
+     * Glob patterns for non-test files the test-writer may also write
+     * (#619), such as shared test helpers and fixtures. They aren't tests:
+     * the red check and the feature map leave them alone. Left out, none.
+     */
+    test_helper_patterns: z.array(z.string().min(1)).optional(),
     test_setup_files: z.array(z.string()).default([]),
     rule_files: z.array(z.string()).default([]),
     muninn: MuninnConfigSchema.optional(),

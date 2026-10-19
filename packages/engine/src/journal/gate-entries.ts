@@ -5,6 +5,7 @@ import { ENTRY_FIELDS } from './entry-fields'
 import {
     GateCheckSchema,
     RedCheckResultSchema,
+    TestCaseRefSchema,
     TestCaseSchema,
     TestRunSchema,
 } from '../gates/gate-schemas'
@@ -14,10 +15,20 @@ import {
  * check, the dependency install, and the gates.
  */
 
+/**
+ * A lone rerun (#544): the check ran again while no other test run went,
+ * holding every test slot, after its old tests failed in another ticket
+ * too. Left out on every other check.
+ */
+const EXCLUSIVE_FIELD = { exclusive: z.boolean().optional() }
+
 export const RedCheckEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('red_check'),
-    content: RedCheckResultSchema.extend({ tests: TestRunSchema }),
+    content: RedCheckResultSchema.extend({
+        tests: TestRunSchema,
+        ...EXCLUSIVE_FIELD,
+    }),
 })
 
 /** Where the gates or the install ran: a ticket's worktree, or the run branch. */
@@ -59,5 +70,12 @@ export const GatesRunEntrySchema = z.object({
          * files, with their `expect()` counts (#581). Missing in old journals.
          */
         cases: z.array(TestCaseSchema).optional(),
+        /**
+         * A ticket's and a join's gates only: the test cases that failed in
+         * any bun run (#544), so a test failing in two tickets is spotted.
+         * Left out with none, and in old journals.
+         */
+        failed_cases: z.array(TestCaseRefSchema).optional(),
+        ...EXCLUSIVE_FIELD,
     }),
 })

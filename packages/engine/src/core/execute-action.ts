@@ -21,6 +21,10 @@ import {
 import { readIntake, refuseIntake } from './execute-intake'
 import { executeMemoryAction } from './execute-memory'
 import { openPullRequest } from './execute-pull-request'
+import {
+    executeRepoWaitAction,
+    type GoingRunsReader,
+} from './execute-repo-wait'
 import { executeStuckAction } from './execute-stuck'
 import { executePlanAction, executeUsageLineAction } from './execute-waits'
 
@@ -59,6 +63,7 @@ export const executeAction = async ({
     memory,
     step,
     read_usage_lines,
+    going_runs,
 }: {
     action: EngineAction
     journal: Journal
@@ -81,6 +86,11 @@ export const executeAction = async ({
      * usage-line wait. Left out, the lines never change during a wait.
      */
     read_usage_lines?: () => Promise<UsageLines>
+    /**
+     * Lists the unfinished runs, again before each nap of a repo wait.
+     * Left out, no other run is going.
+     */
+    going_runs?: GoingRunsReader
 }): Promise<void> => {
     const tried: CommentStep = {
         run_id: basename(dirname(journal.file)),
@@ -161,6 +171,16 @@ export const executeAction = async ({
                         ...DEFAULT_USAGE_LINES,
                         [LINE_OF[action.window]]: action.line,
                     })),
+                step: tried,
+            })
+        case 'start_repo_wait':
+        case 'wait_for_repo':
+            return executeRepoWaitAction({
+                action,
+                journal,
+                tracker,
+                clock: clock ?? SYSTEM_CLOCK,
+                going_runs,
                 step: tried,
             })
         case 'read_intake':

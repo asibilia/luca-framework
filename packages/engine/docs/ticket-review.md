@@ -34,8 +34,13 @@ Blockers and should-fixes open a **review fix round**. Test findings go
 first, to a fresh test-writer (who may edit only tests); then code findings
 go to a fresh implementer (the first one's session closed with the green
 commit; the implementer's session is followed up only if it is still open).
-Each fixer answers every finding it got in `finding_responses`: `fixed`, or
-`wont_fix` with a reason. The fixes must pass the gates (with the usual gate
+Each fixer answers every finding it got in `finding_responses`: `fixed`,
+`wont_fix` with a reason, or `other_role` with a reason when the other writer
+role must fix it, or must fix it too (a code fix that needs a test, or a test
+that needs a non-test helper). Once both fixers answered, the `other_role`
+findings go to a fresh agent of the other role, with only those findings,
+before the gates (#616). Its answer is final: a second `other_role` counts as
+`wont_fix`. The fixes must pass the gates (with the usual gate
 fix loop, counted afresh each round), get their own commit
 (`fix: review round <n> for ...`; nothing changed means no commit, and the
 journal notes the current commit), and then a fresh reviewer sees **only the

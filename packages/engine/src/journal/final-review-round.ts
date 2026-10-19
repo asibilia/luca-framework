@@ -8,9 +8,13 @@ import omit from 'lodash/omit'
 import {
     badTestOf,
     declinedBy,
+    fixerAnswered,
+    handoffAnswered,
+    handoffRole,
     type FinishedContent,
 } from './agent-turn-replay'
 import type { FinalFinding, FinalReviewState } from './final-review-state'
+import { setupChangeOf } from './ticket-result-replay'
 
 import {
     isBlocking,
@@ -126,6 +130,7 @@ export const settleRound = ({
             tests_answered: !blocking.some(({ kind }) => kind === 'test'),
             code_answered: !blocking.some(({ kind }) => kind === 'code'),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         fixing_started: false,
@@ -174,36 +179,79 @@ export const finalResultChange = ({
             ? settleRound({ review: next })
             : next
     }
+    // A fixer asking for a change only the owner may make sticks the final
+    // review on it (#617), like a ticket.
+    const setup_change = setupChangeOf({ finished })
     if (finished.role === 'test-writer') {
-        if (fix === null || fix.tests_answered) return review
+        if (fix === null) return review
+        const responses = finished.result.finding_responses
+        if (!fix.tests_answered) {
+            return {
+                ...review,
+                setup_change,
+                fix: {
+                    ...fix,
+                    tests_answered: true,
+                    ...fixerAnswered({ fix, role: 'test-writer', responses }),
+                },
+            }
+        }
+        if (handoffRole({ fix }) !== 'test-writer') return review
         return {
             ...review,
+            setup_change,
             fix: {
                 ...fix,
-                tests_answered: true,
-                responses: [
-                    ...fix.responses,
-                    ...finished.result.finding_responses,
-                ],
+                ...handoffAnswered({ fix, role: 'test-writer', responses }),
             },
         }
     }
     if (finished.role === 'implementer') {
         const { result } = finished
+        const responses = result.finding_responses
         if (fix !== null && fix.tests_answered && !fix.code_answered) {
             return {
                 ...review,
+                setup_change,
                 fix: {
                     ...fix,
                     code_answered: true,
-                    responses: [...fix.responses, ...result.finding_responses],
+                    ...fixerAnswered({ fix, role: 'implementer', responses }),
+                    bad_test: badTestOf(result),
+                },
+            }
+        }
+        if (fix !== null && handoffRole({ fix }) === 'implementer') {
+            return {
+                ...review,
+                setup_change,
+                fix: {
+                    ...fix,
+                    ...handoffAnswered({ fix, role: 'implementer', responses }),
                     bad_test: badTestOf(result),
                 },
             }
         }
         if (review.gates === null) return review
+        // An `environment` answer to failed gates reruns them, using no
+        // gate fix round (#613).
+        if (result.outcome === 'environment' && !review.gates.ok) {
+            return {
+                ...review,
+                setup_change,
+                gates: null,
+                environment_reruns: review.environment_reruns + 1,
+                environment: {
+                    role: 'implementer',
+                    evidence: result.environment?.evidence ?? '',
+                    check: 'gates',
+                    failed: review.gates,
+                },
+            }
+        }
         return {
             ...review,
+            setup_change,
             gates: null,
             gate_fix_rounds: review.gate_fix_rounds + 1,
         }

@@ -75,6 +75,14 @@ nothing names. A new code file needs no such look: "nothing uses it" already
 searches for its name without the extension, which a file naming it holds,
 so a file the repo names is never "unused".
 
+**Test helpers are the tests' (#619).** A file matching the config's
+optional `test_helper_patterns` (such as `src/**/testing/**`) is a test
+helper the test-writer may write. A scratch-named helper or a new markdown
+fixture there counts as named when any other file, a test included,
+mentions it by its name without the extension, so a helper only tests use
+passes (its `passed` reason is `named_by_repo`). One nothing mentions is
+still flagged.
+
 **Docs the repo asks for pass (#520).** A new markdown file the spec and
 ticket don't name is still let through when it is a `README.md`, sits under
 a `docs` or `adr` folder at any depth, is named by a tracked or newly added

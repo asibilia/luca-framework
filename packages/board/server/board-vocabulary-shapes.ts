@@ -30,12 +30,15 @@ export const RulingListSchema = z
     )
     .catch([])
 
-/** A review fixer's answer to each finding: `fixed` or `wont_fix`. */
+/**
+ * A review fixer's answer to each finding: `fixed`, `wont_fix`, or
+ * `other_role` (the other writer role gets it, #616).
+ */
 export const FindingResponseListSchema = z
     .array(
         z.looseObject({
             finding_id: z.string(),
-            response: z.enum(['fixed', 'wont_fix']),
+            response: z.enum(['fixed', 'wont_fix', 'other_role']),
             reason: z.string().catch(''),
         })
     )

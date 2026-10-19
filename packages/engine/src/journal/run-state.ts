@@ -17,6 +17,7 @@ import type {
 
 import type { AgentRole } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
+import type { TestCaseRef } from '../gates/gate-schemas'
 import type {
     IntakeProblem,
     IntakeRead,
@@ -74,6 +75,22 @@ export type RunBudgetState = {
     retries: number
 }
 
+/**
+ * The repo wait (#615), before intake: not begun (`none`), waiting for an
+ * earlier run on the repo, over, or skipped (`luca-run --alongside`).
+ */
+export type RepoWaitState = {
+    status: 'none' | 'waiting' | 'ended' | 'skipped'
+    /**
+     * When the wait began, or the owner's `retry` of a run stuck on it
+     * (`repo_busy`): its 24 hours count from here.
+     */
+    since: string | null
+}
+
+/** An old test that failed in a ticket's check, at its record's time (#544). */
+export type OldTestFailure = TestCaseRef & { ticket: number; time: string }
+
 /** A run's state, rebuilt only from its journal. There is no status file. */
 export type RunState = {
     phase: RunPhase
@@ -116,6 +133,11 @@ export type RunState = {
      * leaves them out of commits, the leftover scan, and role rules.
      */
     prepare_made: string[]
+    /**
+     * Every old test (one that passed at its ticket's baseline) that failed
+     * in a ticket's red check, gates or join gates, oldest first (#544).
+     */
+    old_test_failures: OldTestFailure[]
     final_review: FinalReviewState
     /** Comments read on the spec issue while waiting for replies, oldest first. */
     comments: ReplayedComment[]
@@ -131,6 +153,8 @@ export type RunState = {
     final_reply: { word: 'retry' | 'ship'; comment_id: number } | null
     /** The run's budget of tokens: stuck on it, and the budgets added (#435). */
     run_budget: RunBudgetState
+    /** The wait for earlier runs on the same repo (#615). */
+    repo_wait: RepoWaitState
     /** Memory's recalls, the learner, and the saves (#370). */
     memory: MemoryState
     /**
@@ -171,6 +195,7 @@ export const EMPTY_STATE: RunState = {
     run_notes: [],
     run_branch_gates: null,
     prepare_made: [],
+    old_test_failures: [],
     final_review: EMPTY_FINAL_REVIEW,
     comments: [],
     handled_comments: [],
@@ -179,6 +204,7 @@ export const EMPTY_STATE: RunState = {
     final_stuck_report: null,
     final_reply: null,
     run_budget: { stuck: null, report: null, retries: 0 },
+    repo_wait: { status: 'none', since: null },
     memory: EMPTY_MEMORY,
     crashes: {},
     crash_stopped: null,

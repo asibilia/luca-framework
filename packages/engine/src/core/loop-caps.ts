@@ -11,6 +11,13 @@
 export const MAX_FIX_ROUNDS = 3
 
 /**
+ * Reruns a ticket (or the final review) gets when a writer answers
+ * `environment` (#613): each reruns the failed check without using a fix
+ * round. The `environment` answer after these makes it stuck.
+ */
+export const MAX_ENVIRONMENT_RERUNS = 2
+
+/**
  * Times a test may be sent back as bad, each to a fresh test-writer: by the
  * implementer, or by the engine when a mapped test passes with no `expect()`
  * (#581). The two share this cap. The bounce after these makes the ticket

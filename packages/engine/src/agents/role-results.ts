@@ -82,12 +82,14 @@ export const CriterionTestsSchema = z.object({
 export type CriterionTests = z.infer<typeof CriterionTestsSchema>
 
 /**
- * A review fixer's answer to one finding it was sent: `fixed`, or
- * `wont_fix` with its reason (pushback the next fresh reviewer rules on).
+ * A review fixer's answer to one finding it was sent: `fixed`, `wont_fix`
+ * with its reason (pushback the next fresh reviewer rules on), or
+ * `other_role` with its reason: the other writer role must fix it, or must
+ * fix it too (#616).
  */
 export const FindingResponseSchema = z.object({
     finding_id: z.string().min(1),
-    response: z.enum(['fixed', 'wont_fix']),
+    response: z.enum(['fixed', 'wont_fix', 'other_role']),
     reason: z.string().default(''),
 })
 
@@ -118,6 +120,43 @@ const SETUP_FIELDS = {
     setup_change: SetupChangeSchema.nullable().default(null),
 }
 
+/**
+ * Why a writer says a failed red check or failed gates are not its
+ * ticket's fault (#613): a port already in use, an old test that fails at
+ * baseline too. The engine checks the claim by rerunning the check.
+ */
+export const EnvironmentSchema = z.object({
+    evidence: z.string().trim().min(1),
+})
+
+export type Environment = z.infer<typeof EnvironmentSchema>
+
+/**
+ * What a writer that blames the environment adds to its result, with the
+ * outcome `environment`.
+ */
+const ENVIRONMENT_FIELDS = {
+    environment: EnvironmentSchema.nullable().default(null),
+}
+
+/** A file mode a writer asks the engine to set (#618). */
+export const FileModeSchema = z.object({
+    /** Worktree-relative path of the file. */
+    path: z.string().min(1),
+    executable: z.boolean(),
+})
+
+export type FileMode = z.infer<typeof FileModeSchema>
+
+/**
+ * The owner chores a writer asks the engine to do after its turn (#618):
+ * file modes to set, and the repo's generators to run, by name.
+ */
+const CHORE_FIELDS = {
+    file_modes: z.array(FileModeSchema).default([]),
+    run_generators: z.array(z.string().min(1)).default([]),
+}
+
 const SHARED_FIELDS = {
     summary: z.string().default(''),
     /** Calls the agent made by itself when something was unclear. */
@@ -143,7 +182,8 @@ export type DoneCommit = z.infer<typeof DoneCommitSchema>
  * it and `criteria` the existing tests that cover each criterion; the engine
  * counts the ticket as done. `needs_setup_change` says the tests can't be
  * written without a change to a test setup file (`setup_change`), which
- * only the user may make.
+ * only the user may make. `environment` says a failed red check is not the
+ * ticket's fault (#613), with its evidence; the engine reruns the check.
  */
 export const TestWriterResultSchema = z.object({
     outcome: z.enum([
@@ -151,6 +191,7 @@ export const TestWriterResultSchema = z.object({
         'nothing_new_to_test',
         'already_done',
         'needs_setup_change',
+        'environment',
     ]),
     /**
      * For each criterion id (AC1, AC2, ...), the tests that check it: new
@@ -160,6 +201,8 @@ export const TestWriterResultSchema = z.object({
     /** With `already_done`: the base branch's commits that did the work. */
     done_by: z.array(DoneCommitSchema).default([]),
     ...SETUP_FIELDS,
+    ...ENVIRONMENT_FIELDS,
+    ...CHORE_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
 })
@@ -184,12 +227,16 @@ export type BadTestSource = 'implementer' | 'engine'
 /**
  * The implementer's result. `bad_test` sends a wrong test back;
  * `needs_setup_change` says the gates can't pass without a change to a test
- * setup file (`setup_change`), which only the user may make.
+ * setup file (`setup_change`), which only the user may make;
+ * `environment` says failed gates are not the ticket's fault (#613), with
+ * its evidence, and the engine reruns them.
  */
 export const ImplementerResultSchema = z.object({
-    outcome: z.enum(['done', 'bad_test', 'needs_setup_change']),
+    outcome: z.enum(['done', 'bad_test', 'needs_setup_change', 'environment']),
     bad_test: BadTestSchema.nullable().default(null),
     ...SETUP_FIELDS,
+    ...ENVIRONMENT_FIELDS,
+    ...CHORE_FIELDS,
     ...SHARED_FIELDS,
     ...FIXER_FIELDS,
 })
@@ -376,6 +423,18 @@ export const parseRoleResult = ({
         }
     }
     const { result } = parsed.data
+    // "Environment" is only an answer with its evidence (#613).
+    if (
+        (parsed.data.role === 'test-writer' ||
+            parsed.data.role === 'implementer') &&
+        parsed.data.result.outcome === 'environment' &&
+        parsed.data.result.environment === null
+    ) {
+        return {
+            ok: false,
+            error: `The ${role}'s "environment" gives no evidence: say in "environment.evidence" why the failure is not this ticket's fault.`,
+        }
+    }
     // "Already done" is only an answer with its evidence (#484).
     if (parsed.data.role === 'test-writer') {
         const { outcome, done_by, criteria } = parsed.data.result

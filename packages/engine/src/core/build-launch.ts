@@ -13,7 +13,7 @@ import {
     followUpSection,
     testsUpdatedMessage,
 } from './fix-loop-text'
-import { reviewFixSection, reviewSections } from './review-text'
+import { handoffSection, reviewFixSection, reviewSections } from './review-text'
 import { retrySection } from './stuck-text'
 
 import {
@@ -25,7 +25,11 @@ import {
 } from '../agents/role-prompts'
 import type { AgentRole } from '../agents/role-results'
 import type { TicketSnapshot } from '../intake/intake-schemas'
-import type { ReplayedRunNote, TicketProgress } from '../journal/replay'
+import {
+    handoffRole,
+    type ReplayedRunNote,
+    type TicketProgress,
+} from '../journal/replay'
 
 /**
  * How many run notes a fresh agent is handed: the newest ones in the run,
@@ -171,6 +175,15 @@ const reviewPromptSections = ({
     }
     if (role === 'implementer' && !fix.code_answered) {
         return [reviewFixSection({ fix, kind: 'code' })]
+    }
+    if (role === handoffRole({ fix })) {
+        return [
+            handoffSection({
+                fix,
+                role,
+                heading: `Review fix round ${fix.round}`,
+            }),
+        ]
     }
     return []
 }

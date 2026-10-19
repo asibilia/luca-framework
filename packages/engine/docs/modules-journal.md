@@ -28,6 +28,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/final-review-replay.ts` | Replays the final review's records, its stuck report and reply, and its `retry`. |
 | `src/journal/final-review-round.ts` | A final review round: namespaced lens results, settling the round, the fixers' answers. |
 | `src/journal/reply-replay.ts` | Replays owner replies, stuck reports, and a ticket's `retry` at the run level. |
+| `src/journal/shared-failure-replay.ts` | Replays shared failures (#544): the run-wide list of old tests that failed, and whether a ticket's failed check gets a lone rerun. |
 | `src/journal/cross-ticket-replay.ts` | Replays records that reach across tickets: crashes cut off, closed sessions, undone joins. |
 
 ## Journal entry modules
@@ -43,6 +44,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/agent-entries.ts` | Agent turn and session entries. |
 | `src/journal/agent-message-entries.ts` | Agent message entries. |
 | `src/journal/limit-entries.ts` | Plan limit and usage entries. |
+| `src/journal/repo-wait-entries.ts` | The repo wait's entries (#615): started, ended, skipped. |
 | `src/journal/gate-entries.ts` | Red check, install, and gates entries. |
 | `src/journal/commit-entries.ts` | Leftover scan and commit entries. |
 | `src/journal/join-entries.ts` | Join, rebase, and push entries. |

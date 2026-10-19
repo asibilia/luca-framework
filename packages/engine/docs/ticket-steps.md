@@ -12,7 +12,8 @@ are removed; the rest stay for later. Branches and the journal always stay.
 
 Each agent turn (`launch_agent` or `follow_up_agent`) may also journal
 `agent_session` (the launcher's summary), `agent_failed` (a failed turn, with
-how it failed), `shared_git_changed` (something else changed the shared
+how it failed), `chores_done` (the chores a writer asked for; see Engine
+chores below), `shared_git_changed` (something else changed the shared
 `.git` during the turn; see Guards), or `run_stopped` (see Guards). Once
 nothing can send an agent a follow-up, its session's close is journaled as
 `agent_session_closed`. Any step may be preceded by a
@@ -88,6 +89,21 @@ order of journal records (a test-writer result after a red check is an
 answered round), so a crashed run counts them the same way, and a follow-up
 that started but never finished is sent again, not counted.
 
+**Engine chores (#618).** No agent can run `chmod` or a generator, so a
+writer (a test-writer or implementer, in a ticket or as a final review
+fixer) asks the engine in its result. `file_modes: [{ path, executable }]`
+makes each file executable, or not; `run_generators: [name]` runs each of
+the repo's generators, named in `.luca/config.json` as `generators` (a name
+and its command, frozen on resume). Right after the turn, before any check,
+leftover scan or commit, the engine sets each mode on a path the role may
+write (`mayWrite`), then runs each generator in the worktree with
+`test_timeout_ms`, as a `generate` check. It journals `chores_done { role,
+file_modes, checks, problems }`. What they change is committed with the
+ticket, so git records the new mode, and the leftover scan still runs. A
+path the role may not write (left as it was), an unknown generator, or a
+failing one is a problem: the turn fails as a `chore` failed try, and the
+role's next turn gets the problems.
+
 **A bad test** (the implementer answers `bad_test`) throws away the
 implementer's uncommitted work (`git reset --hard` and `git clean -fd`,
 ignored files kept) and sends the ticket to a fresh test-writer, told which
@@ -119,6 +135,15 @@ isn't written) has no results, so every `test(` in its text counts, even one
 inside a string or a comment; the problem then adds "The file does not load
 yet, so every test( in its text counts, even one inside a string or a
 comment".
+
+**Moved tests (#609).** A test-writer may split a too-big test file inside
+the ticket that needs it. A name that any test file the ticket changed or
+deleted had at its base is not new, whichever file it is in now, so it needs
+no mapping and need not fail. An old test missing from its file but in
+another test file under the same full name is moved: it must still pass
+there, and the red check's notes list it ("moved from …"). Each case there
+stands for one old test only, so a name several old tests had counts as
+moved once; the rest are missing.
 
 **Timings (#518).** The journal records how long things took. A gate check
 has `duration_ms`, how long its command ran, and the `prepare` check also

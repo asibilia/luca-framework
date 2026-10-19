@@ -14,6 +14,14 @@ export const TestCaseSchema = z.object({
 
 export type TestCase = z.infer<typeof TestCaseSchema>
 
+/** A test case by its file and full name, without its outcome. */
+export const TestCaseRefSchema = TestCaseSchema.pick({
+    file: true,
+    full_name: true,
+})
+
+export type TestCaseRef = z.infer<typeof TestCaseRefSchema>
+
 /** One run of the engine config's test command, with each case's outcome. */
 export const TestRunSchema = z.object({
     command: z.string(),
@@ -26,6 +34,11 @@ export const TestRunSchema = z.object({
     files_without_results: z.array(z.string()),
     /** The command's output, clipped. */
     output: z.string(),
+    /**
+     * How long it waited for a test slot (#544), only with
+     * `test_concurrency` set.
+     */
+    wait_ms: z.number().int().nonnegative().optional(),
 })
 
 export type TestRun = z.infer<typeof TestRunSchema>
@@ -34,7 +47,9 @@ export type TestRun = z.infer<typeof TestRunSchema>
  * The gates the engine config can name, plus `install`: the engine's own
  * install, run first when a package manifest changed, `prepare`: the
  * config's prepare command, run before the tests, and `slow_test`: the
- * config's slow tests, run only at the final review (#563).
+ * config's slow tests, run only at the final review (#563). `generate` is
+ * one of the config's generators, run after a writer's turn when it asked
+ * (#618); it is journaled in `chores_done`, never in the gates.
  */
 export const GateNameSchema = z.enum([
     'install',
@@ -43,6 +58,7 @@ export const GateNameSchema = z.enum([
     'slow_test',
     'types',
     'lint',
+    'generate',
 ])
 
 export type GateName = z.infer<typeof GateNameSchema>
@@ -56,7 +72,11 @@ export const GateCheckSchema = z.object({
     output: z.string(),
     /** How long the command ran (#518). Missing in old journals. */
     duration_ms: z.number().int().nonnegative().optional(),
-    /** `prepare` only: how long it waited for a prepare slot (#518). */
+    /**
+     * How long it waited for its slot: a prepare slot for `prepare` (#518),
+     * a test slot for `test` and `slow_test` with `test_concurrency` set
+     * (#544).
+     */
     wait_ms: z.number().int().nonnegative().optional(),
 })
 

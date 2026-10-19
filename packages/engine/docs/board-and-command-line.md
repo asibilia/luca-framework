@@ -39,7 +39,7 @@ that connection for the run, and reconnects once when a send fails.
 ## The command line: `luca-run`
 
 ```bash
-bun packages/engine/src/cli/luca-run.ts --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--board-plugin <id>]
+bun packages/engine/src/cli/luca-run.ts --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--alongside] [--board-plugin <id>]
 bun packages/engine/src/cli/luca-run.ts --demo [--run-id <id>] [--board-plugin <id>]
 bun packages/engine/src/cli/luca-run.ts --resume <run-id> [--repo <path>] [--board-plugin <id>]
 bun packages/engine/src/cli/luca-run.ts --unfinished
@@ -54,6 +54,7 @@ bun packages/engine/src/cli/luca-run.ts --unfinished
 | `--repo <path>` | The repo to run on. Defaults to the current folder; for `--resume`, to the repo the run started in. |
 | `--run-id <id>` | The run's id: letters, digits, `-`, `_`. Defaults to a new one. The journal goes in `<runs folder>/<id>/`; a run id that already has a journal resumes it. |
 | `--base <branch>` | The branch the run starts from. Defaults to `main`. |
+| `--alongside` | Skip the repo wait (below): start now, even while an earlier run on the repo is going. Journaled as `repo_wait_skipped`. Only with `--spec`. |
 | `--board-plugin <id>` | Send the journal to this Paseo plugin (such as `luca-board`). The per-run token comes from `LUCA_BOARD_TOKEN`. Without the flag, no board. |
 
 The board plugin launches it as a detached Bun process by absolute path:
@@ -83,6 +84,24 @@ same `--spec` and `--run-id`) to pick the step up again. A crash ends it with
 started the run, so the board stays attached, else `luca-run --resume
 <run-id>`. `runSpec` takes the launcher as an argument, so its tests
 hand in scripted agents and never call a model.
+
+**The repo wait** (#615). One run per repo at a time: a run started while
+an earlier run on the same repo is going waits for it, before intake reads
+the tickets and before any worktree exists. The engine lists the going
+runs with `goingRuns` (`src/cli/going-runs.ts`: the runs folder's journals
+and the board's registry, checked with `ps`) and keeps those on the same
+repo that started earlier, by their `run_started` time, then by run id
+(`earlierRuns` in `src/core/decide-repo-wait.ts`). That order is the
+tie-break: two runs started together never wait for each other. The run
+journals `repo_wait_started { runs: [{ run_id, spec }] }` and tells its
+spec issue once which runs it waits for (`postCommentOnce`). Then it naps a
+minute and looks again, and journals `repo_wait_ended` once none is going,
+then goes on to intake. Like the other waits it has no step records: an
+engine killed mid-wait waits again on resume, and the spec issue still
+hears of it once. After 24 hours the run is stuck (`run_stuck`, reason
+`repo_busy`): a bare `retry` waits 24 hours more, and `stop` ends the run.
+`luca-run --alongside` journals `repo_wait_skipped` and goes straight on.
+Without `going_runs` (tests, the demo), there is no repo wait.
 
 **The demo** (`--demo`) is safe to try the board with: it makes the practice
 repo (`src/testing/practice-repo.ts`, with a local bare `origin`) in a temp

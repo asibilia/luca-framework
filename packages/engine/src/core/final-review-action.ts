@@ -110,6 +110,8 @@ export type DecideArgs = {
     run_branch_gates: ReplayedGates | null
     /** The run notes a fresh agent gets (`newestRunNotes`). */
     run_notes: PromptRunNote[]
+    /** The config's test setup files; none if left out. */
+    setup_files?: string[]
 }
 
 /** The step that marks the final review stuck, with its reason. */

@@ -18,6 +18,8 @@ const FINAL_REASON_LINES: Partial<Record<StuckReason, string>> = {
     agent_failed: 'A final review agent failed on every try it had.',
     crashed:
         'The engine crashed in the same final review step, again and again.',
+    environment_failed:
+        "A fixer says the final checks' failure is not the branch's fault, but the rerun failed the same way, or its reruns ran out.",
 }
 
 /** What the owner could do about the stuck final review, per reason. */
@@ -27,6 +29,8 @@ const finalSuggestion = ({ reason }: { reason: StuckReason }): string => {
             return "Fix the open findings in the run branch's worktree, then reply `retry`; or reply `ship` if they can wait for review in the PR."
         case 'leftovers_found':
             return `Delete those files in the run branch's worktree, then reply \`retry\`. ${leftoverAllowHint({ retry: '`retry`' })}`
+        case 'setup_change_needed':
+            return "Make that change yourself in the run branch's worktree, then reply `retry`; or reply `ship` to open the PR anyway."
         default:
             return "Read the last error, fix what trips it in the run branch's worktree, then reply `retry`; or reply `ship` to open the PR anyway."
     }

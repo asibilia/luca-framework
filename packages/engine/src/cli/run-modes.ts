@@ -17,6 +17,7 @@ import {
     runEngine,
     startRun,
 } from '../core/execute'
+import type { GoingRunsReader } from '../core/execute-repo-wait'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { UsageLineDeps } from '../limits/usage-line'
@@ -69,6 +70,8 @@ export const runSpec = async ({
     decision_model,
     memory,
     usage,
+    going_runs,
+    alongside,
     board,
     log,
     luca_version = lucaVersion(),
@@ -87,6 +90,10 @@ export const runSpec = async ({
     memory?: MemoryDeps
     /** The usage line (#434). Leave it out to run without one. */
     usage?: UsageLineDeps
+    /** The going runs, for the repo wait (#615). Leave it out for no wait. */
+    going_runs?: GoingRunsReader
+    /** A new run skips the repo wait (`--alongside`). */
+    alongside?: boolean
     board: BoardSync | null
     log: (line: string) => void
     /** Luca's version, recorded on start and resume. Defaults to the engine's own. */
@@ -119,6 +126,7 @@ export const runSpec = async ({
                     ? undefined
                     : { project_vault: loaded.config.muninn?.vault ?? null },
             repo,
+            alongside,
             luca_version,
         })
     } else {
@@ -144,6 +152,7 @@ export const runSpec = async ({
                 jev,
                 memory,
                 usage,
+                going_runs,
                 board: board ?? undefined,
             }),
     })
@@ -176,6 +185,7 @@ export const resumeRun = async ({
     decision_model,
     memory,
     usage,
+    going_runs,
     board,
     log,
     luca_version,
@@ -195,6 +205,8 @@ export const resumeRun = async ({
     memory?: MemoryDeps
     /** The usage line (#434). Leave it out to go on without one. */
     usage?: UsageLineDeps
+    /** The going runs, so a repo wait cut off goes on (#615). */
+    going_runs?: GoingRunsReader
     board: BoardSync | null
     log: (line: string) => void
     /** Luca's version, recorded on the resume. Defaults to the engine's own. */
@@ -229,6 +241,7 @@ export const resumeRun = async ({
         decision_model,
         memory,
         usage,
+        going_runs,
         board,
         log,
         luca_version,

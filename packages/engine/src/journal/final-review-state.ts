@@ -5,8 +5,10 @@
 import type { AgentFailure, StuckReason } from './journal-record'
 import type {
     DeclinedFinding,
+    EnvironmentRerun,
     ReplayedGates,
     ReviewFix,
+    TicketProgress,
 } from './ticket-progress'
 
 import type {
@@ -77,6 +79,13 @@ export type FinalReviewState = {
     /** The open fix round's gates, and its gate fix follow-ups. */
     gates: ReplayedGates | null
     gate_fix_rounds: number
+    /**
+     * The fixer's `environment` answers to failed gates (#613), over the
+     * whole final review, each a rerun that used no gate fix round.
+     */
+    environment_reruns: number
+    /** The latest `environment` answer, until the next agent answers. */
+    environment: EnvironmentRerun | null
     /** The open fix round's leftover scan and commit. */
     leftovers: LeftoverHit[] | null
     commit: { sha: string; files: string[] } | null
@@ -99,6 +108,11 @@ export type FinalReviewState = {
      * reviewed; `null` with none.
      */
     shipped_edits: { sha: string; message: string; files: string[] } | null
+    /**
+     * A change only the owner may make, asked for by a fixer (#617); the
+     * final review is stuck on it until a `retry`.
+     */
+    setup_change: TicketProgress['setup_change']
     /** The fixer whose turn a crash cut off; cleared once a fixer starts. */
     crashed_turn: AgentRole | null
     /**
@@ -130,6 +144,8 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     engine_failures: {},
     gates: null,
     gate_fix_rounds: 0,
+    environment_reruns: 0,
+    environment: null,
     leftovers: null,
     commit: null,
     pushed: null,
@@ -142,6 +158,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     stuck: null,
     shipped: false,
     shipped_edits: null,
+    setup_change: null,
     crashed_turn: null,
     summary_picture: null,
     merge_danger: null,

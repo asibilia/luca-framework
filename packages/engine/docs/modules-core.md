@@ -17,7 +17,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`check_already_done`, `mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
 | `src/core/execute-already-done.ts` | Carries out an already-done ticket's steps on the tracker: the spec comment, and closing the ticket with a comment in a run with no PR. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
-| `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget, its report, and the owner's `retry` or `stop`. |
+| `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget (or its PR, or its repo wait), its report, and the owner's `retry` or `stop`. |
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |
 | `src/core/final-review-text.ts` | The **final review**'s texts: each lens's prompt (the whole run branch, the rule files for the rules lens, or a re-review of only the new changes), what each fixer is sent, and the open findings of a shipped final review. |
@@ -31,10 +31,14 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/run-start.ts` | A run's start, resume, and config reload records. |
 | `src/core/execute-intake.ts` | Reads intake, or refuses the run. |
 | `src/core/execute-waits.ts` | Limit waits, the billing stop, usage-line waits. |
+| `src/core/decide-repo-wait.ts` | The repo wait half of the decision step (#615): before intake, wait for earlier runs going on the same repo (`earlierRuns`), and stuck as `repo_busy` after 24 hours. |
+| `src/core/execute-repo-wait.ts` | Carries out the repo wait: the spec comment, then naps until no earlier run is going. |
+| `src/core/repo-wait-text.ts` | The repo wait's texts: the spec comment, and the run stuck on it. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
 | `src/core/build-context.ts` | `BuildContext` and the lookups every build step shares. |
 | `src/core/worktree-changes.ts` | A worktree's changes, less what prepare made and outside links. |
 | `src/core/agent-turn.ts` | One agent turn (`runTurn`), guarded and journaled; launches and follow-ups. |
+| `src/core/engine-chores.ts` | The chores a writer's result asks the engine for (#618): file modes, and the repo's named generators, as `generate` checks. |
 | `src/core/execute-red-check.ts` | The red check step. |
 | `src/core/execute-already-done-check.ts` | The already-done check step. |
 | `src/core/commit-in.ts` | The leftover scan, then an engine commit (`commitIn`). |

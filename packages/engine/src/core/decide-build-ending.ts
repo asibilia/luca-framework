@@ -91,6 +91,7 @@ export const finishSteps = ({
             run_branch,
             run_branch_gates: state.run_branch_gates,
             run_notes,
+            setup_files: state.config?.test_setup_files ?? [],
         })
         if (final.status === 'working') return final.actions
         if (final.status === 'stuck') {

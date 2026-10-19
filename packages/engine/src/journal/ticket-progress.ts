@@ -75,15 +75,50 @@ export type ReplayedGates = {
     ok: boolean
     checks: GateCheck[]
     cases?: TestCase[]
+} & SharedFailureFields
+
+/**
+ * What a ticket's red check or gates carry for shared failures (#544):
+ * whether the run was a lone rerun, and whether each old test it failed
+ * also failed in another ticket shortly before, so a lone rerun is due.
+ */
+export type SharedFailureFields = {
+    /** It was a lone rerun, alone on every test slot. */
+    exclusive?: boolean
+    /** It failed only on old tests another ticket failed within 10 minutes. */
+    shared?: boolean
 }
 
 /** The red check's verdict, plus the test run's (clipped) output. */
-export type ReplayedRedCheck = RedCheckResult & { output: string }
+export type ReplayedRedCheck = RedCheckResult & {
+    output: string
+} & SharedFailureFields
+
+/** A check that can get a lone rerun (#544). */
+export type LoneRerunCheck = 'red_check' | 'gates'
+
+/** The roles that write: they fix review findings. */
+export type WriterRole = 'test-writer' | 'implementer'
+
+/**
+ * A writer's `environment` answer to a failed check (#613): who gave it,
+ * its evidence, and the failed check it blamed on the environment. The
+ * check runs again; a rerun that fails the same way makes it stuck. It
+ * stays until the next agent answers.
+ */
+export type EnvironmentRerun = {
+    role: 'test-writer' | 'implementer'
+    evidence: string
+} & (
+    | { check: 'red_check'; failed: ReplayedRedCheck }
+    | { check: 'gates'; failed: ReplayedGates }
+)
 
 /**
  * The open review fix round: the blockers and should-fixes the latest ticket
  * review sent back, and which fixers have answered. Test findings go to a
- * fresh test-writer first, then code findings to the implementer.
+ * fresh test-writer first, then code findings to the implementer, then any
+ * finding a fixer answered `other_role` to the other writer role.
  */
 export type ReviewFix = {
     /** 1 after the first review, 2 after the first re-review, ... */
@@ -93,8 +128,17 @@ export type ReviewFix = {
     tests_answered: boolean
     /** True once the implementer answered, or when no finding is a code finding. */
     code_answered: boolean
-    /** The fixers' answers, oldest first. */
+    /**
+     * The fixers' answers, oldest first. A handed-off finding's answer from
+     * the other role replaces the first one.
+     */
     responses: FindingResponse[]
+    /**
+     * The findings a fixer answered `other_role` (#616), by the writer role
+     * they were handed to. After the round's fixers answered, each role here
+     * runs once more, fresh, with only these findings; its answer clears it.
+     */
+    handed_off: Partial<Record<WriterRole, string[]>>
     /** A test the implementer sent back as bad while fixing, if any. */
     bad_test: BadTest | null
 }
@@ -152,6 +196,13 @@ export type TicketProgress = {
     implementer: ImplementerResult | null
     /** Follow-ups the implementer answered after failed gates. */
     gate_fix_rounds: number
+    /**
+     * `environment` answers to a failed red check or failed gates (#613),
+     * each a rerun that used no fix round.
+     */
+    environment_reruns: number
+    /** The latest `environment` answer, until the next agent answers. */
+    environment: EnvironmentRerun | null
     /**
      * How many times a test was sent back as bad, by the implementer or by
      * the engine, which found a mapped test that passes with no `expect()`
@@ -238,6 +289,8 @@ export type TicketProgress = {
     /** The files each stage's latest commit changed. */
     commit_files: Record<CommitStage, string[]>
     gates: ReplayedGates | null
+    /** The checks that had their one lone rerun on this ticket (#544). */
+    lone_reruns: LoneRerunCheck[]
     joined: { ok: true; shas: string[] } | { ok: false; error: string } | null
     join_gates: ReplayedGates | null
     pushed: string | null
@@ -289,6 +342,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     red_fix_rounds: 0,
     implementer: null,
     gate_fix_rounds: 0,
+    environment_reruns: 0,
+    environment: null,
     bad_test_bounces: 0,
     bad_test: null,
     bad_test_sources: [],
@@ -315,6 +370,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     commits: { red: null, green: null, fix: null },
     commit_files: { red: [], green: [], fix: [] },
     gates: null,
+    lone_reruns: [],
     joined: null,
     join_gates: null,
     pushed: null,

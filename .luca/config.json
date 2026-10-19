@@ -10,6 +10,7 @@
     "run_budget_tokens": 15000000,
     "feature_map": "docs/feature-map",
     "test_file_patterns": ["packages/**/*.test.ts", "scripts/**/*.test.ts"],
+    "test_helper_patterns": ["packages/**/testing/**"],
     "test_setup_files": [],
     "rule_files": ["docs/guides/coding-standards.md", "AGENTS.md"],
     "muninn": {

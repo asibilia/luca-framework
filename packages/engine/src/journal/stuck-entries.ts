@@ -13,6 +13,8 @@ import { ENTRY_FIELDS } from './entry-fields'
  * fix loop reaches its cap, and a bad test only on its second bounce.
  * `undo_refused`: undoing its join would have rewound the run branch over
  * other work, so the engine left the run branch alone (#519).
+ * `environment_failed`: a writer said a failure was not its ticket's fault,
+ * and the rerun failed the same way, or its reruns ran out (#613).
  */
 export const StuckReasonSchema = z.enum([
     'agent_failed',
@@ -29,6 +31,7 @@ export const StuckReasonSchema = z.enum([
     'setup_change_needed',
     'crashed',
     'undo_refused',
+    'environment_failed',
 ])
 
 export type StuckReason = z.infer<typeof StuckReasonSchema>
@@ -40,20 +43,22 @@ export const TicketStuckEntrySchema = z.object({
 })
 
 /**
- * Why the whole run is stuck: it used up its run budget of tokens, or its
- * pull request didn't open (`gh pr create` failed, #508).
+ * Why the whole run is stuck: it used up its run budget of tokens, its
+ * pull request didn't open (`gh pr create` failed, #508), or its repo wait
+ * lasted 24 hours (`repo_busy`, #615).
  */
 export const RunStuckReasonSchema = z.enum([
     'run_budget',
     'pull_request_failed',
+    'repo_busy',
 ])
 
 export type RunStuckReason = z.infer<typeof RunStuckReasonSchema>
 
 /**
  * The whole run is stuck (`ticket: null`): nothing new starts until the
- * spec owner replies `retry` (one more full run budget, or another try at
- * the PR) or `stop`.
+ * spec owner replies `retry` (one more full run budget, another try at
+ * the PR, or another repo wait) or `stop`.
  */
 export const RunStuckEntrySchema = z.object({
     ...ENTRY_FIELDS,

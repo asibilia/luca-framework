@@ -3,6 +3,7 @@
  * fix loop, the fix commit, and the push, after the lenses found blocking
  * findings. Pure.
  */
+import { environmentFailedDetail } from './environment-rerun'
 import { failureCap } from './final-failure-cap'
 import {
     stuck,
@@ -22,10 +23,10 @@ import {
     gateFixMessage,
 } from './fix-loop-text'
 import { MAX_FIX_ROUNDS } from './loop-caps'
-import { badTestDetail } from './stuck-text'
+import { badTestDetail, setupChangeDetail } from './stuck-text'
 
 import type { AgentRole } from '../agents/role-results'
-import type { ReplayedAgentFailure } from '../journal/replay'
+import { handoffRole, type ReplayedAgentFailure } from '../journal/replay'
 
 /**
  * A fresh fixer of this role, told its findings (or the failed gates). With
@@ -101,8 +102,10 @@ const failedFixerStep = ({
 /**
  * A final review fix round, once every due lens finished and some finding
  * blocks: start the round, a fresh test-writer for the test findings, then
- * a fresh implementer for the code findings, the gates (and their fix loop
- * in the implementer's session), the fix commit, and the push. `null` once
+ * a fresh implementer for the code findings, then a fresh agent of the
+ * other writer role for findings a fixer answered `other_role` (#616), the
+ * gates (and their fix loop in the implementer's session, or a rerun when
+ * it answers `environment`, #613), the fix commit, and the push. `null` once
  * the fixes are pushed.
  */
 export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
@@ -123,6 +126,15 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
         review.agent_failures.implementer,
     ].find((entry) => entry !== undefined)
     if (failed !== undefined) return failedFixerStep({ ...args, failed })
+    if (review.setup_change !== null) {
+        return stuck({
+            reason: 'setup_change_needed',
+            detail: setupChangeDetail({
+                ...review.setup_change,
+                setup_files: args.setup_files ?? [],
+            }),
+        })
+    }
     if (!fix.tests_answered)
         return launchFixer({ ...args, role: 'test-writer' })
     if (!fix.code_answered) return launchFixer({ ...args, role: 'implementer' })
@@ -132,7 +144,17 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
             detail: `While fixing the final review's findings, the implementer sent a test back as bad: ${badTestDetail({ bad_test: fix.bad_test })}`,
         })
     }
+    const handoff = handoffRole({ fix })
+    if (handoff !== null) return launchFixer({ ...args, role: handoff })
     const { gates } = review
+    const blamed = environmentFailedDetail({
+        environment: review.environment,
+        reruns: review.environment_reruns,
+        latest: gates,
+    })
+    if (blamed !== null) {
+        return stuck({ reason: 'environment_failed', detail: blamed })
+    }
     if (gates === null) return { type: 'run_final_gates' }
     if (!gates.ok) {
         if (review.gate_fix_rounds >= MAX_FIX_ROUNDS) {

@@ -6,6 +6,7 @@ import type {
     ReplayedGates,
     ReviewFix,
     TicketProgress,
+    WriterRole,
 } from '../journal/replay'
 import { clipOutput } from '../shell/run-command'
 
@@ -59,6 +60,7 @@ export const responseText = ({
 }): string => {
     const answer = responses.find(({ finding_id }) => finding_id === finding.id)
     if (answer === undefined) return '  Fixer: no answer.'
+    // An `other_role` the other role never answered stands as "won't fix".
     return answer.response === 'fixed'
         ? `  Fixer: fixed. ${answer.reason}`.trimEnd()
         : `  Fixer: WON'T FIX. Reason: ${answer.reason || 'none given'}`
@@ -161,9 +163,61 @@ export const reviewSections = ({
 
 /** How a review fixer answers each finding it got. */
 export const FIX_RULES =
-    'For EACH finding, answer in "finding_responses": "fixed", or "wont_fix" with your reason if the finding is wrong. ' +
+    'For EACH finding, answer in "finding_responses": "fixed", or "wont_fix" with your reason if the finding is wrong, ' +
+    'or "other_role" with your reason if the other writer role must fix it, or must fix it too ' +
+    '(a code fix that needs a test, or a test that needs a non-test helper the test-writer may not write). ' +
+    'Fix your part first; the engine then sends an "other_role" finding to a fresh agent of the other role, before the gates. ' +
     'A fresh reviewer rules on every "won\'t fix", so give a reason that stands on its own. ' +
     'The engine runs the gates again and then a fresh reviewer checks your changes.'
+
+/** How the other role answers the findings handed to it (#616). */
+const HANDOFF_RULES =
+    'For EACH finding, answer in "finding_responses": "fixed", or "wont_fix" with your reason. ' +
+    'Your answer is final: another "other_role" counts as "wont_fix", and a fresh reviewer rules on it. ' +
+    'The engine runs the gates again and then a fresh reviewer checks the changes.'
+
+const OTHER_WRITER: Record<WriterRole, WriterRole> = {
+    'test-writer': 'implementer',
+    implementer: 'test-writer',
+}
+
+/**
+ * The findings the other writer role answered `other_role`, handed to
+ * `role` (#616), each with that fixer's reason, and how to answer them.
+ * `heading` names the fix round.
+ *
+ * @example
+ * const section = handoffSection({ fix, role: 'test-writer', heading: 'Review fix round 1' })
+ */
+export const handoffSection = ({
+    fix,
+    role,
+    heading,
+}: {
+    fix: Pick<ReviewFix, 'findings' | 'responses' | 'handed_off'>
+    role: WriterRole
+    heading: string
+}): string => {
+    const ids = fix.handed_off[role] ?? []
+    const other = OTHER_WRITER[role]
+    const findings = fix.findings
+        .filter(({ id }) => ids.includes(id))
+        .map((finding) => {
+            const answer = fix.responses.find(
+                ({ finding_id, response }) =>
+                    finding_id === finding.id && response === 'other_role'
+            )
+            return `${findingLine(finding)}\n  The ${other} passed it on: ${answer?.reason || 'no reason given'}`
+        })
+        .join('\n')
+    return [
+        `## ${heading}: findings the ${other} passed to you`,
+        `The ${other} answered these findings "other_role": they need the ${role}'s work, instead of or as well as its own. ` +
+            `Its own fixes are in the worktree, uncommitted. Do your part for these findings only. Keep to your role's rules.`,
+        findings,
+        HANDOFF_RULES,
+    ].join('\n\n')
+}
 
 /**
  * The findings a review fixer gets: the test findings for a fresh

@@ -6,6 +6,9 @@
 import {
     badTestOf,
     declinedBy,
+    fixerAnswered,
+    handoffAnswered,
+    handoffRole,
     ranCheaper,
     type FinishedContent,
 } from './agent-turn-replay'
@@ -90,10 +93,41 @@ export const resultChange = ({
                     review_fix: {
                         ...fix,
                         tests_answered: true,
-                        responses: [
-                            ...fix.responses,
-                            ...finished.result.finding_responses,
-                        ],
+                        ...fixerAnswered({
+                            fix,
+                            role: 'test-writer',
+                            responses: finished.result.finding_responses,
+                        }),
+                    },
+                }
+            }
+            if (fix !== null && handoffRole({ fix }) === 'test-writer') {
+                return {
+                    review_fix: {
+                        ...fix,
+                        ...handoffAnswered({
+                            fix,
+                            role: 'test-writer',
+                            responses: finished.result.finding_responses,
+                        }),
+                    },
+                }
+            }
+            // An `environment` answer to a failed red check reruns it with
+            // the earlier tests, using no fix round (#613).
+            if (
+                finished.result.outcome === 'environment' &&
+                progress.red_check !== null &&
+                !progress.red_check.ok
+            ) {
+                return {
+                    red_check: null,
+                    environment_reruns: progress.environment_reruns + 1,
+                    environment: {
+                        role: 'test-writer',
+                        evidence: finished.result.environment?.evidence ?? '',
+                        check: 'red_check',
+                        failed: progress.red_check,
                     },
                 }
             }
@@ -152,11 +186,43 @@ export const resultChange = ({
                     review_fix: {
                         ...fix,
                         code_answered: true,
-                        responses: [
-                            ...fix.responses,
-                            ...result.finding_responses,
-                        ],
+                        ...fixerAnswered({
+                            fix,
+                            role: 'implementer',
+                            responses: result.finding_responses,
+                        }),
                         bad_test,
+                    },
+                }
+            }
+            if (fix !== null && handoffRole({ fix }) === 'implementer') {
+                return {
+                    review_fix: {
+                        ...fix,
+                        ...handoffAnswered({
+                            fix,
+                            role: 'implementer',
+                            responses: result.finding_responses,
+                        }),
+                        bad_test,
+                    },
+                }
+            }
+            // An `environment` answer to failed gates reruns them, using no
+            // fix round (#613).
+            if (
+                result.outcome === 'environment' &&
+                progress.gates !== null &&
+                !progress.gates.ok
+            ) {
+                return {
+                    gates: null,
+                    environment_reruns: progress.environment_reruns + 1,
+                    environment: {
+                        role: 'implementer',
+                        evidence: result.environment?.evidence ?? '',
+                        check: 'gates',
+                        failed: progress.gates,
                     },
                 }
             }
@@ -234,6 +300,7 @@ const reviewChange = ({
             tests_answered: !blocking.some(({ kind }) => kind === 'test'),
             code_answered: !blocking.some(({ kind }) => kind === 'code'),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         gates: null,

@@ -69,10 +69,24 @@ final_review_stuck
   an id above the last one seen. It runs beside the tickets' steps, under its
   own key, and doesn't count towards `max_steps`: once nothing else can
   move, the run waits this way with no time limit.
-- **Test setup files.** A test-writer or implementer that can't go on
-  without a change to a test setup file answers `needs_setup_change` with the
-  file and why; the ticket is stuck (`setup_change_needed`) with that
-  message, since only the user may change one.
+- **Owner changes.** A test-writer or implementer that can't go on
+  without a change only the user may make (a test setup file, a binary
+  file, something that needs the network) answers `needs_setup_change` with
+  the file and why; the ticket is stuck (`setup_change_needed`) with that
+  message. A final review fixer's answer makes the final review stuck the
+  same way (#617), and its `retry` starts the fix round over. The stuck
+  text calls it "a change only you may make", and says "test setup file"
+  only when the file is one of the config's.
+- **Environment failures (#613).** A test-writer or implementer that finds a
+  failed red check or failed gates aren't its ticket's fault (a port already
+  in use, an old test that fails at baseline too) answers `environment`, with
+  its evidence. The engine reruns the failed check once, without using a fix
+  round, and goes on if it passes. A rerun that fails the same way (the same
+  red check problems, or the same failed gates), or an `environment` answer
+  past `MAX_ENVIRONMENT_RERUNS` (2 per ticket), makes the ticket stuck
+  (`environment_failed`), with the evidence and the clipped output. The
+  final review's implementer fixer can do the same for the final gates, with
+  the same cap. A `retry` gives fresh counts.
 - The tracker's `comment` returns the new comment's id, and `listComments`
   reads an issue's comments after an id. The GitHub tracker posts and lists
   through `gh api`, and reads each issue's author.
@@ -110,6 +124,15 @@ tickets and notes a run has.
   name alone, so a fork's PR from a branch of the same name
   (`isCrossRepository`) is never taken for the run's. Its PR comments are
   posted once, even on a redo after a crash.
+
+### A repo busy for a day (#615)
+
+A run's repo wait (see "The repo wait" in the command line docs) that
+lasts 24 hours journals the run stuck (`run_stuck`, reason `repo_busy`),
+before intake, naming the earlier runs still going. The spec issue is told
+why, and the run waits: a bare `retry` waits up to 24 hours more, and
+`stop` ends the run. Start it again later, or with `luca-run --alongside`
+to run both at once.
 
 ### Getting a stuck run moving (#504)
 

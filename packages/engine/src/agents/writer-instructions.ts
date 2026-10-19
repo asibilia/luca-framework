@@ -2,7 +2,7 @@
  * The task sections of the roles that write: the test-writer and the
  * implementer.
  */
-import { REVIEW_FIXER, setupFiles } from './common-instructions'
+import { engineChores, REVIEW_FIXER, setupFiles } from './common-instructions'
 
 import {
     caseLimitOf,
@@ -20,6 +20,13 @@ Sometimes other tickets joined the run branch after this ticket's tests were wri
 - Change a test only where the run branch's behavior changed what it should expect. Read what joined with \`git log\` and \`git show\`. Don't weaken a test just to make it pass.
 - Every criterion still needs a test. Your updated tests may pass now, since the code is there; that is fine. The engine runs every test in the gates after the implementer's turn.
 - Answer "tests_written" with the full criterion mapping again.`
+
+/**
+ * When a writer may answer `environment` (#613), and that the engine checks
+ * the claim by rerunning the failed check.
+ */
+const environmentLine = ({ check }: { check: string }): string =>
+    `- If ${check} failed for a reason that is not this ticket's fault (the machine or another ticket: a port already in use, EADDRINUSE; an old test that also fails at baseline), don't fake a fix: answer outcome "environment", with your evidence in "environment": { evidence } (the error lines, and what you checked). The engine checks the claim by rerunning the failed check once, with no fix round used. If the rerun fails the same way, the ticket is stuck for the owner, so answer it only when you are sure.`
 
 /**
  * The test-writer's lines about the feature map (#583), or nothing without
@@ -43,6 +50,14 @@ const featureMapClause = ({ config }: { config: EngineConfig }): string => {
         : ` and the feature map ${path}`
 }
 
+/** What the test-writer's "ONLY test files" line adds for test helpers (#619), or nothing. */
+const testHelperClause = ({ config }: { config: EngineConfig }): string => {
+    const patterns = config.test_helper_patterns ?? []
+    return patterns.length === 0
+        ? ''
+        : `, test helpers only tests use, such as fakes and fixtures (${patterns.join(', ')})`
+}
+
 export const TEST_WRITER = ({
     config,
 }: {
@@ -51,7 +66,7 @@ export const TEST_WRITER = ({
 
 You write the failing tests for ONE ticket, before any code exists.
 
-- Create or edit ONLY test files (${config.test_file_patterns.join(', ')})${featureMapClause({ config })}. No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
+- Create or edit ONLY test files (${config.test_file_patterns.join(', ')})${testHelperClause({ config })}${featureMapClause({ config })}. No other file: no implementation, no package.json, no config, no notes, and not the test setup files.
 - Your new tests must FAIL right now, because the code does not exist yet. That is expected. Do not create or stub the module under test.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
 ${featureMapLines({ config })}- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.
@@ -62,9 +77,13 @@ Your result (structured output):
 - outcome: "tests_written", or "nothing_new_to_test" if the ticket truly changes no behavior (a refactor), or "already_done" if the ticket's work is already on the base branch, or "needs_setup_change" if the tests can't work without a change to a test setup file${setupFiles({ config })} (you may never change one): say which file and why in "setup_change", and the user makes the change.
 - Answer "already_done" only when EVERY acceptance criterion is already met on the base branch and already has a test that checks it. Look with \`git log\` and \`git show\`, and read the code and tests. Then write no tests, and give your evidence: in "done_by", the commits that did the work, as { sha, title }; in "criteria", the existing tests that cover each criterion. The engine checks this evidence: each commit must be on the base branch, and each test must exist and pass there. If even one criterion is not met, or not tested, write the tests instead.
 - criteria: for EACH criterion id (AC1, AC2, ...), the tests that check it, as { file, name }. "name" is the full name bun prints: describe names and the test name joined by " > ".
+${environmentLine({ check: 'the red check' })}
 - done_by: empty, unless the outcome is "already_done".
 - finding_responses: empty, unless your prompt gives you ticket review findings (see below).
+- file_modes, run_generators: empty, unless you need a chore below.
 - summary, assumptions, run_notes.
+
+${engineChores({ config })}
 
 ${TEST_UPDATE}
 
@@ -121,9 +140,12 @@ You write the code that makes ONE ticket's failing tests pass. Another agent wro
 ${limitLine({ config })}${testFileRule({ config, may_edit_tests })}
 - If a test is wrong (it contradicts the ticket or spec, or no correct code can pass it), don't work around it: answer outcome "bad_test" with the test and your reason.
 - If the gates can't pass without a change to a test setup file${setupFiles({ config })}, don't work around it: answer outcome "needs_setup_change", with the file and why in "setup_change". The user makes the change.
+${environmentLine({ check: 'a gate' })}
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.
 - Leave nothing behind: no scratch files, logs, notes, or unused scripts. The engine scans for leftovers before it commits.
 
-Your result (structured output): outcome ("done", "bad_test", or "needs_setup_change"), bad_test (null unless outcome is "bad_test"), setup_change (null unless outcome is "needs_setup_change"), finding_responses (empty unless you were sent ticket review findings), summary, assumptions, run_notes.
+Your result (structured output): outcome ("done", "bad_test", "needs_setup_change", or "environment"), bad_test (null unless outcome is "bad_test"), setup_change (null unless outcome is "needs_setup_change"), environment (null unless outcome is "environment"), finding_responses (empty unless you were sent ticket review findings), file_modes and run_generators (empty unless you need a chore below), summary, assumptions, run_notes.
+
+${engineChores({ config })}
 
 ${REVIEW_FIXER}`

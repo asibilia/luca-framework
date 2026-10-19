@@ -35,11 +35,15 @@ export const replyReceivedAfter = ({
     if (word === 'stop') return { ...handled, stop: { comment_id } }
     // A bare `retry` while the run is stuck on its budget adds one
     // more full budget, and the run carries on; stuck on its PR,
-    // the PR is tried again.
+    // the PR is tried again; stuck on its repo wait, it waits 24 hours more.
     const { stuck } = state.run_budget
     if (ticket === null && word === 'retry' && stuck !== null) {
         return {
             ...handled,
+            repo_wait:
+                stuck.reason === 'repo_busy'
+                    ? { status: 'waiting', since: record.time }
+                    : state.repo_wait,
             run_budget: {
                 stuck: null,
                 report: null,

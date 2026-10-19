@@ -64,6 +64,14 @@ _Avoid_: hook, checks
 End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of every ticket's runs, apart from the slow test files that ticket names or changes, and runs them all at the final review.
 _Avoid_: e2e gate, long tests
 
+**Test slots**:
+The cap a repo sets with `test_concurrency` on how many test runs go at once across a run, so tests that share ports, files, or a database don't collide. A test run waits for a free slot, and the wait never counts toward its time limit.
+_Avoid_: test queue, test lock
+
+**Lone rerun**:
+The engine's rerun of a ticket's failed red check or gates while no other test run is going, holding every test slot. It comes before any fix round when each old test that failed also failed in another ticket within 10 minutes, so a collision between tickets costs one rerun, not a fix round. A check gets one per ticket.
+_Avoid_: exclusive retry, solo run
+
 **Feature map**:
 A markdown file (or a folder of markdown pages, one per area) a repo names in `feature_map` that lists each feature and the test files that prove it. The red check refuses a new test file the map doesn't list, so tickets add tests to a feature's files instead of scattering new ones.
 _Avoid_: test index, test registry
@@ -75,6 +83,10 @@ _Avoid_: fail-first check
 **Fix loop**:
 The capped rounds in which an agent fixes what a gate or a reviewer reported. Reaching the cap makes the run stuck.
 _Avoid_: retry loop
+
+**Environment failure**:
+A failed red check or failed gates that a test-writer or implementer says are not its ticket's fault, such as a port already in use. It answers `environment` with its evidence, and the engine reruns the check once without using a fix round. A rerun that fails the same way makes the ticket stuck as `environment_failed`.
+_Avoid_: flaky failure, infra error
 
 **Leftover scan**:
 The gate that stops files an agent left behind, such as scratch scripts or stray notes, from being committed.
@@ -127,6 +139,10 @@ _Avoid_: stuck, throttled
 **Usage line**:
 The share of a plan window, such as the weekly or the 5-hour window, that Luca may use across all its runs before they pause in a limit wait.
 _Avoid_: quota, threshold, cap
+
+**Repo wait**:
+A pause before intake while an earlier run on the same repo is still going, so two runs on one repo don't slow each other down. The run tells its spec issue once which run it waits for, goes on by itself once that run ends or stops, and is stuck after 24 hours. A run started with `luca-run --alongside` never waits.
+_Avoid_: queue, lock
 
 **Run budget**:
 The token cap for one run. A run that uses it all is stuck until a person says whether to keep going.

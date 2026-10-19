@@ -42,7 +42,7 @@ export const retriedChange = ({
 /**
  * A stuck ticket resumed by `retry`: it picks up where it stopped, with a
  * fresh agent (no session is kept) and fresh counts (fix rounds, failed
- * tries, bad-test bounces, rebases, test updates), and keeps whatever the
+ * tries, bad-test bounces, environment reruns, rebases, test updates), and keeps whatever the
  * user changed in its worktree. An open test update is dropped. The step that got stuck runs again:
  * - before the red commit, a fresh test-writer writes the tests;
  * - before the green commit, a fresh implementer builds (on top of the run
@@ -71,6 +71,8 @@ const resumedProgress = ({
         sessions: {},
         red_fix_rounds: 0,
         gate_fix_rounds: 0,
+        environment_reruns: 0,
+        environment: null,
         bad_test_bounces: 0,
         bad_test_sources: [],
         rejoins: 0,
@@ -129,6 +131,7 @@ const resumedProgress = ({
                 ({ kind }) => kind === 'code'
             ),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         gates: null,

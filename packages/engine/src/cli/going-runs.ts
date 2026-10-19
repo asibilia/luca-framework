@@ -17,8 +17,9 @@ import { createJournal, runJournalPath } from '../journal/journal'
 
 /**
  * The runs that are going, for the commands that must not change Luca under
- * them (`luca upgrade`), and the unfinished runs whose engine is gone, which
- * can go on later on any version.
+ * them (`luca upgrade`) and for a new run's repo wait (#615), and the
+ * unfinished runs whose engine is gone, which can go on later on any
+ * version.
  */
 
 /**
@@ -59,6 +60,11 @@ export type GoingRun = {
     /** Whether the board plugin started it (it is in the board's registry). */
     board: boolean
     state: RunState
+    /**
+     * When its `run_started` was journaled; `null` for a registry entry
+     * with no journal yet.
+     */
+    started_at: string | null
 }
 
 const RegistrySchema = z.object({
@@ -127,6 +133,7 @@ type Candidate = {
     run_id: string
     spec: number | null
     repo: string | null
+    started_at: string | null
     /** What its journal says (`null` with no journal to go on from). */
     reason: RestartableRun['reason'] | null
     entry: RegistryEntry | null
@@ -198,6 +205,7 @@ export const goingRuns = async ({
                     ? start.start.spec_number
                     : (entry?.spec ?? null),
                 repo: start.ok ? start.start.repo : (entry?.repo ?? null),
+                started_at: start.ok ? start.start.started_at : null,
                 reason,
                 entry,
             }
@@ -212,6 +220,7 @@ export const goingRuns = async ({
             run_id: entry.run_id,
             spec: entry.spec,
             repo: entry.repo,
+            started_at: null,
             reason: null,
             entry,
         })
@@ -229,6 +238,7 @@ export const goingRuns = async ({
         repo: candidate.repo,
         board: candidate.entry !== null,
         state,
+        started_at: candidate.started_at,
     })
 
     let live: Set<string>
@@ -269,7 +279,7 @@ export const goingRuns = async ({
  * isn't running. Pure.
  *
  * @example
- * describeRun({ run_id: 'r1', spec: 5, repo: '/code/app', board: false, state: 'engine_running' })
+ * describeRun({ run_id: 'r1', spec: 5, repo: '/code/app', board: false, state: 'engine_running', started_at: null })
  * // '- spec #5 in /code/app (run r1)'
  */
 export const describeRun = ({ run_id, spec, repo, state }: GoingRun): string =>

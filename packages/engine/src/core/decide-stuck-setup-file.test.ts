@@ -40,16 +40,20 @@ describe('a test setup file change', () => {
     ]
 
     test('an agent that needs a test setup file changed makes the ticket stuck with a clear message', () => {
-        expect(oneSteps(needsSetupChange())).toEqual([
+        const steps = oneSteps(needsSetupChange())
+        expect(steps).toEqual([
             {
                 type: 'mark_stuck',
                 ticket: 11,
                 reason: 'setup_change_needed',
-                detail: expect.stringContaining(
-                    'The implementer needs the test setup file `test/setup.ts` changed: The fake clock must be installed before each test.'
-                ),
+                detail: expect.stringContaining('`test/setup.ts`'),
             },
         ])
+        const detail = steps[0]?.type === 'mark_stuck' ? steps[0].detail : ''
+        expect(detail).toContain('implementer')
+        expect(detail).toContain(
+            'The fake clock must be installed before each test.'
+        )
     })
 
     test('the spec issue hears that only its owner may change a test setup file, which file and why, and what to do', () => {
@@ -67,11 +71,10 @@ describe('a test setup file change', () => {
 
         expect(steps).toMatchObject([{ type: 'report_stuck', ticket: 11 }])
         const body = steps[0]?.type === 'report_stuck' ? steps[0].body : ''
+        expect(body).toContain('only you may')
+        expect(body).toContain('`test/setup.ts`')
         expect(body).toContain(
-            'An agent needs a test setup file changed, and only you may change one.'
-        )
-        expect(body).toContain(
-            'The implementer needs the test setup file `test/setup.ts` changed: The fake clock must be installed before each test.'
+            'The fake clock must be installed before each test.'
         )
         expect(body).toContain('Make that change yourself in the worktree')
     })

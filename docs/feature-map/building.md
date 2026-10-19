@@ -49,9 +49,21 @@ Tests:
 - `packages/engine/src/core/run-one-ticket-install.e2e.test.ts`
 - `packages/engine/src/core/run-one-ticket-messages.e2e.test.ts`
 
+## Environment failures
+
+A test-writer or implementer can answer `environment`, with evidence, when a failed red check or failed gates are not its ticket's fault; the engine reruns the check once without using a fix round, and a rerun that fails the same way, or a third such answer, is stuck as `environment_failed`. The final review's fixer can do the same for the final gates.
+
+Reached by: a writer's `environment` outcome; the spec issue's stuck comment shows its evidence.
+
+Tests:
+
+- `packages/engine/src/agents/environment-answer.test.ts`
+- `packages/engine/src/core/decide-environment.test.ts`
+- `packages/engine/src/core/decide-final-environment.test.ts`
+
 ## The red check and honest new tests
 
-The red check proves a ticket's new tests fail before any code is written and every old test still passes, and sends back a new test that checks nothing.
+The red check proves a ticket's new tests fail before any code is written and every old test still passes, and sends back a new test that checks nothing. A test the ticket only moved to another test file is an old test, so a test-writer can split a too-big test file.
 
 Reached by: every ticket that is not a refactor ticket.
 
@@ -59,6 +71,8 @@ Tests:
 
 - `packages/engine/src/gates/red-check.test.ts`
 - `packages/engine/src/gates/new-tests.test.ts`
+- `packages/engine/src/gates/red-check-moved-tests.test.ts`
+- `packages/engine/src/core/run-moved-tests.e2e.test.ts`
 
 ## The feature map
 
@@ -74,6 +88,19 @@ Tests:
 - `packages/engine/src/guards/role-rules-feature-map.test.ts`
 - `packages/engine/src/core/decide-feature-map.test.ts`
 - `packages/engine/src/core/run-feature-map.e2e.test.ts`
+
+## Test helpers
+
+A repo can name non-test files the test-writer may also write, such as shared fakes and fixtures: the guard lets it, the red check and the feature map leave them alone, and the leftover scan lets them through.
+
+Reached by: `test_helper_patterns` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/guards/role-rules-test-helpers.test.ts`
+- `packages/engine/src/config/test-helper-patterns.test.ts`
+- `packages/engine/src/core/commit-in-test-helpers.test.ts`
+- `packages/engine/src/core/run-test-helpers.e2e.test.ts`
 
 ## Test commands and the gates
 
@@ -108,6 +135,29 @@ Tests:
 - `packages/engine/src/core/run-own-slow-tests.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
 
+## Test slots
+
+A repo can cap how many test runs go at once across a run, so tests that share ports, files, or a database don't collide; waiting for a slot is journaled as `wait_ms` and never counts toward a time limit.
+
+Reached by: `test_concurrency` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/gates/test-slots.test.ts`
+- `packages/engine/src/config/test-concurrency.test.ts`
+
+## Shared failures and lone reruns
+
+When the same old test fails in two tickets within 10 minutes, the engine reruns the second ticket's failed red check or gates alone, holding every test slot, before any fix round; a check gets one lone rerun per ticket. Ticket and join gates journal their failed test cases for this.
+
+Reached by: any run with tickets whose tests collide on a shared port, file, or lock.
+
+Tests:
+
+- `packages/engine/src/core/decide-shared-failures.test.ts`
+- `packages/engine/src/gates/lone-rerun-slots.test.ts`
+- `packages/engine/src/core/run-shared-failures.e2e.test.ts`
+
 ## Prepare commands
 
 A repo's prepare command builds what a worktree needs before its tests run, with a time limit and a cap on how many run at once.
@@ -137,6 +187,18 @@ Tests:
 - `packages/engine/src/core/commit-in.test.ts`
 - `packages/engine/src/git/outside-links.test.ts`
 - `packages/engine/src/git/path-text.test.ts`
+
+## File modes and generators
+
+The engine does two owner chores for a writer: it makes the files the writer names executable (or not) before the commit, and runs the generators the repo names, before the gates, as a `generate` check whose output is committed with the ticket.
+
+Reached by: `file_modes` and `run_generators` in a writer's result; `generators` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/core/run-engine-chores.e2e.test.ts`
+- `packages/engine/src/config/generators-config.test.ts`
+- `packages/engine/src/agents/writer-chores-instructions.test.ts`
 
 ## Many tickets, joins and rebases
 

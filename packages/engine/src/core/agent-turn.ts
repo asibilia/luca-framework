@@ -5,6 +5,7 @@
  */
 import { need, ticketWorktree, type BuildContext } from './build-context'
 import { mayEditTests, type BuildAction } from './decide-build'
+import { doChores } from './engine-chores'
 import { closeSessions } from './session-close'
 
 import type { AgentTurn } from '../agents/agent-launcher'
@@ -53,7 +54,9 @@ const failTurn = ({
  * every launcher alike; what others changed in the shared `.git` meanwhile
  * is journaled as `shared_git_changed`. Then the result is judged by its
  * structured output. Each failed turn is journaled once as `agent_failed`
- * with how it failed; the decision step picks what happens next. A launcher stop journals
+ * with how it failed; the decision step picks what happens next. A writer's
+ * result then gets its chores done (`doChores`, #618); one the engine could
+ * not do fails the turn as a `chore` failure. A launcher stop journals
  * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
  * overage, a billing error) journals only its session. Both close the
  * turn's session first, since no follow-up can reach it.
@@ -162,6 +165,17 @@ export const runTurn = async ({
     }
     const checked = parseRoleResult({ role, output: turn.structured_output })
     if (!checked.ok) return fail('result', checked.error)
+    // The chores the writer asked for (#618), before any check or commit.
+    const problems = await doChores({
+        context,
+        cwd: path,
+        ticket,
+        result: checked.value,
+        guard: { role: guard_role, may_edit_tests },
+    })
+    if (problems.length > 0) {
+        return fail('chore', problems.map((line) => `- ${line}`).join('\n'))
+    }
     context.journal.append({
         kind: 'agent_finished',
         ticket,

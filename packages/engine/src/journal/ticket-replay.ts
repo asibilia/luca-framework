@@ -43,10 +43,14 @@ type TicketRecord = Exclude<
             | 'limit_wait_ended'
             | 'usage_line_wait_started'
             | 'usage_line_wait_ended'
+            | 'repo_wait_started'
+            | 'repo_wait_ended'
+            | 'repo_wait_skipped'
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'
             | 'shared_git_changed'
+            | 'chores_done'
             | 'changeset_dropped'
             | 'final_review_started'
             | 'lens_started'
@@ -120,6 +124,8 @@ const progressChange = ({
                     ...progress.assumptions,
                     ...assumptionsOf(finished),
                 ],
+                // Only a new `environment` answer opens another rerun.
+                environment: null,
                 ...resultChange({ progress, finished, seq: record.seq }),
             }
         }
@@ -141,9 +147,24 @@ const progressChange = ({
             }
         }
         case 'red_check': {
-            const { ok, problems, notes, tests } = record.content
-            const red_check = { ok, problems, notes, output: tests.output }
-            if (!ok) return { red_check }
+            const { ok, problems, notes, tests, exclusive } = record.content
+            const red_check = {
+                ok,
+                problems,
+                notes,
+                output: tests.output,
+                ...(exclusive === true ? { exclusive } : {}),
+            }
+            const lone =
+                exclusive === true
+                    ? {
+                          lone_reruns: [
+                              ...progress.lone_reruns,
+                              'red_check' as const,
+                          ],
+                      }
+                    : {}
+            if (!ok) return { red_check, ...lone }
             // The tests it proved fail first, for the PR's Evidence (#513).
             const red_tests = uniqBy(
                 (progress.test_writer?.criteria ?? []).flatMap(
@@ -151,7 +172,7 @@ const progressChange = ({
                 ),
                 ({ file, name }) => `${file}\u0000${name}`
             )
-            return { red_check, red_tests }
+            return { red_check, red_tests, ...lone }
         }
         case 'already_done_checked':
             return alreadyDoneCheckedChange({
@@ -182,6 +203,7 @@ const progressChange = ({
                 implementer: null,
                 gates: null,
                 gate_fix_rounds: 0,
+                environment: null,
                 leftovers: { red: null, green: null, fix: null },
                 commits: { ...progress.commits, red: null },
                 sessions: omit(progress.sessions, [
@@ -208,17 +230,28 @@ const progressChange = ({
                 },
             }
         case 'gates_run': {
-            const { ok, checks, cases } = record.content
-            // Only a ticket's own gates keep their cases (#581).
-            return record.content.target === 'ticket'
-                ? {
-                      gates: {
-                          ok,
-                          checks,
-                          ...(cases === undefined ? {} : { cases }),
-                      },
-                  }
-                : { join_gates: { ok, checks } }
+            const { ok, checks, cases, exclusive } = record.content
+            if (record.content.target !== 'ticket') {
+                return { join_gates: { ok, checks } }
+            }
+            // Only a ticket's own gates keep their cases (#581), and only
+            // they get a lone rerun (#544).
+            return {
+                gates: {
+                    ok,
+                    checks,
+                    ...(cases === undefined ? {} : { cases }),
+                    ...(exclusive === true ? { exclusive } : {}),
+                },
+                ...(exclusive === true
+                    ? {
+                          lone_reruns: [
+                              ...progress.lone_reruns,
+                              'gates' as const,
+                          ],
+                      }
+                    : {}),
+            }
         }
         case 'ticket_joined':
             return { joined: record.content }

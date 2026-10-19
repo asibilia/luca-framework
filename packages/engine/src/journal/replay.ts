@@ -27,12 +27,14 @@ import {
     snapshotPhase,
     type RunState,
 } from './run-state'
+import { sharedFailuresAfter } from './shared-failure-replay'
 import { crashesAfter } from './step-records'
 import { applyTicketRecord, reusedBaselineAfter } from './ticket-replay'
 
 import { withConfigChanges } from '../config/config-reload'
 
 export type {
+    OldTestFailure,
     RunBudgetState,
     ReplayedComment,
     ReplayedPullRequest,
@@ -43,6 +45,7 @@ export type {
 } from './run-state'
 export type {
     DeclinedFinding,
+    EnvironmentRerun,
     ReplayedGates,
     ReplayedInstall,
     ReplayedRedCheck,
@@ -52,6 +55,7 @@ export type {
     ReviewFix,
     TestUpdate,
     TicketProgress,
+    WriterRole,
 } from './ticket-progress'
 export { EMPTY_TICKET_PROGRESS } from './ticket-progress'
 export type {
@@ -68,6 +72,7 @@ export type { LearnerState, MemoryState } from './memory-replay'
 export { EMPTY_MEMORY } from './memory-replay'
 export { namespacedId } from './final-review-round'
 export { isFinalKey } from './final-review-replay'
+export { handoffRole } from './agent-turn-replay'
 
 const applyRecord = ({
     state,
@@ -269,6 +274,21 @@ const applyRecord = ({
         case 'usage_line_wait_started':
         case 'usage_line_wait_ended':
             return { ...next, plan: planAfter({ plan: state.plan, record }) }
+        case 'repo_wait_started':
+            return {
+                ...next,
+                repo_wait: { status: 'waiting', since: record.time },
+            }
+        case 'repo_wait_ended':
+            return {
+                ...next,
+                repo_wait: { ...state.repo_wait, status: 'ended' },
+            }
+        case 'repo_wait_skipped':
+            return {
+                ...next,
+                repo_wait: { ...state.repo_wait, status: 'skipped' },
+            }
         case 'run_stopped':
             return {
                 ...next,
@@ -380,6 +400,10 @@ const applyRecord = ({
         // Others' changes to the shared .git: noted, never acted on.
         case 'shared_git_changed':
             return next
+        // A writer's chores (#618): noted; one the engine could not do is
+        // the `agent_failed` after it.
+        case 'chores_done':
+            return next
         // An agent's changeset the engine removed: noted, never acted on.
         case 'changeset_dropped':
             return next
@@ -399,6 +423,13 @@ const applyRecord = ({
         case 'agent_finished':
             return applyTicketRecord({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
+                record,
+            })
+        // A ticket's checks also keep the run's old-test failures (#544).
+        case 'red_check':
+        case 'gates_run':
+            return sharedFailuresAfter({
+                state: applyTicketRecord({ state: next, record }),
                 record,
             })
         case 'join_undone':

@@ -14,6 +14,7 @@ Tests:
 - `packages/engine/src/core/decide-stuck-retry.test.ts`
 - `packages/engine/src/core/decide-stuck-skip.test.ts`
 - `packages/engine/src/core/decide-stuck-setup-file.test.ts`
+- `packages/engine/src/core/decide-stuck-owner-change.test.ts`
 - `packages/engine/src/core/decide-stuck-final-review.test.ts`
 - `packages/engine/src/core/decide-stuck-undo.test.ts`
 - `packages/engine/src/core/run-stuck.e2e.test.ts`
@@ -83,6 +84,16 @@ Tests:
 - `packages/engine/src/limits/usage-line.test.ts`
 - `packages/board/server/usage-line-panel.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
+
+## One run per repo: the repo wait
+
+A run started while an earlier run on the same repo is going waits for it before intake, tells its spec issue once which run it waits for, goes on by itself once that run ends or stops, and is stuck as `repo_busy` after 24 hours.
+
+Reached by: `luca-run --spec <n>` while another run on the repo is going; `luca-run --alongside` skips the wait.
+
+Tests:
+
+- `packages/engine/src/core/repo-wait.test.ts`
 
 ## Token counts and the run budget
 

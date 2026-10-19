@@ -96,6 +96,7 @@ Tests:
 - `packages/engine/src/agents/claude-launcher-result.test.ts`
 - `packages/engine/src/agents/claude-launcher-stops.test.ts`
 - `packages/engine/src/agents/role-instructions.test.ts`
+- `packages/engine/src/agents/role-instructions-other-role.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
 - `packages/engine/src/core/run-session-close.e2e.test.ts`
@@ -104,12 +105,13 @@ Tests:
 
 ## The GitHub tracker
 
-The tracker reads specs and tickets, adds and removes labels, opens PRs, and posts each engine comment once, even when a step is redone after a crash.
+The tracker reads specs and tickets, adds and removes labels, opens PRs, and posts each engine comment once, even when a step is redone after a crash. A `gh` call that fails transiently (a timeout, a cut-off reply, a 5xx) is retried with backoff; writes check whether the first try landed before trying again.
 
 Reached by: every real run, through the `gh` CLI.
 
 Tests:
 
 - `packages/engine/src/tracker/github-tracker.test.ts`
+- `packages/engine/src/tracker/github-tracker-retry.test.ts`
 - `packages/engine/src/tracker/in-memory-tracker.test.ts`
 - `packages/engine/src/tracker/post-comment-once.test.ts`

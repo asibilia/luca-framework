@@ -6,6 +6,7 @@ import type { EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
 import { executeAction, type StepTry } from './execute-action'
 import type { BuildDeps } from './execute-build'
+import type { GoingRunsReader } from './execute-repo-wait'
 import { ticketOf } from './schedule-rules'
 
 import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
@@ -40,6 +41,7 @@ export const executeWithJev = async ({
     memory,
     step,
     read_usage_lines,
+    going_runs,
 }: {
     ask: ShadowAsker
     action: EngineAction
@@ -51,6 +53,7 @@ export const executeWithJev = async ({
     memory?: MemoryDeps
     step?: StepTry
     read_usage_lines?: () => Promise<UsageLines>
+    going_runs?: GoingRunsReader
 }): Promise<void> => {
     const before = journal.read()
     const state = replayRun({ records: before })
@@ -74,6 +77,7 @@ export const executeWithJev = async ({
         memory,
         step,
         read_usage_lines,
+        going_runs,
     })
     const records = journal.read()
     await ask(

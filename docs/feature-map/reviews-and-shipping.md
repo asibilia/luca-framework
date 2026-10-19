@@ -13,6 +13,9 @@ Tests:
 - `packages/engine/src/core/decide-review.test.ts`
 - `packages/engine/src/core/ticket-review.e2e.test.ts`
 - `packages/board/server/review-fix-loop.test.ts`
+- `packages/engine/src/core/decide-other-role.test.ts`
+- `packages/engine/src/core/ticket-review-other-role.e2e.test.ts`
+- `packages/board/server/review-fix-other-role.test.ts`
 
 ## The final review and shipping
 

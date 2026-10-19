@@ -130,13 +130,13 @@ describe('GitHub tracker: adding a label', () => {
         const { gh, calls } = fakeGh((args) =>
             args[1] === 'list'
                 ? { exit_code: 0, stdout: 'needs-info\n' }
-                : { exit_code: 1, stderr: 'HTTP 502: Bad Gateway\n' }
+                : { exit_code: 1, stderr: 'HTTP 403: Forbidden\n' }
         )
         const tracker = createGitHubTracker({ repo: REPO, gh })
 
         await expect(
             tracker.addLabel({ number: 25, label: 'needs-info' })
-        ).rejects.toThrow('HTTP 502: Bad Gateway')
+        ).rejects.toThrow('HTTP 403: Forbidden')
         expect(calls).toEqual([addNeedsInfo, listLabels])
     })
 
@@ -200,13 +200,13 @@ describe('GitHub tracker: removing a label', () => {
         const { gh } = fakeGh((args) =>
             args[1] === 'list'
                 ? { exit_code: 0, stdout: 'ready-for-agent\n' }
-                : { exit_code: 1, stderr: 'HTTP 502: Bad Gateway\n' }
+                : { exit_code: 1, stderr: 'HTTP 403: Forbidden\n' }
         )
         const tracker = createGitHubTracker({ repo: REPO, gh })
 
         await expect(
             tracker.removeLabel({ number: 25, label: 'ready-for-agent' })
-        ).rejects.toThrow('HTTP 502')
+        ).rejects.toThrow('HTTP 403')
     })
 })
 

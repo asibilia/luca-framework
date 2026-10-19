@@ -112,6 +112,10 @@ export const permissionRules = ({
     ]
     const setup = config.test_setup_files.map((path) => `Edit(${path})`)
     const tests = config.test_file_patterns.map((glob) => `Edit(${glob})`)
+    // The test helpers are the test-writer's too (#619).
+    const helpers = (config.test_helper_patterns ?? []).map(
+        (glob) => `Edit(${glob})`
+    )
     // The feature map is the test-writer's too (#583): the file, or every
     // page of a folder map (#597).
     const map_path = featureMapPath({ config })
@@ -126,7 +130,10 @@ export const permissionRules = ({
         { allowed: string[]; disallowed: string[] }
     > = {
         'test-writer': may_edit_tests
-            ? { allowed: [...tests, ...map, 'Bash(rm *)'], disallowed: setup }
+            ? {
+                  allowed: [...tests, ...helpers, ...map, 'Bash(rm *)'],
+                  disallowed: setup,
+              }
             : { allowed: [], disallowed: ['Edit', 'Write'] },
         implementer: {
             allowed: ['Edit(**)', 'Bash(rm *)'],

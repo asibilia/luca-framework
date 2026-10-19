@@ -145,6 +145,8 @@ export const finalReviewAfter = ({
                         ...review.assumptions,
                         ...assumptionsOf(finished),
                     ],
+                    // Only a new `environment` answer opens another rerun.
+                    environment: null,
                 },
                 finished,
             })
@@ -234,8 +236,8 @@ export const finalRepliesAfter = ({
 /**
  * The stuck final review resumed by `retry`, like a resumed ticket: fresh
  * fixers (no session kept) and fresh counts, and the owner's edits in the
- * run branch's worktree kept. A leftover scan, failed gates, or a step
- * crashes cut off just run again; a failed lens gets a fresh one; otherwise the open fix round
+ * run branch's worktree kept. A leftover scan, failed gates (or gates an
+ * `environment` answer blamed), or a step crashes cut off just run again; a failed lens gets a fresh one; otherwise the open fix round
  * starts over as round 1, so the fixes (and the owner's edits) are gated,
  * committed, pushed, and re-reviewed.
  */
@@ -253,6 +255,9 @@ export const resumedFinalReview = ({
         failed_tries: {},
         engine_failures: {},
         gate_fix_rounds: 0,
+        setup_change: null,
+        environment_reruns: 0,
+        environment: null,
         gates: review.commit === null ? null : review.gates,
         leftovers: review.commit === null ? null : review.leftovers,
     }
@@ -261,6 +266,7 @@ export const resumedFinalReview = ({
         fix === null ||
         stuck?.reason === 'leftovers_found' ||
         stuck?.reason === 'gates_failed' ||
+        stuck?.reason === 'environment_failed' ||
         stuck?.reason === 'agent_failed' ||
         stuck?.reason === 'crashed'
     ) {
@@ -275,6 +281,7 @@ export const resumedFinalReview = ({
             tests_answered: !fix.findings.some(({ kind }) => kind === 'test'),
             code_answered: !fix.findings.some(({ kind }) => kind === 'code'),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         fixing_started: false,

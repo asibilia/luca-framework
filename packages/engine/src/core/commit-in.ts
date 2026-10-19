@@ -21,6 +21,7 @@ import {
 import { testFilesAmong } from '../gates/test-runner'
 import type { FileChange } from '../git/git-adapter'
 import { pathText } from '../git/path-text'
+import { isTestHelper } from '../guards/role-rules'
 import type { CommitStage } from '../journal/journal-record'
 
 /** Whether anything besides the file itself mentions a new code file. */
@@ -189,7 +190,13 @@ export const commitIn = async ({
     }
     const named: string[] = []
     for (const path of nameCheckedFiles({ changes })) {
-        if (await isNamed({ context, cwd, path, added_texts })) {
+        // A test helper (#619) is the tests', so a test that uses it names it.
+        const helper = isTestHelper({ path, config: context.config })
+        if (
+            helper
+                ? await isUsed({ context, cwd, path, added_texts })
+                : await isNamed({ context, cwd, path, added_texts })
+        ) {
             named.push(path)
         }
     }

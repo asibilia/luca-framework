@@ -1,5 +1,5 @@
 import type { RedCheckResult, TestCase, TestRun } from './gate-schemas'
-import { addedTestNames } from './new-tests'
+import { addedTestNames, testNamesIn } from './new-tests'
 
 import type { CriterionTests, TestRef } from '../agents/role-results'
 import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
@@ -116,10 +116,60 @@ const checkNewTest = ({
 }
 
 /**
+ * Every old test (passed at the baseline) still passes, in its file or
+ * moved (#609): one missing from its file but now in another test file
+ * under the same full name, a case the baseline didn't have there. Each
+ * such case stands for one old test only, so a name several old tests had
+ * counts as moved once.
+ */
+const checkOldTests = ({
+    baseline,
+    current,
+}: {
+    baseline: TestRun
+    current: TestRun
+}): { problems: string[]; notes: string[] } => {
+    const problems: string[] = []
+    const notes: string[] = []
+    const same = (a: TestCase, b: TestCase) =>
+        a.file === b.file && a.full_name === b.full_name
+    const movable = current.cases.filter(
+        (now) => !baseline.cases.some((old) => same(old, now))
+    )
+    const claimed = new Set<TestCase>()
+    for (const old of baseline.cases.filter(
+        ({ status }) => status === 'passed'
+    )) {
+        const label = `old test "${old.full_name}" in ${old.file}`
+        const now = current.cases.find((found) => same(found, old))
+        if (now !== undefined) {
+            if (now.status !== 'passed')
+                problems.push(`${label} no longer passes`)
+            continue
+        }
+        const moved = movable.find(
+            (found) => !claimed.has(found) && found.full_name === old.full_name
+        )
+        if (moved === undefined) {
+            problems.push(`${label} is missing`)
+            continue
+        }
+        claimed.add(moved)
+        const where = `old test "${old.full_name}" in ${moved.file} (moved from ${old.file})`
+        if (moved.status === 'passed')
+            notes.push(`${where}: still passes, as it should`)
+        else problems.push(`${where} no longer passes`)
+    }
+    return { problems, notes }
+}
+
+/**
  * The red check. Pure: proves every criterion has a test, and at most
  * `MAX_TESTS_PER_CRITERION`, every test the ticket added is mapped, every
  * test file it created is in the feature map (when the repo has one), every
- * new test fails, and every old test that passed before still passes.
+ * new test fails, and every old test that passed before still passes. A
+ * test the ticket only moved to another test file, under the same full
+ * name, is an old test (#609): noted, not missing and not new.
  *
  * @param baseline - The test run before the test-writer started.
  * @param current - The test run after the test-writer finished.
@@ -127,7 +177,8 @@ const checkNewTest = ({
  * @param sources - The text of each mapped test file, `null` if missing.
  * @param changed_test_sources - Each test file the ticket changed, as it was
  *   at the ticket's base and as it is now: a new test is a name in the
- *   second the first doesn't have (#581). For a file that has results in
+ *   second the first doesn't have (#581), and no changed or deleted test
+ *   file had at its base (a moved test, #609). For a file that has results in
  *   `current`, only a name of a case that ran counts, so a `test(` inside a
  *   string (a fixture) or a comment does not. A file that doesn't load yet
  *   has none, so its text alone decides, and every `test(` in it counts.
@@ -179,6 +230,13 @@ export const checkRed = ({
             )
         }
     }
+    // A name some changed (or deleted) test file had at the base is a moved
+    // test, not a new one, whichever file it is in now (#609).
+    const old_names = new Set(
+        changed_test_sources.flatMap(({ base }) =>
+            base === null ? [] : testNamesIn({ source: base })
+        )
+    )
     for (const { file, base, current: text } of changed_test_sources) {
         const mapped = mapping
             .flatMap(({ tests }) => tests)
@@ -191,6 +249,7 @@ export const checkRed = ({
         const loaded = !current.files_without_results.includes(file)
         const ran = current.cases.filter((found) => found.file === file)
         for (const name of addedTestNames({ base, current: text })) {
+            if (old_names.has(name)) continue
             const own = name.trim()
             if (
                 loaded &&
@@ -236,17 +295,8 @@ export const checkRed = ({
         if ('problem' in outcome) problems.push(outcome.problem)
         else notes.push(outcome.note)
     }
-    for (const old of baseline.cases.filter(
-        ({ status }) => status === 'passed'
-    )) {
-        const now = current.cases.find(
-            ({ file, full_name }) =>
-                file === old.file && full_name === old.full_name
-        )
-        const label = `old test "${old.full_name}" in ${old.file}`
-        if (now === undefined) problems.push(`${label} is missing`)
-        else if (now.status !== 'passed')
-            problems.push(`${label} no longer passes`)
-    }
+    const old = checkOldTests({ baseline, current })
+    problems.push(...old.problems)
+    notes.push(...old.notes)
     return { ok: problems.length === 0, problems, notes }
 }
