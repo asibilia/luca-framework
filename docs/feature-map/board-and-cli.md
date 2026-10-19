@@ -35,6 +35,7 @@ Tests:
 - `packages/board/server/current-step-panel-finished-steps.test.ts`
 - `packages/board/server/current-step-text.test.ts`
 - `packages/board/server/run-tabs-fold.test.ts`
+- `packages/board/client/one-line-panel.test.ts`
 
 ## The board: starting a run from Paseo
 
