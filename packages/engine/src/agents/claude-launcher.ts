@@ -8,15 +8,20 @@ import {
     type Options,
     type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk'
-import { z } from 'zod'
 
 import {
     AgentSessionSchema,
     type AgentLauncher,
     type AgentSession,
     type AgentTurn,
-    type ModelTokens,
 } from './agent-launcher'
+import {
+    AccountSchema,
+    accountProblem,
+    errorText,
+    stop,
+    type Outcome,
+} from './claude-messages'
 import {
     AGENT_EFFORT,
     agentEnv,
@@ -24,24 +29,20 @@ import {
     CLAUDE_MODEL,
     checkModel,
 } from './claude-options'
+import { createInputChannel } from './input-channel'
+import { commonGitDir, realClaudePath } from './launch-paths'
 import { createDeliveryHook, createLucaServer } from './message-tool'
-import type { AgentRole } from './role-results'
+import {
+    nextOutcome,
+    pumpMessages,
+    type AgentQuerySession,
+    type OpenSession,
+} from './open-session'
 
 import { createGuardHook } from '../guards/guard-hook'
 import { guardRoleOf } from '../guards/role-rules'
-import { planSignal } from '../limits/plan-signals'
-import { runCommand } from '../shell/run-command'
 
-/**
- * One running SDK session, as the launcher uses it. The SDK's own `Query`
- * fits this; tests hand in a fake. Messages are read as `unknown` and parsed
- * with the launcher's own schemas.
- */
-export type AgentQuerySession = AsyncIterable<unknown> & {
-    accountInfo: () => Promise<unknown>
-    interrupt: () => Promise<unknown>
-    close: () => void
-}
+export type { AgentQuerySession } from './open-session'
 
 /** Starts an SDK session: the SDK's `query`, or a fake in tests. */
 export type AgentQuery = (params: {
@@ -57,396 +58,6 @@ export const DEFAULT_TURN_TIMEOUT_MS = 40 * 60_000
  * unless told otherwise: 30 minutes.
  */
 export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60_000
-
-/** The Claude plans an agent may run on. */
-const PLANS = ['pro', 'max', 'team', 'enterprise']
-
-const AccountSchema = z.looseObject({
-    subscriptionType: z.string().optional(),
-    apiKeySource: z.string().optional(),
-    apiProvider: z.string().optional(),
-})
-
-const InitSchema = z.object({
-    type: z.literal('system'),
-    subtype: z.literal('init'),
-    apiKeySource: z.string(),
-    model: z.string(),
-    claude_code_version: z.string().nullable().default(null),
-    session_id: z.string().nullable().default(null),
-    tools: z.array(z.string()).default([]),
-    mcp_servers: z.array(z.object({ name: z.string() })).default([]),
-})
-
-const RateLimitSchema = z.object({
-    type: z.literal('rate_limit_event'),
-    rate_limit_info: z.record(z.string(), z.unknown()),
-})
-
-const AssistantSchema = z.object({
-    type: z.literal('assistant'),
-    error: z.string().optional(),
-})
-
-const ResultSchema = z.object({
-    type: z.literal('result'),
-    subtype: z.string(),
-    is_error: z.boolean().default(false),
-    num_turns: z.number().int().min(0).default(0),
-    duration_ms: z.number().min(0).default(0),
-    total_cost_usd: z.number().default(0),
-    usage: z
-        .object({
-            input_tokens: z.number().default(0),
-            output_tokens: z.number().default(0),
-            cache_read_input_tokens: z.number().default(0),
-            cache_creation_input_tokens: z.number().default(0),
-        })
-        .default({
-            input_tokens: 0,
-            output_tokens: 0,
-            cache_read_input_tokens: 0,
-            cache_creation_input_tokens: 0,
-        }),
-    /** Tokens per model, subagents included: the session's running totals. */
-    modelUsage: z
-        .record(
-            z.string(),
-            z.object({
-                inputTokens: z.number().default(0),
-                outputTokens: z.number().default(0),
-                cacheReadInputTokens: z.number().default(0),
-                cacheCreationInputTokens: z.number().default(0),
-            })
-        )
-        .default({}),
-    permission_denials: z
-        .array(z.object({ tool_name: z.string(), tool_use_id: z.string() }))
-        .default([]),
-    structured_output: z.unknown().optional(),
-    result: z.string().default(''),
-    errors: z.array(z.string()).default([]),
-    session_id: z.string().optional(),
-})
-
-type Failed = {
-    ok: false
-    failure: 'agent' | 'engine' | 'stop' | 'plan'
-    error: string
-}
-
-type Outcome = { ok: true; structured_output: unknown } | Failed
-
-const stop = (error: string): Failed => ({ ok: false, failure: 'stop', error })
-
-const errorText = (error: unknown): string =>
-    error instanceof Error ? error.message : String(error)
-
-/** Why the account may not run agents, or `null` if it may. */
-const accountProblem = (raw: unknown): string | null => {
-    const parsed = AccountSchema.safeParse(raw)
-    if (!parsed.success)
-        return 'accountInfo() gave an answer of the wrong shape'
-    const { subscriptionType, apiKeySource, apiProvider } = parsed.data
-    const plan = (subscriptionType ?? '').toLowerCase()
-    if (!PLANS.some((name) => plan.includes(name))) {
-        return `no Claude subscription (subscriptionType=${subscriptionType ?? 'none'})`
-    }
-    if (apiKeySource !== undefined && apiKeySource !== 'none') {
-        return `an API key is in use (apiKeySource=${apiKeySource})`
-    }
-    if (apiProvider !== undefined && apiProvider !== 'firstParty') {
-        return `not Anthropic's own API (apiProvider=${apiProvider})`
-    }
-    return null
-}
-
-/** Why an init message is unsafe to go on with, or `null` if it is fine. */
-const initProblem = (init: z.infer<typeof InitSchema>): string | null => {
-    if (init.apiKeySource !== 'none') {
-        return `init apiKeySource=${init.apiKeySource} (expected "none")`
-    }
-    const model = checkModel({ model: init.model })
-    if (model !== null) return `init model: ${model}`
-    const servers = init.mcp_servers
-        .map(({ name }) => name)
-        .filter((name) => name !== 'luca')
-    const tools = init.tools.filter(
-        (tool) => tool.startsWith('mcp__') && !tool.startsWith('mcp__luca__')
-    )
-    if (servers.length > 0 || tools.length > 0) {
-        return `foreign MCP servers or tools: ${[...servers, ...tools].join(', ')}`
-    }
-    return null
-}
-
-/** A turn the plan cut off: the reason, in words. */
-const planCut = (error: string): Failed => ({
-    ok: false,
-    failure: 'plan',
-    error,
-})
-
-/** A queue the SDK reads the agent's prompt from (streaming-input mode). */
-const createInputChannel = () => {
-    const queue: SDKUserMessage[] = []
-    let wake: (() => void) | null = null
-    let closed = false
-    const poke = () => {
-        wake?.()
-        wake = null
-    }
-    const iterate = async function* (): AsyncGenerator<SDKUserMessage> {
-        while (true) {
-            const next = queue.shift()
-            if (next !== undefined) {
-                yield next
-                continue
-            }
-            if (closed) return
-            await new Promise<void>((resolve) => {
-                wake = resolve
-            })
-        }
-    }
-    return {
-        push: (message: SDKUserMessage) => {
-            queue.push(message)
-            poke()
-        },
-        close: () => {
-            closed = true
-            poke()
-        },
-        iterable: iterate(),
-    }
-}
-
-const realClaudePath = (): string => {
-    const found = Bun.which('claude')
-    if (found === null) throw new Error('No `claude` binary on PATH.')
-    return realpathSync(found)
-}
-
-const commonGitDir = async ({ cwd }: { cwd: string }): Promise<string> => {
-    const result = await runCommand({
-        cmd: ['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'],
-        cwd,
-        timeout_ms: 30_000,
-    })
-    if (result.exit_code !== 0) {
-        throw new Error(`git rev-parse failed in ${cwd}: ${result.stderr}`)
-    }
-    return realpathSync(result.stdout.trim())
-}
-
-/**
- * One agent session the launcher keeps open between turns, so a follow-up
- * reaches the same agent. Its guard hook, sandbox, and options are the ones
- * it was launched with.
- */
-type OpenSession = {
-    role: AgentRole
-    ticket: number
-    cwd: string
-    may_edit_tests: boolean
-    running: AgentQuerySession
-    input: ReturnType<typeof createInputChannel>
-    /** What the launcher has seen of the session; per-turn fields reset each turn. */
-    summary: AgentSession
-    /** The SDK's running tokens per model, as of the session's last result. */
-    model_totals: Record<string, ModelTokens>
-    /** Resolves the turn waiting for the session's next outcome. */
-    waiter: ((outcome: Outcome) => void) | null
-    /** A stop or an engine failure: the session is over, with this outcome. */
-    ended: Outcome | null
-    /** Reads the session's messages until it ends. */
-    pump: Promise<void>
-    idle_timer: ReturnType<typeof setTimeout> | undefined
-    stderr: string[]
-}
-
-/** The session's next outcome: a result, a stop, or its end. */
-const nextOutcome = (open: OpenSession): Promise<Outcome> =>
-    open.ended !== null
-        ? Promise.resolve(open.ended)
-        : new Promise<Outcome>((resolve) => {
-              open.waiter = resolve
-          })
-
-const deliver = ({
-    open,
-    outcome,
-}: {
-    open: OpenSession
-    outcome: Outcome
-}): void => {
-    if (!outcome.ok && outcome.failure !== 'agent') open.ended = outcome
-    const waiter = open.waiter
-    open.waiter = null
-    waiter?.(outcome)
-}
-
-const stderrTail = (open: OpenSession): string =>
-    open.stderr.length === 0 ? '' : `\n${open.stderr.join('').slice(-2000)}`
-
-/** A result's `modelUsage`, in the journal's words. */
-const modelTotalsOf = (
-    modelUsage: z.infer<typeof ResultSchema>['modelUsage']
-): Record<string, ModelTokens> =>
-    Object.fromEntries(
-        Object.entries(modelUsage).map(([name, each]) => [
-            name,
-            {
-                input_tokens: each.inputTokens,
-                output_tokens: each.outputTokens,
-                cache_read_input_tokens: each.cacheReadInputTokens,
-                cache_creation_input_tokens: each.cacheCreationInputTokens,
-            },
-        ])
-    )
-
-/**
- * One turn's tokens per model: the session's running totals less those at
- * its last result, as the SDK sums `modelUsage` over a session's turns.
- */
-const turnTokens = ({
-    totals,
-    before,
-}: {
-    totals: Record<string, ModelTokens>
-    before: Record<string, ModelTokens>
-}): Record<string, ModelTokens> =>
-    Object.fromEntries(
-        Object.entries(totals).map(([name, now]) => {
-            const was = before[name]
-            const less = (key: keyof ModelTokens) =>
-                Math.max(0, now[key] - (was?.[key] ?? 0))
-            return [
-                name,
-                {
-                    input_tokens: less('input_tokens'),
-                    output_tokens: less('output_tokens'),
-                    cache_read_input_tokens: less('cache_read_input_tokens'),
-                    cache_creation_input_tokens: less(
-                        'cache_creation_input_tokens'
-                    ),
-                },
-            ]
-        })
-    )
-
-/** Reads one message into the session's summary; an outcome ends the turn. */
-const watch = ({
-    open,
-    raw,
-}: {
-    open: OpenSession
-    raw: unknown
-}): Outcome | null => {
-    const { summary } = open
-    const init = InitSchema.safeParse(raw)
-    if (init.success) {
-        summary.session_id = init.data.session_id
-        summary.model = init.data.model
-        summary.claude_code_version = init.data.claude_code_version
-        summary.api_key_source = init.data.apiKeySource
-        const problem = initProblem(init.data)
-        return problem === null ? null : stop(problem)
-    }
-    const rateLimit = RateLimitSchema.safeParse(raw)
-    if (rateLimit.success) {
-        const info = rateLimit.data.rate_limit_info
-        summary.rate_limit_events.push({
-            ...info,
-            arrived_at: new Date().toISOString(),
-        })
-        const signal = planSignal({ info })
-        switch (signal.kind) {
-            case 'ok':
-                return null
-            case 'billing':
-                return planCut(signal.reason)
-            case 'limit':
-                return planCut(
-                    `rate_limit_event status=rejected (${signal.rate_limit_type ?? 'unknown'})`
-                )
-        }
-    }
-    const assistant = AssistantSchema.safeParse(raw)
-    if (assistant.success) {
-        if (assistant.data.error !== 'billing_error') return null
-        summary.billing_error = true
-        return planCut('assistant error billing_error')
-    }
-    const result = ResultSchema.safeParse(raw)
-    if (!result.success) return null
-    const done = result.data
-    summary.num_turns = done.num_turns
-    summary.usage = done.usage
-    const totals = modelTotalsOf(done.modelUsage)
-    summary.model_usage = turnTokens({
-        totals,
-        before: open.model_totals,
-    })
-    open.model_totals = { ...open.model_totals, ...totals }
-    summary.total_cost_usd = done.total_cost_usd
-    summary.permission_denials = done.permission_denials.map(
-        ({ tool_name, tool_use_id }) => ({ tool_name, tool_use_id })
-    )
-    if (done.subtype === 'success' && !done.is_error) {
-        return { ok: true, structured_output: done.structured_output }
-    }
-    const detail = done.errors.length > 0 ? done.errors.join('; ') : done.result
-    return {
-        ok: false,
-        failure: 'agent',
-        error: `The agent's turn ended with ${done.subtype}: ${detail}`,
-    }
-}
-
-/**
- * Reads a session's messages until it ends, handing each outcome to the turn
- * waiting for it, then calls `on_end`.
- */
-const pumpMessages = async ({
-    open,
-    on_end,
-}: {
-    open: OpenSession
-    on_end: () => void
-}): Promise<void> => {
-    try {
-        for await (const raw of open.running) {
-            const outcome = watch({ open, raw })
-            if (outcome === null) continue
-            deliver({ open, outcome })
-            if (open.ended !== null) break
-        }
-        if (open.ended !== null) {
-            on_end()
-            return
-        }
-        deliver({
-            open,
-            outcome: {
-                ok: false,
-                failure: 'engine',
-                error: `The agent session ended with no result.${stderrTail(open)}`,
-            },
-        })
-    } catch (error) {
-        deliver({
-            open,
-            outcome: {
-                ok: false,
-                failure: 'engine',
-                error: `The agent session failed: ${errorText(error)}${stderrTail(open)}`,
-            },
-        })
-    }
-    on_end()
-}
 
 /**
  * The real agent launcher: one Claude Agent SDK session per agent, with
