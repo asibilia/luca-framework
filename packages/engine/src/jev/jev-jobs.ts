@@ -32,10 +32,10 @@ export type JevAsk = {
     fixed: JevFixed
 }
 
-/** The models Jev may pick for a ticket, by short name. */
+/** The models Jev may pick for an agent, by short name. */
 export const JEV_MODEL_OPTIONS = ['opus', 'sonnet', 'haiku'] as const
 
-/** The model the engine really uses for every ticket. */
+/** The model the engine really uses for every agent. */
 export const JEV_FIXED_MODEL = 'opus'
 
 /**
@@ -161,26 +161,42 @@ const createTicketWorktreeAsks = ({
                       fixed: { next: ticketKey(ticket) },
                   },
               ]
-    return [
-        ...orderAsk,
-        {
-            job: 'ticket_model',
-            ticket,
-            role: null,
-            request: {
-                state: base,
-                questions: {
-                    model: choice({
-                        instructions:
-                            'Which model should build this ticket? Pick the cheapest that will get it right.',
-                        options: JEV_MODEL_OPTIONS,
-                    }),
-                },
-            },
-            fixed: { model: JEV_FIXED_MODEL },
-        },
-    ]
+    return orderAsk
 }
+
+/**
+ * Which model a fresh agent of a routed role should run on: the ticket's
+ * facts, the role, and which try this is (#602).
+ */
+const agentModelAsk = ({
+    state,
+    ticket,
+    role,
+    attempt,
+}: {
+    state: RunState
+    ticket: number | null
+    role: string
+    attempt: number
+}): JevAsk => ({
+    job: 'agent_model',
+    ticket,
+    role,
+    request: {
+        state: {
+            ...ticketState({ state, ticket }),
+            role,
+            try: String(attempt),
+        },
+        questions: {
+            model: choice({
+                instructions: `Which model should the ${role} agent run on? Pick the cheapest that will get it right.`,
+                options: JEV_MODEL_OPTIONS,
+            }),
+        },
+    },
+    fixed: { model: JEV_FIXED_MODEL },
+})
 
 const agentSkillsAsk = ({
     state,
@@ -211,9 +227,13 @@ const agentSkillsAsk = ({
     ),
 })
 
+/** The roles whose fresh agents get an `agent_model` ask on a ticket. */
+const ROUTED_TICKET_ROLES: readonly string[] = ['test-writer', 'implementer']
+
 /**
- * The asks to make before the engine carries out `action`: ticket order and
- * model before a ticket starts, and skills before each agent.
+ * The asks to make before the engine carries out `action`: ticket order
+ * before a ticket starts, skills before each agent, and the model before
+ * each fresh test-writer, implementer, and learner.
  */
 export const jevAsksBefore = ({
     action,
@@ -225,12 +245,30 @@ export const jevAsksBefore = ({
     switch (action.type) {
         case 'create_ticket_worktree':
             return createTicketWorktreeAsks({ state, ticket: action.ticket })
-        case 'launch_agent':
+        case 'launch_agent': {
+            const { ticket, role } = action
+            const failed = state.tickets[ticket]?.failed_tries[role] ?? 0
             return [
-                agentSkillsAsk({
+                ...(ROUTED_TICKET_ROLES.includes(role)
+                    ? [
+                          agentModelAsk({
+                              state,
+                              ticket,
+                              role,
+                              attempt: failed + 1,
+                          }),
+                      ]
+                    : []),
+                agentSkillsAsk({ state, ticket, role }),
+            ]
+        }
+        case 'launch_learner':
+            return [
+                agentModelAsk({
                     state,
-                    ticket: action.ticket,
-                    role: action.role,
+                    ticket: null,
+                    role: 'learner',
+                    attempt: state.memory.learner.failed_tries + 1,
                 }),
             ]
         default:

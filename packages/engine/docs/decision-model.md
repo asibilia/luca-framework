@@ -12,13 +12,17 @@ reads these records, so the run goes exactly as it would without it.
 | Job | Asked | The engine's fixed choice |
 | --- | --- | --- |
 | `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
-| `ticket_model` | Before a ticket's worktree: which model (`opus`, `sonnet` or `haiku`)? | `opus`. |
+| `agent_model` | Before each fresh test-writer and implementer, and the learner: which model (`opus`, `sonnet` or `haiku`)? Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens. | `opus`. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |
 
-Each call writes `jev_asked` (the job, the request, the fixed choice, and
-the `model` asked), then `jev_answered` (the answers, each with its value
+`ticket_model` (one model per ticket, before its worktree) is no longer
+asked; old journals with it still read.
+
+Each call writes `jev_asked` (the job, the request, the fixed choice, the
+`model` asked, and `acted`: `false` for a shadow ask, as every ask is
+today; old journals read it as `false`), then `jev_answered` (the answers, each with its value
 and confidence, and the `model` that answered) or `jev_failed`
 (`missing_credentials`, `rejected`, `timeout`, or `error`; old journals also
 hold Jev's `missing_key`). Both point back with `asked_seq`. An error or a

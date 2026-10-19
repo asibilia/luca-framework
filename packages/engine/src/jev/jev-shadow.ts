@@ -127,7 +127,14 @@ export const shadowAsker = ({
                 kind: 'jev_asked',
                 ticket,
                 role,
-                content: { job, request, fixed, model: client.model },
+                // Shadow mode: no answer changes what the engine does.
+                content: {
+                    job,
+                    request,
+                    fixed,
+                    model: client.model,
+                    acted: false,
+                },
             })
             const started = performance.now()
             const reply = checkedReply(
