@@ -111,19 +111,23 @@ export const BubbleScope = ({
 
 /**
  * A line of text cut at its end with "…". Inside a `BubbleScope`, a tap
- * (or hovering) opens its full text in a bubble.
+ * (or hovering) opens its full text in a bubble, or `full` when given: a
+ * short line's longer sentence.
  */
 export const CutLine = ({
     text,
+    full,
     style,
     styles,
 }: {
     text: string
+    full?: string
     style: StyleProp<TextStyle>
     styles: Styles
 }) => {
     const bubbles = useContext(ScopeContext)
     const line = useId()
+    const shown = full ?? text
     const label = (
         <Text style={style} numberOfLines={1} ellipsizeMode="tail">
             {text}
@@ -139,13 +143,13 @@ export const CutLine = ({
                 show((open) =>
                     open?.line === line && !open.hovered
                         ? null
-                        : { scope, line, text, hovered: false }
+                        : { scope, line, text: shown, hovered: false }
                 )
             }
             onHoverIn={() =>
                 show((open) =>
                     open === null || open.hovered
-                        ? { scope, line, text, hovered: true }
+                        ? { scope, line, text: shown, hovered: true }
                         : open
                 )
             }

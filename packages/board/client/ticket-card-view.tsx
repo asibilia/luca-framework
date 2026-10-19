@@ -1,6 +1,6 @@
 /**
  * A ticket's card in the panel: its number and title, its stage pill, the
- * step dots, the fix and review counters, its tokens and tests, and its
+ * step dots, its agent's model and Clef's line, the fix and review counters, its tokens and tests, and its
  * details when opened. Each line stays on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
@@ -11,6 +11,7 @@ import { Pressable, Text, View } from 'react-native'
 import { stageColor, tokensText } from './board-look'
 import { Counter, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { ModelLine } from './model-line'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
 import { StepDots } from './step-dots'
 import { TicketDetail } from './ticket-detail'
@@ -101,6 +102,14 @@ export const TicketCardView = ({
                     <StepLine
                         step={ticket.current_step}
                         prefix=""
+                        styles={styles}
+                    />
+                ) : null}
+                {ticket.model !== null && ticket.model.role === ticket.role ? (
+                    <ModelLine
+                        model={ticket.model}
+                        bar={state.confidence_bar}
+                        theme={theme}
                         styles={styles}
                     />
                 ) : null}

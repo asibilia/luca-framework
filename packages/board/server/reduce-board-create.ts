@@ -3,6 +3,7 @@
  * card when its snapshot first arrives.
  */
 import {
+    DEFAULT_CONFIDENCE_BAR,
     DEFAULT_RUN_BUDGET_TOKENS,
     LENS_NAMES,
     NO_MEMORY,
@@ -74,6 +75,7 @@ export const createBoardState = ({
     run_tokens: 0,
     run_budget_tokens: DEFAULT_RUN_BUDGET_TOKENS,
     run_budget_each: DEFAULT_RUN_BUDGET_TOKENS,
+    confidence_bar: DEFAULT_CONFIDENCE_BAR,
     limit_wait: null,
     usage_line_wait: null,
     run_plan_used: [],
@@ -118,6 +120,8 @@ export const newTicket = ({
     step: -1,
     activity: 'queued',
     role: null,
+    model: null,
+    model_answer: null,
     current_step: null,
     fix_round: 0,
     review_round: 0,

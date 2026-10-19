@@ -139,6 +139,16 @@ export const makeStyles = ({
             paddingHorizontal: 4,
             fontSize: 10,
         },
+        /** Clef's confidence bar, and its part filled to the confidence. */
+        confidence: {
+            flexShrink: 0,
+            width: 28,
+            height: 5,
+            borderRadius: 3,
+            overflow: 'hidden',
+            backgroundColor: colors.surface2,
+        },
+        confidenceFill: { height: 5 },
         dots: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
         dotCell: { flexDirection: 'row', alignItems: 'center' },
         link: { width: compact ? 7 : 10, height: 2 },

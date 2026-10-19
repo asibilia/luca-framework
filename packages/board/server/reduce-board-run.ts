@@ -7,6 +7,7 @@ import { numbersText } from './reduce-board-text'
 import { updateTicket, withTried } from './reduce-board-update'
 
 import {
+    DEFAULT_CONFIDENCE_BAR,
     DEFAULT_RUN_BUDGET_TOKENS,
     type BoardState,
     type PersonTicket,
@@ -119,6 +120,9 @@ export const applyRunKind = ({
                 ...state,
                 run_budget_tokens: budget,
                 run_budget_each: budget,
+                confidence_bar:
+                    record.content.config?.models?.confidence_bar ??
+                    DEFAULT_CONFIDENCE_BAR,
                 run: {
                     ...state.run,
                     spec_number: record.content.spec_number,

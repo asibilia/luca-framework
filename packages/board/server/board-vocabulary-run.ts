@@ -19,13 +19,22 @@ import {
 export const RUN_VOCABULARY = {
     run_started: z.looseObject({
         spec_number: z.number().int(),
-        /** The engine config; the board reads only its run budget. */
+        /**
+         * The engine config; the board reads only its run budget and the
+         * decision model's confidence bar.
+         */
         config: z
             .looseObject({
                 run_budget_tokens: z
                     .number()
                     .int()
                     .positive()
+                    .optional()
+                    .catch(undefined),
+                models: z
+                    .looseObject({
+                        confidence_bar: z.number().optional().catch(undefined),
+                    })
                     .optional()
                     .catch(undefined),
             })
@@ -83,6 +92,10 @@ export const RUN_VOCABULARY = {
         role: z.string(),
         /** The session a fix-loop or failed-try follow-up went to. */
         follow_up_of: z.string().nullable().catch(null),
+        /** The model it runs on (#599); older journals have none. */
+        model: z.string().nullable().catch(null),
+        /** Why it got that model (#603), such as `unsure`; older journals have none. */
+        model_reason: z.string().nullable().catch(null),
     }),
     agent_finished: z.looseObject({
         role: z.string(),

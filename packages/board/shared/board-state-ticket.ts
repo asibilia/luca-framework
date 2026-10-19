@@ -106,6 +106,32 @@ export const currentStepText = ({
 }): string =>
     `${step.text} (${elapsedText({ ms: now - Date.parse(step.since) })})`
 
+/**
+ * The decision model's answer to an agent's `agent_model` ask: the model it
+ * picked and how sure it was, either `null` when the answer lacks it.
+ */
+export const ModelAnswerSchema = z.object({
+    role: z.string(),
+    pick: z.string().nullable(),
+    confidence: z.number().nullable(),
+})
+
+export type ModelAnswer = z.infer<typeof ModelAnswerSchema>
+
+/**
+ * The model the card's latest agent runs on (#630), from its
+ * `agent_started`, and why: its `model_reason` (`null` in older journals)
+ * and its `agent_model` answer, if any.
+ */
+export const AgentModelSchema = z.object({
+    role: z.string(),
+    name: z.string(),
+    reason: z.string().nullable(),
+    answer: ModelAnswerSchema.nullable(),
+})
+
+export type AgentModel = z.infer<typeof AgentModelSchema>
+
 export const TicketCardSchema = z.object({
     number: z.number().int(),
     title: z.string(),
@@ -124,6 +150,17 @@ export const TicketCardSchema = z.object({
     activity: z.string(),
     /** The role working on it now, `null` when no agent is. */
     role: z.string().nullable(),
+    /**
+     * The latest agent's model and why; `null` before one starts, or when
+     * its journal names no model. Defaulted, so an older board state still
+     * parses.
+     */
+    model: AgentModelSchema.nullable().default(null),
+    /**
+     * The decision model's latest `agent_model` answer, kept until its
+     * agent starts. Defaulted, so an older board state still parses.
+     */
+    model_answer: ModelAnswerSchema.nullable().default(null),
     /**
      * The engine's step on it now, `null` between steps. Defaulted, so a
      * board state from before it still parses.

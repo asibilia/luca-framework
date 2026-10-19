@@ -22,6 +22,7 @@ import {
 } from './board-state-counts'
 import { FinalReviewSchema } from './board-state-review'
 import {
+    DEFAULT_CONFIDENCE_BAR,
     DEFAULT_RUN_BUDGET_TOKENS,
     NeedsYouSchema,
     PersonTicketSchema,
@@ -77,6 +78,12 @@ export const BoardStateSchema = z.object({
     run_budget_tokens: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
     /** One full run budget: the engine config's, else the default. */
     run_budget_each: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
+    /**
+     * The engine config's `models.confidence_bar` (#630): the decision
+     * model is sharp at or over it. Defaulted, so an older board state
+     * still parses.
+     */
+    confidence_bar: z.number().min(0).max(1).default(DEFAULT_CONFIDENCE_BAR),
     /** The plan limit was hit; the engine waits and then carries on. */
     limit_wait: z
         .object({
