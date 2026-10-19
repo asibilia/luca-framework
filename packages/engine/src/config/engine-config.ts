@@ -57,6 +57,52 @@ export const DecisionModelConfigSchema = z.object({
 })
 
 /**
+ * The models an agent may launch on, by short name, strongest first: the
+ * one list the launcher, the floors, and the decision model's options read.
+ * Claude Code turns each into its newest version; the session's init names
+ * the exact one.
+ */
+export const ModelNameSchema = z.enum(['opus', 'sonnet', 'haiku'])
+
+export type ModelName = z.infer<typeof ModelNameSchema>
+
+/** The model reviewers run on, and every fallback of the model pick (#603). */
+export const DEFAULT_MODEL: ModelName = ModelNameSchema.enum.opus
+
+/** The roles with a model floor (#603); every other role always runs Opus. */
+export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
+
+/**
+ * The cheapest model each routed role may run on; a role left out is
+ * `opus`. A floor for any other role, a reviewer or a lens, is refused.
+ */
+const ModelFloorsSchema = z.strictObject(
+    {
+        'test-writer': ModelNameSchema.default(DEFAULT_MODEL),
+        implementer: ModelNameSchema.default(DEFAULT_MODEL),
+        learner: ModelNameSchema.default(DEFAULT_MODEL),
+    },
+    {
+        error: (issue) =>
+            issue.code === 'unrecognized_keys'
+                ? `${issue.keys.join(', ')} can't have a model floor: reviewers always run Opus. Only ${ROUTED_ROLES.join(', ')} have floors.`
+                : undefined,
+    }
+)
+
+/**
+ * The config's `models` block (#603): each routed role's model floor, and
+ * how sure the decision model must be (`confidence_bar`) before its model
+ * pick is used.
+ */
+export const ModelsConfigSchema = z.object({
+    floors: ModelFloorsSchema.prefault({}),
+    confidence_bar: z.number().min(0).max(1).default(0.8),
+})
+
+export type ModelsConfig = z.infer<typeof ModelsConfigSchema>
+
+/**
  * Whether a config path names a file inside the repo (#583): not absolute,
  * not ending in `/` (a folder), and, once cleaned (`normalize`), neither the
  * repo root nor a path that climbs out of it with `..`.
@@ -75,7 +121,7 @@ const isFileInsideRepo = (path: string): boolean => {
 /**
  * The per-repo engine config: the gate commands, where tests live, the rule
  * files for the rules lens, the project's memory vault, the decision model,
- * and the run budget.
+ * the model floors, and the run budget.
  *
  * Unknown keys, such as old Luca's, are dropped when the file is read.
  *
@@ -155,6 +201,8 @@ export const EngineConfigSchema = z.object({
     muninn: MuninnConfigSchema.optional(),
     /** The decision model shadow mode asks; left out, Clef. */
     decision_model: DecisionModelConfigSchema.optional(),
+    /** Each routed role's model floor and the confidence bar; left out, every role runs Opus. */
+    models: ModelsConfigSchema.optional(),
     /**
      * The repo's run budget in tokens; left out, the engine's default
      * (`DEFAULT_RUN_BUDGET_TOKENS`).
@@ -230,6 +278,16 @@ export const decisionModelOf = ({
     config: EngineConfig
 }): DecisionModelId =>
     config.decision_model?.model ?? DecisionModelConfigSchema.parse({}).model
+
+/**
+ * The run's model floors and confidence bar: the config's `models`, else
+ * the schema's defaults (every floor `opus`).
+ *
+ * @example
+ * modelsOf({ config }).floors['test-writer'] // 'opus'
+ */
+export const modelsOf = ({ config }: { config: EngineConfig }): ModelsConfig =>
+    config.models ?? ModelsConfigSchema.parse({})
 
 /** One test command the engine runs, and how it reads the results. */
 export type TestCommand = { run: string; results: TestResults }

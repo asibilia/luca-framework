@@ -64,6 +64,11 @@ export type ScriptedCall = {
     session_id: string
     /** Only on launches. */
     may_edit_tests?: boolean
+    /**
+     * The model a launch asked for; a follow-up's is its session's, `null`
+     * for a session the launcher doesn't know.
+     */
+    model: string | null
     /** What each of the turn's tool calls handed over, in order. */
     delivered: string[]
 }
@@ -100,8 +105,11 @@ export const createScriptedLauncher = ({
 }): ScriptedLauncher => {
     const remaining = [...turns]
     const calls: ScriptedCall[] = []
-    /** Each open session's messaging, kept for its follow-ups. */
-    const sessions = new Map<string, AgentMessaging | null>()
+    /** Each open session's messaging and model, kept for its follow-ups. */
+    const sessions = new Map<
+        string,
+        { messaging: AgentMessaging | null; model: string }
+    >()
 
     const toolsFor = ({
         messaging,
@@ -180,9 +188,10 @@ export const createScriptedLauncher = ({
             cwd,
             may_edit_tests,
             messaging,
+            model,
         }) => {
             const session_id = `scripted-${role}-${ticket}-${calls.length + 1}`
-            sessions.set(session_id, messaging)
+            sessions.set(session_id, { messaging, model })
             const call: ScriptedCall = {
                 kind: 'launch',
                 role,
@@ -190,6 +199,7 @@ export const createScriptedLauncher = ({
                 prompt,
                 session_id,
                 may_edit_tests,
+                model,
                 delivered: [],
             }
             calls.push(call)
@@ -197,17 +207,18 @@ export const createScriptedLauncher = ({
             return play({ role, ticket, cwd, session_id, tools })
         },
         followUp: async ({ session_id, role, ticket, message, cwd }) => {
+            const open = sessions.get(session_id)
             const call: ScriptedCall = {
                 kind: 'follow_up',
                 role,
                 ticket,
                 prompt: message,
                 session_id,
+                model: open?.model ?? null,
                 delivered: [],
             }
             calls.push(call)
-            const messaging = sessions.get(session_id)
-            if (messaging === undefined) {
+            if (open === undefined) {
                 return {
                     ok: false,
                     failure: 'engine',
@@ -215,7 +226,7 @@ export const createScriptedLauncher = ({
                     error: `No scripted session ${session_id}.`,
                 }
             }
-            const tools = toolsFor({ messaging, call })
+            const tools = toolsFor({ messaging: open.messaging, call })
             return play({ role, ticket, cwd, session_id, tools })
         },
         closeSession: async ({ session_id }) => {

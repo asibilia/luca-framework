@@ -61,6 +61,8 @@ export const RELOADED_FIELDS = [
  *   and the board's, from `run_started`; a raise is a `retry` reply.
  * - `decision_model`: the model shadow mode asks (#534), so a run's asks
  *   are all of one model and can be scored together.
+ * - `models`: the model floors and the confidence bar (#603), so one run's
+ *   routing stays consistent.
  */
 export const FROZEN_FIELDS = [
     'checks',
@@ -71,6 +73,7 @@ export const FROZEN_FIELDS = [
     'muninn',
     'run_budget_tokens',
     'decision_model',
+    'models',
 ] as const
 
 const positiveInt = z.number().int().positive().nullable()

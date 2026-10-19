@@ -14,6 +14,7 @@ import type {
     ImplementerResult,
     TicketReviewResult,
 } from '../agents/role-results'
+import { DEFAULT_MODEL } from '../config/engine-config'
 
 export type FinishedContent = Extract<
     JournalRecord,
@@ -46,6 +47,13 @@ export const sessionsAfter = ({
 
 export const isFixerRole = (role: AgentRole): boolean =>
     role === 'test-writer' || role === 'implementer'
+
+/**
+ * Whether an agent launched on a model cheaper than Opus (#604). Older
+ * journals name no model, and ran Opus.
+ */
+export const ranCheaper = (model: string | null | undefined): boolean =>
+    model !== null && model !== undefined && model !== DEFAULT_MODEL
 
 /**
  * The fixers' "won't fix" answers the new review let go: its ruling was

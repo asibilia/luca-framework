@@ -41,6 +41,20 @@ describe('the fields a resume reloads', () => {
         expect(FROZEN_FIELDS).toContain('feature_map')
     })
 
+    test('models is frozen: a resume keeps the floors and the bar the run started with (#603)', () => {
+        expect(FROZEN_FIELDS).toContain('models')
+        expect(RELOADED_FIELDS).not.toContain('models')
+        const current = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: { floors: { 'test-writer': 'sonnet' } },
+        })
+        const next = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: { floors: { 'test-writer': 'haiku' }, confidence_bar: 0.5 },
+        })
+        expect(configChanges({ current, next })).toEqual([])
+    })
+
     test('leftover_allow is reloaded, not frozen (#520)', () => {
         expect(RELOADED_FIELDS).toContain('leftover_allow')
         expect(FROZEN_FIELDS).not.toContain('leftover_allow')

@@ -10,6 +10,16 @@ import { join } from 'node:path'
 import type { GitAdapter } from './git-adapter'
 import { gitOk, gitRun, head, lines } from './git-run'
 
+/**
+ * Lines added plus lines removed in `git diff --numstat` output. A binary
+ * file (`-` for both counts) counts 0.
+ */
+const linesChanged = (numstat: string): number =>
+    lines(numstat).reduce((total, line) => {
+        const [added = '', removed = ''] = line.split('\t')
+        return total + (Number(added) || 0) + (Number(removed) || 0)
+    }, 0)
+
 export const joinOps: Pick<
     GitAdapter,
     'commitsBetween' | 'replay' | 'undoReplay' | 'rebaseWorktree'
@@ -37,6 +47,12 @@ export const joinOps: Pick<
                 await gitOk({
                     cwd,
                     args: ['rev-list', '--reverse', `${before}..HEAD`],
+                })
+            ),
+            lines_changed: linesChanged(
+                await gitOk({
+                    cwd,
+                    args: ['diff', '--numstat', '--no-renames', before, 'HEAD'],
                 })
             ),
         }

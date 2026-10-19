@@ -157,12 +157,17 @@ export type AgentLauncher = {
          * for its follow-ups.
          */
         messaging: AgentMessaging | null
+        /**
+         * The model's short name: `opus`, `sonnet` or `haiku`. The session's
+         * follow-ups run on it too.
+         */
+        model: string
     }) => Promise<AgentTurn>
     /**
      * Sends a follow-up message to an agent session that is still open, such
      * as a failed gate's output in a fix loop, and returns the session's new
-     * result. The agent keeps everything it knew from its earlier turns, and
-     * the guards it was launched with. A session the launcher doesn't know,
+     * result. The agent keeps everything it knew from its earlier turns, the
+     * guards it was launched with, and its model. A session the launcher doesn't know,
      * or one that has closed, is an engine failure.
      *
      * @example

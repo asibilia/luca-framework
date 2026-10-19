@@ -97,9 +97,14 @@ export const JevAnswerSchema = z.object({
 
 export type JevAnswer = z.infer<typeof JevAnswerSchema>
 
-/** The jobs the engine asks Jev about. */
+/**
+ * The jobs the engine asks Jev about. `ticket_model` (one model per ticket)
+ * is no longer asked; `agent_model` (one per agent) replaced it in #602. It
+ * stays so old journals read.
+ */
 export const JevJobSchema = z.enum([
     'ticket_model',
+    'agent_model',
     'agent_skills',
     'ticket_order',
     'failure_kind',

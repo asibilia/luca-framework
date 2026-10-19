@@ -153,12 +153,20 @@ A fixed moment in a run when the engine searches memory and hands the results to
 _Avoid_: pre-flight, lookup
 
 **Shadow mode**:
-A trial setup for the decision model: the engine asks it every time and records its answer in the journal, but acts on a fixed choice until the journal shows the answers are right. With no credentials, or credentials Cloudflare turns down, the decision model is off for the run and nothing is asked.
+A trial setup for the decision model: the engine asks it every time and records its answer in the journal, but acts on a fixed choice until the journal shows the answers are right. The model pick for a role with a model floor below Opus is the one exception: it takes effect when the decision model is sure enough. With no credentials, or credentials Cloudflare turns down, the decision model is off for the run and nothing is asked.
 _Avoid_: dry run, trial mode
 
 **Decision model**:
-The model the engine asks in shadow mode which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
+The model the engine asks which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Its model pick for a role with a floor below Opus takes effect when it clears the confidence bar; every other job stays in shadow mode. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
 _Avoid_: labeling model, Jev (except for the record names)
+
+**Model floor**:
+The cheapest model a role may run on, set per role in a repo's config: the decision model picks that model or a stronger one. Only the test-writer, the implementer and the learner have one; a role left out runs Opus, and reviewers have none, since every reviewer and lens always runs Opus.
+_Avoid_: minimum model, model tier
+
+**Confidence bar**:
+How sure the decision model must be before the engine uses its model pick, 0.8 unless the config says otherwise. Below it, or with no confidence given, the agent runs Opus.
+_Avoid_: threshold, cutoff
 
 ### Seeing the work
 

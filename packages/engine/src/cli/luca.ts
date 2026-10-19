@@ -9,6 +9,8 @@
  *   luca upgrade [--to <version>]  moves to another version of Luca
  *   luca doctor [--fix]            checks this computer and repo; --fix
  *                                  fixes what's safe
+ *   luca models                    scores each routed role's model from
+ *                                  this repo's runs
  *   luca hook <anything>           does nothing, quietly
  *
  * `luca hook` is for old Luca (v13), whose global Claude Code hook runs
@@ -26,7 +28,8 @@ Commands:
                             Set up this computer for Luca (once), then the repo you're in
   setup [--base <branch>]   Get the repo in this folder ready for Luca
   upgrade [--to <version>]  Move to the newest Luca on your channel, or to <version>
-  doctor [--fix]            Check this computer and repo; --fix fixes what's safe`
+  doctor [--fix]            Check this computer and repo; --fix fixes what's safe
+  models                    Score each routed role's model from this repo's runs`
 
 const main = async (): Promise<number> => {
     const [command, ...rest] = Bun.argv.slice(2)
@@ -48,6 +51,10 @@ const main = async (): Promise<number> => {
         case 'doctor': {
             const { doctorCommand } = await import('./doctor-command')
             return doctorCommand({ argv: rest })
+        }
+        case 'models': {
+            const { modelsCommand } = await import('./models-command')
+            return modelsCommand({ argv: rest })
         }
         case '--help':
         case '-h':

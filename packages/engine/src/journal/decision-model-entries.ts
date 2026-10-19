@@ -19,7 +19,9 @@ import {
 /**
  * The engine asked the decision model (Clef; Jev in older journals), in
  * shadow mode, with its own fixed choice beside. `model` is the model asked;
- * journals from before #534 have none.
+ * journals from before #534 have none. `acted` is true when the answer can
+ * change what the engine does, false for a shadow ask; older journals read
+ * it as false.
  */
 export const JevAskedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -29,6 +31,7 @@ export const JevAskedEntrySchema = z.object({
         request: JevRequestSchema,
         fixed: JevFixedSchema,
         model: z.string().optional(),
+        acted: z.boolean().default(false),
     }),
 })
 

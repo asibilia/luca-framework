@@ -123,6 +123,22 @@ describe('many tickets in one run, end to end, with scripted agents', () => {
         })
     })
 
+    test("#11's clashed join records no size; each join that landed records its size", () => {
+        const joins = ofKind(run.records, 'ticket_joined')
+        const clashed = joins.filter(({ content }) => !content.ok)
+        const landed = joins.filter(({ content }) => content.ok)
+
+        expect(
+            clashed.map(({ ticket, content }) => ({ ticket, content }))
+        ).toEqual([
+            { ticket: 11, content: { ok: false, error: expect.any(String) } },
+        ])
+        expect(landed.map(({ ticket }) => ticket)).toEqual([12, 11, 13])
+        for (const { content } of landed) {
+            expect(content).toMatchObject({ lines_changed: expect.any(Number) })
+        }
+    })
+
     test("#11's clash went to a fresh implementer, since the first one's session closed with the green commit, and a fresh reviewer re-reviewed the new changes", () => {
         const eleven = run.launches.filter(({ ticket }) => ticket === 11)
 
@@ -422,12 +438,19 @@ describe('many tickets with Jev in shadow mode', () => {
             expect(options).toContain(`ticket_${ask.ticket}`)
             expect(options).toContain('ticket_13')
         }
-        // #13 still gets its model ask.
+        // #13 still gets its agents' model asks, and no ticket is asked
+        // the old ticket_model.
+        const modelAsks = ofKind(jevRun.records, 'jev_asked').filter(
+            ({ content }) => content.job === 'agent_model'
+        )
         expect(
-            ofKind(jevRun.records, 'jev_asked')
-                .filter(({ content }) => content.job === 'ticket_model')
-                .map(({ ticket }) => ticket)
+            [...new Set(modelAsks.map(({ ticket }) => ticket))].toSorted()
         ).toEqual([11, 12, 13])
+        expect(
+            ofKind(jevRun.records, 'jev_asked').filter(
+                ({ content }) => content.job === 'ticket_model'
+            )
+        ).toEqual([])
         expect(ofKind(jevRun.records, 'jev_failed')).toEqual([])
     })
 })

@@ -91,7 +91,8 @@ export type ShadowAsker = (asks: JevAsk[]) => Promise<void>
  * Asks the decision model in **shadow mode** for one run: for each ask,
  * journals `jev_asked` with the engine's fixed choice and the model, then
  * `jev_answered` (with the model that answered) or `jev_failed`, linked back
- * by `asked_seq`. The answers change nothing. An ask outside Clef's limits
+ * by `asked_seq`. The answers change nothing here; the launch step reads an
+ * `agent_model` answer whose ask is `acted` (#603). An ask outside Clef's limits
  * (`ClefRequestSchema`) is skipped: not sent and not journaled. An error,
  * timeout, or missing credentials is journaled and never thrown, so the run
  * goes on.
@@ -122,12 +123,19 @@ export const shadowAsker = ({
             // Clef refuses it (a one-option choice, say), and the answer is
             // obvious: no call and no record (#546).
             if (!ClefRequestSchema.safeParse(ask.request).success) continue
-            const { job, ticket, role, request, fixed } = ask
+            const { job, ticket, role, request, fixed, acted } = ask
             const asked = journal.append({
                 kind: 'jev_asked',
                 ticket,
                 role,
-                content: { job, request, fixed, model: client.model },
+                // Shadow mode unless the ask says its answer is acted on.
+                content: {
+                    job,
+                    request,
+                    fixed,
+                    model: client.model,
+                    acted: acted ?? false,
+                },
             })
             const started = performance.now()
             const reply = checkedReply(

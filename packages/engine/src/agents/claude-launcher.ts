@@ -26,8 +26,7 @@ import {
     AGENT_EFFORT,
     agentEnv,
     agentOptions,
-    CLAUDE_MODEL,
-    checkModel,
+    checkLaunchModel,
 } from './claude-options'
 import { createInputChannel } from './input-channel'
 import { commonGitDir, realClaudePath } from './launch-paths'
@@ -63,7 +62,8 @@ export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60_000
  * The real agent launcher: one Claude Agent SDK session per agent, with
  * every guard on. Per launch it:
  *
- * 1. refuses a Fable or non-Claude model before starting anything;
+ * 1. refuses any model but `opus`, `sonnet` or `haiku` before starting
+ *    anything; follow-ups stay on their session's model;
  * 2. builds the role's locked-down options (`agentOptions`) with the guard
  *    hook (honoring `may_edit_tests`), the sandbox, and a clean environment;
  *    with `messaging` (test-writers and implementers), the `luca` server's
@@ -90,21 +90,18 @@ export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60_000
  *
  * @example
  * const launcher = createClaudeLauncher({})
- * const turn = await launcher.launch({ role: 'implementer', ticket: 11, prompt, cwd, may_edit_tests: false, config })
+ * const turn = await launcher.launch({ role: 'implementer', ticket: 11, prompt, cwd, may_edit_tests: false, config, messaging, model: 'opus' })
  * // ... later, in a fix loop:
  * if (turn.ok) await launcher.followUp({ session_id: turn.session_id, role: 'implementer', ticket: 11, message, cwd, config })
  * await launcher.closeAll()
  */
 export const createClaudeLauncher = ({
-    model,
     effort,
     query,
     claude_path,
     turn_timeout_ms,
     idle_timeout_ms,
 }: {
-    /** Defaults to `CLAUDE_MODEL`, Claude Opus 5.5. */
-    model?: string
     /** Defaults to `AGENT_EFFORT`, the same for every role. */
     effort?: EffortLevel
     query?: AgentQuery
@@ -114,7 +111,6 @@ export const createClaudeLauncher = ({
     /** Defaults to `DEFAULT_IDLE_TIMEOUT_MS`. */
     idle_timeout_ms?: number
 }): AgentLauncher & { closeAll: () => Promise<void> } => {
-    const useModel = model ?? CLAUDE_MODEL
     const useEffort = effort ?? AGENT_EFFORT
     const startQuery: AgentQuery = query ?? sdkQuery
     const timeoutMs = turn_timeout_ms ?? DEFAULT_TURN_TIMEOUT_MS
@@ -215,8 +211,9 @@ export const createClaudeLauncher = ({
         may_edit_tests,
         config,
         messaging,
+        model,
     }) => {
-        const refused = checkModel({ model: useModel })
+        const refused = checkLaunchModel({ model })
         if (refused !== null) return stop(refused)
         const started = Date.now()
         const fallback_id = `claude-launch-${randomUUID()}`
@@ -242,7 +239,7 @@ export const createClaudeLauncher = ({
             role,
             may_edit_tests,
             cwd: worktree,
-            model: useModel,
+            model,
             effort: useEffort,
             claude_path: claudePath,
             config,

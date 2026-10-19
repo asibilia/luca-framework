@@ -105,13 +105,36 @@ describe("decision-model jobs and Clef's limits", () => {
             }),
         ]
 
-        expect(asks.map(({ job }) => job)).toEqual([
-            'ticket_model',
-            'ticket_order',
-            'ticket_model',
-            'ticket_order',
-            'ticket_model',
-            'agent_skills',
+        expect(asks.map(({ job }) => job)).toEqual(
+            expect.arrayContaining(['ticket_order', 'agent_skills'])
+        )
+        expect(asks.filter((ask) => !fitsClef(ask))).toEqual([])
+    })
+
+    test('builds the agent_model asks before each fresh build agent within the limits', () => {
+        const started = runWith({ tickets: [11], started: [11] })
+        const asks = [
+            ...jevAsksBefore({ action: launchAgent(11), state: started }),
+            ...jevAsksBefore({
+                action: {
+                    type: 'launch_agent',
+                    ticket: 11,
+                    role: 'implementer',
+                    prompt: 'Write the code.',
+                    may_edit_tests: false,
+                },
+                state: started,
+            }),
+            ...jevAsksBefore({
+                action: { type: 'launch_learner', prompt: 'Learn.' },
+                state: started,
+            }),
+        ].filter(({ job }) => job === 'agent_model')
+
+        expect(asks.map(({ role }) => role)).toEqual([
+            'test-writer',
+            'implementer',
+            'learner',
         ])
         expect(asks.filter((ask) => !fitsClef(ask))).toEqual([])
     })

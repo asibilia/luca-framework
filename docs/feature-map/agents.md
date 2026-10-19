@@ -37,6 +37,21 @@ Tests:
 - `packages/engine/src/jev/jev-shadow-findings.e2e.test.ts`
 - `packages/board/server/decision-model-panel.test.ts`
 
+## Model routing and its score
+
+Each role has a model floor: the decision model's model pick takes effect for a role whose floor is below Opus, when it is sure enough, and every other agent, reviewers and lenses always, runs Opus. `luca models` reads this repo's run journals and scores each routed role per model from the ticket review's findings, beside fix rounds, stuck tickets and tokens, against the tickets where the decision model picked that model in shadow mode.
+
+Reached by: the `models` block (`floors`, `confidence_bar`) in a repo's `.luca/config.json`; each `agent_started` record names the model and why; `luca models` in a repo.
+
+Tests:
+
+- `packages/engine/src/jev/jev-model-pick.e2e.test.ts`
+- `packages/engine/src/jev/jev-model-safety.e2e.test.ts`
+- `packages/engine/src/jev/decision-model-glossary.test.ts`
+- `packages/engine/src/models/model-score.test.ts`
+- `packages/engine/src/models/model-score-verdicts.test.ts`
+- `packages/engine/src/cli/luca-command.test.ts`
+
 ## Agent messages and run notes
 
 Agents send each other one-way messages, even across tickets that build at the same time, and hand run notes on to later agents.

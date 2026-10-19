@@ -2,6 +2,7 @@
  * Memory as replay rebuilds it (#370): its state shape, a run with memory
  * off, and the learner's own agent records.
  */
+import { ranCheaper } from './agent-turn-replay'
 import type { ReplayedAgentFailure } from './final-review-state'
 import type { JournalRecord } from './journal-record'
 
@@ -27,6 +28,13 @@ export type LearnerState = {
     agent_failure: ReplayedAgentFailure | null
     /** Failed tries (agent, result, guard), in all. */
     failed_tries: number
+    /** The model its latest agent launched on (#604); `null` in older journals. */
+    launched_on: string | null
+    /**
+     * It used up a try on a model cheaper than Opus (#604), so its later
+     * agents run Opus.
+     */
+    failed_cheaper: boolean
     /** Engine failures in a row. */
     engine_failures: number
     /** Why the engine gave up on it (`learning_skipped`), if it did. */
@@ -61,6 +69,8 @@ export const EMPTY_MEMORY: MemoryState = {
         result_seq: null,
         agent_failure: null,
         failed_tries: 0,
+        launched_on: null,
+        failed_cheaper: false,
         engine_failures: 0,
         skipped: null,
     },
@@ -111,6 +121,7 @@ export const learnerAfter = ({
 }): LearnerState => {
     switch (record.kind) {
         case 'agent_started':
+            return { ...learner, launched_on: record.content.model }
         case 'agent_session':
             return learner
         case 'agent_finished':
@@ -137,6 +148,9 @@ export const learnerAfter = ({
                       agent_failure,
                       engine_failures: 0,
                       failed_tries: learner.failed_tries + 1,
+                      failed_cheaper:
+                          learner.failed_cheaper ||
+                          ranCheaper(learner.launched_on),
                   }
         }
     }

@@ -39,6 +39,7 @@ describe('follow-ups', () => {
             may_edit_tests: false,
             config: CONFIG,
             messaging: null,
+            model: 'opus',
         })
 
     const followUp = (

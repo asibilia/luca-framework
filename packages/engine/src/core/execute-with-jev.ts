@@ -10,6 +10,7 @@ import { ticketOf } from './schedule-rules'
 
 import { jevAsksAfter, jevAsksBefore } from '../jev/jev-jobs'
 import type { ShadowAsker } from '../jev/jev-shadow'
+import { asksModel } from '../jev/model-pick'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
@@ -23,7 +24,10 @@ import type { Tracker } from '../tracker/tracker'
  * before the action (ticket order, model, skills), then after it about the
  * records it appended (failure kinds, finding severities). Only the action's
  * own ticket's new records count, since other tickets append at the same
- * time. The answers change nothing.
+ * time. The answers change nothing, but for the model pick of a role whose
+ * floor is below Opus, which the launch step reads (#603). A launch whose
+ * model is set without the decision model (after a failed try on a cheaper
+ * model, or a redo) gets no model ask (#604).
  */
 export const executeWithJev = async ({
     ask,
@@ -48,11 +52,16 @@ export const executeWithJev = async ({
     step?: StepTry
     read_usage_lines?: () => Promise<UsageLines>
 }): Promise<void> => {
+    const before = journal.read()
+    const state = replayRun({ records: before })
     await ask(
-        jevAsksBefore({
-            action,
-            state: replayRun({ records: journal.read() }),
-        })
+        jevAsksBefore({ action, state }).filter(
+            // No model ask once the launch's model is set without one (#604).
+            ({ job, ticket, role }) =>
+                job !== 'agent_model' ||
+                role === null ||
+                asksModel({ records: before, state, ticket, role, step })
+        )
     )
     const lastSeq = journal.read().at(-1)?.seq ?? 0
     await executeAction({
