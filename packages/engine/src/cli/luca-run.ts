@@ -129,7 +129,10 @@ const run = async ({
             runs_dir: defaultRunsDir(),
             repo: args.repo,
             tracker: async ({ repo }) =>
-                createGitHubTracker({ repo: await githubRepoOf({ repo }) }),
+                createGitHubTracker({
+                    repo: await githubRepoOf({ repo }),
+                    log,
+                }),
             launcher: createClaudeLauncher({}),
             decision_model: await decisionModelSetup(),
             memory: await memoryOf(),
@@ -140,6 +143,7 @@ const run = async ({
     }
     const tracker = createGitHubTracker({
         repo: await githubRepoOf({ repo: args.repo }),
+        log,
     })
     return runSpec({
         spec_number: args.spec_number,
