@@ -166,28 +166,38 @@ const startedCard = ({
 
 /**
  * The card's model (#630): the agent's model and why, with its role's
- * waiting `agent_model` answer, which it uses up. No model when the journal
- * names none.
+ * waiting `agent_model` answer, which it uses up. A follow-up asks Clef
+ * nothing new, so it keeps the role's last used answer. No model when the
+ * journal names none.
  */
 const withModel = ({
     card,
     role,
+    follow_up_of,
     model,
     model_reason,
 }: {
     card: TicketCard
     role: string
+    follow_up_of: string | null
     model: string | null
     model_reason: string | null
 }): TicketCard => {
-    const answer = card.model_answer?.role === role ? card.model_answer : null
+    const waiting = card.model_answer?.role === role ? card.model_answer : null
+    const answer =
+        waiting ??
+        (follow_up_of === null ? null : (card.model_answers[role] ?? null))
     return {
         ...card,
         model:
             model === null
                 ? null
                 : { role, name: model, reason: model_reason, answer },
-        model_answer: answer === null ? card.model_answer : null,
+        model_answer: waiting === null ? card.model_answer : null,
+        model_answers:
+            waiting === null
+                ? card.model_answers
+                : { ...card.model_answers, [role]: waiting },
     }
 }
 
@@ -206,6 +216,7 @@ export const agentStarted = ({
             withModel({
                 card: startedCard({ card, role, follow_up_of }),
                 role,
+                follow_up_of,
                 model,
                 model_reason,
             }),

@@ -162,6 +162,12 @@ export const TicketCardSchema = z.object({
      */
     model_answer: ModelAnswerSchema.nullable().default(null),
     /**
+     * Each role's last used `agent_model` answer, by role, for its
+     * follow-ups, which ask nothing new. Defaulted, so an older board state
+     * still parses.
+     */
+    model_answers: z.record(z.string(), ModelAnswerSchema).default({}),
+    /**
      * The engine's step on it now, `null` between steps. Defaulted, so a
      * board state from before it still parses.
      */

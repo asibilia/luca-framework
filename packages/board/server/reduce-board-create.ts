@@ -122,6 +122,7 @@ export const newTicket = ({
     role: null,
     model: null,
     model_answer: null,
+    model_answers: {},
     current_step: null,
     fix_round: 0,
     review_round: 0,

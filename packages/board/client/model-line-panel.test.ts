@@ -205,12 +205,17 @@ const cardWith = async ({
     agent,
     bar,
     theme = THEME,
+    after = [],
 }: {
     agent: Agent
     bar?: number
     theme?: PluginTheme
+    /** Records journaled after the agent's launch. */
+    after?: Entry[]
 }): Promise<Screen> => {
-    const state = await stateAfter({ entries: journalWith({ agent, bar }) })
+    const state = await stateAfter({
+        entries: [...journalWith({ agent, bar }), ...after],
+    })
     const ticket = state.tickets.find((card) => card.number === 13)
     if (!ticket) throw new Error('no ticket #13')
     screen?.unmount()
@@ -475,6 +480,58 @@ describe("model tags and Clef's line on each card (#630)", () => {
         expect(split?.value).toEqual({ min: 0, max: 100, now: 56 })
         expect(split?.width).toBe('56%')
         expect(inHue(split?.color ?? '', AMBER)).toBe(true)
+    })
+
+    test("a follow-up of the same role, with no new ask, keeps Clef's confidence text and bar", async () => {
+        /** An `agent_started` on #13 with its step, and no `agent_model` ask. */
+        const started = ({
+            role,
+            model,
+            model_reason,
+            follow_up_of,
+        }: {
+            role: string
+            model: string
+            model_reason: string
+            follow_up_of: string | null
+        }): Entry[] => [
+            stepStarted({ ticket: 13, step: `launch_agent:${role}`, role }),
+            {
+                kind: 'agent_started',
+                ticket: 13,
+                role,
+                content: {
+                    role,
+                    prompt: `You are the ${role}.`,
+                    follow_up_of,
+                    model,
+                    model_reason,
+                },
+            },
+        ]
+        const shown = await cardWith({
+            agent: SHARP_SONNET,
+            after: [
+                ...started({
+                    role: 'ticket-reviewer',
+                    model: 'opus',
+                    model_reason: 'locked',
+                    follow_up_of: null,
+                }),
+                ...started({
+                    role: 'implementer',
+                    model: 'sonnet',
+                    model_reason: 'decision_model',
+                    follow_up_of: 'session-implementer-1',
+                }),
+            ],
+        })
+
+        const text = '0.92 sharp → sonnet'
+        expect(textOf(lineWith({ shown, text }))).toContain(text)
+        const bar = barOf({ shown })
+        expect(bar?.width).toBe('92%')
+        expect(inHue(bar?.color ?? '', GREEN)).toBe(true)
     })
 
     test("sharp and split follow the config's models.confidence_bar", async () => {
