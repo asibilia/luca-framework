@@ -59,7 +59,12 @@ The repo's root `bunx --bun tsc --noEmit` leaves this package out: React Native'
 
 Layout:
 
-- `shared/`: Zod contracts and plain values only.
+- `shared/`: Zod contracts and plain values only. The board's state, `board-state.ts`, holds the plugin's constants and the whole `BoardState`, and re-exports its pieces from modules by responsibility:
+  - `board-state-ticket.ts`: a ticket's card, its steps and stage, its findings, and the step the engine is in.
+  - `board-state-run.ts`: the run (status, phase, stop, budget), the stuck work that needs a reply, the tickets left out for a person, and the run list's summaries.
+  - `board-state-review.ts`: the final review and its lenses.
+  - `board-state-usage.ts`: plan usage, its windows, and their color levels.
+  - `board-state-counts.ts`: what the board only counts (the decision model's questions, agent messages, memory).
 - `server/`: the Node side. It holds the reducer, the row-maker, the registry, the launcher, the engine watch (restarts), the journal reader (`run-journals.ts`, the runs folder on disk), and the vocabulary (`board-vocabulary.ts`, with its kinds in `board-vocabulary-run.ts`, `board-vocabulary-engine.ts`, and `board-vocabulary-review.ts` and the schema pieces they share in `board-vocabulary-shapes.ts`), with tests next to them.
   - The reducer, `reduce-board.ts`, applies a record and passes it on by kind. Its handlers are in modules by responsibility, and each module exports the record kinds it handles (`*_KINDS`):
     - `reduce-board-run.ts`: the run's own records (start, intake, snapshot, run branch, pull request, stop).
