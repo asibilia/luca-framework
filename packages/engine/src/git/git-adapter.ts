@@ -124,12 +124,16 @@ export type GitAdapter = {
     }) => Promise<string[]>
     /**
      * Replays commits onto the branch checked out at `cwd`, in order. A clash
-     * is undone and returned as an error.
+     * is undone and returned as an error. `lines_changed` is the lines the
+     * replay added plus removed, binary files counting 0.
      */
     replay: (args: {
         cwd: string
         commits: string[]
-    }) => Promise<{ ok: true; shas: string[] } | { ok: false; error: string }>
+    }) => Promise<
+        | { ok: true; shas: string[]; lines_changed: number }
+        | { ok: false; error: string }
+    >
     /**
      * Undoes a replay on the branch checked out at `cwd`: resets it hard to
      * the commit before `first_sha`. It never rewinds over other work

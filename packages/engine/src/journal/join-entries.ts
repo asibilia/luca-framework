@@ -19,6 +19,11 @@ export const TicketJoinedEntrySchema = z.object({
             ok: z.literal(true),
             /** The new commits on the run branch, oldest first. */
             shas: z.array(z.string().min(1)),
+            /**
+             * The ticket's size: lines added plus lines removed by its
+             * commits, binary files counting 0. `null` in older journals.
+             */
+            lines_changed: z.number().int().min(0).nullable().default(null),
         }),
         z.object({ ok: z.literal(false), error: z.string() }),
     ]),
