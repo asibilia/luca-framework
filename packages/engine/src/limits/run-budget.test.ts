@@ -88,7 +88,7 @@ describe('engine config: run_budget_tokens', () => {
 describe('the engine README', () => {
     test('explains the run budget and how to change it with run_budget_tokens', async () => {
         const text = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'plan-limits.md')
         ).text()
 
         expect(text).toMatch(/run budget/i)

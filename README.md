@@ -24,7 +24,7 @@ bun packages/engine/src/cli/luca-run.ts --demo
 bun packages/engine/src/cli/luca-run.ts --resume <run-id>
 ```
 
-See [The command line: `luca-run`](packages/engine/README.md#the-command-line-luca-run) for every flag.
+See [The command line: `luca-run`](packages/engine/docs/board-and-command-line.md#the-command-line-luca-run) for every flag.
 
 ## Develop
 

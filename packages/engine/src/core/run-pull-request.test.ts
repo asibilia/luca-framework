@@ -12,7 +12,7 @@ import { describe, expect, test } from 'bun:test'
 describe('the engine README', () => {
     test('describes the PR body budget, the saved pull-request.md, the PR comments, and the stuck reason', async () => {
         const text = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'stuck-work.md')
         ).text()
 
         expect(text).toMatch(/60,000/)

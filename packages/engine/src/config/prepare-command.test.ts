@@ -170,7 +170,7 @@ describe('engine config: how many prepare runs go at once (#492)', () => {
 describe('the engine README', () => {
     test('documents the prepare command with the HeartGold example', async () => {
         const text = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'prepare-and-tests.md')
         ).text()
 
         expect(text).toMatch(/`prepare`|"prepare"/)
@@ -179,7 +179,7 @@ describe('the engine README', () => {
 
     test('documents the prepare time limit and how to raise it', async () => {
         const text = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'prepare-and-tests.md')
         ).text()
 
         expect(text).toContain('prepare_timeout_ms')
@@ -188,7 +188,7 @@ describe('the engine README', () => {
 
     test('documents how many prepare runs go at once and how to change it', async () => {
         const text = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'prepare-and-tests.md')
         ).text()
 
         expect(text).toContain('prepare_concurrency')

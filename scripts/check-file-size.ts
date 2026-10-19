@@ -155,7 +155,7 @@ const SPLIT_INSTRUCTIONS: Record<FileKind, { title: string; steps: string[] }> =
                 'Split the file by describe block into new files named <name>-<topic>.test.ts. Keep the .e2e.test.ts ending for end-to-end files.',
                 'If both halves need the same helpers, move them to a small helper module.',
                 'Do not change what any test checks; the test count must stay the same.',
-                'List each new test file under its feature in docs/feature-map.md (the red check and gates/feature-map-docs.test.ts require it).',
+                "List each new test file on its area's page in docs/feature-map/, not in the old docs/feature-map.md (the red check and gates/feature-map-docs.test.ts require it).",
             ],
         },
         markdown: {

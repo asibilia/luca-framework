@@ -249,3 +249,67 @@ describe('the feature map path (#583)', () => {
         )
     })
 })
+
+describe('a feature map file must end in .md (#597)', () => {
+    const writeMapConfig = async ({ feature_map }: { feature_map: string }) =>
+        writeConfig({
+            text: JSON.stringify({ checks: { test: 'bun test' }, feature_map }),
+        })
+
+    test('a feature_map of FEATURES that is a file is an error naming the field and the path', async () => {
+        await writeFile(join(repoRoot, 'FEATURES'), '# Features\n')
+        await writeMapConfig({ feature_map: 'FEATURES' })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(false)
+        if (!result.ok) {
+            expect(result.error).toContain('feature_map')
+            expect(result.error).toContain('FEATURES')
+        }
+    })
+
+    test('a feature_map of docs/map.txt that is a file is an error', async () => {
+        await mkdir(join(repoRoot, 'docs'), { recursive: true })
+        await writeFile(join(repoRoot, 'docs', 'map.txt'), '# Features\n')
+        await writeMapConfig({ feature_map: 'docs/map.txt' })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(false)
+    })
+
+    test('a feature_map naming a folder of pages is accepted', async () => {
+        await mkdir(join(repoRoot, 'docs', 'feature-map'), { recursive: true })
+        await writeFile(
+            join(repoRoot, 'docs', 'feature-map', 'index.md'),
+            '# Features\n'
+        )
+        await writeMapConfig({ feature_map: 'docs/feature-map' })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(true)
+    })
+
+    test('a feature_map folder that is not on disk is accepted, so the red check names it', async () => {
+        await writeMapConfig({ feature_map: 'docs/feature-map' })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(true)
+    })
+
+    test('a feature_map of docs/feature-map.md that is a file is accepted', async () => {
+        await mkdir(join(repoRoot, 'docs'), { recursive: true })
+        await writeFile(
+            join(repoRoot, 'docs', 'feature-map.md'),
+            '# Features\n'
+        )
+        await writeMapConfig({ feature_map: 'docs/feature-map.md' })
+
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+
+        expect(result.ok).toBe(true)
+    })
+})

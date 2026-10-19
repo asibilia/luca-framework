@@ -1,5 +1,6 @@
 import type { AgentRole, BadTest, BadTestSource, Finding } from './role-results'
 
+import { isFeatureMapFolder } from '../config/engine-config'
 import type { SpecSnapshot, TicketSnapshot } from '../intake/intake-schemas'
 import type { RejoinCause } from '../journal/journal-record'
 import { agentAddress, canMessage } from '../messages/agent-messages'
@@ -203,7 +204,8 @@ export const prepareSection = ({ command }: { command: string }): string =>
 /**
  * The section a test-writer gets when the repo has a feature map (#583): the
  * one file besides test files it may edit. It comes after the task's "Edit
- * test files only", so it reads as that line's exception.
+ * test files only", so it reads as that line's exception. A folder map
+ * (#597) is its `*.md` pages, and a new test file goes on its area's page.
  *
  * @param path - The map's path, as `featureMapPath` gives it.
  *
@@ -214,10 +216,15 @@ export const prepareSection = ({ command }: { command: string }): string =>
 export const featureMapSection = ({ path }: { path: string }): string =>
     [
         '## The feature map',
-        `Besides test files, you may edit the feature map, \`${path}\`. ` +
-            'Read it first: it lists each feature and the test files that prove it. ' +
-            "Put new tests in a feature's existing test files when you can; " +
-            'a new test file must be listed under its feature in the map.',
+        isFeatureMapFolder({ path })
+            ? `Besides test files, you may edit the feature map's pages, the \`*.md\` files under \`${path}/\`. ` +
+              'Read the pages first: they list each feature and the test files that prove it. ' +
+              "Put new tests in a feature's existing test files when you can; " +
+              "a new test file must be listed under its feature on its area's page (add a page for a new area)."
+            : `Besides test files, you may edit the feature map, \`${path}\`. ` +
+              'Read it first: it lists each feature and the test files that prove it. ' +
+              "Put new tests in a feature's existing test files when you can; " +
+              'a new test file must be listed under its feature in the map.',
     ].join('\n\n')
 
 /**

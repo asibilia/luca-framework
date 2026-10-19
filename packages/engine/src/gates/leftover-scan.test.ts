@@ -104,9 +104,11 @@ describe('scanLeftovers still catches real leftovers (#507)', () => {
 
 describe('the engine README (#507)', () => {
     const readme = () =>
-        Bun.file(join(import.meta.dir, '..', '..', 'README.md')).text()
+        Bun.file(
+            join(import.meta.dir, '..', '..', 'docs', 'prepare-and-tests.md')
+        ).text()
 
-    /** The README's paragraphs and list items, one each. */
+    /** The page's paragraphs and list items, one each. */
     const paragraphs = async () => (await readme()).split(/\n\s*\n/)
 
     test("documents the leftover scan's allowlist of files loaded by name", async () => {

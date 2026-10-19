@@ -11,7 +11,7 @@ import { describe, expect, test } from 'bun:test'
 describe('the engine README', () => {
     test('says runs start from origin/<base>', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'choices-made.md')
         ).text()
 
         expect(readme).toContain('origin/<base>')

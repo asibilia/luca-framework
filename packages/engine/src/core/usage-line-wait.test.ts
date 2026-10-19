@@ -222,7 +222,7 @@ describe('usage-line waits', () => {
 describe('the engine README', () => {
     test('has a "The usage line" section about the two lines and their defaults', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', '..', 'README.md')
+            join(import.meta.dir, '..', '..', 'docs', 'plan-limits.md')
         ).text()
         const start = readme.indexOf('\n## The usage line')
         expect(start).toBeGreaterThan(-1)

@@ -1,3 +1,4 @@
+import { stat } from 'node:fs/promises'
 import { isAbsolute, join, normalize } from 'node:path'
 
 import { z } from 'zod'
@@ -133,9 +134,11 @@ export const EngineConfigSchema = z.object({
     leftover_allow: z.array(z.string().min(1)).optional(),
     /**
      * A markdown file listing each feature and the test files that prove it
-     * (#583), relative to the repo root: a file inside the repo, so not an
-     * absolute path, not one that climbs out with `..`, and not a folder (no
-     * trailing `/`). The red check refuses a new test file it doesn't list,
+     * (#583), relative to the repo root: a path inside the repo, so not an
+     * absolute path, not one that climbs out with `..`, and not ending in
+     * `/`. A path not ending in `.md` names a folder (#597): every `*.md`
+     * page under it together is the map, and `loadEngineConfig` refuses one
+     * that is a file. The red check refuses a new test file it doesn't list,
      * and the test-writer may edit it. Left out, no map.
      */
     feature_map: z
@@ -143,7 +146,7 @@ export const EngineConfigSchema = z.object({
         .min(1)
         .refine(isFileInsideRepo, {
             message:
-                'must be a file inside the repo, relative to its root: not an absolute path, not one that leaves the repo with "..", and not a folder',
+                'must be a file inside the repo, or a folder of pages in it, relative to its root: not an absolute path, not one that leaves the repo with "..", and not ending in "/"',
         })
         .optional(),
     test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
@@ -313,6 +316,19 @@ export const featureMapPath = ({
         : normalize(config.feature_map).replace(/^\.\//, '')
 
 /**
+ * Whether a feature map path names a folder of pages (#597): any path not
+ * ending in `.md`. The path alone decides, so the guard and the prompts,
+ * which never read the disk, agree with the red check. `loadEngineConfig`
+ * refuses such a path when it is a file, so a map file must end in `.md`.
+ *
+ * @example
+ * isFeatureMapFolder({ path: 'docs/feature-map' }) // true
+ * isFeatureMapFolder({ path: 'docs/feature-map.md' }) // false
+ */
+export const isFeatureMapFolder = ({ path }: { path: string }): boolean =>
+    !path.toLowerCase().endsWith('.md')
+
+/**
  * A fast `bun` test command with the speed limit (#580): `--timeout=<n>` at
  * its end, or the command as written with no limit.
  *
@@ -394,5 +410,25 @@ export const loadEngineConfig = async ({
             error: `${path} is not a valid engine config:\n${z.prettifyError(parsed.error)}`,
         }
     }
+    const map = featureMapPath({ config: parsed.data })
+    if (
+        map !== null &&
+        isFeatureMapFolder({ path: map }) &&
+        (await isFile({ path: join(repo_root, map) }))
+    ) {
+        return {
+            ok: false,
+            error: `${path} is not a valid engine config: feature_map ${map} is a file, but a path not ending in ".md" names a folder of pages. Rename the map to end in ".md", or make it a folder of *.md pages.`,
+        }
+    }
     return { ok: true, config: parsed.data }
+}
+
+/** Whether a path is a file (or a link to one), without failing. */
+const isFile = async ({ path }: { path: string }): Promise<boolean> => {
+    try {
+        return (await stat(path)).isFile()
+    } catch {
+        return false
+    }
 }
