@@ -85,6 +85,16 @@ Tests:
 - `packages/board/server/usage-line-panel.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
 
+## One run per repo: the repo wait
+
+A run started while an earlier run on the same repo is going waits for it before intake, tells its spec issue once which run it waits for, goes on by itself once that run ends or stops, and is stuck as `repo_busy` after 24 hours.
+
+Reached by: `luca-run --spec <n>` while another run on the repo is going; `luca-run --alongside` skips the wait.
+
+Tests:
+
+- `packages/engine/src/core/repo-wait.test.ts`
+
 ## Token counts and the run budget
 
 Each ticket's and each run's exact tokens are journaled per model, and a run that uses its whole budget is stuck until the owner says whether to go on.
