@@ -17,6 +17,31 @@ lint keep 5 minutes. A test command that runs out of time fails, and its
 output starts with "Timed out after 5 minutes" and says to raise
 `test_timeout_ms`.
 
+**Test slots (#544).** Tickets run their tests at the same time on one
+machine, so tests that share ports, files, or a database can collide. A
+repo caps how many test runs go at once across the run with
+`test_concurrency` (a positive whole number) in `.luca/config.json`:
+
+```json
+{ "checks": { "test": "bun test" }, "test_concurrency": 1 }
+```
+
+- It covers every test command the engine runs: the baseline, the red check
+  (its own-files run too), the already-done check, and every gate's `test`
+  and `slow_test` commands (a ticket's, a join's, and the final review's,
+  with the final review's slow tests). Each command takes one slot, in call
+  order; prepare keeps its own slots (`prepare_concurrency`).
+- Waiting for a slot never counts toward `test_timeout_ms`: the time limit
+  and `duration_ms` start once the command does. The wait is journaled as
+  `wait_ms`, on the test run (`baseline_tests`, `red_check`) or on the gate
+  check. With a cap, every run records it, `0` when it didn't wait.
+- The slots also have an exclusive take: it waits until no test run holds a
+  slot, then holds them all, so nothing else starts until it ends.
+- A resume reloads it (see [Crash recovery](crash-recovery.md)), so a
+  running run's cap can be lowered.
+- Left out, there is no cap: nothing waits, and no run or check has
+  `wait_ms`.
+
 **Slow tests (#563).** A repo with a long end-to-end suite names it in
 `checks.slow_test`, and leaves it out of `checks.test`. It has the same shape
 as `checks.test`: one command, or a list of commands and `{ run, results }`

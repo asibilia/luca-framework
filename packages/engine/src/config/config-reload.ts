@@ -18,6 +18,9 @@ import type { EngineConfig } from './engine-config'
  * - `prepare_concurrency`: how many prepare runs may go at once. The
  *   prepare slots take the limit on each call (`prepareCheck`), so a new
  *   one counts from the next prepare run.
+ * - `test_concurrency`: how many test runs may go at once (#544). The test
+ *   slots take the limit on each call (`inTestSlot`), as the prepare slots
+ *   do, so a new one counts from the next test run.
  * - `test_timeout_ms`: how long each test command may run (#542). Each run
  *   of a test command reads it then, so a new one counts from the next.
  * - `test_case_timeout_ms`: how long one fast test may take (#580). Each run
@@ -30,6 +33,7 @@ export const RELOADED_FIELDS = [
     'prepare',
     'prepare_timeout_ms',
     'prepare_concurrency',
+    'test_concurrency',
     'test_timeout_ms',
     'test_case_timeout_ms',
     'leftover_allow',
@@ -101,6 +105,11 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         to: positiveInt,
     }),
     z.object({
+        field: z.literal('test_concurrency'),
+        from: positiveInt,
+        to: positiveInt,
+    }),
+    z.object({
         field: z.literal('test_timeout_ms'),
         from: positiveInt,
         to: positiveInt,
@@ -152,6 +161,11 @@ export const configChanges = ({
             to: next.prepare_concurrency ?? null,
         },
         {
+            field: 'test_concurrency',
+            from: current.test_concurrency ?? null,
+            to: next.test_concurrency ?? null,
+        },
+        {
             field: 'test_timeout_ms',
             from: current.test_timeout_ms ?? null,
             to: next.test_timeout_ms ?? null,
@@ -190,6 +204,10 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'prepare_concurrency')
                 : { ...config, prepare_concurrency: change.to }
+        case 'test_concurrency':
+            return change.to === null
+                ? omit(config, 'test_concurrency')
+                : { ...config, test_concurrency: change.to }
         case 'test_timeout_ms':
             return change.to === null
                 ? omit(config, 'test_timeout_ms')

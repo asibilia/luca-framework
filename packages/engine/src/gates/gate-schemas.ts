@@ -26,6 +26,11 @@ export const TestRunSchema = z.object({
     files_without_results: z.array(z.string()),
     /** The command's output, clipped. */
     output: z.string(),
+    /**
+     * How long it waited for a test slot (#544), only with
+     * `test_concurrency` set.
+     */
+    wait_ms: z.number().int().nonnegative().optional(),
 })
 
 export type TestRun = z.infer<typeof TestRunSchema>
@@ -56,7 +61,11 @@ export const GateCheckSchema = z.object({
     output: z.string(),
     /** How long the command ran (#518). Missing in old journals. */
     duration_ms: z.number().int().nonnegative().optional(),
-    /** `prepare` only: how long it waited for a prepare slot (#518). */
+    /**
+     * How long it waited for its slot: a prepare slot for `prepare` (#518),
+     * a test slot for `test` and `slow_test` with `test_concurrency` set
+     * (#544).
+     */
     wait_ms: z.number().int().nonnegative().optional(),
 })
 

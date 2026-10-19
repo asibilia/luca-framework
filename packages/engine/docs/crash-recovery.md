@@ -65,7 +65,8 @@ journal, or an empty one, is an error (exit 1). `unfinishedRuns({ runs_dir
 its `run_started`. On a resume (`--resume`, a run id whose journal exists,
 or the board's auto-restart, which runs `--resume`), the engine reads the
 repo's `.luca/config.json` again and takes its new **build fields**:
-`prepare`, `prepare_timeout_ms`, `prepare_concurrency`, the test time
+`prepare`, `prepare_timeout_ms`, `prepare_concurrency`, the test slots'
+cap `test_concurrency` (#544), the test time
 limit `test_timeout_ms` (#542), the fast test speed limit
 `test_case_timeout_ms` (#580), and the leftover scan's `leftover_allow`
 (#520), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one

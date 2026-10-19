@@ -164,6 +164,12 @@ export const EngineConfigSchema = z.object({
      */
     prepare_concurrency: z.number().int().positive().optional(),
     /**
+     * How many test runs may go at once across the run (#544): the
+     * baseline, the red check, the already-done check, and every gate's
+     * test and slow test commands. Left out, no cap.
+     */
+    test_concurrency: z.number().int().positive().optional(),
+    /**
      * How long each test command may run, in milliseconds; left out, the
      * engine's default (`DEFAULT_COMMAND_TIMEOUT_MS`, 5 minutes).
      */

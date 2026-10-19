@@ -181,6 +181,7 @@ export const executeBuildAction = async ({
                 commands: bunTestCommands(context),
                 test_files: await testFilesIn({ context, cwd: path }),
                 timeout_ms: testTimeoutOf({ config: context.config }),
+                test_concurrency: context.config.test_concurrency,
                 report_file: await reportFile({
                     context,
                     ticket: action.ticket,

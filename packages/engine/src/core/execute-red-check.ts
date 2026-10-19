@@ -115,6 +115,7 @@ export const runRedCheck = async ({
         commands: bunTestCommands(context),
         test_files,
         timeout_ms: testTimeoutOf({ config: context.config }),
+        test_concurrency: context.config.test_concurrency,
         report_file: await reportFile({
             context,
             ticket: action.ticket,
@@ -150,6 +151,7 @@ export const runRedCheck = async ({
                           label: 'red-own',
                       }),
                       timeout_ms: testTimeoutOf({ config: context.config }),
+                      test_concurrency: context.config.test_concurrency,
                   }),
                   test_files,
               })

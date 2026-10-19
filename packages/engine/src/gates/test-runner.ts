@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 
 import type { TestCase, TestRun } from './gate-schemas'
+import { inTestSlot } from './prepare-slots'
 
 import { clipOutput, runShell, timedOutLine } from '../shell/run-command'
 
@@ -111,8 +112,35 @@ export const TEST_TIMEOUT_HINT =
  * One that runs past `timeout_ms` (see `testTimeoutOf`) is stopped, with
  * everything it started, and fails; its output starts by saying so, and how
  * to give it longer (#542).
+ *
+ * With `test_concurrency` (#544), it first waits for a test slot (see
+ * `inTestSlot`): the run records that wait as `wait_ms`, and its time limit
+ * starts after it.
  */
 export const runTests = async ({
+    cwd,
+    command,
+    test_files,
+    report_file,
+    timeout_ms,
+    test_concurrency,
+}: {
+    cwd: string
+    command: string
+    /** The worktree's test files, to spot files that produced no results. */
+    test_files: string[]
+    report_file: string
+    timeout_ms: number
+    /** The config's `test_concurrency`; left out, no slot is taken. */
+    test_concurrency?: number
+}): Promise<TestRun> =>
+    inTestSlot({
+        test_concurrency,
+        work: () =>
+            runTestsNow({ cwd, command, test_files, report_file, timeout_ms }),
+    })
+
+const runTestsNow = async ({
     cwd,
     command,
     test_files,
@@ -121,7 +149,6 @@ export const runTests = async ({
 }: {
     cwd: string
     command: string
-    /** The worktree's test files, to spot files that produced no results. */
     test_files: string[]
     report_file: string
     timeout_ms: number
@@ -208,6 +235,7 @@ export const runBunTests = async ({
     test_files,
     report_file,
     timeout_ms,
+    test_concurrency,
 }: {
     cwd: string
     commands: string[]
@@ -215,6 +243,8 @@ export const runBunTests = async ({
     report_file: string
     /** Each command's time limit (see `runTests`). */
     timeout_ms: number
+    /** The config's `test_concurrency`: each command takes a test slot. */
+    test_concurrency?: number
 }): Promise<TestRun> => {
     const runs: TestRun[] = []
     for (const [index, command] of commands.entries()) {
@@ -225,6 +255,7 @@ export const runBunTests = async ({
                 test_files,
                 report_file: reportFileFor({ report_file, index }),
                 timeout_ms,
+                test_concurrency,
             })
         )
     }
@@ -269,7 +300,8 @@ export const withOwnRun = ({
  * file without results only when no run gave it any. One run is itself. No
  * run (a run of refactor tickets only, which the red check skips) gives an
  * empty passing run. Used for the baseline and the red check
- * (`runBunTests`) and for a ticket's own slow test files (#564).
+ * (`runBunTests`) and for a ticket's own slow test files (#564). Their
+ * waits for a test slot add up to the joined run's `wait_ms` (#544).
  *
  * @example
  * const run = joinRuns({ runs: [fast, own], test_files })
@@ -296,6 +328,9 @@ export const joinRuns = ({
     if (runs.length === 1) return first
     const cases = runs.flatMap((run) => run.cases)
     const withResults = new Set(cases.map(({ file }) => file))
+    const waits = runs.flatMap(({ wait_ms }) =>
+        wait_ms === undefined ? [] : [wait_ms]
+    )
     return {
         command: runs.map(({ command }) => command).join(' && '),
         ok: runs.every(({ ok }) => ok),
@@ -310,5 +345,8 @@ export const joinRuns = ({
                 .map(({ command, output }) => `$ ${command}\n${output}`)
                 .join('\n\n'),
         }),
+        ...(waits.length === 0
+            ? {}
+            : { wait_ms: waits.reduce((total, wait) => total + wait, 0) }),
     }
 }
