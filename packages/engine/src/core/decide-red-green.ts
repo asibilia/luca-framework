@@ -165,6 +165,21 @@ export const testStep = ({
                 `A ticket like that is a refactor ticket: add the \`${REFACTOR_LABEL}\` label and retry it.`,
         })
     }
+    const redCheck: Extract<BuildAction, { type: 'run_red_check' }> = {
+        type: 'run_red_check',
+        ticket: number,
+        criteria_ids: ticket.criteria.map(({ id }) => id),
+        mapping: test_writer.criteria,
+    }
+    // Its old tests failed in another ticket too: run it alone first, even
+    // after an `environment` rerun, before that can make it stuck.
+    if (
+        red_check !== null &&
+        !red_check.ok &&
+        loneRerunDue({ check: red_check, progress, which: 'red_check' })
+    ) {
+        return { ...redCheck, exclusive: true }
+    }
     const blamed = environmentFailedDetail({
         environment:
             progress.environment?.check === 'red_check'
@@ -180,18 +195,8 @@ export const testStep = ({
             detail: blamed,
         })
     }
-    const redCheck: Extract<BuildAction, { type: 'run_red_check' }> = {
-        type: 'run_red_check',
-        ticket: number,
-        criteria_ids: ticket.criteria.map(({ id }) => id),
-        mapping: test_writer.criteria,
-    }
     if (red_check === null) return redCheck
     if (!red_check.ok) {
-        // Its old tests failed in another ticket too: run it alone first.
-        if (loneRerunDue({ check: red_check, progress, which: 'red_check' })) {
-            return { ...redCheck, exclusive: true }
-        }
         const problems = red_check.problems.join('\n')
         if (progress.red_fix_rounds >= MAX_FIX_ROUNDS) {
             return stuck({
@@ -331,6 +336,20 @@ export const gateStep = ({
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
     const { gates } = progress
+    // Its old tests failed in another ticket too: run them alone first, even
+    // after an `environment` rerun, before that can make it stuck.
+    if (
+        gates !== null &&
+        !gates.ok &&
+        loneRerunDue({ check: gates, progress, which: 'gates' })
+    ) {
+        return {
+            type: 'run_gates',
+            ticket: number,
+            target: 'ticket',
+            exclusive: true,
+        }
+    }
     const blamed = environmentFailedDetail({
         environment:
             progress.environment?.check === 'gates'
@@ -350,15 +369,6 @@ export const gateStep = ({
         return { type: 'run_gates', ticket: number, target: 'ticket' }
     }
     if (gates.ok) return null
-    // Its old tests failed in another ticket too: run them alone first.
-    if (loneRerunDue({ check: gates, progress, which: 'gates' })) {
-        return {
-            type: 'run_gates',
-            ticket: number,
-            target: 'ticket',
-            exclusive: true,
-        }
-    }
     if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
         return stuck({
             ticket: number,

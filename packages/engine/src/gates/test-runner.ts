@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 
 import type { TestCase, TestRun } from './gate-schemas'
-import { inTestSlot } from './prepare-slots'
+import { inTestSlot } from './test-slots'
 
 import { clipOutput, runShell, timedOutLine } from '../shell/run-command'
 

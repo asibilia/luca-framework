@@ -1,11 +1,12 @@
 import type { GateCheck, GateName, TestCase, TestRun } from './gate-schemas'
-import { inTestSlot, PREPARE_SLOTS } from './prepare-slots'
+import { PREPARE_SLOTS } from './prepare-slots'
 import {
     fileTestsCommand,
     reportFileFor,
     runTestsInHeldSlot,
     TEST_TIMEOUT_HINT,
 } from './test-runner'
+import { inTestSlot } from './test-slots'
 
 import {
     caseLimitOf,
