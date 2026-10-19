@@ -1,422 +1,59 @@
+/**
+ * Loading the engine config (`loadEngineConfig`). The config's shape is in
+ * `engine-config-schema.ts`, the reads of its fields in `config-fields.ts`,
+ * and the test commands in `test-commands.ts`; this module re-exports all of
+ * them, so importers use `./engine-config` as ever.
+ */
 import { stat } from 'node:fs/promises'
-import { isAbsolute, join, normalize } from 'node:path'
+import { join } from 'node:path'
 
 import { z } from 'zod'
 
+import { featureMapPath, isFeatureMapFolder } from './config-fields'
 import {
-    DEFAULT_DECISION_MODEL,
-    DecisionModelIdSchema,
-    type DecisionModelId,
-} from '../jev/jev-schemas'
-import { DEFAULT_COMMAND_TIMEOUT_MS } from '../shell/run-command'
+    ENGINE_CONFIG_FILE,
+    EngineConfigSchema,
+    type EngineConfig,
+} from './engine-config-schema'
 
-/**
- * The engine config file, relative to the root of the repo a run works on.
- * `muninn.vault` sits at the same path old Luca used, because memory tooling
- * outside the engine reads it from there.
- */
-export const ENGINE_CONFIG_FILE = '.luca/config.json'
-
-/**
- * How the engine reads a test command's results: `bun` for bun's per-test
- * results (the red check and baseline use these), `pass_fail` for just its
- * exit code.
- */
-export const TestResultsSchema = z.enum(['bun', 'pass_fail'])
-
-export type TestResults = z.infer<typeof TestResultsSchema>
-
-/** One entry of a `checks.test` list: a command, or a command and its kind. */
-const TestCommandEntrySchema = z.union([
-    z.string().min(1),
-    z.object({
-        run: z.string().min(1),
-        results: TestResultsSchema.optional(),
-    }),
-])
-
-/** A test command setting: one command, or a list of them (see `testCommands`). */
-const TestCommandsSchema = z.union([
-    z.string().min(1),
-    z.array(TestCommandEntrySchema),
-])
-
-/** The config's `muninn` block. */
-export const MuninnConfigSchema = z.object({
-    /** The project's memory vault. */
-    vault: z.string().min(1),
-})
-
-/**
- * The config's `decision_model` block (#534): the Clef model shadow mode
- * asks, `@cf/cloudflare/clef` (the accurate one, the default) or
- * `@cf/cloudflare/clef-flash` (the fast one).
- */
-export const DecisionModelConfigSchema = z.object({
-    model: DecisionModelIdSchema.default(DEFAULT_DECISION_MODEL),
-})
-
-/**
- * The models an agent may launch on, by short name, strongest first: the
- * one list the launcher, the floors, and the decision model's options read.
- * Claude Code turns each into its newest version; the session's init names
- * the exact one.
- */
-export const ModelNameSchema = z.enum(['opus', 'sonnet', 'haiku'])
-
-export type ModelName = z.infer<typeof ModelNameSchema>
-
-/** The model reviewers run on, and every fallback of the model pick (#603). */
-export const DEFAULT_MODEL: ModelName = ModelNameSchema.enum.opus
-
-/** The roles with a model floor (#603); every other role always runs Opus. */
-export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
-
-/**
- * The cheapest model each routed role may run on; a role left out is
- * `opus`. A floor for any other role, a reviewer or a lens, is refused.
- */
-const ModelFloorsSchema = z.strictObject(
-    {
-        'test-writer': ModelNameSchema.default(DEFAULT_MODEL),
-        implementer: ModelNameSchema.default(DEFAULT_MODEL),
-        learner: ModelNameSchema.default(DEFAULT_MODEL),
-    },
-    {
-        error: (issue) =>
-            issue.code === 'unrecognized_keys'
-                ? `${issue.keys.join(', ')} can't have a model floor: reviewers always run Opus. Only ${ROUTED_ROLES.join(', ')} have floors.`
-                : undefined,
-    }
-)
-
-/**
- * The config's `models` block (#603): each routed role's model floor, and
- * how sure the decision model must be (`confidence_bar`) before its model
- * pick is used.
- */
-export const ModelsConfigSchema = z.object({
-    floors: ModelFloorsSchema.prefault({}),
-    confidence_bar: z.number().min(0).max(1).default(0.8),
-})
-
-export type ModelsConfig = z.infer<typeof ModelsConfigSchema>
-
-/**
- * Whether a config path names a file inside the repo (#583): not absolute,
- * not ending in `/` (a folder), and, once cleaned (`normalize`), neither the
- * repo root nor a path that climbs out of it with `..`.
- */
-const isFileInsideRepo = (path: string): boolean => {
-    const clean = normalize(path)
-    return (
-        !isAbsolute(path) &&
-        !path.endsWith('/') &&
-        clean !== '.' &&
-        clean !== '..' &&
-        !clean.startsWith('../')
-    )
-}
-
-/**
- * The per-repo engine config: the gate commands, where tests live, the rule
- * files for the rules lens, the project's memory vault, the decision model,
- * the model floors, and the run budget.
- *
- * Unknown keys, such as old Luca's, are dropped when the file is read.
- *
- * The test command is optional here on purpose. A config without it still
- * loads, and intake refuses the run with a clear message instead.
- * `checks.test` is one command or a list of them (see `testCommands`); it is
- * kept as written. `checks.slow_test` has the same shape (see
- * `slowTestCommands`, #563).
- */
-export const EngineConfigSchema = z.object({
-    checks: z
-        .object({
-            test: TestCommandsSchema.optional(),
-            /**
-             * The slow tests (#563): the tests `test` leaves out, run only at
-             * the final review. Same shape as `test`. Left out, nothing
-             * changes.
-             */
-            slow_test: TestCommandsSchema.optional(),
-            types: z.string().min(1).optional(),
-            lint: z.string().min(1).optional(),
-        })
-        .default({}),
-    /**
-     * A command the engine runs in a checkout before every test run there
-     * (baseline, red check, gates), for repos whose tests need build outputs
-     * that are gitignored, such as `bun run build:rom`. Agents never run it.
-     */
-    prepare: z.string().min(1).optional(),
-    /**
-     * How long the prepare command may run, in milliseconds; left out, the
-     * engine's default (`DEFAULT_PREPARE_TIMEOUT_MS`, 30 minutes).
-     */
-    prepare_timeout_ms: z.number().int().positive().optional(),
-    /**
-     * How many prepare runs may go at once across the run; left out, the
-     * engine's default (`DEFAULT_PREPARE_CONCURRENCY`, 1).
-     */
-    prepare_concurrency: z.number().int().positive().optional(),
-    /**
-     * How long each test command may run, in milliseconds; left out, the
-     * engine's default (`DEFAULT_COMMAND_TIMEOUT_MS`, 5 minutes).
-     */
-    test_timeout_ms: z.number().int().positive().optional(),
-    /**
-     * How long one fast test may take, in milliseconds (#580): passed to every
-     * `bun` command of `checks.test` as `--timeout`, and checked on a ticket's
-     * own test files by their measured time. Left out, no limit.
-     */
-    test_case_timeout_ms: z.number().int().positive().optional(),
-    /**
-     * Glob patterns for more new markdown the leftover scan lets through,
-     * beyond doc folders, READMEs, and files the repo names (#520), such as
-     * `design/*.md`; left out, none.
-     */
-    leftover_allow: z.array(z.string().min(1)).optional(),
-    /**
-     * A markdown file listing each feature and the test files that prove it
-     * (#583), relative to the repo root: a path inside the repo, so not an
-     * absolute path, not one that climbs out with `..`, and not ending in
-     * `/`. A path not ending in `.md` names a folder (#597): every `*.md`
-     * page under it together is the map, and `loadEngineConfig` refuses one
-     * that is a file. The red check refuses a new test file it doesn't list,
-     * and the test-writer may edit it. Left out, no map.
-     */
-    feature_map: z
-        .string()
-        .min(1)
-        .refine(isFileInsideRepo, {
-            message:
-                'must be a file inside the repo, or a folder of pages in it, relative to its root: not an absolute path, not one that leaves the repo with "..", and not ending in "/"',
-        })
-        .optional(),
-    test_file_patterns: z.array(z.string()).default(['**/*.test.ts']),
-    test_setup_files: z.array(z.string()).default([]),
-    rule_files: z.array(z.string()).default([]),
-    muninn: MuninnConfigSchema.optional(),
-    /** The decision model shadow mode asks; left out, Clef. */
-    decision_model: DecisionModelConfigSchema.optional(),
-    /** Each routed role's model floor and the confidence bar; left out, every role runs Opus. */
-    models: ModelsConfigSchema.optional(),
-    /**
-     * The repo's run budget in tokens; left out, the engine's default
-     * (`DEFAULT_RUN_BUDGET_TOKENS`).
-     */
-    run_budget_tokens: z.number().int().positive().optional(),
-})
-
-export type EngineConfig = z.infer<typeof EngineConfigSchema>
-
-/**
- * How long the prepare command may run when the config doesn't say: 30
- * minutes. A first build in a fresh worktree can take many minutes
- * (HeartGold's takes about 8), far past the 5 minutes other commands get.
- */
-export const DEFAULT_PREPARE_TIMEOUT_MS = 30 * 60 * 1000
-
-/**
- * The prepare command's time limit: the config's `prepare_timeout_ms`, else
- * the default.
- *
- * @example
- * prepareTimeoutOf({ config: { ...config, prepare_timeout_ms: 3_600_000 } }) // 3_600_000
- */
-export const prepareTimeoutOf = ({
-    config,
-}: {
-    config: EngineConfig
-}): number => config.prepare_timeout_ms ?? DEFAULT_PREPARE_TIMEOUT_MS
-
-/**
- * Each test command's time limit (#542): the config's `test_timeout_ms`,
- * else the engine's default for any command. It holds for every run of a
- * test command (baseline, red check, gates); types and lint keep the default.
- *
- * @example
- * testTimeoutOf({ config: { ...config, test_timeout_ms: 900_000 } }) // 900_000
- */
-export const testTimeoutOf = ({ config }: { config: EngineConfig }): number =>
-    config.test_timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS
-
-/**
- * How many prepare runs may go at once when the config doesn't say: 1. A
- * build is often heavy on the CPU, so builds at the same time only slow each
- * other down (HeartGold's four first builds took 19 to 25 minutes each at
- * once, against 8 to 10 alone).
- */
-export const DEFAULT_PREPARE_CONCURRENCY = 1
-
-/**
- * How many prepare runs may go at once: the config's `prepare_concurrency`,
- * else the default.
- *
- * @example
- * prepareConcurrencyOf({ config: { ...config, prepare_concurrency: 2 } }) // 2
- */
-export const prepareConcurrencyOf = ({
-    config,
-}: {
-    config: EngineConfig
-}): number => config.prepare_concurrency ?? DEFAULT_PREPARE_CONCURRENCY
-
-/**
- * The decision model a run asks: the config's `decision_model.model`, else
- * Clef (`DEFAULT_DECISION_MODEL`).
- *
- * @example
- * decisionModelOf({ config: { ...config, decision_model: { model: '@cf/cloudflare/clef-flash' } } })
- * // '@cf/cloudflare/clef-flash'
- */
-export const decisionModelOf = ({
-    config,
-}: {
-    config: EngineConfig
-}): DecisionModelId =>
-    config.decision_model?.model ?? DecisionModelConfigSchema.parse({}).model
-
-/**
- * The run's model floors and confidence bar: the config's `models`, else
- * the schema's defaults (every floor `opus`).
- *
- * @example
- * modelsOf({ config }).floors['test-writer'] // 'opus'
- */
-export const modelsOf = ({ config }: { config: EngineConfig }): ModelsConfig =>
-    config.models ?? ModelsConfigSchema.parse({})
-
-/** One test command the engine runs, and how it reads the results. */
-export type TestCommand = { run: string; results: TestResults }
-
-/** Whether `run` is a `bun test` command, which gives bun's per-test results. */
-export const isBunTestCommand = (run: string): boolean =>
-    /^bun\s+test(\s|$)/.test(run.trim())
-
-/** A command starting with `bun test` gives bun's per-test results. */
-const defaultResults = (run: string): TestResults =>
-    isBunTestCommand(run) ? 'bun' : 'pass_fail'
-
-/** Reads a test command setting (`checks.test` or `checks.slow_test`) into commands. */
-const commandsOf = (value: EngineConfig['checks']['test']): TestCommand[] => {
-    if (value === undefined) return []
-    return (typeof value === 'string' ? [value] : value).map((entry) =>
-        typeof entry === 'string'
-            ? { run: entry, results: defaultResults(entry) }
-            : {
-                  run: entry.run,
-                  results: entry.results ?? defaultResults(entry.run),
-              }
-    )
-}
-
-/**
- * Every test command in the config, in order, each with its results kind.
- * A missing `results` is `bun` for a `bun test` command, else `pass_fail`.
- * Empty when there is no test command.
- *
- * @example
- * testCommands({ config: { ...config, checks: { test: ['bun test', 'bun run test:workers'] } } })
- * // [{ run: 'bun test', results: 'bun' }, { run: 'bun run test:workers', results: 'pass_fail' }]
- */
-export const testCommands = ({
-    config,
-}: {
-    config: EngineConfig
-}): TestCommand[] => commandsOf(config.checks.test)
-
-/**
- * Every slow test command (#563), in order, each with its results kind, like
- * `testCommands`. Empty when the config has none.
- *
- * @example
- * slowTestCommands({ config: { ...config, checks: { test: 'bun test src', slow_test: 'bun test .e2e.test' } } })
- * // [{ run: 'bun test .e2e.test', results: 'bun' }]
- */
-export const slowTestCommands = ({
-    config,
-}: {
-    config: EngineConfig
-}): TestCommand[] => commandsOf(config.checks.slow_test)
-
-/** Whether the config has a slow test command (#563). */
-export const hasSlowTests = ({ config }: { config: EngineConfig }): boolean =>
-    slowTestCommands({ config }).length > 0
-
-/** The fast test speed limit (#580), or `null` with none. */
-export const caseLimitOf = ({
-    config,
-}: {
-    config: EngineConfig
-}): number | null => config.test_case_timeout_ms ?? null
-
-/**
- * The feature map's path (#583), in the form a worktree-relative path takes
- * everywhere else (`normalize`, no leading `./`), or `null` with no map.
- * `./docs/feature-map.md` and `docs//feature-map.md` are both
- * `docs/feature-map.md`. The role rules, the permission rules, the prompts,
- * and the red check all read the map's path here, so they agree on it
- * whatever way the config spells it.
- *
- * @example
- * featureMapPath({ config: { ...config, feature_map: './docs/feature-map.md' } }) // 'docs/feature-map.md'
- */
-export const featureMapPath = ({
-    config,
-}: {
-    config: EngineConfig
-}): string | null =>
-    config.feature_map === undefined
-        ? null
-        : normalize(config.feature_map).replace(/^\.\//, '')
-
-/**
- * Whether a feature map path names a folder of pages (#597): any path not
- * ending in `.md`. The path alone decides, so the guard and the prompts,
- * which never read the disk, agree with the red check. `loadEngineConfig`
- * refuses such a path when it is a file, so a map file must end in `.md`.
- *
- * @example
- * isFeatureMapFolder({ path: 'docs/feature-map' }) // true
- * isFeatureMapFolder({ path: 'docs/feature-map.md' }) // false
- */
-export const isFeatureMapFolder = ({ path }: { path: string }): boolean =>
-    !path.toLowerCase().endsWith('.md')
-
-/**
- * A fast `bun` test command with the speed limit (#580): `--timeout=<n>` at
- * its end, or the command as written with no limit.
- *
- * @example
- * fastBunCommand({ run: 'bun test src', config: { ...config, test_case_timeout_ms: 2000 } }) // 'bun test src --timeout=2000'
- */
-export const fastBunCommand = ({
-    run,
-    config,
-}: {
-    run: string
-    config: EngineConfig
-}): string => {
-    const limit = caseLimitOf({ config })
-    return limit === null ? run : `${run} --timeout=${limit}`
-}
-
-/**
- * The test commands whose per-test results the engine reads, each with the
- * fast test speed limit (#580) when the config has one. Used by the baseline,
- * the red check and the already-done check; `testCommands` stays as written.
- */
-export const bunTestCommands = ({
-    config,
-}: {
-    config: EngineConfig
-}): string[] =>
-    testCommands({ config })
-        .filter(({ results }) => results === 'bun')
-        .map(({ run }) => fastBunCommand({ run, config }))
+export {
+    DEFAULT_PREPARE_CONCURRENCY,
+    DEFAULT_PREPARE_TIMEOUT_MS,
+    decisionModelOf,
+    featureMapPath,
+    isFeatureMapFolder,
+    modelsOf,
+    prepareConcurrencyOf,
+    prepareTimeoutOf,
+    testTimeoutOf,
+} from './config-fields'
+export {
+    DecisionModelConfigSchema,
+    DEFAULT_MODEL,
+    ENGINE_CONFIG_FILE,
+    EngineConfigSchema,
+    ModelNameSchema,
+    ModelsConfigSchema,
+    MuninnConfigSchema,
+    ROUTED_ROLES,
+    TestResultsSchema,
+} from './engine-config-schema'
+export type {
+    EngineConfig,
+    ModelName,
+    ModelsConfig,
+    TestResults,
+} from './engine-config-schema'
+export {
+    bunTestCommands,
+    caseLimitOf,
+    fastBunCommand,
+    hasSlowTests,
+    isBunTestCommand,
+    slowTestCommands,
+    testCommands,
+    type TestCommand,
+} from './test-commands'
 
 export type LoadEngineConfigResult =
     | { ok: true; config: EngineConfig }
