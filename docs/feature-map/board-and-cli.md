@@ -25,6 +25,10 @@ Tests:
 - `packages/board/server/board-panel-state-run-branch.test.ts`
 - `packages/board/server/board-panel-state-agent-messages.test.ts`
 - `packages/board/server/ticket-stages-panel.test.ts`
+- `packages/board/server/ticket-stages-panel-reviewing-and-joining.test.ts`
+- `packages/board/server/ticket-stages-panel-stuck.test.ts`
+- `packages/board/server/ticket-stages-panel-final-review.test.ts`
+- `packages/board/server/ticket-stages-panel-old-journals.test.ts`
 - `packages/board/server/current-step-panel.test.ts`
 - `packages/board/server/current-step-text.test.ts`
 - `packages/board/server/run-tabs-fold.test.ts`
