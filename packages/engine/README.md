@@ -50,8 +50,12 @@ Each topic has its own page under `docs/`:
 | [Modules in `src/cli/`](docs/modules-cli.md) | The `luca-run` and `luca` command lines, and their adapters. |
 | [Modules in the other folders](docs/modules-other.md) | `src/config/`, `intake/`, `limits/`, `messages/`, `git/`, `shell/`, `tracker/`, `testing/`, `jev/`, `models/`, `memory/`, `board/`, and `skills/`. |
 | [How a run moves](docs/how-a-run-moves.md) | Each step of a run, many tickets at once, a shared baseline, plan limits with many tickets, a clash on the run branch, a test the run branch made wrong, and installs after a rebase. |
-| [Prepare, tests, and commits](docs/prepare-and-tests.md) | The prepare command and its limits, the test time limit, slow tests, the fast test speed limit, files prepare makes, what never gets committed, the leftover scan's allowlists, and changesets. |
-| [A ticket's tries, fix loops, and review](docs/ticket-steps.md) | Cleaning up, already-done tickets, tickets for a person, fix loops, bad and unmapped tests, tests that check nothing, the feature map, failed tries, and the ticket review. |
+| [The prepare command](docs/prepare-and-tests.md) | The prepare command, its time limit, one prepare at a time, and a timeout that stops everything. |
+| [Test limits and slow tests](docs/test-commands-and-limits.md) | The test time limit, slow tests, a ticket's own slow tests, and the fast test speed limit. |
+| [Leftovers, commits, and changesets](docs/leftovers-and-commits.md) | Files prepare makes, links that point outside the checkout, nothing to commit, the leftover scan's allowlists, and changesets. |
+| [A ticket's steps, fix loops, and bad tests](docs/ticket-steps.md) | Cleaning up, already-done tickets, tickets for a person, fix loops, bad and unmapped tests, and tests that check nothing. |
+| [The feature map](docs/ticket-feature-map.md) | A repo's feature map, a folder map, and what the red check and the test-writer do with it. |
+| [Failed tries and the ticket review](docs/ticket-review.md) | A failed agent turn's tries, the ticket review, and its fix rounds. |
 | [Crash recovery](docs/crash-recovery.md) | Step records, redoing a cut-off step, `--resume`, the config a resume re-reads, Luca's version, and restarts from Paseo. |
 | [The final review](docs/final-review.md) | The five lenses, their fix loop, slow tests, re-reviews, and a stuck final review's replies. |
 | [Stuck work](docs/stuck-work.md) | The stuck comment and the owner's replies, opening the PR, `/luca-unstick`, and `/luca-retro`. |

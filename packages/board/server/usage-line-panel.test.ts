@@ -177,10 +177,10 @@ describe('a run paused at the usage line', () => {
     })
 })
 
-describe('the board README', () => {
+describe('the board docs', () => {
     test('its Settings section explains the two usage lines', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', 'README.md')
+            join(import.meta.dir, '..', 'docs', 'settings-and-install.md')
         ).text()
         const start = readme.indexOf('\n## Settings')
         expect(start).toBeGreaterThan(-1)

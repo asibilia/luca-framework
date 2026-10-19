@@ -7,7 +7,10 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`). |
+| `src/config/engine-config.ts` | Loads the per-repo engine config (`.luca/config.json`), and re-exports the three modules below, so importers use `./engine-config` as ever. |
+| `src/config/engine-config-schema.ts` | The config's shape: `EngineConfigSchema` and the pieces it is built from (test results, the `muninn`, `decision_model`, and `models` blocks). |
+| `src/config/config-fields.ts` | Reads of single config fields with their defaults: the prepare and test time limits, prepare concurrency, the decision model, the models block, and the feature map's path. |
+| `src/config/test-commands.ts` | The config's test commands (`testCommands`, `slowTestCommands`) and the fast test speed limit added to a `bun` command (`bunTestCommands`). |
 | `src/config/config-reload.ts` | Pure: the config fields a resume takes again (`RELOADED_FIELDS`) and the ones it keeps (`FROZEN_FIELDS`), what changed (`configChanges`), and a config with the changes (`withConfigChanges`). |
 | `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
 

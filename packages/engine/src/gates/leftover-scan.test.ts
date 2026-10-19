@@ -105,7 +105,13 @@ describe('scanLeftovers still catches real leftovers (#507)', () => {
 describe('the engine README (#507)', () => {
     const readme = () =>
         Bun.file(
-            join(import.meta.dir, '..', '..', 'docs', 'prepare-and-tests.md')
+            join(
+                import.meta.dir,
+                '..',
+                '..',
+                'docs',
+                'leftovers-and-commits.md'
+            )
         ).text()
 
     /** The page's paragraphs and list items, one each. */

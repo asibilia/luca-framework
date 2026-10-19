@@ -313,10 +313,10 @@ describe('engine launch from an installed luca-run: the repo’s .env and bunfig
     })
 })
 
-describe('the board README', () => {
+describe('the board docs', () => {
     test('it says the engine starts with --no-env-file and Luca’s own bunfig, and why', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', 'README.md')
+            join(import.meta.dir, '..', 'docs', 'the-route.md')
         ).text()
 
         const mentions = [
@@ -338,7 +338,7 @@ describe('the board README', () => {
 
     test('its launch commands show the flags before the engine path', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', 'README.md')
+            join(import.meta.dir, '..', 'docs', 'restarts-and-resume.md')
         ).text()
 
         expect(readme.includes('<bun> <engine_path> --unfinished')).toBe(false)

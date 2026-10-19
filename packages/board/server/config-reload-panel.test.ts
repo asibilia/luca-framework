@@ -118,10 +118,10 @@ describe('a reloaded config in the chat', () => {
     })
 })
 
-describe('the board README', () => {
+describe('the board docs', () => {
     test('its vocabulary table has a row for each config reload record', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', 'README.md')
+            join(import.meta.dir, '..', 'docs', 'vocabulary-run-kinds.md')
         ).text()
         const rows = readme.split('\n').filter((line) => line.startsWith('| `'))
 

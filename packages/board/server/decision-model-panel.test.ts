@@ -89,10 +89,10 @@ describe('the decision model in the chat', () => {
     })
 })
 
-describe('the board README', () => {
+describe('the board docs', () => {
     test('its vocabulary table has a row for decision_model_off', async () => {
         const readme = await Bun.file(
-            join(import.meta.dir, '..', 'README.md')
+            join(import.meta.dir, '..', 'docs', 'vocabulary-engine-kinds.md')
         ).text()
         const rows = readme.split('\n').filter((line) => line.startsWith('| `'))
 

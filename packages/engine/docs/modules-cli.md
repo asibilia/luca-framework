@@ -7,7 +7,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | --- | --- |
 | `src/cli/luca-run.ts` | The `luca-run` command line (the package's `bin`). |
 | `src/cli/run-args.ts` | Reads `luca-run`'s flags. |
-| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`), going on with a run from its journal (`resumeRun`), the runs that are not over (`unfinishedRuns`), how to resume one (`resumeCommand`), and the practice `--demo`. |
+| `src/cli/run-modes.ts` | A real run of a spec (`runSpec`) and going on with a run from its journal (`resumeRun`); re-exports the rest of what it was ([run-modes modules](#run-modes-modules)). |
 | `src/cli/luca.ts` | The `luca` command line (a `bin`): `luca init`, `luca setup`, `luca upgrade`, `luca doctor`, `luca models`, and a quiet `luca hook`. |
 | `src/cli/setup-command.ts` | `luca setup`'s flags, wired to the real repo adapters. |
 | `src/cli/setup.ts` | Gets a repo ready for Luca (`runSetup`): labels and the config, then `repoChecks` once; `repoChecks` are its checks, read-only, for `luca doctor` too. |
@@ -27,3 +27,16 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/cli/luca-skills.ts` | Luca's own Claude Code skills (#504): which there are (`lucaSkills`, every folder in `skills/` with a `SKILL.md`), the files each ships, how the copy in `~/.claude/skills` differs (`skillDrift`), and copying them there (`installLucaSkills`). |
 | `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
 | `src/cli/models-command.ts` | `luca models`: reads this repo's run journals and prints the model score report. Writes nothing. |
+
+## run-modes modules
+
+The modules split out of `src/cli/run-modes.ts`. It re-exports them.
+
+| Module | What it does |
+| --- | --- |
+| `src/cli/run-end.ts` | How a run ends for the person watching it (`RunEnd`, `RunLauncher`), how to resume one (`resumeCommand`), and driving the engine to its end without throwing (`driveRun`). |
+| `src/cli/config-reload-text.ts` | The log line for a resume's config reload (`configReloadText`, #516). |
+| `src/cli/decision-model-setup.ts` | The decision model a real run asks (#534): `DecisionModelSetup`, and opening it for a run (`openDecisionModel`). |
+| `src/cli/read-run.ts` | Reading a run's journal to go on from it: its records (`readRun`) and its `run_started` (`readRunStart`, `RunStart`). |
+| `src/cli/unfinished-runs.ts` | The runs that are not over (`unfinishedRuns`), and whether Paseo may restart each one (`restartableRuns`, #375). |
+| `src/cli/run-demo.ts` | The practice `--demo` run (`runDemo`). |
