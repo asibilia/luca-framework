@@ -120,6 +120,15 @@ inside a string or a comment; the problem then adds "The file does not load
 yet, so every test( in its text counts, even one inside a string or a
 comment".
 
+**Moved tests (#609).** A test-writer may split a too-big test file inside
+the ticket that needs it. A name that any test file the ticket changed or
+deleted had at its base is not new, whichever file it is in now, so it needs
+no mapping and need not fail. An old test missing from its file but in
+another test file under the same full name is moved: it must still pass
+there, and the red check's notes list it ("moved from …"). Each case there
+stands for one old test only, so a name several old tests had counts as
+moved once; the rest are missing.
+
 **Timings (#518).** The journal records how long things took. A gate check
 has `duration_ms`, how long its command ran, and the `prepare` check also
 `wait_ms`, how long it waited for a prepare slot. A test case in a test run
