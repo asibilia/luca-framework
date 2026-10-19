@@ -5,7 +5,8 @@ import { join } from 'node:path'
  * The live file (#628) as the engine writes it in a run folder,
  * `<runs_dir>/<run_id>/live.json`: replaced whole on each write, never
  * journaled. Per agent in a turn, its ticket, role, model, tokens so far,
- * latest action and open tool call; per run, the first plan-usage reading.
+ * latest action and open tool call; per run, the first plan-usage reading
+ * and the live feed, its last actions across tickets.
  */
 
 /** The live file's name inside a run folder. */
@@ -26,6 +27,19 @@ export type LiveAgent = {
     open_call: LiveOpenCall | null
 }
 
+/**
+ * One action of the run's live feed (#634): when, on which ticket, by which
+ * role on which model, and the action, a tool and a short target.
+ */
+export type LiveFeedEntry = {
+    at: string
+    ticket: number | null
+    role: string
+    model: string | null
+    tool: string
+    target: string
+}
+
 /** One agent in a turn, on Opus with nothing done yet unless told. */
 export const liveAgent = (
     fields: Partial<LiveAgent> & { ticket: number | null; role: string }
@@ -44,6 +58,7 @@ export const writeLiveFile = async ({
     written_at,
     agents = [],
     plan_usage = null,
+    feed,
 }: {
     runs_dir: string
     run_id: string
@@ -51,11 +66,18 @@ export const writeLiveFile = async ({
     agents?: LiveAgent[]
     /** The run's first plan-usage reading, as a `rate_limit_event` sent it. */
     plan_usage?: Record<string, unknown> | null
+    /** The run's last actions, oldest first; left out, as before #634. */
+    feed?: LiveFeedEntry[]
 }) => {
     await mkdir(join(runs_dir, run_id), { recursive: true })
     await writeFile(
         join(runs_dir, run_id, LIVE_FILE),
-        JSON.stringify({ written_at, plan_usage, agents })
+        JSON.stringify({
+            written_at,
+            plan_usage,
+            agents,
+            ...(feed === undefined ? {} : { feed }),
+        })
     )
 }
 
