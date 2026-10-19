@@ -1,5 +1,15 @@
 # @luca/engine
 
+## 14.0.0-alpha.17
+
+### Minor Changes
+
+- f369dc7: Spec: the decision model picks each agent's model (model floors, Opus reviewers, a findings score) ([#599](https://github.com/asibilia/luca-framework/issues/599))
+
+### Patch Changes
+
+- 3b246bb: Split `claude-launcher.ts`, `git-adapter.ts` and the build test fixtures, and seven big test files, so each is under the repo's 5,000-token file limit. No behaviour change: every module keeps its exports, and the test count and names are unchanged.
+
 ## 14.0.0-alpha.16
 
 ### Patch Changes
