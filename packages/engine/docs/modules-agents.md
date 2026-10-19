@@ -36,7 +36,7 @@ The modules split out of `src/agents/role-instructions.ts`. It re-exports them.
 
 ## claude-launcher modules
 
-The modules split out of `src/agents/claude-launcher.ts`. It re-exports `AgentQuerySession`.
+The modules split out of `src/agents/claude-launcher.ts`. It keeps `createClaudeLauncher` (the follow-ups and the closing) and the two default timeouts, and re-exports `AgentQuery` and `AgentQuerySession`.
 
 | Module | What it does |
 | --- | --- |
@@ -44,3 +44,5 @@ The modules split out of `src/agents/claude-launcher.ts`. It re-exports `AgentQu
 | `src/agents/open-session.ts` | One session the launcher keeps open between turns (`OpenSession`), and how it is read: each SDK message goes into the session's summary, and each outcome to the turn waiting for it. |
 | `src/agents/input-channel.ts` | The queue the SDK reads an agent's prompt from (streaming-input mode). |
 | `src/agents/launch-paths.ts` | Where the launcher finds things on disk: the real path of the `claude` binary, and the repo's common git dir. |
+| `src/agents/session-pool.ts` | The agent sessions the launcher keeps open between turns: a turn on one (`runTurn`), keeping it open until it sits idle, and closing one or all. |
+| `src/agents/launch-session.ts` | How the launcher starts one agent session (`createLaunch`): the model check, the role's locked-down options, the account check before the prompt, then the first turn. Holds the `AgentQuery` type. |
