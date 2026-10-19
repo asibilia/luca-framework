@@ -204,10 +204,14 @@ describe('one ticket, end to end, with scripted agents', () => {
             branch,
             sha: pushedSha,
         })
+        // The join records the ticket's size: 13 lines of src/sum.test.ts,
+        // 2 of src/sum.ts, and src/index.ts's one line swapped (1 removed,
+        // 1 added).
         const [joinRecord] = find('ticket_joined')
         expect(joinRecord?.content).toEqual({
             ok: true,
             shas: [expect.any(String), pushedSha],
+            lines_changed: 17,
         })
 
         // main on origin is untouched.
@@ -234,6 +238,38 @@ describe('one ticket, end to end, with scripted agents', () => {
         expect(find('worktrees_removed')[0]?.content.paths).toEqual([
             worktree?.content.path ?? '',
             runBranch?.content.path ?? '',
+        ])
+    }, 60_000)
+
+    test("a binary file in the ticket's commits counts as 0 lines of its joined size", async () => {
+        const [testWriter, implementer, reviewer] = HAPPY_TURNS
+        if (!testWriter || !implementer || !reviewer) throw new Error('turns')
+        const { action, records } = await runPractice({
+            root,
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    files: {
+                        ...implementer.files,
+                        // A NUL byte makes git see it as binary.
+                        'src/logo.png': 'PNG\u0000\u0001\nline\nline\n',
+                    },
+                },
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const joins = records.flatMap((record) =>
+            record.kind === 'ticket_joined' ? [record.content] : []
+        )
+        expect(joins).toEqual([
+            {
+                ok: true,
+                shas: [expect.any(String), expect.any(String)],
+                lines_changed: 17,
+            },
         ])
     }, 60_000)
 

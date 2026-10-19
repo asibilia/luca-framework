@@ -226,6 +226,36 @@ describe('journal', () => {
         ).toEqual({})
     })
 
+    test('a ticket_joined from before join sizes reads lines_changed as null', async () => {
+        const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
+        const journal = createJournal({ file })
+        journal.append({
+            kind: 'run_started',
+            ticket: null,
+            role: null,
+            content: { spec_number: 10, config: CONFIG },
+        })
+        const old = {
+            seq: 2,
+            time: '2026-09-28T00:00:00.000Z',
+            kind: 'ticket_joined',
+            ticket: 11,
+            role: null,
+            content: { ok: true, shas: ['r1', 'g1'] },
+        }
+        await Bun.write(
+            file,
+            `${await readFile(file, 'utf8')}${JSON.stringify(old)}\n`
+        )
+
+        const [, joined] = journal.read()
+        expect(joined?.content).toEqual({
+            ok: true,
+            shas: ['r1', 'g1'],
+            lines_changed: null,
+        })
+    })
+
     test('Jev records from before Clef (#534) read and replay', async () => {
         const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
         const journal = createJournal({ file })
