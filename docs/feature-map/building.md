@@ -41,6 +41,9 @@ Tests:
 
 - `packages/engine/src/core/decide-build.test.ts`
 - `packages/engine/src/core/run-one-ticket.e2e.test.ts`
+- `packages/engine/src/core/run-one-ticket-fix-loops.e2e.test.ts`
+- `packages/engine/src/core/run-one-ticket-install.e2e.test.ts`
+- `packages/engine/src/core/run-one-ticket-messages.e2e.test.ts`
 
 ## The red check and honest new tests
 
