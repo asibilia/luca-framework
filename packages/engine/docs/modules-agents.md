@@ -24,3 +24,14 @@ The modules split out of `src/agents/role-instructions.ts`. It re-exports them.
 | `src/agents/writer-instructions.ts` | The test-writer's and implementer's tasks. |
 | `src/agents/reviewer-instructions.ts` | The ticket reviewer's and each lens's tasks. |
 | `src/agents/learner-instructions.ts` | The learner's task and rules. |
+
+## claude-launcher modules
+
+The modules split out of `src/agents/claude-launcher.ts`. It re-exports `AgentQuerySession`.
+
+| Module | What it does |
+| --- | --- |
+| `src/agents/claude-messages.ts` | What the launcher reads from an SDK session: the Zod schemas of its messages, the outcome of a turn, and the safety checks on the account and the init message. Pure. |
+| `src/agents/open-session.ts` | One session the launcher keeps open between turns (`OpenSession`), and how it is read: each SDK message goes into the session's summary, and each outcome to the turn waiting for it. |
+| `src/agents/input-channel.ts` | The queue the SDK reads an agent's prompt from (streaming-input mode). |
+| `src/agents/launch-paths.ts` | Where the launcher finds things on disk: the real path of the `claude` binary, and the repo's common git dir. |

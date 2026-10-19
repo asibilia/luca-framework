@@ -38,9 +38,11 @@ Reached by: `luca-run --resume <run id>`, or the board restarting a run whose en
 Tests:
 
 - `packages/engine/src/journal/journal.test.ts`
+- `packages/engine/src/journal/journal-replay.test.ts`
 - `packages/engine/src/core/decide-crash-recovery.test.ts`
 - `packages/engine/src/core/run-crash-recovery.test.ts`
 - `packages/engine/src/core/run-crash-recovery.e2e.test.ts`
+- `packages/engine/src/core/run-crash-recovery-git.e2e.test.ts`
 - `packages/board/server/engine-restart.test.ts`
 
 ## The engine config and its reload

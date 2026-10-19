@@ -37,7 +37,12 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. |
+| `src/git/git-adapter.ts` | Every git side effect, one call at a time: worktrees (made and removed), commits, throwing away uncommitted work, replaying onto the run branch and undoing it, moving a ticket's change onto the run branch, pushes. It holds the `GitAdapter` type and `createGitAdapter`, which joins the five modules below and runs their calls in turn. |
+| `src/git/git-run.ts` | Runs `git` in a folder: `gitRun` returns the result as it is, `gitOk` throws when git fails. Also the line splitter and `head` the other git modules share. |
+| `src/git/git-worktrees.ts` | The adapter's worktree calls, the ones that need the repo's root: fetch the base branch, make the run branch and each ticket's worktree (safe to repeat after a crash), remove them. |
+| `src/git/git-read.ts` | The adapter's reads: what changed in a worktree or between commits, which files exist, and where a commit is. None of them changes the repo. |
+| `src/git/git-commits.ts` | The adapter's commits and clean-ups: stage and commit all or some paths, read the last commit, throw away or reset a worktree's changes, push. |
+| `src/git/git-join.ts` | The adapter's moves between branches: list the commits between two, replay them onto the run branch, undo a replay, move a worktree's change onto another commit. |
 | `src/git/path-text.ts` | Reads a changed path's text as git would store it: a file's text, a symlink's target (never followed), `null` for a folder or anything else. Never throws. |
 | `src/git/outside-links.ts` | Finds the symlinks among some paths whose target is outside the checkout, which no commit may hold. Reads each target, never follows it. |
 
@@ -61,7 +66,14 @@ with a page of its own is listed in the [README](../README.md).
 | Module | What it does |
 | --- | --- |
 | `src/testing/intake-fixtures.ts` | Spec, ticket, and journal builders for tests. |
-| `src/testing/build-fixtures.ts` | Journal entry builders for each build step. |
+| `src/testing/build-fixtures.ts` | Journal entry builders for each build step. It only re-exports the seven modules below, so a test imports every builder from here. |
+| `src/testing/run-fixtures.ts` | A run's scaffolding: its config and tickets, its branch and worktrees, the installs and baseline tests, and the end of the run (worktrees removed, the PR opened). |
+| `src/testing/agent-turn-fixtures.ts` | Agent turns: a turn started, each role's result (tests written, implemented, reviewed), a failed turn, and the launcher's summary of a turn. |
+| `src/testing/already-done-fixtures.ts` | A ticket whose work is already on the base branch: the test-writer's evidence, the engine's check of it, the ticket noted and closed. |
+| `src/testing/ticket-step-fixtures.ts` | The steps along a ticket's spine: red check, leftover scan, commits, gates, resets, the join and its rebase, the push, a stuck ticket, and `ticketBuilt` (every step of one ticket, passing). |
+| `src/testing/limit-fixtures.ts` | Plan limits: a `rate_limit_event`'s reading as the SDK sends it, a limit wait started and ended, a billing stop. |
+| `src/testing/reply-fixtures.ts` | A stuck ticket and the owner's reply: the stuck report, a comment read, a reply word taken, a ticket retried or skipped. |
+| `src/testing/step-record-fixtures.ts` | The scheduler's step records: a step started and a step ended. |
 | `src/testing/final-review-fixtures.ts` | Journal entry builders for the final review: rounds, lens turns, fix rounds, passed, stuck, shipped. |
 | `src/testing/practice-repo.ts` | The end-to-end practice repo: a throwaway git repo, local `origin`, tracker, and scripted turns (or any launcher). `CLEAN_LENS_TURNS` are five approving lenses; its runs fall back on them for any lens the turns don't script. |
 | `src/testing/many-tickets.ts` | The many-ticket practice runs: three tickets, two at once with a clash and one waiting on both (`SUM_PRODUCT_AVERAGE`); two tickets that break each other's gates after joining (`BROKEN_JOIN`); a plan limit with two tickets in flight (`LIMIT_HIT`); and a rebase across a new dependency (`REINSTALL`). |
