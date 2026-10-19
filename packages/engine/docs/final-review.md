@@ -34,7 +34,10 @@ runs, even for a one-ticket spec.
   should-fixes open a fix round (`final_review_fixing`): a fresh test-writer
   for the test findings first, then a **fresh** implementer for the code
   findings (always fresh at the start of a round: "a fresh implementer on the
-  whole branch"), both on the run branch's worktree. The fixes pass the
+  whole branch"), both on the run branch's worktree. Findings a fixer
+  answered `other_role` then go to a fresh agent of the other writer role,
+  with only those findings; its answer is final, and a second `other_role`
+  counts as `wont_fix` (#616). The fixes pass the
   gates on the run branch (failed gates go back to that round's implementer
   session, up to 3 times; with only test findings, a fresh implementer gets
   the failure), then the leftover scan (the spec and every ticket may name a

@@ -53,6 +53,7 @@ export type {
     ReviewFix,
     TestUpdate,
     TicketProgress,
+    WriterRole,
 } from './ticket-progress'
 export { EMPTY_TICKET_PROGRESS } from './ticket-progress'
 export type {
@@ -69,6 +70,7 @@ export type { LearnerState, MemoryState } from './memory-replay'
 export { EMPTY_MEMORY } from './memory-replay'
 export { namespacedId } from './final-review-round'
 export { isFinalKey } from './final-review-replay'
+export { handoffRole } from './agent-turn-replay'
 
 const applyRecord = ({
     state,

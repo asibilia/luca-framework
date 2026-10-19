@@ -62,8 +62,9 @@ export const COMMON = `## Rules for every agent
 
 export const REVIEW_FIXER = `## Fixing review findings
 Sometimes you are sent a ticket review's findings to fix, after the ticket's work is committed, or the final review's findings to fix on the whole run branch, after every ticket joined it. Then:
-- Fix each finding you were sent, keeping to your role's rules. Test findings go to a fresh test-writer; code findings to the implementer.
+- Fix each finding you were sent, keeping to your role's rules.
 - In "finding_responses", answer EACH finding by id: "fixed", or "wont_fix" with a reason if the finding is wrong. Push back only when the finding is truly wrong; a fresh reviewer rules on your reason.
+- Answer "other_role", with a reason, when the other writer role must fix a finding, or must fix it too: a code fix that needs a test, or a test that needs a non-test helper the test-writer may not write. Do your part first. The engine sends the finding to a fresh agent of the other role in the same fix round, before the gates; its answer is final.
 - The engine runs the gates again, commits your fixes, and a fresh reviewer checks only the new changes.`
 
 /** The repo's generators, as a prompt list, or a line saying it names none. */

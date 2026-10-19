@@ -82,12 +82,14 @@ export const CriterionTestsSchema = z.object({
 export type CriterionTests = z.infer<typeof CriterionTestsSchema>
 
 /**
- * A review fixer's answer to one finding it was sent: `fixed`, or
- * `wont_fix` with its reason (pushback the next fresh reviewer rules on).
+ * A review fixer's answer to one finding it was sent: `fixed`, `wont_fix`
+ * with its reason (pushback the next fresh reviewer rules on), or
+ * `other_role` with its reason: the other writer role must fix it, or must
+ * fix it too (#616).
  */
 export const FindingResponseSchema = z.object({
     finding_id: z.string().min(1),
-    response: z.enum(['fixed', 'wont_fix']),
+    response: z.enum(['fixed', 'wont_fix', 'other_role']),
     reason: z.string().default(''),
 })
 

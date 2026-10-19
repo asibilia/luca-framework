@@ -131,6 +131,7 @@ const resumedProgress = ({
                 ({ kind }) => kind === 'code'
             ),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         gates: null,

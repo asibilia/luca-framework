@@ -281,6 +281,7 @@ export const resumedFinalReview = ({
             tests_answered: !fix.findings.some(({ kind }) => kind === 'test'),
             code_answered: !fix.findings.some(({ kind }) => kind === 'code'),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         fixing_started: false,

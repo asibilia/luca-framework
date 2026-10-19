@@ -80,6 +80,9 @@ export type ReplayedGates = {
 /** The red check's verdict, plus the test run's (clipped) output. */
 export type ReplayedRedCheck = RedCheckResult & { output: string }
 
+/** The roles that write: they fix review findings. */
+export type WriterRole = 'test-writer' | 'implementer'
+
 /**
  * A writer's `environment` answer to a failed check (#613): who gave it,
  * its evidence, and the failed check it blamed on the environment. The
@@ -97,7 +100,8 @@ export type EnvironmentRerun = {
 /**
  * The open review fix round: the blockers and should-fixes the latest ticket
  * review sent back, and which fixers have answered. Test findings go to a
- * fresh test-writer first, then code findings to the implementer.
+ * fresh test-writer first, then code findings to the implementer, then any
+ * finding a fixer answered `other_role` to the other writer role.
  */
 export type ReviewFix = {
     /** 1 after the first review, 2 after the first re-review, ... */
@@ -107,8 +111,17 @@ export type ReviewFix = {
     tests_answered: boolean
     /** True once the implementer answered, or when no finding is a code finding. */
     code_answered: boolean
-    /** The fixers' answers, oldest first. */
+    /**
+     * The fixers' answers, oldest first. A handed-off finding's answer from
+     * the other role replaces the first one.
+     */
     responses: FindingResponse[]
+    /**
+     * The findings a fixer answered `other_role` (#616), by the writer role
+     * they were handed to. After the round's fixers answered, each role here
+     * runs once more, fresh, with only these findings; its answer clears it.
+     */
+    handed_off: Partial<Record<WriterRole, string[]>>
     /** A test the implementer sent back as bad while fixing, if any. */
     bad_test: BadTest | null
 }

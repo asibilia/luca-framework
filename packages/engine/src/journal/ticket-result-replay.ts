@@ -6,6 +6,9 @@
 import {
     badTestOf,
     declinedBy,
+    fixerAnswered,
+    handoffAnswered,
+    handoffRole,
     ranCheaper,
     type FinishedContent,
 } from './agent-turn-replay'
@@ -90,10 +93,23 @@ export const resultChange = ({
                     review_fix: {
                         ...fix,
                         tests_answered: true,
-                        responses: [
-                            ...fix.responses,
-                            ...finished.result.finding_responses,
-                        ],
+                        ...fixerAnswered({
+                            fix,
+                            role: 'test-writer',
+                            responses: finished.result.finding_responses,
+                        }),
+                    },
+                }
+            }
+            if (fix !== null && handoffRole({ fix }) === 'test-writer') {
+                return {
+                    review_fix: {
+                        ...fix,
+                        ...handoffAnswered({
+                            fix,
+                            role: 'test-writer',
+                            responses: finished.result.finding_responses,
+                        }),
                     },
                 }
             }
@@ -170,10 +186,24 @@ export const resultChange = ({
                     review_fix: {
                         ...fix,
                         code_answered: true,
-                        responses: [
-                            ...fix.responses,
-                            ...result.finding_responses,
-                        ],
+                        ...fixerAnswered({
+                            fix,
+                            role: 'implementer',
+                            responses: result.finding_responses,
+                        }),
+                        bad_test,
+                    },
+                }
+            }
+            if (fix !== null && handoffRole({ fix }) === 'implementer') {
+                return {
+                    review_fix: {
+                        ...fix,
+                        ...handoffAnswered({
+                            fix,
+                            role: 'implementer',
+                            responses: result.finding_responses,
+                        }),
                         bad_test,
                     },
                 }
@@ -270,6 +300,7 @@ const reviewChange = ({
             tests_answered: !blocking.some(({ kind }) => kind === 'test'),
             code_answered: !blocking.some(({ kind }) => kind === 'code'),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         gates: null,

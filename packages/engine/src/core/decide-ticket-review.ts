@@ -10,11 +10,15 @@ import { MAX_FIX_ROUNDS } from './loop-caps'
 import { openFindingsText, reviewFixMessage } from './review-text'
 import { badTestDetail } from './stuck-text'
 
+import { handoffRole } from '../journal/replay'
+
 /**
  * The ticket review and its fix loop, after the green commit. A fresh
  * reviewer checks the committed diff. Blockers and should-fixes open a fix
  * round: test findings go to a fresh test-writer first, then code findings
- * to the same implementer session (a fresh one if it is gone). The fixes
+ * to the same implementer session (a fresh one if it is gone), then the
+ * findings a fixer answered `other_role` to a fresh agent of the other
+ * writer role (#616). The fixes
  * pass the gates, get their own commit, and a fresh reviewer checks only
  * the new changes. A review that still asks for changes after
  * `MAX_FIX_ROUNDS` fix rounds is stuck. `null` once a review approves.
@@ -78,6 +82,10 @@ export const reviewStep = ({
             reason: 'bad_test',
             detail: `While fixing review findings, the implementer sent a test back as bad: ${badTestDetail({ bad_test: fix.bad_test })}`,
         })
+    }
+    const handoff = handoffRole({ fix })
+    if (handoff !== null) {
+        return launch({ role: handoff, snapshot, ticket, progress, run_notes })
     }
     return (
         gateStep({ snapshot, ticket, progress, run_notes }) ??

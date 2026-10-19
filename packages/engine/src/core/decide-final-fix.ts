@@ -26,7 +26,7 @@ import { MAX_FIX_ROUNDS } from './loop-caps'
 import { badTestDetail, setupChangeDetail } from './stuck-text'
 
 import type { AgentRole } from '../agents/role-results'
-import type { ReplayedAgentFailure } from '../journal/replay'
+import { handoffRole, type ReplayedAgentFailure } from '../journal/replay'
 
 /**
  * A fresh fixer of this role, told its findings (or the failed gates). With
@@ -102,9 +102,10 @@ const failedFixerStep = ({
 /**
  * A final review fix round, once every due lens finished and some finding
  * blocks: start the round, a fresh test-writer for the test findings, then
- * a fresh implementer for the code findings, the gates (and their fix loop
- * in the implementer's session, or a rerun when it answers `environment`,
- * #613), the fix commit, and the push. `null` once
+ * a fresh implementer for the code findings, then a fresh agent of the
+ * other writer role for findings a fixer answered `other_role` (#616), the
+ * gates (and their fix loop in the implementer's session, or a rerun when
+ * it answers `environment`, #613), the fix commit, and the push. `null` once
  * the fixes are pushed.
  */
 export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
@@ -143,6 +144,8 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
             detail: `While fixing the final review's findings, the implementer sent a test back as bad: ${badTestDetail({ bad_test: fix.bad_test })}`,
         })
     }
+    const handoff = handoffRole({ fix })
+    if (handoff !== null) return launchFixer({ ...args, role: handoff })
     const { gates } = review
     const blamed = environmentFailedDetail({
         environment: review.environment,

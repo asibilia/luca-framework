@@ -8,6 +8,9 @@ import omit from 'lodash/omit'
 import {
     badTestOf,
     declinedBy,
+    fixerAnswered,
+    handoffAnswered,
+    handoffRole,
     type FinishedContent,
 } from './agent-turn-replay'
 import type { FinalFinding, FinalReviewState } from './final-review-state'
@@ -127,6 +130,7 @@ export const settleRound = ({
             tests_answered: !blocking.some(({ kind }) => kind === 'test'),
             code_answered: !blocking.some(({ kind }) => kind === 'code'),
             responses: [],
+            handed_off: {},
             bad_test: null,
         },
         fixing_started: false,
@@ -179,22 +183,32 @@ export const finalResultChange = ({
     // review on it (#617), like a ticket.
     const setup_change = setupChangeOf({ finished })
     if (finished.role === 'test-writer') {
-        if (fix === null || fix.tests_answered) return review
+        if (fix === null) return review
+        const responses = finished.result.finding_responses
+        if (!fix.tests_answered) {
+            return {
+                ...review,
+                setup_change,
+                fix: {
+                    ...fix,
+                    tests_answered: true,
+                    ...fixerAnswered({ fix, role: 'test-writer', responses }),
+                },
+            }
+        }
+        if (handoffRole({ fix }) !== 'test-writer') return review
         return {
             ...review,
             setup_change,
             fix: {
                 ...fix,
-                tests_answered: true,
-                responses: [
-                    ...fix.responses,
-                    ...finished.result.finding_responses,
-                ],
+                ...handoffAnswered({ fix, role: 'test-writer', responses }),
             },
         }
     }
     if (finished.role === 'implementer') {
         const { result } = finished
+        const responses = result.finding_responses
         if (fix !== null && fix.tests_answered && !fix.code_answered) {
             return {
                 ...review,
@@ -202,7 +216,18 @@ export const finalResultChange = ({
                 fix: {
                     ...fix,
                     code_answered: true,
-                    responses: [...fix.responses, ...result.finding_responses],
+                    ...fixerAnswered({ fix, role: 'implementer', responses }),
+                    bad_test: badTestOf(result),
+                },
+            }
+        }
+        if (fix !== null && handoffRole({ fix }) === 'implementer') {
+            return {
+                ...review,
+                setup_change,
+                fix: {
+                    ...fix,
+                    ...handoffAnswered({ fix, role: 'implementer', responses }),
                     bad_test: badTestOf(result),
                 },
             }
