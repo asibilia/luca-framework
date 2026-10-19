@@ -93,4 +93,13 @@ Layout:
     - `board-server-events.ts`: `engine.event`.
     - `board-server-read.ts`: `board.read` and `reply.post`, and the runs the plugin didn't start, read from their journals.
     - `board-server-check.ts`: the engine check: restarting a run whose engine is gone, or marking it stopped.
-- `client/`: React Native only (`View`, `Text`, `Pressable`, `ScrollView`), and every color comes from the theme.
+- `client/`: React Native only (`View`, `Text`, `Pressable`, `ScrollView`), and every color comes from the theme. The side panel, `board-panel.tsx`, polls `board.read`, keeps what a person has opened, folded and picked, and puts the sections together. Each section is in its own module:
+  - `run-header.tsx`: the top: title and status, the run's title and pull request, what the engine is doing now, the run's tokens, and the banners. It uses `run-picker.tsx` (the run tabs) and `usage-line.tsx` (the plan usage line).
+  - `needs-you-section.tsx`: the stuck work waiting for a reply, and what came of replies already posted.
+  - `ticket-stack.tsx`: the tickets as a stack of stages, then the tickets left out for a person.
+  - `ticket-card-view.tsx`: one ticket's card. It opens into `ticket-detail.tsx` and shows the step dots from `step-dots.tsx`.
+  - `final-review-stack.tsx`: the final review and its lenses.
+  - `run-footer.tsx`: the run id, the latest thing that happened, and the counters.
+  - `board-panel-styles.ts`: the styles made from the theme, and the `Look` every piece takes.
+  - `board-panel-stages.ts`: the stages tickets and lenses are stacked in, and the keys of opened and folded cards.
+  - `board-panel-parts.tsx`: the small pieces the sections share (counter, running step, stage header, banner, section).
