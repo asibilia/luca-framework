@@ -61,4 +61,21 @@ Layout:
 
 - `shared/`: Zod contracts and plain values only.
 - `server/`: the Node side. It holds the reducer, the row-maker, the registry, the launcher, the engine watch (restarts), the journal reader (`run-journals.ts`, the runs folder on disk), and the vocabulary (`board-vocabulary.ts`, with its kinds in `board-vocabulary-run.ts`, `board-vocabulary-engine.ts`, and `board-vocabulary-review.ts` and the schema pieces they share in `board-vocabulary-shapes.ts`), with tests next to them.
+  - The reducer, `reduce-board.ts`, applies a record and passes it on by kind. Its handlers are in modules by responsibility, and each module exports the record kinds it handles (`*_KINDS`):
+    - `reduce-board-run.ts`: the run's own records (start, intake, snapshot, run branch, pull request, stop).
+    - `reduce-board-ticket-start.ts`: a ticket's snapshot, worktree, install, baseline tests, and start over.
+    - `reduce-board-ticket-checks.ts`: a ticket's red check, commits, leftover scan, and checks.
+    - `reduce-board-ticket-join.ts`: a ticket joining the run branch, sent back to fix on top of it, pushed, or already done.
+    - `reduce-board-agent-start.ts`: what an agent's start is (fresh, retry, fix round, review fix round) and the card it gives the ticket.
+    - `reduce-board-agents.ts`: an agent's turn on a ticket or the final review: start, finish, failure.
+    - `reduce-board-steps.ts`: the steps in flight, for a ticket or for the run.
+    - `reduce-board-needs-you.ts`: stuck tickets and runs, skips, retries, and the replies that resolve them.
+    - `reduce-board-final-review.ts`: the final review's rounds, lenses, fix rounds, and end.
+    - `reduce-board-usage.ts`: tokens, plan usage, and the waits for a limit to reset.
+    - `reduce-board-counters.ts`: the run-wide counters (Jev, agent messages, the shared git folder, memory).
+    - `reduce-board-settle.ts`: what depends on the whole board (blocked tickets, the final review being active, the run's status).
+    - `reduce-board-text.ts`: words for ids, counts, and record fields.
+    - `reduce-board-reasons.ts`: stuck reasons in words.
+    - `reduce-board-update.ts`: the small state updates every handler uses.
+    - `reduce-board-create.ts`: the starting shapes of a new board and a new ticket card.
 - `client/`: React Native only (`View`, `Text`, `Pressable`, `ScrollView`), and every color comes from the theme.
