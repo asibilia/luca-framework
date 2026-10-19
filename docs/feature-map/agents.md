@@ -34,6 +34,7 @@ Tests:
 - `packages/engine/src/jev/jev-jobs-limits.test.ts`
 - `packages/engine/src/jev/jev-shadow.test.ts`
 - `packages/engine/src/jev/jev-shadow.e2e.test.ts`
+- `packages/engine/src/jev/jev-shadow-findings.e2e.test.ts`
 - `packages/board/server/decision-model-panel.test.ts`
 
 ## Agent messages and run notes
