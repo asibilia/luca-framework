@@ -14,6 +14,7 @@ Tests:
 - `packages/engine/src/core/decide-stuck-retry.test.ts`
 - `packages/engine/src/core/decide-stuck-skip.test.ts`
 - `packages/engine/src/core/decide-stuck-setup-file.test.ts`
+- `packages/engine/src/core/decide-stuck-owner-change.test.ts`
 - `packages/engine/src/core/decide-stuck-final-review.test.ts`
 - `packages/engine/src/core/decide-stuck-undo.test.ts`
 - `packages/engine/src/core/run-stuck.e2e.test.ts`
