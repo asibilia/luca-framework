@@ -146,6 +146,18 @@ Tests:
 - `packages/engine/src/gates/test-slots.test.ts`
 - `packages/engine/src/config/test-concurrency.test.ts`
 
+## Shared failures and lone reruns
+
+When the same old test fails in two tickets within 10 minutes, the engine reruns the second ticket's failed red check or gates alone, holding every test slot, before any fix round; a check gets one lone rerun per ticket. Ticket and join gates journal their failed test cases for this.
+
+Reached by: any run with tickets whose tests collide on a shared port, file, or lock.
+
+Tests:
+
+- `packages/engine/src/core/decide-shared-failures.test.ts`
+- `packages/engine/src/gates/lone-rerun-slots.test.ts`
+- `packages/engine/src/core/run-shared-failures.e2e.test.ts`
+
 ## Prepare commands
 
 A repo's prepare command builds what a worktree needs before its tests run, with a time limit and a cap on how many run at once.

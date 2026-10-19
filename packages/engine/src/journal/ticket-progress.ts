@@ -75,10 +75,27 @@ export type ReplayedGates = {
     ok: boolean
     checks: GateCheck[]
     cases?: TestCase[]
+} & SharedFailureFields
+
+/**
+ * What a ticket's red check or gates carry for shared failures (#544):
+ * whether the run was a lone rerun, and whether each old test it failed
+ * also failed in another ticket shortly before, so a lone rerun is due.
+ */
+export type SharedFailureFields = {
+    /** It was a lone rerun, alone on every test slot. */
+    exclusive?: boolean
+    /** It failed only on old tests another ticket failed within 10 minutes. */
+    shared?: boolean
 }
 
 /** The red check's verdict, plus the test run's (clipped) output. */
-export type ReplayedRedCheck = RedCheckResult & { output: string }
+export type ReplayedRedCheck = RedCheckResult & {
+    output: string
+} & SharedFailureFields
+
+/** A check that can get a lone rerun (#544). */
+export type LoneRerunCheck = 'red_check' | 'gates'
 
 /** The roles that write: they fix review findings. */
 export type WriterRole = 'test-writer' | 'implementer'
@@ -272,6 +289,8 @@ export type TicketProgress = {
     /** The files each stage's latest commit changed. */
     commit_files: Record<CommitStage, string[]>
     gates: ReplayedGates | null
+    /** The checks that had their one lone rerun on this ticket (#544). */
+    lone_reruns: LoneRerunCheck[]
     joined: { ok: true; shas: string[] } | { ok: false; error: string } | null
     join_gates: ReplayedGates | null
     pushed: string | null
@@ -351,6 +370,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     commits: { red: null, green: null, fix: null },
     commit_files: { red: [], green: [], fix: [] },
     gates: null,
+    lone_reruns: [],
     joined: null,
     join_gates: null,
     pushed: null,

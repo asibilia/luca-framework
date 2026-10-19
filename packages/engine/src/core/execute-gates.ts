@@ -25,19 +25,22 @@ import type { ReplayedWorktree } from '../journal/replay'
 
 /**
  * The config's gates in a worktree (with the install first when a manifest
- * changed since its base), journaled as `gates_run`.
+ * changed since its base), journaled as `gates_run`. A lone rerun
+ * (`exclusive`, #544) runs each test command alone, and says so.
  */
 export const gatesIn = async ({
     context,
     worktree,
     target,
     ticket,
+    exclusive,
 }: {
     context: BuildContext
     worktree: ReplayedWorktree
     target: GateTarget
     /** `null` for the final review. */
     ticket: number | null
+    exclusive?: boolean
 }) => {
     const { path: cwd, base_sha } = worktree
     const changed = difference(
@@ -75,6 +78,7 @@ export const gatesIn = async ({
         with_slow_tests: ticket === null,
         own_test_files,
         measured_files: changed_test_files,
+        exclusive,
     })
     // A ticket's gates journal the cases of its red test files, with their
     // expect() counts, so a mapped test that checks nothing is found (#581).
@@ -86,6 +90,15 @@ export const gatesIn = async ({
               )
             : []
     const cases = result.cases.filter(({ file }) => red_files.includes(file))
+    // A ticket's and a join's gates journal the tests that failed (#544), so
+    // replay spots an old test failing in two tickets. Failures only, which
+    // keeps journals small.
+    const failed_cases =
+        ticket === null
+            ? []
+            : result.cases
+                  .filter(({ status }) => status === 'failed')
+                  .map(({ file, full_name }) => ({ file, full_name }))
     context.journal.append({
         kind: 'gates_run',
         ticket,
@@ -95,6 +108,8 @@ export const gatesIn = async ({
             ok: result.ok,
             checks: result.checks,
             ...(cases.length === 0 ? {} : { cases }),
+            ...(failed_cases.length === 0 ? {} : { failed_cases }),
+            ...(exclusive === true ? { exclusive } : {}),
         },
     })
 }

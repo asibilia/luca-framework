@@ -20,6 +20,10 @@ import { findCase } from '../gates/red-check'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { CommitStage } from '../journal/journal-record'
 import type { TicketProgress } from '../journal/replay'
+import type {
+    LoneRerunCheck,
+    SharedFailureFields,
+} from '../journal/ticket-progress'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
 /**
@@ -78,6 +82,21 @@ export const commitStep = ({
         message: commitMessage({ stage, ticket, progress }),
     }
 }
+
+/**
+ * Whether a failed red check or gates get a lone rerun (#544) before any
+ * fix round: every old test it failed also failed in another ticket within
+ * 10 minutes (replay marks it `shared`), and this check has had none yet.
+ */
+const loneRerunDue = ({
+    check,
+    progress,
+    which,
+}: {
+    check: SharedFailureFields
+    progress: TicketProgress
+    which: LoneRerunCheck
+}): boolean => check.shared === true && !progress.lone_reruns.includes(which)
 
 /** The latest bad test, for a stuck detail (#490). */
 export const badTestText = ({
@@ -161,15 +180,18 @@ export const testStep = ({
             detail: blamed,
         })
     }
-    if (red_check === null) {
-        return {
-            type: 'run_red_check',
-            ticket: number,
-            criteria_ids: ticket.criteria.map(({ id }) => id),
-            mapping: test_writer.criteria,
-        }
+    const redCheck: Extract<BuildAction, { type: 'run_red_check' }> = {
+        type: 'run_red_check',
+        ticket: number,
+        criteria_ids: ticket.criteria.map(({ id }) => id),
+        mapping: test_writer.criteria,
     }
+    if (red_check === null) return redCheck
     if (!red_check.ok) {
+        // Its old tests failed in another ticket too: run it alone first.
+        if (loneRerunDue({ check: red_check, progress, which: 'red_check' })) {
+            return { ...redCheck, exclusive: true }
+        }
         const problems = red_check.problems.join('\n')
         if (progress.red_fix_rounds >= MAX_FIX_ROUNDS) {
             return stuck({
@@ -328,6 +350,15 @@ export const gateStep = ({
         return { type: 'run_gates', ticket: number, target: 'ticket' }
     }
     if (gates.ok) return null
+    // Its old tests failed in another ticket too: run them alone first.
+    if (loneRerunDue({ check: gates, progress, which: 'gates' })) {
+        return {
+            type: 'run_gates',
+            ticket: number,
+            target: 'ticket',
+            exclusive: true,
+        }
+    }
     if (progress.gate_fix_rounds >= MAX_FIX_ROUNDS) {
         return stuck({
             ticket: number,

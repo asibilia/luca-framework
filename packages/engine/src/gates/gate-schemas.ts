@@ -14,6 +14,14 @@ export const TestCaseSchema = z.object({
 
 export type TestCase = z.infer<typeof TestCaseSchema>
 
+/** A test case by its file and full name, without its outcome. */
+export const TestCaseRefSchema = TestCaseSchema.pick({
+    file: true,
+    full_name: true,
+})
+
+export type TestCaseRef = z.infer<typeof TestCaseRefSchema>
+
 /** One run of the engine config's test command, with each case's outcome. */
 export const TestRunSchema = z.object({
     command: z.string(),

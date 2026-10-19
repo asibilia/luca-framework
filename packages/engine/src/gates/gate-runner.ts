@@ -179,7 +179,9 @@ const bunCheck = ({
  *
  * With `test_concurrency` (#544), each command first waits for a test slot
  * (see `inTestSlot`); its check records the wait as `wait_ms`, and its time
- * limit and `duration_ms` start after it.
+ * limit and `duration_ms` start after it. With `exclusive` (a lone rerun,
+ * #544), each command waits until no other test run is going, and holds
+ * every slot while it runs.
  */
 const testChecks = async ({
     commands,
@@ -191,6 +193,7 @@ const testChecks = async ({
     timeout_ms,
     limit,
     test_concurrency,
+    exclusive,
 }: {
     commands: TestCommand[]
     name: 'test' | 'slow_test'
@@ -207,6 +210,7 @@ const testChecks = async ({
     limit: SpeedLimit | null
     /** The config's `test_concurrency`; left out, no cap. */
     test_concurrency: number | undefined
+    exclusive: boolean
 }): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
     const checks: GateCheck[] = []
     const runs: TestRun[] = []
@@ -215,6 +219,7 @@ const testChecks = async ({
             checks.push(
                 await inTestSlot({
                     test_concurrency,
+                    exclusive,
                     work: () =>
                         shellCheck({
                             name,
@@ -230,6 +235,7 @@ const testChecks = async ({
         checks.push(
             await inTestSlot({
                 test_concurrency,
+                exclusive,
                 work: async () => {
                     const started = performance.now()
                     const run = await runTestsInHeldSlot({
@@ -287,6 +293,9 @@ const testChecks = async ({
  * `around_prepare`, if given, runs the prepare check (so the engine can see
  * what it made).
  *
+ * With `exclusive` (a lone rerun, #544), each test command waits until no
+ * other test run is going, and holds every test slot while it runs.
+ *
  * @example
  * const { ok, checks, cases } = await runGates({ cwd, config, test_files, report_file, install: null })
  */
@@ -300,6 +309,7 @@ export const runGates = async ({
     with_slow_tests,
     own_test_files,
     measured_files,
+    exclusive = false,
 }: {
     cwd: string
     config: EngineConfig
@@ -325,6 +335,8 @@ export const runGates = async ({
      * `test_case_timeout_ms` by measured time (#580); left out, none.
      */
     measured_files?: string[]
+    /** Run each test command alone (#544). Left out, they don't. */
+    exclusive?: boolean
 }): Promise<{ ok: boolean; checks: GateCheck[]; cases: TestCase[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -360,6 +372,7 @@ export const runGates = async ({
                 ? null
                 : { limit_ms, measured_files: measured_files ?? [] },
         test_concurrency,
+        exclusive,
     })
     checks.push(...fastChecks.checks)
     // The test cases the gates saw, for the empty-test check (#581).
@@ -376,6 +389,7 @@ export const runGates = async ({
     if (unrun.length > 0) {
         const { run, ...check } = await inTestSlot({
             test_concurrency,
+            exclusive,
             work: async () => {
                 const started = performance.now()
                 const run = await runTestsInHeldSlot({
@@ -420,6 +434,7 @@ export const runGates = async ({
             timeout_ms,
             limit: null,
             test_concurrency,
+            exclusive,
         })
         checks.push(...slow.checks)
     }
@@ -474,6 +489,7 @@ export const runSlowTests = async ({
         timeout_ms: testTimeoutOf({ config }),
         limit: null,
         test_concurrency: config.test_concurrency,
+        exclusive: false,
     })
     const all = prepared === null ? checks : [prepared, ...checks]
     return { ok: all.every(({ ok }) => ok), checks: all }

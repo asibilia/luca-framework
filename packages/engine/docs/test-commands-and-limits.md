@@ -43,6 +43,25 @@ repo caps how many test runs go at once across the run with
 - Left out, there is no cap: nothing waits (except behind an exclusive
   take), and no run or check has `wait_ms`.
 
+**Shared failures and lone reruns (#544).** Ticket and join `gates_run`
+records journal the test cases that failed in any bun run, as
+`failed_cases: [{ file, full_name }]` (failures only; left out with none, and
+in old journals). Red checks already journal their whole run. Replay keeps a
+run-wide list of old-test failures: a failed test that passed at that
+ticket's baseline.
+
+- When a ticket's red check or own gates fail, and every old test they failed
+  also failed in another ticket within 10 minutes, by record time and
+  journaled earlier, the next step is a **lone rerun**: the same check, with
+  `exclusive: true`, before any fix round. Each of its test commands waits
+  until no other test run is going and holds every test slot (with or
+  without `test_concurrency`). Its record says `exclusive: true`.
+- A passing lone rerun goes on; a failing one starts the usual fix round.
+  Each check (the red check, the gates) gets one lone rerun per ticket.
+- A check that failed no old test, only new ones, or whose old tests failed
+  elsewhere more than 10 minutes apart, goes to the usual fix round. A join's
+  gates add to the list but get no lone rerun.
+
 **Slow tests (#563).** A repo with a long end-to-end suite names it in
 `checks.slow_test`, and leaves it out of `checks.test`. It has the same shape
 as `checks.test`: one command, or a list of commands and `{ run, results }`

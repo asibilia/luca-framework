@@ -17,6 +17,7 @@ import type {
 
 import type { AgentRole } from '../agents/role-results'
 import type { EngineConfig } from '../config/engine-config'
+import type { TestCaseRef } from '../gates/gate-schemas'
 import type {
     IntakeProblem,
     IntakeRead,
@@ -87,6 +88,9 @@ export type RepoWaitState = {
     since: string | null
 }
 
+/** An old test that failed in a ticket's check, at its record's time (#544). */
+export type OldTestFailure = TestCaseRef & { ticket: number; time: string }
+
 /** A run's state, rebuilt only from its journal. There is no status file. */
 export type RunState = {
     phase: RunPhase
@@ -129,6 +133,11 @@ export type RunState = {
      * leaves them out of commits, the leftover scan, and role rules.
      */
     prepare_made: string[]
+    /**
+     * Every old test (one that passed at its ticket's baseline) that failed
+     * in a ticket's red check, gates or join gates, oldest first (#544).
+     */
+    old_test_failures: OldTestFailure[]
     final_review: FinalReviewState
     /** Comments read on the spec issue while waiting for replies, oldest first. */
     comments: ReplayedComment[]
@@ -186,6 +195,7 @@ export const EMPTY_STATE: RunState = {
     run_notes: [],
     run_branch_gates: null,
     prepare_made: [],
+    old_test_failures: [],
     final_review: EMPTY_FINAL_REVIEW,
     comments: [],
     handled_comments: [],

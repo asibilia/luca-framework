@@ -68,6 +68,10 @@ _Avoid_: e2e gate, long tests
 The cap a repo sets with `test_concurrency` on how many test runs go at once across a run, so tests that share ports, files, or a database don't collide. A test run waits for a free slot, and the wait never counts toward its time limit.
 _Avoid_: test queue, test lock
 
+**Lone rerun**:
+The engine's rerun of a ticket's failed red check or gates while no other test run is going, holding every test slot. It comes before any fix round when each old test that failed also failed in another ticket within 10 minutes, so a collision between tickets costs one rerun, not a fix round. A check gets one per ticket.
+_Avoid_: exclusive retry, solo run
+
 **Feature map**:
 A markdown file (or a folder of markdown pages, one per area) a repo names in `feature_map` that lists each feature and the test files that prove it. The red check refuses a new test file the map doesn't list, so tickets add tests to a feature's files instead of scattering new ones.
 _Avoid_: test index, test registry

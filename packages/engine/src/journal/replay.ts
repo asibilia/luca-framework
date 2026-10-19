@@ -27,12 +27,14 @@ import {
     snapshotPhase,
     type RunState,
 } from './run-state'
+import { sharedFailuresAfter } from './shared-failure-replay'
 import { crashesAfter } from './step-records'
 import { applyTicketRecord, reusedBaselineAfter } from './ticket-replay'
 
 import { withConfigChanges } from '../config/config-reload'
 
 export type {
+    OldTestFailure,
     RunBudgetState,
     ReplayedComment,
     ReplayedPullRequest,
@@ -421,6 +423,13 @@ const applyRecord = ({
         case 'agent_finished':
             return applyTicketRecord({
                 state: { ...next, run_notes: notesAfter({ state, record }) },
+                record,
+            })
+        // A ticket's checks also keep the run's old-test failures (#544).
+        case 'red_check':
+        case 'gates_run':
+            return sharedFailuresAfter({
+                state: applyTicketRecord({ state: next, record }),
                 record,
             })
         case 'join_undone':

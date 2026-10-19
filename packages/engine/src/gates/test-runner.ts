@@ -115,7 +115,8 @@ export const TEST_TIMEOUT_HINT =
  *
  * With `test_concurrency` (#544), it first waits for a test slot (see
  * `inTestSlot`): the run records that wait as `wait_ms`, and its time limit
- * starts after it.
+ * starts after it. An `exclusive` run (a lone rerun, #544) waits until no
+ * other test run is going, and holds every slot while it runs.
  */
 export const runTests = async ({
     cwd,
@@ -124,6 +125,7 @@ export const runTests = async ({
     report_file,
     timeout_ms,
     test_concurrency,
+    exclusive,
 }: {
     cwd: string
     command: string
@@ -133,9 +135,12 @@ export const runTests = async ({
     timeout_ms: number
     /** The config's `test_concurrency`; left out, no cap. */
     test_concurrency?: number
+    /** Run alone, holding every test slot (#544). Left out, it doesn't. */
+    exclusive?: boolean
 }): Promise<TestRun> =>
     inTestSlot({
         test_concurrency,
+        exclusive,
         work: () =>
             runTestsInHeldSlot({
                 cwd,
@@ -246,6 +251,7 @@ export const runBunTests = async ({
     report_file,
     timeout_ms,
     test_concurrency,
+    exclusive,
 }: {
     cwd: string
     commands: string[]
@@ -255,6 +261,8 @@ export const runBunTests = async ({
     timeout_ms: number
     /** The config's `test_concurrency`: each command takes a test slot. */
     test_concurrency?: number
+    /** Each command runs alone, holding every test slot (#544). */
+    exclusive?: boolean
 }): Promise<TestRun> => {
     const runs: TestRun[] = []
     for (const [index, command] of commands.entries()) {
@@ -266,6 +274,7 @@ export const runBunTests = async ({
                 report_file: reportFileFor({ report_file, index }),
                 timeout_ms,
                 test_concurrency,
+                exclusive,
             })
         )
     }

@@ -81,12 +81,16 @@ export type BuildAction =
      * implementer sent it back.
      */
     | { type: 'reset_ticket_worktree'; ticket: number; bad_test?: BadTest }
-    /** Prove every criterion has a test, new tests fail, old tests pass. */
+    /**
+     * Prove every criterion has a test, new tests fail, old tests pass. A
+     * lone rerun (`exclusive`, #544) runs its tests alone.
+     */
     | {
           type: 'run_red_check'
           ticket: number
           criteria_ids: string[]
           mapping: CriterionTests[]
+          exclusive?: true
       }
     /** Scan for leftovers, then commit everything in the worktree. */
     | {
@@ -95,8 +99,16 @@ export type BuildAction =
           stage: CommitStage
           message: string
       }
-    /** Run the engine config's gates in the ticket worktree or on the run branch. */
-    | { type: 'run_gates'; ticket: number; target: GateTarget }
+    /**
+     * Run the engine config's gates in the ticket worktree or on the run
+     * branch. A lone rerun (`exclusive`, #544) runs its tests alone.
+     */
+    | {
+          type: 'run_gates'
+          ticket: number
+          target: GateTarget
+          exclusive?: true
+      }
     /** Replay the approved ticket's commits onto the run branch. */
     | { type: 'join_run_branch'; ticket: number }
     /**

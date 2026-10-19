@@ -110,12 +110,15 @@ export const runRedCheck = async ({
     const files = uniq(
         action.mapping.flatMap(({ tests }) => tests.map(({ file }) => file))
     )
+    // A lone rerun (#544) runs each test command alone.
+    const exclusive = action.exclusive === true
     const fast = await runBunTests({
         cwd: path,
         commands: bunTestCommands(context),
         test_files,
         timeout_ms: testTimeoutOf({ config: context.config }),
         test_concurrency: context.config.test_concurrency,
+        exclusive,
         report_file: await reportFile({
             context,
             ticket: action.ticket,
@@ -152,6 +155,7 @@ export const runRedCheck = async ({
                       }),
                       timeout_ms: testTimeoutOf({ config: context.config }),
                       test_concurrency: context.config.test_concurrency,
+                      exclusive,
                   }),
                   test_files,
               })
@@ -206,6 +210,10 @@ export const runRedCheck = async ({
         kind: 'red_check',
         ticket: action.ticket,
         role: null,
-        content: { ...result, tests: current },
+        content: {
+            ...result,
+            tests: current,
+            ...(exclusive ? { exclusive } : {}),
+        },
     })
 }

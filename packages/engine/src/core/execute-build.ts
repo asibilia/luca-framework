@@ -244,6 +244,7 @@ export const executeBuildAction = async ({
                         : need({ value: state.run_branch, what: 'run branch' }),
                 target: action.target,
                 ticket: action.ticket,
+                exclusive: action.exclusive,
             })
         case 'join_run_branch': {
             const worktree = ticketWorktree({ state, ticket: action.ticket })
