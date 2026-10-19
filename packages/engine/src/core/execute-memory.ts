@@ -413,6 +413,7 @@ export const executeMemoryAction = async ({
                 config: built.config,
                 ticket: null,
                 role: 'learner',
+                step,
             })
             journal.append({
                 kind: 'agent_started',

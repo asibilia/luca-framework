@@ -13,5 +13,8 @@
     "rule_files": ["docs/guides/coding-standards.md", "AGENTS.md"],
     "muninn": {
         "vault": "luca-monorepo"
+    },
+    "models": {
+        "floors": { "test-writer": "sonnet" }
     }
 }

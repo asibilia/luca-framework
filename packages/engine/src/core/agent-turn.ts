@@ -253,12 +253,14 @@ export const launchAgent = async ({
 }) => {
     const { ticket, role, prompt, may_edit_tests } = action
     // The decision model's answer, journaled just before this step, picks
-    // a routed role's model; a reviewer is locked on Opus.
+    // a routed role's model; a reviewer is locked on Opus. A redo keeps
+    // the model its first try journaled.
     const { model, model_reason } = launchPick({
         records: context.journal.read(),
         config: context.config,
         ticket,
         role,
+        step: context.step,
     })
     context.journal.append({
         kind: 'agent_started',
