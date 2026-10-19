@@ -110,6 +110,17 @@ Tests:
 - `packages/engine/src/core/run-own-slow-tests.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
 
+## Test slots
+
+A repo can cap how many test runs go at once across a run, so tests that share ports, files, or a database don't collide; waiting for a slot is journaled as `wait_ms` and never counts toward a time limit.
+
+Reached by: `test_concurrency` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/gates/test-slots.test.ts`
+- `packages/engine/src/config/test-concurrency.test.ts`
+
 ## Prepare commands
 
 A repo's prepare command builds what a worktree needs before its tests run, with a time limit and a cap on how many run at once.
