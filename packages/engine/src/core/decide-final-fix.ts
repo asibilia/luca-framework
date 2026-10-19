@@ -22,7 +22,7 @@ import {
     gateFixMessage,
 } from './fix-loop-text'
 import { MAX_FIX_ROUNDS } from './loop-caps'
-import { badTestDetail } from './stuck-text'
+import { badTestDetail, setupChangeDetail } from './stuck-text'
 
 import type { AgentRole } from '../agents/role-results'
 import type { ReplayedAgentFailure } from '../journal/replay'
@@ -123,6 +123,15 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
         review.agent_failures.implementer,
     ].find((entry) => entry !== undefined)
     if (failed !== undefined) return failedFixerStep({ ...args, failed })
+    if (review.setup_change !== null) {
+        return stuck({
+            reason: 'setup_change_needed',
+            detail: setupChangeDetail({
+                ...review.setup_change,
+                setup_files: args.setup_files ?? [],
+            }),
+        })
+    }
     if (!fix.tests_answered)
         return launchFixer({ ...args, role: 'test-writer' })
     if (!fix.code_answered) return launchFixer({ ...args, role: 'implementer' })

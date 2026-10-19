@@ -33,8 +33,7 @@ const REASON_LINES: Record<StuckReason, string> = {
     install_failed: 'Installing the dependencies failed.',
     prepare_failed:
         "The repo's prepare command failed before any agent worked.",
-    setup_change_needed:
-        'An agent needs a test setup file changed, and only you may change one.',
+    setup_change_needed: 'An agent needs a change only you may make.',
     crashed: 'The engine crashed in the same step, again and again.',
     undo_refused:
         'Undoing its join would have rewound the run branch over other work, so the run branch was left alone.',

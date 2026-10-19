@@ -27,6 +27,8 @@ const finalSuggestion = ({ reason }: { reason: StuckReason }): string => {
             return "Fix the open findings in the run branch's worktree, then reply `retry`; or reply `ship` if they can wait for review in the PR."
         case 'leftovers_found':
             return `Delete those files in the run branch's worktree, then reply \`retry\`. ${leftoverAllowHint({ retry: '`retry`' })}`
+        case 'setup_change_needed':
+            return "Make that change yourself in the run branch's worktree, then reply `retry`; or reply `ship` to open the PR anyway."
         default:
             return "Read the last error, fix what trips it in the run branch's worktree, then reply `retry`; or reply `ship` to open the PR anyway."
     }

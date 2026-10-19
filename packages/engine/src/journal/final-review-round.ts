@@ -11,6 +11,7 @@ import {
     type FinishedContent,
 } from './agent-turn-replay'
 import type { FinalFinding, FinalReviewState } from './final-review-state'
+import { setupChangeOf } from './ticket-result-replay'
 
 import {
     isBlocking,
@@ -174,10 +175,14 @@ export const finalResultChange = ({
             ? settleRound({ review: next })
             : next
     }
+    // A fixer asking for a change only the owner may make sticks the final
+    // review on it (#617), like a ticket.
+    const setup_change = setupChangeOf({ finished })
     if (finished.role === 'test-writer') {
         if (fix === null || fix.tests_answered) return review
         return {
             ...review,
+            setup_change,
             fix: {
                 ...fix,
                 tests_answered: true,
@@ -193,6 +198,7 @@ export const finalResultChange = ({
         if (fix !== null && fix.tests_answered && !fix.code_answered) {
             return {
                 ...review,
+                setup_change,
                 fix: {
                     ...fix,
                     code_answered: true,
@@ -204,6 +210,7 @@ export const finalResultChange = ({
         if (review.gates === null) return review
         return {
             ...review,
+            setup_change,
             gates: null,
             gate_fix_rounds: review.gate_fix_rounds + 1,
         }

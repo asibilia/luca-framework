@@ -69,10 +69,14 @@ final_review_stuck
   an id above the last one seen. It runs beside the tickets' steps, under its
   own key, and doesn't count towards `max_steps`: once nothing else can
   move, the run waits this way with no time limit.
-- **Test setup files.** A test-writer or implementer that can't go on
-  without a change to a test setup file answers `needs_setup_change` with the
-  file and why; the ticket is stuck (`setup_change_needed`) with that
-  message, since only the user may change one.
+- **Owner changes.** A test-writer or implementer that can't go on
+  without a change only the user may make (a test setup file, a binary
+  file, something that needs the network) answers `needs_setup_change` with
+  the file and why; the ticket is stuck (`setup_change_needed`) with that
+  message. A final review fixer's answer makes the final review stuck the
+  same way (#617), and its `retry` starts the fix round over. The stuck
+  text calls it "a change only you may make", and says "test setup file"
+  only when the file is one of the config's.
 - The tracker's `comment` returns the new comment's id, and `listComments`
   reads an issue's comments after an id. The GitHub tracker posts and lists
   through `gh api`, and reads each issue's author.

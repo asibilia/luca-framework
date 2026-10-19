@@ -7,6 +7,7 @@ import type {
     DeclinedFinding,
     ReplayedGates,
     ReviewFix,
+    TicketProgress,
 } from './ticket-progress'
 
 import type {
@@ -99,6 +100,11 @@ export type FinalReviewState = {
      * reviewed; `null` with none.
      */
     shipped_edits: { sha: string; message: string; files: string[] } | null
+    /**
+     * A change only the owner may make, asked for by a fixer (#617); the
+     * final review is stuck on it until a `retry`.
+     */
+    setup_change: TicketProgress['setup_change']
     /** The fixer whose turn a crash cut off; cleared once a fixer starts. */
     crashed_turn: AgentRole | null
     /**
@@ -142,6 +148,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     stuck: null,
     shipped: false,
     shipped_edits: null,
+    setup_change: null,
     crashed_turn: null,
     summary_picture: null,
     merge_danger: null,

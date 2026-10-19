@@ -1,5 +1,5 @@
 /**
- * The stuck details for a ticket that needs a test setup file changed, or
+ * The stuck details for a ticket that needs a change only the owner may make, or
  * whose test was sent back as bad.
  */
 import upperFirst from 'lodash/upperFirst'
@@ -8,8 +8,9 @@ import type { AgentRole, BadTest, BadTestSource } from '../agents/role-results'
 import { clipOutput } from '../shell/run-command'
 
 /**
- * The detail of a ticket stuck on a test setup file change: the file, why,
- * and what to do.
+ * The detail of a ticket or the final review stuck on a change only the
+ * owner may make (#617): the file, why, and what to do. It says "test setup
+ * file" only when the file is one of the config's.
  */
 export const setupChangeDetail = ({
     role,
@@ -23,8 +24,8 @@ export const setupChangeDetail = ({
     /** The config's test setup files. */
     setup_files: string[]
 }): string =>
-    `The ${role} needs the test setup file \`${file || 'unnamed'}\` changed: ${reason || 'no reason given'}\n` +
-    `Agents may never change a test setup file${setup_files.length > 0 ? ` (${setup_files.join(', ')})` : ''}. Make the change yourself in the ticket's worktree, then reply retry.`
+    `The ${role} needs a change only you may make, to \`${file || 'unnamed'}\`: ${reason || 'no reason given'}\n` +
+    `${setup_files.includes(file) ? 'It is a test setup file, which agents may never change.' : 'No agent may make it.'} Make the change yourself in the worktree, then reply retry.`
 
 /**
  * A test sent back as bad, for a stuck detail: its file and name, then the

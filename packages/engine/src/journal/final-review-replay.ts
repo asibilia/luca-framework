@@ -253,6 +253,7 @@ export const resumedFinalReview = ({
         failed_tries: {},
         engine_failures: {},
         gate_fix_rounds: 0,
+        setup_change: null,
         gates: review.commit === null ? null : review.gates,
         leftovers: review.commit === null ? null : review.leftovers,
     }
