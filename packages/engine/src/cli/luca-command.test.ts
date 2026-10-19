@@ -1,10 +1,21 @@
 import { realpathSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
+
+import type { JournalEntry, JournalRecord } from '../journal/journal-record'
+import {
+    implemented,
+    intakePassed,
+    practiceTicket,
+    reviewed,
+    testsWritten,
+} from '../testing/build-fixtures'
+import { makeCheckouts } from '../testing/checkouts-fixtures'
+import { recordsFrom } from '../testing/intake-fixtures'
 
 /**
  * The `luca` command end to end (seam 4): the engine package's `luca` bin,
@@ -173,6 +184,125 @@ describe('luca subcommands', () => {
         const output = `${end.stdout}\n${end.stderr}`
         expect(output).toContain('luca doctor')
         expect(output).toContain('--fix')
+    }, 30_000)
+})
+
+describe('luca models', () => {
+    /** A run on `repo` of one joined ticket, its test-writer on `model`. */
+    const modelRun = ({
+        repo,
+        model,
+    }: {
+        repo: string
+        model: string
+    }): JournalRecord[] => {
+        const start = (role: 'test-writer' | 'implementer', on: string) =>
+            ({
+                kind: 'agent_started',
+                ticket: 11,
+                role,
+                content: { role, prompt: 'p', model: on },
+            }) satisfies JournalEntry
+        return recordsFrom({
+            entries: [
+                ...intakePassed({ tickets: [practiceTicket({ number: 11 })] }),
+                start('test-writer', model),
+                testsWritten({ ticket: 11 }),
+                start('implementer', 'opus'),
+                implemented({ ticket: 11 }),
+                reviewed({ ticket: 11 }),
+                {
+                    kind: 'ticket_joined',
+                    ticket: 11,
+                    role: null,
+                    content: { ok: true, shas: ['r1'], lines_changed: 40 },
+                },
+            ],
+        }).map((record) =>
+            record.kind === 'run_started'
+                ? { ...record, content: { ...record.content, repo } }
+                : record
+        )
+    }
+
+    /** Every file and folder under `dir` but `skip`, with its time and text. */
+    const snapshot = async (
+        dir: string,
+        skip: string[] = []
+    ): Promise<Record<string, string>> => {
+        const found: Record<string, string> = {}
+        for (const name of await readdir(dir, { recursive: true })) {
+            if (skip.some((top) => name === top || name.startsWith(`${top}/`)))
+                continue
+            const path = join(dir, name)
+            const info = await stat(path)
+            found[name] = info.isFile()
+                ? `${info.mtimeMs} ${await Bun.file(path).text()}`
+                : 'folder'
+        }
+        return found
+    }
+
+    test('luca --help lists models', async () => {
+        const end = await luca({ args: ['--help'] })
+
+        expect(end.exit_code).toBe(0)
+        expect(`${end.stdout}\n${end.stderr}`).toMatch(/^\s+models\b/m)
+    }, 30_000)
+
+    test("luca models prints the report for the current repo's runs, and writes nothing", async () => {
+        const checkouts = await makeCheckouts({ dir: join(cwd, 'git') })
+        const runs_dir = join(cwd, 'runs')
+        const ours = modelRun({ repo: checkouts.main, model: 'sonnet' })
+        const theirs = modelRun({ repo: checkouts.outside, model: 'haiku' })
+        for (const [run_id, records] of [
+            ['ours', ours],
+            ['theirs', theirs],
+        ] as const) {
+            await mkdir(join(runs_dir, run_id), { recursive: true })
+            await Bun.write(
+                join(runs_dir, run_id, 'journal.jsonl'),
+                records.map((record) => JSON.stringify(record)).join('\n') +
+                    '\n'
+            )
+        }
+        await Bun.write(
+            join(checkouts.main, '.luca', 'config.json'),
+            JSON.stringify({ checks: { test: 'bun test' } })
+        )
+        const before = {
+            runs: await snapshot(runs_dir),
+            repo: await snapshot(checkouts.main, ['.git']),
+        }
+
+        const child = Bun.spawn([process.execPath, await lucaBin(), 'models'], {
+            cwd: checkouts.main,
+            env: { ...process.env, LUCA_RUNS_DIR: runs_dir },
+            stdout: 'pipe',
+            stderr: 'pipe',
+        })
+        const [stdout, exit_code] = await Promise.all([
+            new Response(child.stdout).text(),
+            child.exited,
+        ])
+
+        expect(exit_code).toBe(0)
+        // Loaded here, so the other tests in this file run without it.
+        const { formatModelReport, scoreModels } =
+            await import('../models/model-score')
+        const expected = formatModelReport({
+            report: scoreModels({ runs: [ours] }),
+        }).trim()
+        const both = formatModelReport({
+            report: scoreModels({ runs: [ours, theirs] }),
+        }).trim()
+        expect(expected).not.toBe(both)
+        expect(stdout).toContain(expected)
+        expect(stdout).not.toContain(both)
+        expect({
+            runs: await snapshot(runs_dir),
+            repo: await snapshot(checkouts.main, ['.git']),
+        }).toEqual(before)
     }, 30_000)
 })
 
