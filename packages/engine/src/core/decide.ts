@@ -1,4 +1,5 @@
-import { decideBuild, type BuildAction } from './decide-build'
+import { decideBuildPlan, type BuildAction } from './decide-build'
+import type { TicketWait } from './decide-build-tickets'
 import { decideCrashes, type CrashAction } from './decide-crashes'
 import { decideMemory, type MemoryAction } from './decide-memory'
 import { decidePlan, type PlanAction } from './decide-plan'
@@ -10,6 +11,7 @@ import {
 import { decideRunBudget, type RunBudgetAction } from './decide-run-budget'
 import { decideUsage, type UsageAction } from './decide-usage'
 import { decideUsageLine, type UsageLineAction } from './decide-usage-line'
+import { startedWaits } from './decide-waits'
 
 import { checkIntake } from '../intake/intake-checks'
 import type { IntakeProblem, IntakeSnapshot } from '../intake/intake-schemas'
@@ -75,12 +77,11 @@ export type EngineAction =
  * const actions = decideSteps({ records: journal.read() })
  * // [{ type: 'launch_agent', ticket: 11, ... }, { type: 'run_red_check', ticket: 12, ... }]
  */
-export const decideSteps = ({
-    records,
-    usage_lines,
-    shared_readings,
-    earlier_runs,
-}: {
+export const decideSteps = (args: DecideInput): EngineAction[] =>
+    decideNext(args).actions
+
+/** What `decideSteps` and `decideNext` decide from. */
+type DecideInput = {
     records: JournalRecord[]
     /** The `luca-board` usage lines. Left out, there is no usage line. */
     usage_lines?: UsageLines
@@ -91,7 +92,29 @@ export const decideSteps = ({
      * intake. Left out, there is no repo wait to start.
      */
     earlier_runs?: RepoWaitRun[]
-}): EngineAction[] => {
+}
+
+/** The decision with no ticket waiting between steps. */
+const alone = (actions: EngineAction[]) => ({ actions, waits: [] })
+
+/**
+ * `decideSteps`'s actions, and beside them the waits between steps to
+ * journal now (#559): each ticket the same build decision held on purpose,
+ * for another ticket's shared baseline tests, the join queue or the start
+ * queue, whose wait the journal doesn't say yet. None when the build
+ * doesn't run: a crash stop, a repo wait, intake, a plan limit, the run
+ * budget, or a pause at the usage line.
+ *
+ * @example
+ * decideNext({ records: journal.read() })
+ * // { actions: [{ type: 'run_baseline_tests', ticket: 11 }], waits: [{ ticket: 12, for: 'baseline', on_ticket: 11 }] }
+ */
+export const decideNext = ({
+    records,
+    usage_lines,
+    shared_readings,
+    earlier_runs,
+}: DecideInput): { actions: EngineAction[]; waits: TicketWait[] } => {
     const state = replayRun({ records })
     const { phase, spec_number } = state
     const crash = phase === 'new' ? null : decideCrashes({ state })
@@ -101,15 +124,15 @@ export const decideSteps = ({
             crash.type === 'done' && phase === 'intake_passed'
                 ? decideUsage({ records, state, ending: true })
                 : null
-        return [usage ?? crash]
+        return alone([usage ?? crash])
     }
     const repoWait =
         spec_number === null
             ? null
             : decideRepoWait({ state, records, spec_number, earlier_runs })
-    if (repoWait !== null) return repoWait
+    if (repoWait !== null) return alone(repoWait)
     if (phase !== 'intake_passed' || spec_number === null) {
-        return [decideIntake({ state })]
+        return alone([decideIntake({ state })])
     }
     const plan = decidePlan({ state, spec_number })
     if (plan !== null) {
@@ -118,16 +141,12 @@ export const decideSteps = ({
             plan.type === 'done'
                 ? decideUsage({ records, state, ending: true })
                 : null
-        return [usage ?? plan]
+        return alone([usage ?? plan])
     }
     const budget = decideRunBudget({ state, records, spec_number })
-    if (budget !== null) return budget
-    const build = decideMemory({
-        state,
-        records,
-        spec_number,
-        build: decideBuild({ state, spec_number }),
-    })
+    if (budget !== null) return alone(budget)
+    const { steps, waits } = decideBuildPlan({ state, spec_number })
+    const build = decideMemory({ state, records, spec_number, build: steps })
     const pause = decideUsageLine({
         state,
         records,
@@ -136,14 +155,18 @@ export const decideSteps = ({
         usage_lines,
         shared_readings: shared_readings ?? [],
     })
-    if (pause !== null) return [pause]
+    if (pause !== null) return alone([pause])
+    const started = startedWaits({ waits, records })
     // A run whose every ticket was already done ends with nothing to do.
     const ending =
         build.length === 1 &&
         (build[0]?.type === 'done' || build[0]?.type === 'finish_nothing_to_do')
     const usage = decideUsage({ records, state, ending })
-    if (usage === null) return build
-    return ending ? [usage] : [usage, ...build]
+    if (usage === null) return { actions: build, waits: started }
+    return {
+        actions: ending ? [usage] : [usage, ...build],
+        waits: started,
+    }
 }
 
 /**

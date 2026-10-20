@@ -163,6 +163,23 @@ export const RunInfoSchema = z.object({
 
 export type RunInfo = z.infer<typeof RunInfoSchema>
 
+/** The run phases after which no engine is needed. */
+export const OVER_PHASES: ReadonlySet<RunPhase> = new Set<RunPhase>([
+    'done',
+    'refused',
+    'nothing_to_do',
+])
+
+/**
+ * Whether a run may still need an engine: not ended, not over. The
+ * server's engine check and the panel's "no sign of life" both go by it.
+ *
+ * @example
+ * needsEngine({ state }) // true while the run builds
+ */
+export const needsEngine = ({ state }: { state: { run: RunInfo } }): boolean =>
+    state.run.engine_ended === null && !OVER_PHASES.has(state.run.phase)
+
 /**
  * An open ticket the run left out for a person (#499): one labeled
  * `ready-for-human`, or one waiting on such a ticket. Not a problem, so the

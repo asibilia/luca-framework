@@ -55,6 +55,7 @@ Tests:
 - `packages/engine/src/core/live-file-helpers.test.ts`
 - `packages/engine/src/core/run-slot-waits.e2e.test.ts`
 - `packages/engine/src/cli/run-modes.e2e.test.ts`
+- `packages/board/server/live-file-engine.test.ts`
 - `packages/board/client/live-card-panel.test.ts`
 - `packages/board/client/live-feed-panel.test.ts`
 - `packages/board/client/engine-gone-panel.test.ts`

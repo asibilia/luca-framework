@@ -8,6 +8,15 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import type { AgentLauncher } from '../agents/agent-launcher'
 import type { AgentRole } from '../agents/role-results'
 import { createScriptedLauncher } from '../agents/scripted-launcher'
+import type { TurnProgress } from '../agents/turn-progress'
+import {
+    liveFileIn,
+    LiveFileSchema,
+    readLive,
+    waitForLive,
+    type LiveAgent,
+    type LiveFile,
+} from '../testing/live-file-fixtures'
 import {
     createPracticeRepo,
     EMPTY_LEARNER_TURN,
@@ -22,24 +31,7 @@ import {
  * all before its scripted turn plays, so before the turn ends.
  */
 
-/** The live file as the board reads it. */
-type Live = {
-    written_at: string
-    plan_usage: unknown
-    agents: Record<string, unknown>[]
-}
-
-/** The progress a launcher hears in a turn, as it hands it on. */
-type Progress = {
-    tokens: number
-    action: { tool: string; target: string; at: string } | null
-    open_call: { tool: string; target: string; started_at: string } | null
-    rate_limit_events: Record<string, unknown>[]
-}
-
-type LaunchArgs = Parameters<AgentLauncher['launch']>[0] & {
-    on_progress?: (progress: Progress) => void
-}
+type LaunchArgs = Parameters<AgentLauncher['launch']>[0]
 
 let root = ''
 
@@ -50,37 +42,6 @@ beforeEach(async () => {
 afterEach(async () => {
     await rm(root, { recursive: true, force: true })
 })
-
-/** The run folder's live file of the practice run in `dir`. */
-const liveFileIn = (dir: string): string =>
-    join(dir, 'runs', 'run-1', 'live.json')
-
-const readLive = (file: string): Live | null => {
-    try {
-        return JSON.parse(readFileSync(file, 'utf8')) as Live
-    } catch {
-        return null
-    }
-}
-
-/** The live file once `until` holds for it, or `null` after `ms`. */
-const waitForLive = async ({
-    file,
-    until,
-    ms = 3000,
-}: {
-    file: string
-    until: (live: Live) => boolean
-    ms?: number
-}): Promise<Live | null> => {
-    const deadline = Date.now() + ms
-    while (Date.now() < deadline) {
-        const live = readLive(file)
-        if (live !== null && until(live)) return live
-        await Bun.sleep(20)
-    }
-    return null
-}
 
 /**
  * The happy path's scripted launcher; each launch of `role` runs `during`
@@ -105,7 +66,7 @@ const watching = ({
     }
 }
 
-const progress = (fields: Partial<Progress>): Progress => ({
+const progress = (fields: Partial<TurnProgress>): TurnProgress => ({
     tokens: 0,
     action: null,
     open_call: null,
@@ -139,7 +100,7 @@ describe('the live file, with scripted agents', () => {
     test("during an agent's turn, the live file holds its ticket, role, model, tokens so far and latest action, and not its prompt", async () => {
         const practice = await createPracticeRepo({ root })
         const file = liveFileIn(root)
-        let seen: Live | null = null
+        const seen: { live: LiveFile | null } = { live: null }
         let model = ''
         const at = new Date().toISOString()
         const launcher = watching({
@@ -152,7 +113,7 @@ describe('the live file, with scripted agents', () => {
                         action: { tool: 'Edit', target: 'src/sum.test.ts', at },
                     })
                 )
-                seen = await waitForLive({
+                seen.live = await waitForLive({
                     file,
                     until: (live) =>
                         live.agents.some((agent) => agent.ticket === 11),
@@ -166,8 +127,9 @@ describe('the live file, with scripted agents', () => {
             stop_before: ['run_red_check'],
         })
 
-        expect(seen).not.toBeNull()
-        const live = seen as unknown as Live
+        const live = seen.live
+        expect(live).not.toBeNull()
+        if (live === null) return
         expect(Number.isNaN(Date.parse(live.written_at))).toBe(false)
         expect(live.agents).toContainEqual(
             expect.objectContaining({
@@ -211,7 +173,9 @@ describe('the live file, with scripted agents', () => {
                             last = text
                             const live = (() => {
                                 try {
-                                    return JSON.parse(text) as Live
+                                    return LiveFileSchema.parse(
+                                        JSON.parse(text)
+                                    )
                                 } catch {
                                     return null
                                 }
@@ -279,16 +243,14 @@ describe('the live file, with scripted agents', () => {
             },
             arrived_at: new Date().toISOString(),
         }
-        let seen: Live | null = null
+        const seen: { live: LiveFile | null } = { live: null }
         const launcher = watching({
             role: 'test-writer',
             during: async (args) => {
                 args.on_progress?.(progress({ rate_limit_events: [reading] }))
-                seen = await waitForLive({
+                seen.live = await waitForLive({
                     file,
-                    until: (live) =>
-                        live.plan_usage !== null &&
-                        live.plan_usage !== undefined,
+                    until: (live) => live.plan_usage !== null,
                 })
             },
         })
@@ -299,13 +261,13 @@ describe('the live file, with scripted agents', () => {
             stop_before: ['run_red_check'],
         })
 
-        expect(seen).not.toBeNull()
-        expect((seen as unknown as Live).plan_usage).toMatchObject(reading)
+        expect(seen.live).not.toBeNull()
+        expect(seen.live?.plan_usage).toMatchObject(reading)
     }, 60_000)
 
     test("a scripted run's journal is the same, byte for byte, with the live file on or off; the live file ends with no agents", async () => {
         const journals: string[][] = []
-        let ended: Live | null = null
+        let ended: LiveFile | null = null
         for (const on of [false, true]) {
             const dir = join(root, on ? 'on' : 'off')
             await mkdir(dir)
@@ -353,8 +315,8 @@ describe('the live file, with scripted agents', () => {
 })
 
 /** An agent's `activity` in the live file: 30 counts, one per second, oldest first. */
-const activityOf = (agent: Record<string, unknown> | undefined): number[] =>
-    Array.isArray(agent?.activity) ? (agent.activity as number[]) : []
+const activityOf = (agent: LiveAgent | undefined): number[] =>
+    agent?.activity ?? []
 
 const sum = (counts: number[]): number =>
     counts.reduce((total, count) => total + count, 0)
@@ -364,14 +326,14 @@ describe('the heartbeat in the live file (#631)', () => {
         const practice = await createPracticeRepo({ root })
         const file = liveFileIn(root)
         const BURST = 10
-        let seen: Live | null = null
+        const seen: { live: LiveFile | null } = { live: null }
         const launcher = watching({
             role: 'test-writer',
             during: async (args) => {
                 for (let n = 1; n <= BURST; n += 1) {
                     args.on_progress?.(progress({ tokens: n * 10 }))
                 }
-                seen = await waitForLive({
+                seen.live = await waitForLive({
                     file,
                     until: (live) =>
                         sum(
@@ -389,10 +351,8 @@ describe('the heartbeat in the live file (#631)', () => {
             stop_before: ['run_red_check'],
         })
 
-        expect(seen).not.toBeNull()
-        const agent = (seen as unknown as Live).agents.find(
-            (one) => one.ticket === 11
-        )
+        expect(seen.live).not.toBeNull()
+        const agent = seen.live?.agents.find((one) => one.ticket === 11)
         const activity = activityOf(agent)
         expect(activity).toHaveLength(30)
         expect(activity.every((count) => Number.isInteger(count))).toBe(true)
@@ -405,7 +365,7 @@ describe('the heartbeat in the live file (#631)', () => {
     test('while a tool call is open, each second adds one low tick, with no other progress heard', async () => {
         const practice = await createPracticeRepo({ root })
         const file = liveFileIn(root)
-        let seen: Live | null = null
+        const seen: { live: LiveFile | null } = { live: null }
         const launcher = watching({
             role: 'test-writer',
             during: async (args) => {
@@ -419,7 +379,7 @@ describe('the heartbeat in the live file (#631)', () => {
                         },
                     })
                 )
-                seen = await waitForLive({
+                seen.live = await waitForLive({
                     file,
                     ms: 8000,
                     until: (live) =>
@@ -436,9 +396,9 @@ describe('the heartbeat in the live file (#631)', () => {
             stop_before: ['run_red_check'],
         })
 
-        expect(seen).not.toBeNull()
+        expect(seen.live).not.toBeNull()
         const activity = activityOf(
-            (seen as unknown as Live).agents.find((one) => one.ticket === 11)
+            seen.live?.agents.find((one) => one.ticket === 11)
         )
         const busy = activity.filter((count) => count > 0)
         // A steady ripple: three or more seconds with a tick, none of them loud.

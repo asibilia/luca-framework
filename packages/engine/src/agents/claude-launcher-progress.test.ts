@@ -1,20 +1,30 @@
 import { realpathSync } from 'node:fs'
 import { join } from 'node:path'
 
-import type { HookJSONOutput, Options } from '@anthropic-ai/claude-agent-sdk'
+import type { Options } from '@anthropic-ai/claude-agent-sdk'
 import { describe, expect, test } from 'bun:test'
 
 import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
 import {
     CLAUDE_PATH,
     CONFIG,
-    fakeQuery,
     IMPLEMENTER_DONE,
     INIT,
     repo,
     repoPerTest,
     result,
 } from './claude-launcher-helpers'
+import type { TurnProgress } from './turn-progress'
+
+import {
+    assistant,
+    playing,
+    preToolUse,
+    toolResult,
+    toolUse,
+    type Step,
+    type Usage,
+} from '../testing/sdk-play'
 
 /**
  * The launcher seam: `createClaudeLauncher` with a fake `query` that plays
@@ -29,139 +39,6 @@ import {
  */
 
 repoPerTest()
-
-/** A step of a fake session: an SDK message, or work to do once the launcher has read the message before it. */
-type Step = unknown | ((options: Options) => Promise<void>)
-
-/**
- * A fake `query` that plays `steps`: each message is yielded in turn, and
- * each function runs after the launcher has read the message before it,
- * the way the agent's tool calls happen mid-turn.
- */
-const playing = ({ steps }: { steps: Step[] }): AgentQuery => {
-    const messages: unknown[] = []
-    const after = new Map<unknown, ((options: Options) => Promise<void>)[]>()
-    for (const step of steps) {
-        if (typeof step === 'function') {
-            const last = messages.at(-1)
-            after.set(last, [
-                ...(after.get(last) ?? []),
-                step as (options: Options) => Promise<void>,
-            ])
-        } else messages.push(step)
-    }
-    const fake = fakeQuery({ messages })
-    return (params) => {
-        const inner = fake.query(params)
-        return {
-            ...inner,
-            [Symbol.asyncIterator]: async function* () {
-                for await (const message of inner) {
-                    yield message
-                    for (const work of after.get(message) ?? []) {
-                        await work(params.options)
-                    }
-                }
-            },
-        }
-    }
-}
-
-/** One API response of the agent, as the SDK streams it. */
-const assistant = ({
-    id,
-    content,
-    usage,
-}: {
-    id: string
-    content: unknown[]
-    usage: {
-        input_tokens: number
-        output_tokens: number
-        cache_read_input_tokens: number
-        cache_creation_input_tokens: number
-    }
-}) => ({
-    type: 'assistant',
-    message: {
-        id,
-        type: 'message',
-        role: 'assistant',
-        model: 'claude-opus-5-5',
-        content,
-        stop_reason: 'tool_use',
-        usage,
-    },
-    parent_tool_use_id: null,
-    session_id: 'session-1',
-    uuid: `uuid-${id}`,
-})
-
-const toolUse = (id: string, name: string, input: Record<string, unknown>) => ({
-    type: 'tool_use',
-    id,
-    name,
-    input,
-})
-
-/** The tool's result, as the SDK hands it back to the agent. */
-const toolResult = (tool_use_id: string, content: string) => ({
-    type: 'user',
-    message: {
-        role: 'user',
-        content: [{ type: 'tool_result', tool_use_id, content }],
-    },
-    parent_tool_use_id: null,
-    session_id: 'session-1',
-})
-
-/**
- * Plays one tool call through every `PreToolUse` hook the launch set up
- * whose matcher fits the tool, as the SDK would, and gives the first
- * denial, or `{}` when every hook let it through.
- */
-const preToolUse = async ({
-    options,
-    tool_name,
-    tool_input,
-    tool_use_id,
-}: {
-    options: Options
-    tool_name: string
-    tool_input: Record<string, unknown>
-    tool_use_id: string
-}): Promise<HookJSONOutput> => {
-    const signal = new AbortController().signal
-    for (const matcher of options.hooks?.PreToolUse ?? []) {
-        if (
-            matcher.matcher !== undefined &&
-            !new RegExp(`^(?:${matcher.matcher})$`).test(tool_name)
-        )
-            continue
-        for (const hook of matcher.hooks) {
-            const answer = await hook(
-                {
-                    hook_event_name: 'PreToolUse',
-                    tool_name,
-                    tool_input,
-                    tool_use_id,
-                    session_id: 'session-1',
-                    transcript_path: '/dev/null',
-                    cwd: realpathSync(repo),
-                },
-                tool_use_id,
-                { signal }
-            )
-            if (
-                'hookSpecificOutput' in answer &&
-                answer.hookSpecificOutput?.hookEventName === 'PreToolUse' &&
-                answer.hookSpecificOutput.permissionDecision === 'deny'
-            )
-                return answer
-        }
-    }
-    return {}
-}
 
 /**
  * A tool call as it happens: the agent's message asking for it, then the
@@ -181,7 +58,7 @@ const call = ({
     id: string
     name: string
     input: Record<string, unknown>
-    usage?: Parameters<typeof assistant>[0]['usage']
+    usage?: Usage
 }): Step[] => [
     assistant({ id: `msg-${id}`, content: [toolUse(id, name, input)], usage }),
     async (options: Options) => {
@@ -207,7 +84,7 @@ const launchWatched = async ({
 }: {
     query: AgentQuery
     prompt?: string
-    heard: unknown[]
+    heard: TurnProgress[]
 }) => {
     const launcher = createClaudeLauncher({ query, claude_path: CLAUDE_PATH })
     const turn = await launcher.launch({
@@ -219,8 +96,8 @@ const launchWatched = async ({
         config: CONFIG,
         messaging: null,
         model: 'opus',
-        on_progress: (progress: unknown) => {
-            heard.push(JSON.parse(JSON.stringify(progress)))
+        on_progress: (progress) => {
+            heard.push(structuredClone(progress))
         },
     })
     await launcher.closeAll()
@@ -229,7 +106,7 @@ const launchWatched = async ({
 
 describe("a turn's live progress", () => {
     test('mid-turn, on_progress has heard the tokens so far and the latest action, its path relative to the worktree', async () => {
-        const heard: unknown[] = []
+        const heard: TurnProgress[] = []
         let midTurn: unknown = null
         const file_path = join(realpathSync(repo), 'src/gate-runner.ts')
         const query = playing({
@@ -246,7 +123,10 @@ describe("a turn's live progress", () => {
                         cache_creation_input_tokens: 600,
                     },
                 }),
-                toolResult('toolu_edit', 'The file was edited.'),
+                toolResult({
+                    tool_use_id: 'toolu_edit',
+                    content: 'The file was edited.',
+                }),
                 async () => {
                     midTurn = heard.at(-1) ?? null
                 },
@@ -268,8 +148,8 @@ describe("a turn's live progress", () => {
     })
 
     test('a tool call the guard let through is open, with its start time, until its result comes back', async () => {
-        const heard: unknown[] = []
-        const seen: Record<string, unknown> = {}
+        const heard: TurnProgress[] = []
+        const seen: { open?: TurnProgress; closed?: TurnProgress } = {}
         const query = playing({
             steps: [
                 INIT,
@@ -279,11 +159,14 @@ describe("a turn's live progress", () => {
                     input: { command: 'bun test', description: 'Run tests' },
                 }),
                 async () => {
-                    seen.open = heard.at(-1) ?? null
+                    seen.open = heard.at(-1)
                 },
-                toolResult('toolu_bash', '12 pass, 0 fail'),
+                toolResult({
+                    tool_use_id: 'toolu_bash',
+                    content: '12 pass, 0 fail',
+                }),
                 async () => {
-                    seen.closed = heard.at(-1) ?? null
+                    seen.closed = heard.at(-1)
                 },
                 result({ structured_output: IMPLEMENTER_DONE }),
             ],
@@ -292,11 +175,9 @@ describe("a turn's live progress", () => {
         await launchWatched({ query, heard })
 
         // Read before matching: Bun's toMatchObject swaps matched fields for the matcher.
-        const startedAt = (
-            seen.open as { open_call?: { started_at?: unknown } } | null
-        )?.open_call?.started_at
+        const startedAt = seen.open?.open_call?.started_at
         expect(typeof startedAt).toBe('string')
-        expect(Number.isNaN(Date.parse(startedAt as string))).toBe(false)
+        expect(Number.isNaN(Date.parse(startedAt ?? ''))).toBe(false)
         expect(seen.open).toMatchObject({
             open_call: {
                 tool: 'Bash',
@@ -310,7 +191,7 @@ describe("a turn's live progress", () => {
     })
 
     test("the progress never holds the prompt, a file's contents or a command's output", async () => {
-        const heard: unknown[] = []
+        const heard: TurnProgress[] = []
         const secrets = {
             prompt: 'PROMPT-SECRET-7f3a',
             written: 'FILE-CONTENT-SECRET-91bc',
@@ -327,7 +208,10 @@ describe("a turn's live progress", () => {
                     name: 'Read',
                     input: { file_path: join(root, 'src/sum.ts') },
                 }),
-                toolResult('toolu_read', `export const x = '${secrets.read}'`),
+                toolResult({
+                    tool_use_id: 'toolu_read',
+                    content: `export const x = '${secrets.read}'`,
+                }),
                 assistant({
                     id: 'msg-bash',
                     content: [toolUse('toolu_bash', 'Bash', { command })],
@@ -338,7 +222,10 @@ describe("a turn's live progress", () => {
                         cache_creation_input_tokens: 0,
                     },
                 }),
-                toolResult('toolu_bash', `${secrets.output}\n1 pass`),
+                toolResult({
+                    tool_use_id: 'toolu_bash',
+                    content: `${secrets.output}\n1 pass`,
+                }),
                 ...call({
                     id: 'toolu_write',
                     name: 'Write',
@@ -347,7 +234,10 @@ describe("a turn's live progress", () => {
                         content: `export const notes = '${secrets.written}'`,
                     },
                 }),
-                toolResult('toolu_write', 'File created.'),
+                toolResult({
+                    tool_use_id: 'toolu_write',
+                    content: 'File created.',
+                }),
                 result({ structured_output: IMPLEMENTER_DONE }),
             ],
         })
@@ -360,12 +250,10 @@ describe("a turn's live progress", () => {
 
         expect(heard.length).toBeGreaterThan(0)
         const bash = heard.find(
-            (progress) =>
-                (progress as { action?: { tool?: string } }).action?.tool ===
-                'Bash'
-        ) as { action: { target: string } } | undefined
-        expect(bash?.action.target.length).toBeGreaterThan(0)
-        expect(command.startsWith(bash?.action.target ?? '-')).toBe(true)
+            (progress) => progress.action?.tool === 'Bash'
+        )?.action
+        expect(bash?.target.length).toBeGreaterThan(0)
+        expect(command.startsWith(bash?.target ?? '-')).toBe(true)
         expect(heard.at(-1)).toMatchObject({
             action: { tool: 'Write', target: 'src/notes.ts' },
         })
@@ -376,7 +264,7 @@ describe("a turn's live progress", () => {
     })
 
     test('a plan-usage reading reaches on_progress as soon as it arrives, before the turn ends', async () => {
-        const heard: unknown[] = []
+        const heard: TurnProgress[] = []
         let midTurn: unknown = null
         const info = {
             status: 'allowed',
@@ -427,7 +315,7 @@ const chunk = (
 
 describe('partial messages and the heartbeat (#631)', () => {
     test('the launch turns on partial messages, and on_progress hears each streamed chunk as it arrives, before the turn ends', async () => {
-        const heard: unknown[] = []
+        const heard: TurnProgress[] = []
         const seen: { partial?: unknown; before?: number; after?: number } = {}
         const query = playing({
             steps: [
@@ -503,21 +391,24 @@ describe('partial messages and the heartbeat (#631)', () => {
                 },
             }),
             ...(streamed ? [chunk('STREAM-SECRET-c3b0')] : []),
-            toolResult('toolu_edit', 'The file was edited.'),
+            toolResult({
+                tool_use_id: 'toolu_edit',
+                content: 'The file was edited.',
+            }),
             result({ structured_output: IMPLEMENTER_DONE }),
         ]
         const run = async (streamed: boolean) => {
-            const heard: unknown[] = []
+            const heard: TurnProgress[] = []
             const turn = await launchWatched({
                 query: playing({ steps: messages(streamed) }),
                 heard,
             })
             // The wall clock differs between any two runs.
-            const kept = JSON.parse(JSON.stringify(turn)) as {
-                session?: Record<string, unknown>
+            const kept = {
+                ...turn,
+                session: turn.session && { ...turn.session, duration_ms: 0 },
             }
-            delete kept.session?.duration_ms
-            return { kept, last: heard.at(-1) as { tokens: number } }
+            return { kept, last: heard.at(-1)?.tokens }
         }
 
         const plain = await run(false)
@@ -527,8 +418,8 @@ describe('partial messages and the heartbeat (#631)', () => {
         expect(streamed.kept).toEqual(plain.kept)
         expect(JSON.stringify(streamed.kept)).not.toContain('STREAM-SECRET')
         // A chunk never changes the turn's tokens either; the whole message does.
-        expect(streamed.last.tokens).toBe(plain.last.tokens)
-        expect(plain.last.tokens).toBe(100 + 250 + 4000 + 600)
+        expect(streamed.last).toBe(plain.last ?? -1)
+        expect(plain.last).toBe(100 + 250 + 4000 + 600)
     })
 })
 

@@ -10,6 +10,8 @@ import { basename, isAbsolute, join, relative } from 'node:path'
 
 import { z } from 'zod'
 
+import { RateLimitSchema, toolResultIds } from './claude-messages'
+
 import { HELPER_MODEL, HELPER_TOOL } from '../guards/helper-rules'
 
 /** The agent's latest action: a tool and a short target, with its time (ISO). */
@@ -77,19 +79,16 @@ const ToolUseSchema = z.object({
     input: z.unknown(),
 })
 
-const ResultIdsSchema = z.object({
-    type: z.literal('user'),
-    message: z.object({
-        content: z.array(z.unknown()),
-    }),
-})
-
-const ToolResultSchema = z.object({
-    type: z.literal('tool_result'),
-    tool_use_id: z.string(),
-})
-
-const RateLimitSchema = z.object({ type: z.literal('rate_limit_event') })
+/** The parts of a tool call's input a target is made from. */
+const TargetInputSchema = z
+    .object({
+        file_path: z.unknown(),
+        notebook_path: z.unknown(),
+        command: z.unknown(),
+        pattern: z.unknown(),
+        subagent_type: z.unknown(),
+    })
+    .partial()
 
 /** A streamed chunk of the model's answer (#631), with partial messages on. */
 const StreamEventSchema = z.object({ type: z.literal('stream_event') })
@@ -137,10 +136,8 @@ export const targetOf = ({
     tool_input: unknown
     worktree: string
 }): string => {
-    const input =
-        typeof tool_input === 'object' && tool_input !== null
-            ? (tool_input as Record<string, unknown>)
-            : {}
+    const parsed = TargetInputSchema.safeParse(tool_input)
+    const input = parsed.success ? parsed.data : {}
     const path = textOf(input.file_path) ?? textOf(input.notebook_path)
     const target =
         path !== null
@@ -244,12 +241,7 @@ export const createTurnProgress = ({
             tell()
             return
         }
-        const user = ResultIdsSchema.safeParse(raw)
-        if (!user.success) return
-        const ids = user.data.message.content.flatMap((block) => {
-            const result = ToolResultSchema.safeParse(block)
-            return result.success ? [result.data.tool_use_id] : []
-        })
+        const ids = toolResultIds(raw)
         if (!ids.some((id) => open.has(id) || helpers.has(id))) return
         for (const id of ids) {
             open.delete(id)

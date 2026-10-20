@@ -9,7 +9,6 @@ import { z } from 'zod'
 
 import type { RunStore } from './board-server-store'
 import type { BoardServerConfig, OutsideRun } from './board-server-types'
-import { needsEngine } from './board-server-util'
 import { readLiveFile, withLive } from './live-file'
 import { createBoardState } from './reduce-board'
 import type { ReplyRun } from './reply-post'
@@ -22,6 +21,7 @@ import type {
     ReplyPostInput,
     ReplyPostOutput,
 } from '../shared/board-rpc'
+import { needsEngine } from '../shared/board-state'
 
 const RunRepoSchema = z.object({ repo: z.string().min(1) })
 

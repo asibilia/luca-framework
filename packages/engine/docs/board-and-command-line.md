@@ -55,13 +55,33 @@ it or without it. `runSpec` gives `runEngine` its path; without `live_file`
     action: { tool, target, at } | null,              // the latest action
     open_call: { tool, target, started_at } | null,   // a tool call still running
     activity: number[],          // 30 counts, one per second, oldest first (#631)
+    helpers: [{                  // the helpers it started this turn, oldest first (#636)
+      model: string,             // always 'haiku'
+      action: { tool, target, at } | null,   // the helper's latest action
+      done: boolean,             // its result came back
+    }],
   }],
   waits: [{                      // a ticket's check waiting for a slot (#632)
     ticket: number, for: 'prepare_slot' | 'test_slot',
     in_use: number, slots: number, since: string,
   }],
+  feed: [{                       // the run's last 50 actions, oldest first (#634)
+    at: string, ticket: number, role: string, model: string | null,
+    tool: string, target: string,
+  }],
 }
 ```
+
+An agent's `helpers` are the read-only helpers it started in this turn
+(see "Helpers" in `agent-messages-and-guards.md`): each one's latest action comes from the SDK messages
+it sends back under its `Agent` call, and `done` turns true once that
+call's result comes back. They leave the file with their agent's turn.
+
+The `feed` is the board's live feed: each new action of an agent, or of
+one of its helpers (with role `helper` and the helper's model), across
+every ticket, newest last, never more than `LIVE_FEED_SIZE` (50). A message
+that only adds tokens adds no entry. Unlike `agents`, it stays in the
+file's last write at the end of the run.
 
 A `target` is a path relative to the worktree, or the first words of a
 command; the file never holds a prompt, a file's contents or a command's

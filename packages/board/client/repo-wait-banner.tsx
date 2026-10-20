@@ -2,7 +2,8 @@
  * The repo wait's banner (#632): the run waits for an earlier run on the
  * same repo (#615), from `repo_wait_started` until `repo_wait_ended`. It
  * says which run, how long it has waited, counting up by itself, and has
- * the amber bar of a wait on purpose.
+ * the amber bar of a wait on purpose. In a run with no sign of life
+ * (#635), it says so instead, in red, and its time stops at the last sign.
  */
 import { Icon } from '@getpaseo/plugin/client/react-native'
 import { Text, View } from 'react-native'
@@ -35,23 +36,32 @@ export const repoWaitText = ({
 
 export const RepoWaitBanner = ({
     wait,
+    lifeless = null,
     theme,
     styles,
-}: { wait: NonNullable<BoardState['repo_wait']> } & Look) => {
-    const now = useNow()
-    const color = theme.colors.statusWarning
+}: {
+    wait: NonNullable<BoardState['repo_wait']>
+    /** The run's lack of a sign of life (#635), from `noLife`. */
+    lifeless?: { text: string; at: number } | null
+} & Look) => {
+    const ticking = useNow()
+    const now = lifeless?.at ?? ticking
+    const color = lifeless
+        ? theme.colors.statusDanger
+        : theme.colors.statusWarning
+    const text = repoWaitText({
+        runs: wait.runs,
+        ms: now - Date.parse(wait.since),
+    })
     return (
         <View style={[styles.banner, { borderColor: color }]}>
             <Icon name="Hourglass" size={13} color={color} />
             <Text style={[styles.bannerText, { color }]}>
-                {repoWaitText({
-                    runs: wait.runs,
-                    ms: now - Date.parse(wait.since),
-                })}
+                {lifeless ? `${text} · ${lifeless.text}` : text}
             </Text>
             <View style={styles.spacer} />
             <View
-                accessibilityLabel="waiting"
+                accessibilityLabel={lifeless ? 'no sign of life' : 'waiting'}
                 style={[styles.waitBar, { backgroundColor: color }]}
             />
         </View>

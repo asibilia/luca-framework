@@ -1,9 +1,8 @@
-import { rm } from 'node:fs/promises'
-
 import { createElement } from 'react'
 
 import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
 
+import { cleanUpCards, look, startedRun } from './testing/card-fixtures'
 import { mockPanelQuery, panelQuery } from './testing/panel-query'
 import {
     LAYOUT,
@@ -15,7 +14,6 @@ import {
     type Screen,
 } from './testing/render-native'
 
-import { dirs, disk, plugin } from '../server/journal-rebuild-helpers'
 import {
     intakeRead,
     runBranchCreated,
@@ -40,7 +38,6 @@ import type { BoardState } from '../shared/board-state'
 
 mockPanelQuery()
 
-const { makeStyles } = await import('./board-panel-styles')
 const { modelColor } = await import('./board-look')
 const { RunFooter } = await import('./run-footer')
 const { StatusBar } = await import('./status-bar')
@@ -104,10 +101,7 @@ afterEach(async () => {
     screen?.unmount()
     screen = null
     panelQuery.state = null
-    setSystemTime()
-    for (const dir of dirs.splice(0)) {
-        await rm(dir, { recursive: true, force: true })
-    }
+    await cleanUpCards()
 })
 
 /**
@@ -123,13 +117,9 @@ const stateOfRun = async ({
     agents: LiveAgent[]
     plan_usage?: Record<string, unknown> | null
 }): Promise<BoardState> => {
-    const folders = await disk()
-    const board = await plugin(folders)
-    const { run_id, token } = await board.start()
-    const reply = await board.send({ run_id, token, entries })
-    expect(reply.ok).toBe(true)
+    const { board, run_id, runs_dir } = await startedRun({ entries })
     await writeLiveFile({
-        runs_dir: folders.runs_dir,
+        runs_dir,
         run_id,
         written_at: new Date().toISOString(),
         agents,
@@ -149,11 +139,6 @@ const clockAfterLatest = ({
     if (state.latest_at === null) throw new Error('no latest event')
     setSystemTime(new Date(Date.parse(state.latest_at) + seconds * 1000))
 }
-
-const look = () => ({
-    theme: THEME,
-    styles: makeStyles({ theme: THEME, compact: LAYOUT.compact }),
-})
 
 const showBar = ({ state }: { state: BoardState }): Screen => {
     screen?.unmount()

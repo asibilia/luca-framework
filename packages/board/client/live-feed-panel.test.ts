@@ -1,11 +1,15 @@
-import { rm } from 'node:fs/promises'
-
 import { createElement } from 'react'
 
 import type { PluginWorkspacePanelProps } from '@getpaseo/plugin/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
 
+import {
+    NOW,
+    ago,
+    cleanUpCards,
+    implementerAtWork,
+} from './testing/card-fixtures'
 import {
     LAYOUT,
     THEME,
@@ -20,25 +24,15 @@ import {
 
 import {
     REPO,
-    dirs,
     disk,
     plugin,
     writeJournal,
 } from '../server/journal-rebuild-helpers'
 import {
-    agentSession,
-    intakeOfThree,
-    type Entry,
-} from '../server/testing/journal-fixtures'
-import {
     liveAgent,
     writeLiveFile,
     type LiveFeedEntry,
 } from '../server/testing/live-file-fixtures'
-import {
-    agentTurnStarts,
-    testsCommitted,
-} from '../server/ticket-stages-panel-helpers'
 
 const { BoardPanel } = await import('./board-panel')
 const { modelColor } = await import('./board-look')
@@ -53,22 +47,8 @@ const { modelColor } = await import('./board-look')
  * server gives for a fixture journal and a fixture live file.
  */
 
-/** The panel's clock in these tests. */
-const NOW = Date.parse('2026-09-23T12:31:00.000Z')
-
-const ago = (seconds: number): string =>
-    new Date(NOW - seconds * 1000).toISOString()
-
 /** The panel's query of `board.read`, for workspace `ws-1` with nothing picked. */
 const QUERY_KEY = ['luca-board', 'ws-1', null, null]
-
-/** #13's tests are committed and its implementer is at work. */
-const implementerAtWork = (): Entry[] => [
-    ...intakeOfThree(),
-    ...testsCommitted({ ticket: 13 }),
-    agentSession({ ticket: 13, role: 'test-writer', input: 1000, output: 200 }),
-    ...agentTurnStarts({ ticket: 13, role: 'implementer' }),
-]
 
 /** Three actions across two tickets, oldest first. */
 const THREE: LiveFeedEntry[] = [
@@ -120,10 +100,7 @@ let screen: Screen | null = null
 afterEach(async () => {
     screen?.unmount()
     screen = null
-    setSystemTime()
-    for (const dir of dirs.splice(0)) {
-        await rm(dir, { recursive: true, force: true })
-    }
+    await cleanUpCards()
 })
 
 /** A run the board didn't start, on `REPO`, with its journal and live file. */

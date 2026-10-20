@@ -7,11 +7,9 @@
 import {
     elapsedText,
     liveIsFresh,
+    needsEngine,
     type BoardState,
 } from '../shared/board-state'
-
-/** The run phases after which no engine is needed. */
-const OVER: ReadonlySet<string> = new Set(['done', 'refused', 'nothing_to_do'])
 
 /**
  * Why the run shows no sign of life, in words, and the time of its last
@@ -28,9 +26,7 @@ export const noLife = ({
     state: BoardState
     now: number
 }): { text: string; at: number } | null => {
-    if (state.run.engine_ended !== null || OVER.has(state.run.phase)) {
-        return null
-    }
+    if (!needsEngine({ state })) return null
     const written = state.live_written_at
     if (state.engine_gone) {
         const at = Date.parse(

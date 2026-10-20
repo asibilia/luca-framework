@@ -15,9 +15,11 @@ import {
     statusText,
     tokensText,
     usageLineWaitText,
+    useNow,
 } from './board-look'
 import { Banner, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { noLife } from './engine-life'
 import { RepoWaitBanner } from './repo-wait-banner'
 import { RunPicker } from './run-picker'
 import { UsageLine } from './usage-line'
@@ -44,6 +46,8 @@ export const RunHeader = ({
 } & Look) => {
     const { run } = state
     const look = { theme, styles }
+    // With no sign of life (#635), the step's time and the repo wait's stop.
+    const lifeless = noLife({ state, now: useNow() })
     return (
         <>
             <View style={styles.row}>
@@ -91,6 +95,7 @@ export const RunHeader = ({
                 <StepLine
                     step={state.current_step}
                     prefix="Now: "
+                    at={lifeless?.at ?? null}
                     styles={styles}
                 />
             ) : null}
@@ -108,7 +113,11 @@ export const RunHeader = ({
                 </Text>
             ) : null}
             {state.repo_wait && run.engine_ended === null ? (
-                <RepoWaitBanner wait={state.repo_wait} {...look} />
+                <RepoWaitBanner
+                    wait={state.repo_wait}
+                    lifeless={lifeless}
+                    {...look}
+                />
             ) : null}
             {state.limit_wait ? (
                 <Banner

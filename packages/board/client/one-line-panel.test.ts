@@ -2,6 +2,12 @@ import { Fragment, createElement } from 'react'
 
 import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
 
+import {
+    cleanUpCards,
+    look,
+    showCard,
+    stepDotsOf,
+} from './testing/card-fixtures'
 import { mockPanelQuery, panelQuery } from './testing/panel-query'
 import {
     HOST,
@@ -36,7 +42,6 @@ import { BoardStateSchema, type BoardState } from '../shared/board-state'
 
 mockPanelQuery()
 
-const { makeStyles } = await import('./board-panel-styles')
 const { StageHeader } = await import('./board-panel-parts')
 const { SharedBubbles } = await import('./one-line')
 const { BoardPanel } = await import('./board-panel')
@@ -77,9 +82,9 @@ let screen: Screen | null = null
 afterEach(async () => {
     screen?.unmount()
     screen = null
-    setSystemTime()
     await harness?.cleanup()
     harness = null
+    await cleanUpCards()
 })
 
 /** The board state the plugin's server keeps after `entries`. */
@@ -94,32 +99,6 @@ const stateAfter = async ({
     const reply = await started.send({ run_id, token, entries })
     expect(reply.ok).toBe(true)
     return { state: await started.state(), started }
-}
-
-const look = () => ({
-    theme: THEME,
-    styles: makeStyles({ theme: THEME, compact: LAYOUT.compact }),
-})
-
-const showCard = ({
-    state,
-    number = 13,
-}: {
-    state: BoardState
-    number?: number
-}): Screen => {
-    const ticket = state.tickets.find((card) => card.number === number)
-    if (!ticket) throw new Error(`no ticket #${number}`)
-    screen = render(
-        createElement(TicketCardView, {
-            ticket,
-            state,
-            open: false,
-            onToggle: () => undefined,
-            ...look(),
-        })
-    )
-    return screen
 }
 
 const showFooter = ({ state }: { state: BoardState }): Screen => {
@@ -365,16 +344,10 @@ describe('card lines and the footer stay on one line (#626)', () => {
         const ticket = state.tickets.find((card) => card.number === 13)
         if (!ticket) throw new Error('no ticket #13')
         const shown = showCard({ state })
-        const dots = shown
-            .all()
-            .find((node) =>
-                String(node.props.accessibilityLabel ?? '').startsWith('Steps:')
-            )
-        if (!dots) throw new Error('no step dots')
         const parts = {
             number: textNode({ shown, text: '#13' }),
             pill: textNode({ shown, text: ticket.activity }),
-            dots,
+            dots: stepDotsOf({ shown }),
             fix: textNode({ shown, text: 'fix 0/3' }),
             review: textNode({ shown, text: 'review 0/3' }),
         }

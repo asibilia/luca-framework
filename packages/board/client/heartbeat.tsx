@@ -30,11 +30,12 @@ export const Heartbeat = ({
     theme,
     styles,
 }: {
-    live: LiveAgent
+    /** `null` for a card with no live entry: a flat line. */
+    live: LiveAgent | null
     /** The run shows no sign of life (#635): a flat red line. */
     gone?: boolean
 } & Look) => {
-    const counts = gone ? [] : live.activity.slice(-BARS)
+    const counts = gone || live === null ? [] : live.activity.slice(-BARS)
     const bars = [
         ...Array.from({ length: BARS - counts.length }, () => 0),
         ...counts,

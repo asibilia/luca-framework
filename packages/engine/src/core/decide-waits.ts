@@ -3,12 +3,9 @@
  * purpose, for another ticket's shared baseline tests, the join queue, or
  * the start queue, gets one `ticket_waiting` when its wait starts. Pure.
  */
-import { haltSteps, installSteps } from './decide-build-early'
-import { ticketWaits, type TicketWait } from './decide-build-tickets'
-import { buildViewOf } from './decide-build-view'
+import type { TicketWait } from './decide-build-tickets'
 
 import type { JournalRecord } from '../journal/journal-record'
-import { replayRun } from '../journal/replay'
 
 /**
  * Whether `wait` is journaled already: its ticket's `ticket_waiting` since
@@ -34,32 +31,17 @@ const journaled = ({
 }
 
 /**
- * The waits between steps that started since the journal last said so, in
- * ticket order: none before the tickets build, or once the run winds down.
+ * The build decision's waits (`decideBuildPlan`) that started since the
+ * journal last said so, in ticket order.
  *
  * @example
- * decideWaits({ records: journal.read() })
+ * startedWaits({ waits, records: journal.read() })
  * // [{ ticket: 12, for: 'baseline', on_ticket: 11 }]
  */
-export const decideWaits = ({
+export const startedWaits = ({
+    waits,
     records,
 }: {
+    waits: TicketWait[]
     records: JournalRecord[]
-}): TicketWait[] => {
-    const state = replayRun({ records })
-    const { phase, spec_number, snapshot, run_branch } = state
-    if (
-        phase !== 'intake_passed' ||
-        spec_number === null ||
-        snapshot === null ||
-        run_branch === null
-    ) {
-        return []
-    }
-    const view = buildViewOf({ state, spec_number, snapshot, run_branch })
-    if (haltSteps({ state, view }) !== null) return []
-    if (installSteps({ state, view, replies: [] }) !== null) return []
-    return ticketWaits({ state, view }).filter(
-        (wait) => !journaled({ wait, records })
-    )
-}
+}): TicketWait[] => waits.filter((wait) => !journaled({ wait, records }))

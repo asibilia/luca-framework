@@ -6,9 +6,9 @@
  * up with the turn, followed by the latest action's age; a busy card's
  * line ends in its heartbeat (#631), each running helper gets a line under
  * it (#636), and a check waiting there for a slot (#632) reads as a wait,
- * with the amber bar. In a run with no sign of life (#635), a busy card's
- * step text says so, its heartbeat is a flat red line, and its timers stop
- * at the last sign of life. Each line stays on one line (`one-line.tsx`): the
+ * with the amber bar. In a run with no sign of life (#635), a busy or
+ * waiting card's step text says so, in place of any wait, its heartbeat is
+ * a flat red line, and its timers stop at the last sign of life. Each line stays on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
  */
@@ -59,15 +59,17 @@ export const TicketCardView = ({
 } & Look) => {
     const bubbles = useBubbles()
     const now = useNow()
-    // A ticket waiting on purpose between steps, or its check waiting for
-    // a slot (#632), reads "waiting", in amber.
-    const wait = ticketWait({ state, ticket }) ?? slotWait({ ticket })
-    // A busy card of a run with no sign of life says so, and its timers stop.
+    const held = ticketWait({ state, ticket }) ?? slotWait({ ticket })
+    // A busy or waiting card of a run with no sign of life says so, and
+    // its timers stop.
     const busy =
         !QUIET.has(ticket.stage) &&
-        (ticket.live !== null || ticket.current_step !== null)
+        (ticket.live !== null || ticket.current_step !== null || held !== null)
     const lifeless = busy ? noLife({ state, now }) : null
     const clock = lifeless?.at ?? now
+    // A ticket waiting on purpose between steps, or its check waiting for
+    // a slot (#632), reads "waiting", in amber, while the run is alive.
+    const wait = lifeless ? null : held
     // What its agent is doing now, from the live file, in place of the step text.
     const doing = liveText({ live: ticket.live, now: clock })
     const color = wait
@@ -144,9 +146,10 @@ export const TicketCardView = ({
                             styles={styles}
                         />
                     ) : null}
-                    {(lifeless || !wait) &&
-                    ticket.live !== null &&
-                    !QUIET.has(ticket.stage) ? (
+                    {lifeless ||
+                    (!wait &&
+                        ticket.live !== null &&
+                        !QUIET.has(ticket.stage)) ? (
                         <>
                             <View style={styles.spacer} />
                             <Heartbeat

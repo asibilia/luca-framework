@@ -2,7 +2,7 @@
  * Each ticket's next build step (`ticketSteps`): its worktree, the step its
  * progress calls for, a skip, a crash, or its stuck steps, with the join queue
  * deciding which approved ticket joins the run branch. A ticket with no step
- * now because it waits on purpose (`ticketWaits`) waits for another
+ * now because it waits on purpose (its `TicketWait`) waits for another
  * ticket's shared baseline, the join queue, or the start queue. Pure.
  */
 import sortBy from 'lodash/sortBy'
@@ -190,15 +190,18 @@ const ticketPlans = ({
     })
 }
 
-/** The next step of each ticket that can move now, at most one per ticket. */
+/**
+ * The next step of each ticket that can move now, at most one per ticket,
+ * and the tickets that wait on purpose between steps now, in ticket order:
+ * one decision, so a wait is only ever one that left its ticket no step.
+ */
 export const ticketSteps = (args: {
     state: RunState
     view: BuildView
-}): BuildAction[] => ticketPlans(args).flatMap(({ steps }) => steps)
-
-/** The tickets that wait on purpose between steps now, in ticket order. */
-export const ticketWaits = (args: {
-    state: RunState
-    view: BuildView
-}): TicketWait[] =>
-    ticketPlans(args).flatMap(({ wait }) => (wait === null ? [] : [wait]))
+}): { steps: BuildAction[]; waits: TicketWait[] } => {
+    const plans = ticketPlans(args)
+    return {
+        steps: plans.flatMap(({ steps }) => steps),
+        waits: plans.flatMap(({ wait }) => (wait === null ? [] : [wait])),
+    }
+}

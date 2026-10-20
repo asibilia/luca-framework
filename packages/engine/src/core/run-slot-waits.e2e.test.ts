@@ -10,6 +10,11 @@ import { createScriptedLauncher } from '../agents/scripted-launcher'
 import { PREPARE_SLOTS } from '../gates/prepare-slots'
 import { TEST_SLOTS } from '../gates/test-slots'
 import {
+    liveFileIn,
+    readLive,
+    type LiveWait,
+} from '../testing/live-file-fixtures'
+import {
     createPracticeRepo,
     EMPTY_LEARNER_TURN,
     HAPPY_TURNS,
@@ -24,15 +29,6 @@ import {
  * new record for it. Here the test holds the engine's slots itself, from
  * the implementer's turn on, so the checks after it must wait.
  */
-
-/** A wait inside a step, as the live file has it. */
-type LiveWait = {
-    ticket: number
-    for: string
-    in_use: number
-    slots: number
-    since: string
-}
 
 /** The practice config, with a prepare command and two test slots. */
 const CONFIG = {
@@ -52,27 +48,15 @@ afterEach(async () => {
     await rm(root, { recursive: true, force: true })
 })
 
-/** The run folder's live file of the practice run in `dir`. */
-const liveFileIn = (dir: string): string =>
-    join(dir, 'runs', 'run-1', 'live.json')
-
-/** The live file's waits for `kind`, or `null` when it doesn't read. */
+/** The live file's waits for `kind`, or `null` while there is no file. */
 const waitsFor = ({
     file,
     kind,
 }: {
     file: string
-    kind: string
-}): LiveWait[] | null => {
-    try {
-        const live = JSON.parse(readFileSync(file, 'utf8')) as {
-            waits?: LiveWait[]
-        }
-        return (live.waits ?? []).filter((wait) => wait.for === kind)
-    } catch {
-        return null
-    }
-}
+    kind: LiveWait['for']
+}): LiveWait[] | null =>
+    readLive(file)?.waits.filter((wait) => wait.for === kind) ?? null
 
 /** Waits until `until` holds, up to `ms`; whether it did. */
 const eventually = async ({

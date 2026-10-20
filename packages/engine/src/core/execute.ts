@@ -3,9 +3,8 @@
  * steps at the same time. Re-exports the run's first records and
  * `executeAction` from the modules that carry them out.
  */
-import { decideSteps, type EngineAction } from './decide'
+import { decideNext, type EngineAction } from './decide'
 import { repoWaitUnchecked } from './decide-repo-wait'
-import { decideWaits } from './decide-waits'
 import { executeAction, type StepTry } from './execute-action'
 import type { BuildDeps } from './execute-build'
 import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
@@ -100,7 +99,8 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  *
  * A ticket held on purpose between steps (another ticket's shared
  * baseline, the join queue, the start queue) gets one `ticket_waiting` as
- * its wait starts (`decideWaits`), sent to the board at once.
+ * its wait starts, from the same decision as the steps (`decideNext`),
+ * sent to the board at once.
  *
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
@@ -230,14 +230,14 @@ export const runEngine = async ({
      */
     const decideNow = async (
         records: JournalRecord[]
-    ): Promise<EngineAction[]> => {
+    ): Promise<ReturnType<typeof decideNext>> => {
         const earlier_runs =
             going_runs !== undefined && repoWaitUnchecked({ records })
                 ? await readEarlierRuns({ going_runs, journal })
                 : undefined
-        if (usage === undefined) return decideSteps({ records, earlier_runs })
+        if (usage === undefined) return decideNext({ records, earlier_runs })
         await usage.share(runReadings({ records }))
-        return decideSteps({
+        return decideNext({
             records,
             usage_lines: await usage.read_lines(),
             shared_readings: await usage.read_shared(),
@@ -321,10 +321,8 @@ export const runEngine = async ({
             await closeFinished({ all: false })
             const records = journal.read()
             const crashes = crashesIn(records)
-            const actions = redosFirst({
-                actions: await decideNow(records),
-                crashes,
-            })
+            const decided = await decideNow(records)
+            const actions = redosFirst({ actions: decided.actions, crashes })
             const stop = actions.find((action) => stops.has(action.type))
             if (stop !== undefined && inFlight.size === 0) {
                 if (STOP_ACTIONS.has(stop.type)) {
@@ -338,7 +336,7 @@ export const runEngine = async ({
                 // A wait between steps is journaled once, as it starts, and
                 // shows on the board at once: the step it waits on may run
                 // for minutes.
-                for (const wait of decideWaits({ records })) {
+                for (const wait of decided.waits) {
                     journal.append({
                         kind: 'ticket_waiting',
                         ticket: wait.ticket,

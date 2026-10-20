@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -11,6 +10,7 @@ import type { AgentLauncher } from '../agents/agent-launcher'
 import { CONFIG } from '../agents/claude-launcher-helpers'
 import type { AgentRole } from '../agents/role-results'
 import type { TurnProgress } from '../agents/turn-progress'
+import { waitForLive, type LiveFile } from '../testing/live-file-fixtures'
 
 /**
  * The live feed in the live file (#634): besides each agent in a turn,
@@ -19,18 +19,6 @@ import type { TurnProgress } from '../agents/turn-progress'
  * made by `createLiveFile`, its launcher wrapped around a stand-in whose
  * turns report progress (`on_progress`) as the real launcher's do.
  */
-
-/** One action of the feed, as the board reads it. */
-type FeedEntry = {
-    at: string
-    ticket: number | null
-    role: string
-    model: string | null
-    tool: string
-    target: string
-}
-
-type Live = { written_at: string; agents: unknown[]; feed?: FeedEntry[] }
 
 let root = ''
 
@@ -41,33 +29,6 @@ beforeEach(async () => {
 afterEach(async () => {
     await rm(root, { recursive: true, force: true })
 })
-
-const readLive = (file: string): Live | null => {
-    try {
-        return JSON.parse(readFileSync(file, 'utf8')) as Live
-    } catch {
-        return null
-    }
-}
-
-/** The live file once `until` holds for it, or `null` after `ms`. */
-const waitForLive = async ({
-    file,
-    until,
-    ms = 3000,
-}: {
-    file: string
-    until: (live: Live) => boolean
-    ms?: number
-}): Promise<Live | null> => {
-    const deadline = Date.now() + ms
-    while (Date.now() < deadline) {
-        const live = readLive(file)
-        if (live !== null && until(live)) return live
-        await Bun.sleep(20)
-    }
-    return null
-}
 
 const BASE = Date.parse('2026-10-19T12:00:00.000Z')
 
@@ -132,16 +93,16 @@ describe('the live feed in the live file (#634)', () => {
     test("the live file holds the run's last 50 actions across tickets, oldest first, each with its time, ticket, role, model and action, and never more", async () => {
         const file = join(root, 'run-1', 'live.json')
         const live = createLiveFile({ file })
-        let seen: Live | null = null
+        const seen: { live: LiveFile | null } = { live: null }
         const launcher = live.launcher(
             reporting({
                 count: 30,
                 after: async (ticket) => {
                     if (ticket !== 12) return
-                    seen = await waitForLive({
+                    seen.live = await waitForLive({
                         file,
                         until: (found) =>
-                            found.feed?.at(-1)?.target === 'src/t12-30.ts',
+                            found.feed.at(-1)?.target === 'src/t12-30.ts',
                     })
                 },
             })
@@ -155,8 +116,8 @@ describe('the live feed in the live file (#634)', () => {
         )
         live.close()
 
-        expect(seen).not.toBeNull()
-        const feed = (seen as unknown as Live).feed ?? []
+        expect(seen.live).not.toBeNull()
+        const feed = seen.live?.feed ?? []
         const expected = [
             ...Array.from({ length: 20 }, (_, index) => ({
                 ...actionOf({ ticket: 11, n: index + 11 }),

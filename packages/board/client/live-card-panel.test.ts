@@ -1,48 +1,30 @@
-import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { createElement } from 'react'
-
-import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 
 import {
-    LAYOUT,
-    THEME,
-    render,
-    styleOf,
-    textOf,
-    textsIn,
-    type HostNode,
-    type Screen,
-} from './testing/render-native'
+    ago,
+    barsOf,
+    cardText,
+    cleanUpCards,
+    dotsLine,
+    editing,
+    heartbeatOf,
+    implementerAtWork,
+    showCard,
+    startedRun,
+    stepDotsOf,
+} from './testing/card-fixtures'
+import { THEME, styleOf, type HostNode } from './testing/render-native'
 
+import { disk, plugin, writeJournal } from '../server/journal-rebuild-helpers'
+import { unifiedRateLimit } from '../server/testing/journal-fixtures'
 import {
-    dirs,
-    disk,
-    plugin,
-    writeJournal,
-} from '../server/journal-rebuild-helpers'
-import {
-    agentSession,
-    intakeOfThree,
-    unifiedRateLimit,
-    type Entry,
-} from '../server/testing/journal-fixtures'
-import {
-    liveAgent,
     removeLiveFile,
     writeLiveFile,
-    type LiveAgent,
 } from '../server/testing/live-file-fixtures'
-import {
-    agentTurnStarts,
-    testsCommitted,
-} from '../server/ticket-stages-panel-helpers'
-import type { BoardState } from '../shared/board-state'
 
-const { makeStyles } = await import('./board-panel-styles')
 const { tokensText } = await import('./board-look')
-const { TicketCardView } = await import('./ticket-card-view')
 
 /**
  * The live file on the cards (#628): the board reads each run's
@@ -55,91 +37,7 @@ const { TicketCardView } = await import('./ticket-card-view')
  * server builds out of fixture journals and fixture live files.
  */
 
-/** The panel's clock in these tests: just after the harness's own. */
-const NOW = Date.parse('2026-09-23T12:31:00.000Z')
-
-const ago = (seconds: number): string =>
-    new Date(NOW - seconds * 1000).toISOString()
-
-/** #13's tests are committed and its implementer is at work. */
-const implementerAtWork = (): Entry[] => [
-    ...intakeOfThree(),
-    ...testsCommitted({ ticket: 13 }),
-    agentSession({ ticket: 13, role: 'test-writer', input: 1000, output: 200 }),
-    ...agentTurnStarts({ ticket: 13, role: 'implementer' }),
-]
-
-/** #13's implementer, two seconds after editing `gate-runner.ts`. */
-const editing = (fields: Partial<LiveAgent> = {}): LiveAgent =>
-    liveAgent({
-        ticket: 13,
-        role: 'implementer',
-        tokens: 2500,
-        action: { tool: 'Edit', target: 'gate-runner.ts', at: ago(2) },
-        ...fields,
-    })
-
-let screen: Screen | null = null
-
-afterEach(async () => {
-    screen?.unmount()
-    screen = null
-    setSystemTime()
-    for (const dir of dirs.splice(0)) {
-        await rm(dir, { recursive: true, force: true })
-    }
-})
-
-/**
- * A board plugin with a runs folder, and a run it started from a chat
- * whose engine sent `entries`.
- */
-const startedRun = async ({ entries }: { entries: Entry[] }) => {
-    const folders = await disk()
-    const board = await plugin(folders)
-    const { run_id, token } = await board.start()
-    const reply = await board.send({ run_id, token, entries })
-    expect(reply.ok).toBe(true)
-    return { board, run_id, runs_dir: folders.runs_dir }
-}
-
-const look = () => ({
-    theme: THEME,
-    styles: makeStyles({ theme: THEME, compact: LAYOUT.compact }),
-})
-
-/** Card #13 of `state`, rendered at `NOW`. */
-const showCard = ({ state }: { state: BoardState }): Screen => {
-    const ticket = state.tickets.find((card) => card.number === 13)
-    if (!ticket) throw new Error('no ticket #13')
-    setSystemTime(new Date(NOW))
-    screen?.unmount()
-    screen = render(
-        createElement(TicketCardView, {
-            ticket,
-            state,
-            open: false,
-            onToggle: () => undefined,
-            ...look(),
-        })
-    )
-    return screen
-}
-
-/** Every text on `shown`, in order, as one line. */
-const textsOf = ({ shown }: { shown: Screen }): string =>
-    shown.texts().map(textOf).join(' ').replace(/\s+/g, ' ')
-
-/** The texts on the step dots' own line, as one line. */
-const dotsLine = ({ shown }: { shown: Screen }): string => {
-    const dots = shown
-        .all()
-        .find((node) =>
-            String(node.props.accessibilityLabel ?? '').startsWith('Steps:')
-        )
-    if (!dots?.parent) throw new Error('no step dots')
-    return textsIn(dots.parent).map(textOf).join(' ').replace(/\s+/g, ' ')
-}
+afterEach(cleanUpCards)
 
 describe('the live file on the cards (#628)', () => {
     test('a card with a live entry shows "<role> <icon> <action>" next to its step dots, where the step text was', async () => {
@@ -158,7 +56,7 @@ describe('the live file on the cards (#628)', () => {
         expect(dotsLine({ shown })).toContain(
             'implementer ✎ editing gate-runner.ts'
         )
-        expect(textsOf({ shown })).not.toContain('waiting for the implementer')
+        expect(cardText({ shown })).not.toContain('waiting for the implementer')
     })
 
     test('while a tool call is open, the card shows "▸ <command> · running <time>"', async () => {
@@ -202,7 +100,7 @@ describe('the live file on the cards (#628)', () => {
             written_at: ago(1),
             agents: [editing({ tokens: 2500 })],
         })
-        const first = textsOf({
+        const first = cardText({
             shown: showCard({ state: await board.stateOf({ run_id }) }),
         })
         await writeLiveFile({
@@ -216,7 +114,7 @@ describe('the live file on the cards (#628)', () => {
                 }),
             ],
         })
-        const later = textsOf({
+        const later = cardText({
             shown: showCard({ state: await board.stateOf({ run_id }) }),
         })
 
@@ -246,8 +144,8 @@ describe('the live file on the cards (#628)', () => {
         const shown = showCard({ state: await board.stateOf({ run_id }) })
 
         expect(live).toContain('implementer ✎ editing gate-runner.ts')
-        expect(textsOf({ shown })).toContain('waiting for the implementer')
-        expect(textsOf({ shown })).not.toContain('✎')
+        expect(cardText({ shown })).toContain('waiting for the implementer')
+        expect(cardText({ shown })).not.toContain('✎')
     })
 
     test("a run the plugin didn't start shows its live entry on its card", async () => {
@@ -333,17 +231,6 @@ describe('the live file on the cards (#628)', () => {
  */
 const BARS = 20
 
-/** The card's heartbeat node, or `null` with none. */
-const heartbeatOf = ({ shown }: { shown: Screen }): HostNode | null =>
-    shown.all().find((node) => node.props.accessibilityLabel === 'Heartbeat') ??
-    null
-
-/** The bars of a heartbeat, left to right. */
-const barsOf = ({ beat }: { beat: HostNode }): HostNode[] =>
-    beat.children.filter(
-        (child): child is HostNode => typeof child !== 'string'
-    )
-
 const heightsOf = ({ beat }: { beat: HostNode }): number[] =>
     barsOf({ beat }).map((bar) => Number(styleOf(bar).height))
 
@@ -384,12 +271,7 @@ describe('the heartbeat on busy cards (#631)', () => {
         expect(beat).not.toBeNull()
         if (beat === null) return
         // At the end of the step-dots line.
-        const dots = shown
-            .all()
-            .find((node) =>
-                String(node.props.accessibilityLabel ?? '').startsWith('Steps:')
-            )
-        expect(beat.parent).toBe(dots?.parent ?? null)
+        expect(beat.parent).toBe(stepDotsOf({ shown }).parent)
         const heights = heightsOf({ beat })
         const colors = colorsOf({ beat })
         expect(heights).toHaveLength(BARS)

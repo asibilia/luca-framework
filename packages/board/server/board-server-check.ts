@@ -13,7 +13,7 @@ import type {
     OutsideRun,
     RunMemory,
 } from './board-server-types'
-import { errorText, needsEngine } from './board-server-util'
+import { errorText } from './board-server-util'
 import {
     engineStoppedText,
     liveRunIds,
@@ -27,7 +27,7 @@ import {
 } from './engine-watch'
 import { readLiveFile } from './live-file'
 
-import { liveIsFresh } from '../shared/board-state'
+import { liveIsFresh, needsEngine } from '../shared/board-state'
 
 export const createEngineChecks = ({
     config,

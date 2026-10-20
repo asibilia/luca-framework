@@ -7,10 +7,11 @@ import { randomBytes } from 'node:crypto'
 import type { EngineProcess } from './board-server-engine'
 import type { RunStore } from './board-server-store'
 import type { BoardServerConfig } from './board-server-types'
-import { errorText, OVER_PHASES } from './board-server-util'
+import { errorText } from './board-server-util'
 import { liveRunIds, RESUMED_TEXT, resumeRow } from './engine-watch'
 
 import type { RunStartInput, RunStartOutput } from '../shared/board-rpc'
+import { OVER_PHASES } from '../shared/board-state'
 
 export const createResumer = ({
     config,

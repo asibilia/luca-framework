@@ -17,6 +17,7 @@ import { AgentRoleSchema } from './role-results'
 
 import { JournalRecordSchema } from '../journal/journal-record'
 import { runTokensIn } from '../limits/run-budget'
+import { preToolUse as playCall } from '../testing/sdk-play'
 
 /**
  * The launcher seam: `createClaudeLauncher` with a fake `query` that plays
@@ -32,57 +33,18 @@ repoPerTest()
 let toolCount = 0
 
 /**
- * Plays one tool call through every `PreToolUse` hook the launch set up
- * whose matcher fits the tool, as the SDK would, and gives the first
- * denial, or `{}` when every hook let it through. With `helper`, the call
- * comes from inside a helper (the SDK's `agent_id` and `agent_type`).
+ * Plays one tool call through the launch's guard hooks (see `sdk-play`),
+ * as call `tool-<n>`, numbered across the file, and gives the first
+ * denial, or `{}`.
  */
-const preToolUse = async ({
-    options,
-    tool_name,
-    tool_input,
-    helper,
-}: {
+const preToolUse = (args: {
     options: Options
     tool_name: string
     tool_input: Record<string, unknown>
     helper?: boolean
 }): Promise<HookJSONOutput> => {
     toolCount += 1
-    const tool_use_id = `tool-${toolCount}`
-    const signal = new AbortController().signal
-    for (const matcher of options.hooks?.PreToolUse ?? []) {
-        if (
-            matcher.matcher !== undefined &&
-            !new RegExp(`^(?:${matcher.matcher})$`).test(tool_name)
-        )
-            continue
-        for (const hook of matcher.hooks) {
-            const answer = await hook(
-                {
-                    hook_event_name: 'PreToolUse',
-                    tool_name,
-                    tool_input,
-                    tool_use_id,
-                    session_id: 'session-1',
-                    transcript_path: '/dev/null',
-                    cwd: repo,
-                    ...(helper === true
-                        ? { agent_id: 'helper-1', agent_type: 'searcher' }
-                        : {}),
-                },
-                tool_use_id,
-                { signal }
-            )
-            if (
-                'hookSpecificOutput' in answer &&
-                answer.hookSpecificOutput?.hookEventName === 'PreToolUse' &&
-                answer.hookSpecificOutput.permissionDecision === 'deny'
-            )
-                return answer
-        }
-    }
-    return {}
+    return playCall({ ...args, tool_use_id: `tool-${toolCount}`, cwd: repo })
 }
 
 const DENIED = {

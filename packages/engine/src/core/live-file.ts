@@ -13,15 +13,15 @@
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { z } from 'zod'
+
 import type { AgentLauncher } from '../agents/agent-launcher'
 import type {
     ProgressAction,
-    ProgressHelper,
     ProgressListener,
-    ProgressOpenCall,
     TurnProgress,
 } from '../agents/turn-progress'
-import type { SlotWait, SlotWaitListener } from '../gates/slot-waits'
+import type { SlotWaitListener } from '../gates/slot-waits'
 
 /** The live file's name inside a run folder. */
 export const LIVE_FILE = 'live.json'
@@ -50,27 +50,82 @@ export const runLiveFilePath = ({
 /** The live feed keeps this many of the run's latest actions (#634). */
 export const LIVE_FEED_SIZE = 50
 
+/** An action: a tool and a short target, with its time (ISO). */
+const LiveActionSchema = z.object({
+    tool: z.string(),
+    target: z.string(),
+    at: z.string(),
+})
+
+/** A tool call whose result hasn't come back yet. */
+const LiveOpenCallSchema = z.object({
+    tool: z.string(),
+    target: z.string(),
+    started_at: z.string(),
+})
+
+/** One of an agent's helpers (#636). */
+const LiveHelperSchema = z.object({
+    model: z.string(),
+    action: LiveActionSchema.nullable(),
+    done: z.boolean(),
+})
+
 /** One agent in a turn, as the live file has it. */
-type LiveAgent = {
-    ticket: number
-    role: string
-    model: string | null
-    tokens: number
-    action: ProgressAction | null
-    open_call: ProgressOpenCall | null
+const LiveAgentSchema = z.object({
+    ticket: z.number().int(),
+    role: z.string(),
+    model: z.string().nullable(),
+    tokens: z.number().min(0),
+    action: LiveActionSchema.nullable(),
+    open_call: LiveOpenCallSchema.nullable(),
     /** The helpers the agent started this turn (#636). */
-    helpers: ProgressHelper[]
-}
+    helpers: z.array(LiveHelperSchema),
+    /** One count for each of the last 30 seconds, oldest first (#631). */
+    activity: z.array(z.number().int().min(0)),
+})
+
+/** A ticket's check waiting for a slot (#632), as the live file has it. */
+const LiveWaitSchema = z.object({
+    ticket: z.number().int(),
+    for: z.enum(['prepare_slot', 'test_slot']),
+    in_use: z.number().int().min(0),
+    slots: z.number().int().min(0),
+    since: z.string(),
+})
 
 /** One action of the live feed: who did it, on which model, and what. */
-type LiveFeedEntry = {
-    at: string
-    ticket: number
-    role: string
-    model: string | null
-    tool: string
-    target: string
-}
+const LiveFeedEntrySchema = z.object({
+    at: z.string(),
+    ticket: z.number().int(),
+    role: z.string(),
+    model: z.string().nullable(),
+    tool: z.string(),
+    target: z.string(),
+})
+
+/** The whole live file, as each write has it. */
+export const LiveFileSchema = z.object({
+    written_at: z.string(),
+    /** The run's first plan-usage reading, as its `rate_limit_event` sent it. */
+    plan_usage: z.record(z.string(), z.unknown()).nullable(),
+    agents: z.array(LiveAgentSchema),
+    waits: z.array(LiveWaitSchema),
+    feed: z.array(LiveFeedEntrySchema),
+})
+
+export type LiveFile = z.infer<typeof LiveFileSchema>
+
+export type LiveAgent = z.infer<typeof LiveAgentSchema>
+
+export type LiveHelper = z.infer<typeof LiveHelperSchema>
+
+export type LiveWait = z.infer<typeof LiveWaitSchema>
+
+type LiveFeedEntry = z.infer<typeof LiveFeedEntrySchema>
+
+/** An agent's entry before its activity is added at write time. */
+type HeldAgent = Omit<LiveAgent, 'activity'>
 
 const sameAction = (
     left: ProgressAction | null,
@@ -80,9 +135,6 @@ const sameAction = (
     left.tool === right.tool &&
     left.target === right.target &&
     left.at === right.at
-
-/** A ticket's check waiting for a slot (#632), as the live file has it. */
-type LiveWait = SlotWait & { ticket: number; since: string }
 
 /**
  * One agent's activity (#631): a count per second, by the second it
@@ -136,7 +188,7 @@ const createActivity = () => {
  * live.close()
  */
 export const createLiveFile = ({ file }: { file: string }) => {
-    const agents = new Map<number, LiveAgent>()
+    const agents = new Map<number, HeldAgent>()
     const activities = new Map<number, ReturnType<typeof createActivity>>()
     const waits = new Map<number, LiveWait>()
     let plan_usage: Record<string, unknown> | null = null
@@ -149,7 +201,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
         const at = Date.now()
         last = at
         changed = false
-        const text = JSON.stringify({
+        const live: LiveFile = {
             written_at: new Date(at).toISOString(),
             plan_usage,
             agents: [...agents].map(([key, agent]) => ({
@@ -158,7 +210,8 @@ export const createLiveFile = ({ file }: { file: string }) => {
             })),
             waits: [...waits.values()],
             feed,
-        })
+        }
+        const text = JSON.stringify(live)
         try {
             mkdirSync(dirname(file), { recursive: true })
             const aside = `${file}.${process.pid}.tmp`
@@ -227,7 +280,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
         on_progress,
         turn,
     }: {
-        who: Pick<LiveAgent, 'ticket' | 'role' | 'model'>
+        who: Pick<HeldAgent, 'ticket' | 'role' | 'model'>
         on_progress: ProgressListener | undefined
         turn: (hear: ProgressListener) => Promise<T>
     }): Promise<T> => {

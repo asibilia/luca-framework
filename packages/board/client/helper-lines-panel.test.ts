@@ -1,14 +1,16 @@
-import { rm } from 'node:fs/promises'
-
-import { createElement } from 'react'
-
-import { afterEach, describe, expect, setSystemTime, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'bun:test'
 
 import {
-    LAYOUT,
+    ago,
+    cleanUpCards,
+    editing,
+    showCard,
+    startedRun as startRun,
+    stepDotsOf,
+} from './testing/card-fixtures'
+import {
     THEME,
     nodesIn,
-    render,
     styleOf,
     textOf,
     textsIn,
@@ -16,28 +18,15 @@ import {
     type Screen,
 } from './testing/render-native'
 
-import { dirs, disk, plugin } from '../server/journal-rebuild-helpers'
 import {
-    agentSession,
-    intakeOfThree,
-    type Entry,
-} from '../server/testing/journal-fixtures'
-import {
-    liveAgent,
     liveHelper,
     writeLiveFile,
     type LiveAgent,
     type LiveHelper,
 } from '../server/testing/live-file-fixtures'
-import {
-    agentTurnStarts,
-    testsCommitted,
-} from '../server/ticket-stages-panel-helpers'
 import type { BoardState } from '../shared/board-state'
 
-const { makeStyles } = await import('./board-panel-styles')
 const { modelColor } = await import('./board-look')
-const { TicketCardView } = await import('./ticket-card-view')
 
 /**
  * Helpers on the cards (#636): the live file lists each agent's helpers
@@ -49,29 +38,9 @@ const { TicketCardView } = await import('./ticket-card-view')
  * out of fixture journals and fixture live files.
  */
 
-const NOW = Date.parse('2026-09-23T12:31:00.000Z')
-
-const ago = (seconds: number): string =>
-    new Date(NOW - seconds * 1000).toISOString()
-
-/** #13's tests are committed and its implementer is at work. */
-const implementerAtWork = (): Entry[] => [
-    ...intakeOfThree(),
-    ...testsCommitted({ ticket: 13 }),
-    agentSession({ ticket: 13, role: 'test-writer', input: 1000, output: 200 }),
-    ...agentTurnStarts({ ticket: 13, role: 'implementer' }),
-]
-
-/** #13's implementer, two seconds after editing `gate-runner.ts`. */
-const editing = (fields: Partial<LiveAgent> = {}): LiveAgent =>
-    liveAgent({
-        ticket: 13,
-        role: 'implementer',
-        tokens: 2500,
-        action: { tool: 'Edit', target: 'gate-runner.ts', at: ago(2) },
-        activity: Array(30).fill(2),
-        ...fields,
-    })
+/** #13's implementer at work, its heartbeat busy. */
+const busy = (fields: Partial<LiveAgent> = {}): LiveAgent =>
+    editing({ activity: Array(30).fill(2), ...fields })
 
 /** A helper searching for `createSlots`. */
 const searching = (fields: Partial<LiveHelper> = {}): LiveHelper =>
@@ -94,32 +63,15 @@ const finished = (): LiveHelper =>
         done: true,
     })
 
-let screen: Screen | null = null
-
-afterEach(async () => {
-    screen?.unmount()
-    screen = null
-    setSystemTime()
-    for (const dir of dirs.splice(0)) {
-        await rm(dir, { recursive: true, force: true })
-    }
-})
+afterEach(cleanUpCards)
 
 /** A plugin and a run it started whose engine sent `implementerAtWork`. */
 const startedRun = async () => {
-    const folders = await disk()
-    const board = await plugin(folders)
-    const { run_id, token } = await board.start()
-    const reply = await board.send({
-        run_id,
-        token,
-        entries: implementerAtWork(),
-    })
-    expect(reply.ok).toBe(true)
+    const { board, run_id, runs_dir } = await startRun()
     /** Card #13's state with the live file holding `agent` only. */
     const stateWith = async (agent: LiveAgent): Promise<BoardState> => {
         await writeLiveFile({
-            runs_dir: folders.runs_dir,
+            runs_dir,
             run_id,
             written_at: ago(1),
             agents: [agent],
@@ -129,36 +81,12 @@ const startedRun = async () => {
     return { stateWith }
 }
 
-/** Card #13 of `state`, rendered at `NOW`. */
-const showCard = ({ state }: { state: BoardState }): Screen => {
-    const ticket = state.tickets.find((card) => card.number === 13)
-    if (!ticket) throw new Error('no ticket #13')
-    setSystemTime(new Date(NOW))
-    screen?.unmount()
-    screen = render(
-        createElement(TicketCardView, {
-            ticket,
-            state,
-            open: false,
-            onToggle: () => undefined,
-            theme: THEME,
-            styles: makeStyles({ theme: THEME, compact: LAYOUT.compact }),
-        })
-    )
-    return screen
-}
-
 const lineText = (node: HostNode): string =>
     textsIn(node).map(textOf).join(' ').replace(/\s+/g, ' ').trim()
 
 /** The card's lines after its step-dots line, in order. */
 const linesAfterDots = ({ shown }: { shown: Screen }): HostNode[] => {
-    const dots = shown
-        .all()
-        .find((node) =>
-            String(node.props.accessibilityLabel ?? '').startsWith('Steps:')
-        )
-    const line = dots?.parent
+    const line = stepDotsOf({ shown }).parent
     if (!line?.parent) throw new Error('no step dots')
     const lines = line.parent.children.filter(
         (child): child is HostNode => typeof child !== 'string'
@@ -190,7 +118,7 @@ describe('helpers on the cards (#636)', () => {
     test('each running helper gets one line right under the step-dots line: "helper", its haiku tag and its latest action, with a blue left edge', async () => {
         const { stateWith } = await startedRun()
         const state = await stateWith(
-            editing({ helpers: [searching(), finished(), reading()] })
+            busy({ helpers: [searching(), finished(), reading()] })
         )
 
         const shown = showCard({ state })
@@ -220,15 +148,13 @@ describe('helpers on the cards (#636)', () => {
         const { stateWith } = await startedRun()
 
         const both = showCard({
-            state: await stateWith(
-                editing({ helpers: [searching(), reading()] })
-            ),
+            state: await stateWith(busy({ helpers: [searching(), reading()] })),
         })
         expect(helperLines({ shown: both })).toHaveLength(2)
 
         const one = showCard({
             state: await stateWith(
-                editing({ helpers: [searching({ done: true }), reading()] })
+                busy({ helpers: [searching({ done: true }), reading()] })
             ),
         })
         const left = helperLines({ shown: one })
@@ -238,7 +164,7 @@ describe('helpers on the cards (#636)', () => {
 
         const none = showCard({
             state: await stateWith(
-                editing({
+                busy({
                     helpers: [
                         searching({ done: true }),
                         reading({ done: true }),
@@ -252,22 +178,22 @@ describe('helpers on the cards (#636)', () => {
     test('with no helpers, or only finished ones, the card looks as it did before helpers', async () => {
         const { stateWith } = await startedRun()
         const before = looks({
-            shown: showCard({ state: await stateWith(editing()) }),
+            shown: showCard({ state: await stateWith(busy()) }),
         })
 
         const empty = looks({
             shown: showCard({
-                state: await stateWith(editing({ helpers: [] })),
+                state: await stateWith(busy({ helpers: [] })),
             }),
         })
         const allDone = looks({
             shown: showCard({
-                state: await stateWith(editing({ helpers: [finished()] })),
+                state: await stateWith(busy({ helpers: [finished()] })),
             }),
         })
         const running = looks({
             shown: showCard({
-                state: await stateWith(editing({ helpers: [searching()] })),
+                state: await stateWith(busy({ helpers: [searching()] })),
             }),
         })
 
