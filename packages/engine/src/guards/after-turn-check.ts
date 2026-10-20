@@ -22,7 +22,10 @@ export type GitState = {
     head_ref: string | null
     /** The ticket branch's commit, `null` if the branch is gone. */
     branch_ref: string | null
-    /** Other refs pointing at HEAD. The repo's refs are shared, so only these count. */
+    /**
+     * Other refs pointing at HEAD. The repo's refs are shared, so only these
+     * count, and only when HEAD is a commit made during the turn.
+     */
     refs_at_head: string[]
     /** Stash entries naming the branch. The stash is shared too. */
     stash: string[]
@@ -147,15 +150,41 @@ const added = ({ before, after }: { before: string[]; after: string[] }) =>
     after.filter((item) => !before.includes(item))
 
 /**
+ * The new refs at HEAD the agent made. The refs are shared, so a new ref
+ * counts only when HEAD is a commit made during the turn: one at a commit
+ * that already existed may be another process's, such as a helper's
+ * worktree branch.
+ *
+ * @example
+ * refsMadeInTurn({ before, after, head_is_new: false }) // []
+ */
+export const refsMadeInTurn = ({
+    before,
+    after,
+    head_is_new,
+}: {
+    before: GitState
+    after: GitState
+    /** Whether HEAD is now a commit made during the turn. */
+    head_is_new: boolean
+}): string[] =>
+    head_is_new
+        ? added({ before: before.refs_at_head, after: after.refs_at_head })
+        : []
+
+/**
  * Every git change between two snapshots. No role may change git state, so
  * each one is a violation.
  */
 export const gitViolations = ({
     before,
     after,
+    head_is_new,
 }: {
     before: GitState
     after: GitState
+    /** Whether HEAD is now a commit made during the turn. */
+    head_is_new: boolean
 }): Violation[] => {
     const details: string[] = []
     if (before.head !== after.head) {
@@ -171,10 +200,7 @@ export const gitViolations = ({
             `the ticket branch moved from ${before.branch_ref} to ${after.branch_ref}`
         )
     }
-    const refs = added({
-        before: before.refs_at_head,
-        after: after.refs_at_head,
-    })
+    const refs = refsMadeInTurn({ before, after, head_is_new })
     if (refs.length > 0) details.push(`new refs at HEAD: ${refs.join(', ')}`)
     const stash = added({ before: before.stash, after: after.stash })
     if (stash.length > 0) details.push(`new stash entries: ${stash.join('; ')}`)
