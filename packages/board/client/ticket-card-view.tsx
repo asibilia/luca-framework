@@ -5,7 +5,10 @@
  * step text gives way to what its agent is doing now, and its tokens count
  * up with the turn, followed by the latest action's age; a busy card's
  * line ends in its heartbeat (#631), and a check waiting there for a slot
- * (#632) reads as a wait, with the amber bar. Each line stays on one line (`one-line.tsx`): the
+ * (#632) reads as a wait, with the amber bar. In a run with no sign of
+ * life (#635), a busy card's step text says so, its heartbeat is a flat
+ * red line, and its timers stop at the last sign of life. Each line stays
+ * on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
  */
@@ -15,6 +18,7 @@ import { Pressable, Text, View } from 'react-native'
 import { stageColor, tokensText, useNow } from './board-look'
 import { Counter, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { noLife } from './engine-life'
 import { Heartbeat } from './heartbeat'
 import { liveAgeText, liveText } from './live-line'
 import { ModelLine } from './model-line'
@@ -57,8 +61,14 @@ export const TicketCardView = ({
     // A ticket waiting on purpose between steps, or its check waiting for
     // a slot (#632), reads "waiting", in amber.
     const wait = ticketWait({ state, ticket }) ?? slotWait({ ticket })
+    // A busy card of a run with no sign of life says so, and its timers stop.
+    const busy =
+        !QUIET.has(ticket.stage) &&
+        (ticket.live !== null || ticket.current_step !== null)
+    const lifeless = busy ? noLife({ state, now }) : null
+    const clock = lifeless?.at ?? now
     // What its agent is doing now, from the live file, in place of the step text.
-    const doing = liveText({ live: ticket.live, now })
+    const doing = liveText({ live: ticket.live, now: clock })
     const color = wait
         ? theme.colors.statusWarning
         : stageColor({ stage: ticket.stage, theme })
@@ -115,7 +125,16 @@ export const TicketCardView = ({
                 </View>
                 <View style={styles.line}>
                     <StepDots ticket={ticket} theme={theme} styles={styles} />
-                    {wait ? (
+                    {lifeless ? (
+                        <CutLine
+                            text={lifeless.text}
+                            style={[
+                                styles.text,
+                                { color: theme.colors.statusDanger },
+                            ]}
+                            styles={styles}
+                        />
+                    ) : wait ? (
                         <WaitLine wait={wait} theme={theme} styles={styles} />
                     ) : doing || ticket.role ? (
                         <CutLine
@@ -124,13 +143,14 @@ export const TicketCardView = ({
                             styles={styles}
                         />
                     ) : null}
-                    {!wait &&
+                    {(lifeless || !wait) &&
                     ticket.live !== null &&
                     !QUIET.has(ticket.stage) ? (
                         <>
                             <View style={styles.spacer} />
                             <Heartbeat
                                 live={ticket.live}
+                                gone={lifeless !== null}
                                 theme={theme}
                                 styles={styles}
                             />
@@ -141,6 +161,7 @@ export const TicketCardView = ({
                     <StepLine
                         step={ticket.current_step}
                         prefix=""
+                        at={lifeless?.at ?? null}
                         styles={styles}
                     />
                 ) : null}
@@ -168,7 +189,7 @@ export const TicketCardView = ({
                     <Text style={[styles.mono, styles.fixed]} numberOfLines={1}>
                         {`${tokensText({
                             tokens: ticket.tokens + (ticket.live?.tokens ?? 0),
-                        })} tokens${liveAgeText({ live: ticket.live, now })}`}
+                        })} tokens${liveAgeText({ live: ticket.live, now: clock })}`}
                     </Text>
                     {ticket.plan_used.length > 0 ? (
                         <CutLine

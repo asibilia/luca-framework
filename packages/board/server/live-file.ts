@@ -92,9 +92,9 @@ export const readLiveFile = async ({
 
 /**
  * The state with its live file laid over it: each card gets its agent's
- * entry (or none) and its check's slot wait (or none), the feed is the
- * file's, and the plan usage, with no reading yet, fills in from the
- * file's first one.
+ * entry (or none) and its check's slot wait (or none), the feed and
+ * `written_at` are the file's, and the plan usage, with no reading yet,
+ * fills in from the file's first one.
  */
 export const withLive = ({
     state,
@@ -116,6 +116,7 @@ export const withLive = ({
                 waits.find((wait) => wait.ticket === card.number) ?? null,
         })),
         feed: live?.feed ?? [],
+        live_written_at: live?.written_at ?? null,
         usage:
             state.usage ??
             (reading === null || live === null

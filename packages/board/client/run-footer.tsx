@@ -7,22 +7,30 @@
  */
 import { View } from 'react-native'
 
+import { useNow } from './board-look'
 import type { Look } from './board-panel-styles'
+import { noLife } from './engine-life'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
 
 import type { BoardState } from '../shared/board-state'
 
 export const RunFooter = ({ state, styles }: { state: BoardState } & Look) => {
     const bubbles = useBubbles()
+    const now = useNow()
     const { run, memory } = state
     const line = (text: string) => (
         <CutLine text={text} style={styles.small} styles={styles} />
     )
-    const engine = run.engine_ended
-        ? run.engine_ended.ok
-            ? 'finished'
-            : 'stopped'
-        : 'running'
+    // A run with no sign of life says so here too, not "engine running".
+    const engine =
+        noLife({ state, now })?.text ??
+        `engine ${
+            run.engine_ended
+                ? run.engine_ended.ok
+                    ? 'finished'
+                    : 'stopped'
+                : 'running'
+        }`
     const memoryChanges =
         memory.added + memory.updated + memory.refused + memory.failed > 0
             ? `; ${memory.added} added, ${memory.updated} updated, ${memory.refused} refused, ${memory.failed} failed`
@@ -32,7 +40,7 @@ export const RunFooter = ({ state, styles }: { state: BoardState } & Look) => {
             <View style={styles.rule} />
             <BubbleScope bubbles={bubbles} styles={styles}>
                 {line(
-                    `${run.run_id} · ${state.event_count} events · engine ${engine}`
+                    `${run.run_id} · ${state.event_count} events · ${engine}`
                 )}
                 {state.jev.asked > 0
                     ? line(

@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import type { RunStore } from './board-server-store'
 import type { BoardServerConfig, OutsideRun } from './board-server-types'
+import { needsEngine } from './board-server-util'
 import { readLiveFile, withLive } from './live-file'
 import { createBoardState } from './reduce-board'
 import type { ReplyRun } from './reply-post'
@@ -80,6 +81,7 @@ export const createBoardReads = ({
                     size,
                     changed_ms,
                     repo: null,
+                    engine_gone: false,
                 }
                 applyInOrder({ memory: run, records })
                 run.size = size
@@ -105,9 +107,16 @@ export const createBoardReads = ({
             ...[...runs.values()].filter(
                 (memory) => memory.entry.workspace_id === input.workspace_id
             ),
-            ...[...outside.values()].filter(
-                (run) => directory !== null && run.repo === directory
-            ),
+            ...[...outside.values()]
+                .filter((run) => directory !== null && run.repo === directory)
+                .map((run) => ({
+                    state: {
+                        ...run.state,
+                        engine_gone:
+                            run.engine_gone &&
+                            needsEngine({ state: run.state }),
+                    },
+                })),
         ]
             .map(({ state }) => state)
             .toSorted((left, right) =>
@@ -177,5 +186,5 @@ export const createBoardReads = ({
         return poster.postReply({ run, input })
     }
 
-    return { outside, readBoard, postReply }
+    return { outside, readOutside, readBoard, postReply }
 }

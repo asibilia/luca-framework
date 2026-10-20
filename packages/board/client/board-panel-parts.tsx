@@ -43,13 +43,17 @@ export const Counter = ({
 export const StepLine = ({
     step,
     prefix,
+    at = null,
     styles,
 }: {
     step: CurrentStep
     prefix: string
+    /** A stopped clock (#635), in ms, in place of the ticking one. */
+    at?: number | null
     styles: Styles
 }) => {
-    const now = useNow()
+    const ticking = useNow()
+    const now = at ?? ticking
     return (
         <CutLine
             text={`${prefix}${currentStepText({ step, now })}`}

@@ -170,6 +170,18 @@ export const BoardStateSchema = z.object({
      * from before it still parses.
      */
     feed: z.array(LiveFeedEntrySchema).default([]),
+    /**
+     * When the engine last wrote the run's live file, `null` with none: its
+     * last sign of life (#635). Defaulted, so a board state from before it
+     * still parses.
+     */
+    live_written_at: z.string().nullable().default(null),
+    /**
+     * The plugin's process check found no engine for this run, which it
+     * didn't start and so never restarts (#635). Defaulted, so a board
+     * state from before it still parses.
+     */
+    engine_gone: z.boolean().default(false),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */

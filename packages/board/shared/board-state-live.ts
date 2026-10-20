@@ -4,6 +4,28 @@
  */
 import { z } from 'zod'
 
+/**
+ * A live file written longer ago than this means the engine is hung or
+ * gone (#635). The engine rewrites it at least every 5 seconds, so a long
+ * tool call never gets near it.
+ */
+export const LIVE_STALE_MS = 60_000
+
+/**
+ * Whether a live file written at `written_at` is fresh at `now`: written
+ * at most `LIVE_STALE_MS` ago.
+ *
+ * @example
+ * liveIsFresh({ written_at: '2026-09-23T12:30:00.000Z', now: Date.parse('2026-09-23T12:31:10.000Z') }) // false
+ */
+export const liveIsFresh = ({
+    written_at,
+    now,
+}: {
+    written_at: string
+    now: number
+}): boolean => now - Date.parse(written_at) <= LIVE_STALE_MS
+
 /** The agent's latest action: a tool and a short target, with its time. */
 export const LiveActionSchema = z.object({
     tool: z.string(),

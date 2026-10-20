@@ -98,6 +98,8 @@ export const createBoardState = ({
     live_agents: [],
     current_step: null,
     feed: [],
+    live_written_at: null,
+    engine_gone: false,
     event_count: 0,
     latest: null,
     latest_at: null,
