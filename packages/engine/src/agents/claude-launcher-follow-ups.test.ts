@@ -12,6 +12,8 @@ import {
     result,
 } from './claude-launcher-helpers'
 
+import { JournalRecordSchema } from '../journal/journal-record'
+
 /**
  * The launcher seam, the follow-ups: a follow-up reaches its session, and a
  * session closes when it is told to or sits idle. The helpers are in
@@ -199,6 +201,51 @@ describe('follow-ups', () => {
             session_id: 'session-1',
         })
         await launcher.closeAll()
+    })
+
+    test('a follow-up to a closed or unknown session says the session is gone (#521)', async () => {
+        const fake = fakeQuery({ turns: [[INIT, result({})]] })
+        const launcher = launcherFor(fake.query)
+        await launchImplementer(launcher)
+        await launcher.closeSession({ session_id: 'session-1' })
+
+        expect(await followUp(launcher, 'session-1')).toMatchObject({
+            ok: false,
+            session_gone: true,
+            session_id: 'session-1',
+        })
+        expect(await followUp(launcher, 'nope')).toMatchObject({
+            ok: false,
+            session_gone: true,
+            session_id: 'nope',
+        })
+        expect(fake.calls[0]?.prompts).toHaveLength(1)
+    })
+
+    test('an agent_failed records session_gone, and one from a journal before #521 reads it as false', () => {
+        const recordWith = (extra: object) =>
+            JournalRecordSchema.parse({
+                seq: 1,
+                time: new Date(0).toISOString(),
+                kind: 'agent_failed',
+                ticket: 11,
+                role: 'implementer',
+                content: {
+                    role: 'implementer',
+                    error: 'It broke.',
+                    failure: 'engine',
+                    session_id: 'session-1',
+                    ...extra,
+                },
+            })
+        const gone = recordWith({ session_gone: true })
+        const old = recordWith({})
+        if (gone.kind !== 'agent_failed' || old.kind !== 'agent_failed') {
+            throw new Error('agent_failed')
+        }
+
+        expect(gone.content).toMatchObject({ session_gone: true })
+        expect(old.content).toMatchObject({ session_gone: false })
     })
 
     test('a session idle past its timeout closes', async () => {
