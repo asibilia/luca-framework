@@ -2,7 +2,14 @@
  * Each role's instructions, put together from the role's task section and
  * the shared sections.
  */
-import { COMMON, HELPERS, MESSAGES, shellRules } from './common-instructions'
+import {
+    COMMON,
+    HELPERS,
+    MESSAGES,
+    repoRules,
+    SANDBOX,
+    shellRules,
+} from './common-instructions'
 import { LEARNER, LEARNER_RULES } from './learner-instructions'
 import { LENS, REVIEWER } from './reviewer-instructions'
 import { lensOf, type AgentRole } from './role-results'
@@ -21,7 +28,9 @@ import { canMessage } from '../messages/agent-messages'
  * reviewers aren't. Each final review lens gets its own focus; the
  * integration lens also gives the PR's Summary picture and Merge Danger
  * (#513). The learner (#370) gets its own task and rules: no shell,
- * nothing written. Every role is told about its read-only helpers (#627).
+ * nothing written. Every role is told about its read-only helpers (#627),
+ * and what its sandbox blocks (#540). The writers, as final review fixers
+ * too, are told where the repo's rule files are (#646).
  *
  * @example
  * const append = roleInstructions({ role: 'implementer', may_edit_tests: false, config })
@@ -43,7 +52,7 @@ export const roleInstructions = ({
 }): string => {
     // The learner has no shell and no agent messages, and its rules differ.
     if (role === 'learner')
-        return [LEARNER, HELPERS, LEARNER_RULES].join('\n\n')
+        return [LEARNER, HELPERS, SANDBOX, LEARNER_RULES].join('\n\n')
     const lens = lensOf({ role })
     const task =
         lens !== null
@@ -55,9 +64,13 @@ export const roleInstructions = ({
                 : REVIEWER
     return [
         task,
+        ...(role === 'test-writer' || role === 'implementer'
+            ? repoRules({ config })
+            : []),
         shellRules({ role, config }),
         ...((messaging ?? canMessage({ role })) ? [MESSAGES] : []),
         HELPERS,
+        SANDBOX,
         COMMON,
     ].join('\n\n')
 }
