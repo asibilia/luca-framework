@@ -1,155 +1,48 @@
 import { describe, expect, test } from 'bun:test'
 
-import { decideSteps, type EngineAction } from './decide'
 import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './loop-caps'
 
 import { LENS_NAMES } from '../agents/role-results'
 import type { JournalEntry } from '../journal/journal-record'
-import { replayRun } from '../journal/replay'
 import {
     agentFailed,
     agentStarted,
     commitMade,
     gatesRun,
     implemented,
-    intakePassed,
     leftoverScan,
-    practiceTicket,
-    pullRequestOpened,
-    pushed,
     RUN_BRANCH,
-    RUN_BRANCH_PATH,
-    runBranchCreated,
     SESSIONS,
     testsWritten,
-    ticketBuilt,
-    ticketPath,
-    withInstalls,
-    worktreesRemoved,
 } from '../testing/build-fixtures'
 import {
     finalReviewFixing,
     finalReviewPassed,
-    finalReviewShipped,
     finalReviewStarted,
-    finalReviewStuck,
-    lensFinding,
     lensReviewed,
     lensRound,
 } from '../testing/final-review-fixtures'
-import { recordsFrom } from '../testing/intake-fixtures'
+import {
+    ARCH_TEST,
+    built,
+    findingsRound,
+    fixersAnswered,
+    fixesLanded,
+    lensPrompt,
+    SECURITY,
+    securityFixRound,
+    stepAfter,
+    stepsAfter,
+} from '../testing/final-review-steps'
 
 /**
  * Seam 1, the final review: the decision step given a journal in which
  * every ticket pushed. The whole run branch is reviewed by five lenses
- * before the PR opens.
+ * before the PR opens. A stuck final review and the PR's Summary are in
+ * `decide-final-review-pr.test.ts`, the fresh pass in
+ * `decide-final-review-fresh.test.ts`; the shared journal is in
+ * `testing/final-review-steps.ts`.
  */
-
-const TICKET = practiceTicket({ number: 11 })
-
-/** Every step the decision step can take now, after these entries. */
-const stepsAfter = (
-    entries: JournalEntry[],
-    tickets = [TICKET]
-): EngineAction[] =>
-    decideSteps({
-        records: recordsFrom({
-            entries: [
-                ...intakePassed({ tickets }),
-                ...withInstalls({ entries }),
-            ],
-        }),
-    })
-
-/** The one step the decision step takes after these entries. */
-const stepAfter = (entries: JournalEntry[]): EngineAction => {
-    const steps = stepsAfter(entries)
-    if (steps.length !== 1) {
-        throw new Error(steps.map(({ type }) => type).join(', '))
-    }
-    return steps[0] as EngineAction
-}
-
-/** The run branch with ticket #11 built, joined, and pushed. */
-const built = (): JournalEntry[] => [
-    runBranchCreated(),
-    ...ticketBuilt({ ticket: 11 }),
-]
-
-const lensPrompt = (steps: EngineAction[], lens: string): string => {
-    const step = steps.find(
-        (entry) => entry.type === 'launch_lens' && entry.lens === lens
-    )
-    if (step?.type !== 'launch_lens') throw new Error(`no ${lens} lens`)
-    return step.prompt
-}
-
-const SECURITY = lensFinding({ id: 'S1', title: 'Sum trusts its input' })
-const ARCH_TEST = lensFinding({
-    id: 'A1',
-    kind: 'test',
-    severity: 'blocker',
-    title: 'The tests reach into private helpers',
-    file: 'src/sum.test.ts',
-})
-const NIT = lensFinding({ id: 'N1', severity: 'nit', title: 'Shorter name' })
-
-/** Round 1 with a code finding (security), a test finding (architecture), and a nit. */
-const findingsRound = (): JournalEntry[] =>
-    lensRound({
-        round: 1,
-        findings: {
-            security: [SECURITY],
-            architecture: [ARCH_TEST],
-            simplification: [NIT],
-        },
-    })
-
-/** Fix round 1 answered: the test-writer, then a fresh implementer. */
-const fixersAnswered = ({
-    security,
-}: {
-    security: 'fixed' | 'wont_fix'
-}): JournalEntry[] => [
-    finalReviewFixing({ round: 1 }),
-    testsWritten({
-        ticket: null,
-        finding_responses: [
-            { finding_id: 'architecture-A1', response: 'fixed', reason: '' },
-        ],
-    }),
-    implemented({
-        ticket: null,
-        finding_responses: [
-            {
-                finding_id: 'security-S1',
-                response: security,
-                reason: security === 'fixed' ? '' : 'Inputs are typed numbers.',
-            },
-        ],
-    }),
-]
-
-/** The fixes pass the gates, are committed as `sha`, and pushed. */
-const fixesLanded = ({ sha }: { sha: string }): JournalEntry[] => [
-    gatesRun({ ticket: null, target: 'run_branch', ok: true }),
-    leftoverScan({ ticket: null, stage: 'fix' }),
-    commitMade({ ticket: null, stage: 'fix', sha, files: ['src/sum.ts'] }),
-    pushed({ ticket: null, sha }),
-]
-
-/** A whole fix round of the security finding, up to its push. */
-const securityFixRound = ({ round }: { round: number }): JournalEntry[] => [
-    finalReviewFixing({ round }),
-    implemented({
-        ticket: null,
-        session_id: `impl-${round}`,
-        finding_responses: [
-            { finding_id: 'security-S1', response: 'fixed', reason: '' },
-        ],
-    }),
-    ...fixesLanded({ sha: `fix-${round}` }),
-]
 
 describe('decision step: the final review runs before the PR', () => {
     test('a one-ticket spec gets a final review of the whole run branch before its PR', () => {
@@ -506,7 +399,7 @@ describe('decision step: final review findings loop', () => {
         expect(reReview).toContain(
             "Fixer: WON'T FIX. Reason: Inputs are typed numbers."
         )
-        expect(stepAfter(declined)).toEqual({ type: 'pass_final_review' })
+        // A fresh pass comes between (#548); see decide-final-review-fresh.
         const pr = stepAfter([...declined, finalReviewPassed()])
         if (pr.type !== 'open_pull_request') throw new Error(pr.type)
         expect(pr.body).toContain('final review, security lens: security-S1')
@@ -618,169 +511,6 @@ describe('decision step: failed lens and fixer turns', () => {
         if (step.type !== 'follow_up_final_fixer') throw new Error(step.type)
         expect(step.message).toContain(
             'changed things your role may not change'
-        )
-    })
-})
-
-describe('decision step: a stuck final review', () => {
-    const stuckReview = (): JournalEntry[] => [
-        ...built(),
-        ...lensRound({ round: 1, findings: { security: [SECURITY] } }),
-        finalReviewStuck({
-            reason: 'changes_requested',
-            detail: 'still security-S1',
-        }),
-    ]
-
-    test("opens no PR: the tickets' worktrees go, the run branch worktree stays, and the spec issue hears of it", () => {
-        expect(stepAfter(stuckReview())).toEqual({
-            type: 'remove_worktrees',
-            paths: [ticketPath(11)],
-        })
-        expect(
-            stepAfter([
-                ...stuckReview(),
-                worktreesRemoved({ paths: [ticketPath(11)] }),
-            ])
-        ).toMatchObject({ type: 'report_final_review_stuck', spec_number: 10 })
-    })
-
-    test('a ship reply opens the PR with the open findings at the top', () => {
-        const shipped = [
-            ...stuckReview(),
-            worktreesRemoved({ paths: [ticketPath(11)] }),
-            finalReviewShipped(),
-        ]
-
-        const pr = stepAfter(shipped)
-        if (pr.type !== 'open_pull_request') throw new Error(pr.type)
-        expect(pr.body.startsWith('## Open findings')).toBe(true)
-        expect(pr.body).toContain(
-            '- security lens, should-fix (src/sum.ts): security-S1 Sum trusts its input'
-        )
-        expect(pr.body.indexOf('## Open findings')).toBeLessThan(
-            pr.body.indexOf('Built by the Luca engine')
-        )
-        expect(stepAfter([...shipped, pullRequestOpened()])).toEqual({
-            type: 'remove_worktrees',
-            paths: [RUN_BRANCH_PATH],
-        })
-    })
-
-    test('a ship reply to a final review that is not stuck changes nothing', () => {
-        expect(stepAfter([...built(), finalReviewShipped()])).toMatchObject({
-            type: 'start_final_review',
-        })
-    })
-})
-
-/**
- * The integration lens also gives the PR's Summary picture and Merge Danger
- * on its first round (#513). Replay keeps them across rounds: a re-review
- * gives null for both, which never wipes the first round's.
- */
-describe("the integration lens's Summary and Merge Danger", () => {
-    const PICTURE = '```\nsum()\n└── add()\n```'
-    const DANGER = {
-        door: 'two_way' as const,
-        door_reason: 'A revert undoes it.',
-        blast_radius: 'small' as const,
-        blast_radius_reason: 'Only sum changes.',
-    }
-    const INTEGRATION = lensFinding({ id: 'I1', title: 'Sum and add disagree' })
-
-    const stateAfter = (entries: JournalEntry[]) =>
-        replayRun({
-            records: recordsFrom({
-                entries: [
-                    ...intakePassed({ tickets: [TICKET] }),
-                    ...withInstalls({ entries }),
-                ],
-            }),
-        })
-
-    const firstRound = (findings: ReturnType<typeof lensFinding>[]) => [
-        finalReviewStarted({ round: 1 }),
-        ...LENS_NAMES.flatMap((lens) =>
-            lens === 'integration'
-                ? lensReviewed({
-                      lens,
-                      round: 1,
-                      findings,
-                      summary_picture: PICTURE,
-                      merge_danger: DANGER,
-                  })
-                : lensReviewed({ lens, round: 1 })
-        ),
-    ]
-
-    test('replay keeps them from the first round', () => {
-        const state = stateAfter([...built(), ...firstRound([])])
-
-        expect(state.final_review.summary_picture).toBe(PICTURE)
-        expect(state.final_review.merge_danger).toEqual(DANGER)
-    })
-
-    test("a re-review's nulls do not wipe them", () => {
-        const state = stateAfter([
-            ...built(),
-            ...firstRound([INTEGRATION]),
-            ...[
-                finalReviewFixing({ round: 1 }),
-                implemented({
-                    ticket: null,
-                    finding_responses: [
-                        {
-                            finding_id: 'integration-I1',
-                            response: 'fixed',
-                            reason: '',
-                        },
-                    ],
-                }),
-                ...fixesLanded({ sha: 'fix-1' }),
-            ],
-            finalReviewStarted({
-                round: 2,
-                lenses: ['integration'],
-                from_sha: 'g1',
-                head_sha: 'fix-1',
-            }),
-            ...lensReviewed({
-                lens: 'integration',
-                round: 2,
-                summary_picture: null,
-                merge_danger: null,
-            }),
-        ])
-
-        expect(state.final_review.round).toBe(2)
-        expect(state.final_review.summary_picture).toBe(PICTURE)
-        expect(state.final_review.merge_danger).toEqual(DANGER)
-    })
-
-    test('an older journal, whose integration lens gave neither, replays with null for both', () => {
-        const state = stateAfter([...built(), ...lensRound({ round: 1 })])
-
-        expect(state.final_review.summary_picture).toBeNull()
-        expect(state.final_review.merge_danger).toBeNull()
-    })
-
-    test('the PR shows the picture and the merge danger', () => {
-        const pr = stepsAfter([
-            ...built(),
-            ...firstRound([]),
-            finalReviewPassed(),
-            worktreesRemoved({ paths: [ticketPath(11)] }),
-        ]).find((step) => step.type === 'open_pull_request')
-        if (pr?.type !== 'open_pull_request') throw new Error('no PR')
-
-        expect(pr.body).toContain(`## Summary\n\n${PICTURE}`)
-        expect(pr.body).toContain(
-            '## Merge danger\n\n- **Door:** two-way: A revert undoes it.\n- **Blast radius:** small: Only sum changes.'
-        )
-        expect(pr.body).toContain('## Evidence\n\n')
-        expect(pr.body).toContain(
-            '- #11: 1 new test failed first, now passes: sum adds two numbers'
         )
     })
 })

@@ -154,28 +154,32 @@ describe('slow tests that fail at the final review and get fixed, end to end', (
 
         // It started under the final review's key only once every round-1
         // lens finished and its step ended: nothing writes in the run
-        // branch's worktree while a lens's guard judges it.
+        // branch's worktree while a lens's guard judges it. (The fresh
+        // pass's lenses, #548, come after the fix round.)
         const slowStep = journal.findIndex(
             (record) =>
                 record.kind === 'step_started' &&
                 record.content.key === 'final' &&
                 record.content.step === 'run_final_slow_tests'
         )
-        const lastLensDone = journal.findLastIndex(
+        const roundOne = journal.slice(
+            0,
+            journal.findIndex((record) => record.kind === 'final_review_fixing')
+        )
+        const lastLensDone = roundOne.findLastIndex(
             (record) =>
                 record.kind === 'agent_finished' &&
                 record.ticket === null &&
                 record.content.role.endsWith('-lens')
         )
-        const lastLensStepEnded = journal.findLastIndex(
+        const lastLensStepEnded = roundOne.findLastIndex(
             (record) =>
                 record.kind === 'step_ended' &&
                 record.content.key.startsWith('lens:')
         )
         const lensesDone = run.records.filter(
             (record) =>
-                record.kind === 'agent_finished' &&
-                record.content.role.endsWith('-lens')
+                record.kind === 'lens_finished' && record.content.round === 1
         )
         expect(lensesDone).toHaveLength(5)
         expect(slowStep).toBeGreaterThan(-1)
@@ -229,9 +233,12 @@ describe('slow tests that fail at the final review and get fixed, end to end', (
     })
 
     test('the fix is pushed and the review passes there, with no second lens round, then the PR opens', async () => {
+        // No re-review round; only the fresh pass (#548) reads it again.
         expect(
             run.records.filter(
-                (record) => record.kind === 'final_review_started'
+                (record) =>
+                    record.kind === 'final_review_started' &&
+                    !('fresh' in record.content && record.content.fresh)
             )
         ).toHaveLength(1)
         const kinds = run.records.map(({ kind }) => kind)

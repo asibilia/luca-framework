@@ -19,13 +19,15 @@ Tests:
 
 ## The final review and shipping
 
-Five lenses review the whole run branch before the PR opens, with their own fix rounds, and a stuck final review can be shipped by the owner's `ship` reply.
+Five lenses review the whole run branch before the PR opens, with their own fix rounds, and a stuck final review can be shipped by the owner's `ship` reply. After a fix round, a fresh pass of all five lenses reads the whole branch once more, without earlier findings; its blockers get one fix round and one re-check, and what is still open tops the PR.
 
 Reached by: every run, once its tickets are done or skipped; the board shows the five lenses.
 
 Tests:
 
 - `packages/engine/src/core/decide-final-review.test.ts`
+- `packages/engine/src/core/decide-final-review-pr.test.ts`
+- `packages/engine/src/core/decide-final-review-fresh.test.ts`
 - `packages/engine/src/core/final-review.test.ts`
 - `packages/engine/src/core/final-review.e2e.test.ts`
 - `packages/engine/src/core/run-ship-uncommitted.test.ts`
