@@ -27,6 +27,11 @@ export const LiveAgentSchema = z.object({
     tokens: z.number().min(0).default(0),
     action: LiveActionSchema.nullable().default(null),
     open_call: LiveOpenCallSchema.nullable().default(null),
+    /**
+     * The agent's activity count for each of the last 30 seconds (#631),
+     * oldest first; a file from before has none.
+     */
+    activity: z.array(z.number().min(0)).catch([]).default([]),
 })
 
 export type LiveAgent = z.infer<typeof LiveAgentSchema>

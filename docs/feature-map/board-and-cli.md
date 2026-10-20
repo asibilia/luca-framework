@@ -41,7 +41,7 @@ Tests:
 
 ## The board: the live file
 
-While a run goes, the engine keeps `live.json` in the run folder, never journaled: what each agent in a turn is doing now, its tokens so far, the first plan-usage reading, and the run's last 50 actions across tickets. The board reads it for every run it shows, so each card says who is working and on what, and its tokens count up; a folded "live feed" section at the bottom of the panel shows the actions, one line each.
+While a run goes, the engine keeps `live.json` in the run folder, never journaled: what each agent in a turn is doing now, its tokens so far, its activity for each of the last 30 seconds, the first plan-usage reading, and the run's last 50 actions across tickets. The board reads it for every run it shows, so each card says who is working and on what, and its tokens count up; a folded "live feed" section at the bottom of the panel shows the actions, one line each. A busy card also has a heartbeat of 20 bars from that activity: green while working, a flat muted line when nothing happens, none on a done, skipped, stuck or blocked card. The launcher turns on the SDK's partial messages so streamed chunks count as activity; the journal is the same with them on.
 
 Reached by: a busy card on the "Luca board" tab, for a run started from Paseo or from the command line, and the "live feed" section at the bottom of the panel.
 

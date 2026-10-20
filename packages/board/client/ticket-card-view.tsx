@@ -3,7 +3,8 @@
  * step dots, its agent's model and Clef's line, the fix and review counters, its tokens and tests, and its
  * details when opened. With an entry in the run's live file (#628), the
  * step text gives way to what its agent is doing now, and its tokens count
- * up with the turn, followed by the latest action's age. Each line stays on one line (`one-line.tsx`): the
+ * up with the turn, followed by the latest action's age; a busy card's
+ * line ends in its heartbeat (#631). Each line stays on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
  */
@@ -13,6 +14,7 @@ import { Pressable, Text, View } from 'react-native'
 import { stageColor, tokensText, useNow } from './board-look'
 import { Counter, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { Heartbeat } from './heartbeat'
 import { liveAgeText, liveText } from './live-line'
 import { ModelLine } from './model-line'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
@@ -25,7 +27,16 @@ import {
     planUsedText,
     type BoardState,
     type TicketCard,
+    type TicketStage,
 } from '../shared/board-state'
+
+/** The stages whose card has no heartbeat (#631), live entry or not. */
+const QUIET: ReadonlySet<TicketStage> = new Set([
+    'done',
+    'skipped',
+    'stuck',
+    'blocked',
+])
 
 export const TicketCardView = ({
     ticket,
@@ -110,6 +121,18 @@ export const TicketCardView = ({
                             style={styles.text}
                             styles={styles}
                         />
+                    ) : null}
+                    {!wait &&
+                    ticket.live !== null &&
+                    !QUIET.has(ticket.stage) ? (
+                        <>
+                            <View style={styles.spacer} />
+                            <Heartbeat
+                                live={ticket.live}
+                                theme={theme}
+                                styles={styles}
+                            />
+                        </>
                     ) : null}
                 </View>
                 {ticket.current_step && doing === null ? (

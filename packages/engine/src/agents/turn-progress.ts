@@ -1,6 +1,7 @@
 /**
  * A turn's live progress (#628), for the engine's live file: what the
- * agent is doing now, read from the SDK messages and the guard hook. It
+ * agent is doing now, read from the SDK messages (streamed chunks too,
+ * #631) and the guard hook. It
  * holds only short words: a tool and a target (a path relative to the
  * worktree, or the first words of a command), never a prompt, a file's
  * contents or a command's output.
@@ -75,6 +76,9 @@ const ToolResultSchema = z.object({
 })
 
 const RateLimitSchema = z.object({ type: z.literal('rate_limit_event') })
+
+/** A streamed chunk of the model's answer (#631), with partial messages on. */
+const StreamEventSchema = z.object({ type: z.literal('stream_event') })
 
 const textOf = (value: unknown): string | null =>
     typeof value === 'string' && value.trim() !== '' ? value.trim() : null
@@ -172,9 +176,17 @@ export const createTurnProgress = ({
         open = new Map()
     }
 
-    /** Reads one SDK message: its tokens, its tool calls, the results back. */
+    /**
+     * Reads one SDK message: its tokens, its tool calls, the results back. A
+     * streamed chunk is told as it comes, so the heartbeat moves while the
+     * model thinks, but nothing of it is kept: the whole message that
+     * follows carries the tokens.
+     */
     const heard = (raw: unknown): void => {
-        if (RateLimitSchema.safeParse(raw).success) {
+        if (
+            RateLimitSchema.safeParse(raw).success ||
+            StreamEventSchema.safeParse(raw).success
+        ) {
             tell()
             return
         }

@@ -403,6 +403,135 @@ describe("a turn's live progress", () => {
     })
 })
 
+/**
+ * A streamed chunk of the model's answer, as the SDK sends it when partial
+ * messages are on (#631): a `stream_event` carrying a content delta.
+ */
+const chunk = (
+    text: string,
+    kind: 'text_delta' | 'thinking_delta' = 'text_delta'
+) => ({
+    type: 'stream_event',
+    event: {
+        type: 'content_block_delta',
+        index: 0,
+        delta:
+            kind === 'text_delta'
+                ? { type: 'text_delta', text }
+                : { type: 'thinking_delta', thinking: text },
+    },
+    parent_tool_use_id: null,
+    session_id: 'session-1',
+    uuid: `uuid-chunk-${text}`,
+})
+
+describe('partial messages and the heartbeat (#631)', () => {
+    test('the launch turns on partial messages, and on_progress hears each streamed chunk as it arrives, before the turn ends', async () => {
+        const heard: unknown[] = []
+        const seen: { partial?: unknown; before?: number; after?: number } = {}
+        const query = playing({
+            steps: [
+                INIT,
+                async (options: Options) => {
+                    seen.partial = options.includePartialMessages
+                    seen.before = heard.length
+                },
+                chunk('thinking about it', 'thinking_delta'),
+                chunk('Let me '),
+                chunk('look at '),
+                chunk('the file.'),
+                async () => {
+                    seen.after = heard.length
+                },
+                result({ structured_output: IMPLEMENTER_DONE }),
+            ],
+        })
+
+        const turn = await launchWatched({ query, heard })
+
+        expect(turn.ok).toBe(true)
+        expect(seen.partial).toBe(true)
+        // Four chunks, four more hearings, none of them waiting for the next whole message.
+        expect((seen.after ?? 0) - (seen.before ?? 0)).toBeGreaterThanOrEqual(4)
+    })
+
+    test('what a turn gives back is the same with streamed chunks in it: nothing of them is kept', async () => {
+        // The SDK only streams chunks when the launch asked for them.
+        let asked: unknown = null
+        const messages = (streamed: boolean) => [
+            INIT,
+            async (options: Options) => {
+                asked = options.includePartialMessages
+            },
+            ...(streamed
+                ? [
+                      {
+                          type: 'stream_event',
+                          event: {
+                              type: 'message_start',
+                              message: {
+                                  id: 'msg-edit',
+                                  usage: {
+                                      input_tokens: 77,
+                                      output_tokens: 1,
+                                      cache_read_input_tokens: 0,
+                                      cache_creation_input_tokens: 0,
+                                  },
+                              },
+                          },
+                          parent_tool_use_id: null,
+                          session_id: 'session-1',
+                          uuid: 'uuid-start',
+                      },
+                      chunk('STREAM-SECRET-5d1e '),
+                      chunk('STREAM-SECRET-9a77', 'thinking_delta'),
+                  ]
+                : []),
+            ...call({
+                id: 'toolu_edit',
+                name: 'Edit',
+                input: {
+                    file_path: join(realpathSync(repo), 'src/gate-runner.ts'),
+                    old_string: 'a',
+                    new_string: 'b',
+                },
+                usage: {
+                    input_tokens: 100,
+                    output_tokens: 250,
+                    cache_read_input_tokens: 4000,
+                    cache_creation_input_tokens: 600,
+                },
+            }),
+            ...(streamed ? [chunk('STREAM-SECRET-c3b0')] : []),
+            toolResult('toolu_edit', 'The file was edited.'),
+            result({ structured_output: IMPLEMENTER_DONE }),
+        ]
+        const run = async (streamed: boolean) => {
+            const heard: unknown[] = []
+            const turn = await launchWatched({
+                query: playing({ steps: messages(streamed) }),
+                heard,
+            })
+            // The wall clock differs between any two runs.
+            const kept = JSON.parse(JSON.stringify(turn)) as {
+                session?: Record<string, unknown>
+            }
+            delete kept.session?.duration_ms
+            return { kept, last: heard.at(-1) as { tokens: number } }
+        }
+
+        const plain = await run(false)
+        const streamed = await run(true)
+
+        expect(asked).toBe(true)
+        expect(streamed.kept).toEqual(plain.kept)
+        expect(JSON.stringify(streamed.kept)).not.toContain('STREAM-SECRET')
+        // A chunk never changes the turn's tokens either; the whole message does.
+        expect(streamed.last.tokens).toBe(plain.last.tokens)
+        expect(plain.last.tokens).toBe(100 + 250 + 4000 + 600)
+    })
+})
+
 describe('the docs on the live file (#628)', () => {
     const ROOT = join(import.meta.dir, '../../../..')
     const ENGINE = join(ROOT, 'packages/engine')

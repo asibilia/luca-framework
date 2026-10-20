@@ -351,3 +351,98 @@ describe('the live file, with scripted agents', () => {
         })
     }, 120_000)
 })
+
+/** An agent's `activity` in the live file: 30 counts, one per second, oldest first. */
+const activityOf = (agent: Record<string, unknown> | undefined): number[] =>
+    Array.isArray(agent?.activity) ? (agent.activity as number[]) : []
+
+const sum = (counts: number[]): number =>
+    counts.reduce((total, count) => total + count, 0)
+
+describe('the heartbeat in the live file (#631)', () => {
+    test("each agent's entry holds an activity count for each of the last 30 seconds, one tick for every progress the engine hears, newest last", async () => {
+        const practice = await createPracticeRepo({ root })
+        const file = liveFileIn(root)
+        const BURST = 10
+        let seen: Live | null = null
+        const launcher = watching({
+            role: 'test-writer',
+            during: async (args) => {
+                for (let n = 1; n <= BURST; n += 1) {
+                    args.on_progress?.(progress({ tokens: n * 10 }))
+                }
+                seen = await waitForLive({
+                    file,
+                    until: (live) =>
+                        sum(
+                            activityOf(
+                                live.agents.find((one) => one.ticket === 11)
+                            )
+                        ) >= BURST,
+                })
+            },
+        })
+
+        await practice.run({
+            launcher,
+            live_file: file,
+            stop_before: ['run_red_check'],
+        })
+
+        expect(seen).not.toBeNull()
+        const agent = (seen as unknown as Live).agents.find(
+            (one) => one.ticket === 11
+        )
+        const activity = activityOf(agent)
+        expect(activity).toHaveLength(30)
+        expect(activity.every((count) => Number.isInteger(count))).toBe(true)
+        expect(activity.every((count) => count >= 0)).toBe(true)
+        // The burst just happened: it is in the newest seconds, and nothing is older.
+        expect(sum(activity.slice(0, 27))).toBe(0)
+        expect(sum(activity.slice(-3))).toBeGreaterThanOrEqual(BURST)
+    }, 60_000)
+
+    test('while a tool call is open, each second adds one low tick, with no other progress heard', async () => {
+        const practice = await createPracticeRepo({ root })
+        const file = liveFileIn(root)
+        let seen: Live | null = null
+        const launcher = watching({
+            role: 'test-writer',
+            during: async (args) => {
+                // One progress opens the call; then nothing else is heard.
+                args.on_progress?.(
+                    progress({
+                        open_call: {
+                            tool: 'Bash',
+                            target: 'bun test',
+                            started_at: new Date().toISOString(),
+                        },
+                    })
+                )
+                seen = await waitForLive({
+                    file,
+                    ms: 8000,
+                    until: (live) =>
+                        activityOf(
+                            live.agents.find((one) => one.ticket === 11)
+                        ).filter((count) => count > 0).length >= 3,
+                })
+            },
+        })
+
+        await practice.run({
+            launcher,
+            live_file: file,
+            stop_before: ['run_red_check'],
+        })
+
+        expect(seen).not.toBeNull()
+        const activity = activityOf(
+            (seen as unknown as Live).agents.find((one) => one.ticket === 11)
+        )
+        const busy = activity.filter((count) => count > 0)
+        // A steady ripple: three or more seconds with a tick, none of them loud.
+        expect(busy.length).toBeGreaterThanOrEqual(3)
+        expect(Math.max(...activity)).toBeLessThanOrEqual(2)
+    }, 60_000)
+})

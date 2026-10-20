@@ -256,6 +256,9 @@ export const agentOptions = ({
         }),
         env,
         persistSession: false,
+        // Streamed chunks only feed the live file's heartbeat (#631); the
+        // launcher keeps nothing of them.
+        includePartialMessages: true,
         maxTurns: MAX_TURNS[role],
         hooks: {
             PreToolUse: [{ hooks: [guard_hook] }],

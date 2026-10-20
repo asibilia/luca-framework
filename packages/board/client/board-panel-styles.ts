@@ -164,6 +164,15 @@ export const makeStyles = ({
             borderRadius: 2,
             opacity: 0.8,
         },
+        /** A busy card's heartbeat, and each of its bars, standing on the bottom. */
+        heartbeat: {
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            flexShrink: 0,
+            height: 14,
+            gap: 1,
+        },
+        heartbeatBar: { width: 2, borderRadius: 1 },
         counter: {
             flexShrink: 0,
             borderWidth: 1,

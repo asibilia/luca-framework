@@ -5,7 +5,9 @@
  * (#634). It is never journaled and never replayed: each write replaces
  * the whole file (written aside, then renamed), at most once a second
  * while something changed, and at least every 5 seconds while the engine
- * runs, each with its `written_at` time.
+ * runs, each with its `written_at` time. Each agent's entry carries its
+ * activity for each of the last 30 seconds (#631), for the board's
+ * heartbeat.
  */
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -29,6 +31,9 @@ export const LIVE_MAX_GAP_MS = 5000
 
 /** How often the writer looks for something to write. */
 const LIVE_CHECK_MS = 200
+
+/** How many seconds of activity each agent's entry keeps (#631). */
+export const ACTIVITY_SECONDS = 30
 
 /** The live file of one run: `<runs_dir>/<run_id>/live.json`. */
 export const runLiveFilePath = ({
@@ -72,6 +77,45 @@ const sameAction = (
     left.at === right.at
 
 /**
+ * One agent's activity (#631): a count per second, by the second it
+ * happened in. Each progress heard is one tick, and so is each second a
+ * tool call is open, a low, steady ripple while a long command runs.
+ */
+const createActivity = () => {
+    const counts = new Map<number, number>()
+    /** The last second an open tool call ticked in. */
+    let rippled = -1
+
+    const secondOf = (ms: number): number => Math.floor(ms / 1000)
+
+    const tick = (at: number): void => {
+        const second = secondOf(at)
+        counts.set(second, (counts.get(second) ?? 0) + 1)
+        for (const old of counts.keys()) {
+            if (old <= second - ACTIVITY_SECONDS) counts.delete(old)
+        }
+    }
+
+    /** One low tick for this second, once, while a tool call is open. */
+    const ripple = (at: number): boolean => {
+        if (secondOf(at) === rippled) return false
+        rippled = secondOf(at)
+        tick(at)
+        return true
+    }
+
+    /** The counts of the last 30 seconds up to `at`, oldest first. */
+    const recent = (at: number): number[] =>
+        Array.from(
+            { length: ACTIVITY_SECONDS },
+            (_, index) =>
+                counts.get(secondOf(at) - ACTIVITY_SECONDS + 1 + index) ?? 0
+        )
+
+    return { tick, ripple, recent }
+}
+
+/**
  * Keeps the live file at `file` from the moment it is made until `close`,
  * which writes it one last time with no agents. `launcher` wraps an agent
  * launcher so each turn's progress (`on_progress`) goes into the file while
@@ -84,6 +128,7 @@ const sameAction = (
  */
 export const createLiveFile = ({ file }: { file: string }) => {
     const agents = new Map<number, LiveAgent>()
+    const activities = new Map<number, ReturnType<typeof createActivity>>()
     let plan_usage: Record<string, unknown> | null = null
     let feed: LiveFeedEntry[] = []
     let changed = false
@@ -97,7 +142,10 @@ export const createLiveFile = ({ file }: { file: string }) => {
         const text = JSON.stringify({
             written_at: new Date(at).toISOString(),
             plan_usage,
-            agents: [...agents.values()],
+            agents: [...agents].map(([key, agent]) => ({
+                ...agent,
+                activity: activities.get(key)?.recent(at) ?? [],
+            })),
             feed,
         })
         try {
@@ -111,7 +159,12 @@ export const createLiveFile = ({ file }: { file: string }) => {
     }
 
     const timer = setInterval(() => {
-        const gap = Date.now() - last
+        const at = Date.now()
+        for (const [key, agent] of agents) {
+            if (agent.open_call === null) continue
+            if (activities.get(key)?.ripple(at)) changed = true
+        }
+        const gap = at - last
         if ((changed && gap >= LIVE_MIN_GAP_MS) || gap >= LIVE_MAX_GAP_MS) {
             write()
         }
@@ -122,6 +175,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
     const heard = (key: number, progress: TurnProgress): void => {
         const agent = agents.get(key)
         if (agent === undefined) return
+        activities.get(key)?.tick(Date.now())
         const { action } = progress
         // A message that only adds tokens repeats the action it was on.
         if (action !== null && !sameAction(agent.action, action)) {
@@ -153,6 +207,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
         const key = next
         next += 1
         agents.set(key, { ...who, tokens: 0, action: null, open_call: null })
+        activities.set(key, createActivity())
         changed = true
         try {
             return await turn((progress) => {
@@ -161,6 +216,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
             })
         } finally {
             agents.delete(key)
+            activities.delete(key)
             changed = true
         }
     }
@@ -203,6 +259,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
     const close = (): void => {
         clearInterval(timer)
         agents.clear()
+        activities.clear()
         write()
     }
 

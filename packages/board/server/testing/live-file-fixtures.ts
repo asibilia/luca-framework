@@ -18,6 +18,9 @@ export type LiveAction = { tool: string; target: string; at: string }
 /** A tool call still running, since `started_at`. */
 export type LiveOpenCall = { tool: string; target: string; started_at: string }
 
+/** How many seconds of activity the live file keeps for each agent (#631). */
+export const ACTIVITY_SECONDS = 30
+
 export type LiveAgent = {
     ticket: number | null
     role: string
@@ -25,6 +28,11 @@ export type LiveAgent = {
     tokens: number
     action: LiveAction | null
     open_call: LiveOpenCall | null
+    /**
+     * The agent's activity count for each of the last 30 seconds (#631),
+     * oldest first, so the newest second is last.
+     */
+    activity: number[]
 }
 
 /**
@@ -40,6 +48,10 @@ export type LiveFeedEntry = {
     target: string
 }
 
+/** A quiet agent's activity: 30 seconds of nothing. */
+export const quietActivity = (): number[] =>
+    Array.from({ length: ACTIVITY_SECONDS }, () => 0)
+
 /** One agent in a turn, on Opus with nothing done yet unless told. */
 export const liveAgent = (
     fields: Partial<LiveAgent> & { ticket: number | null; role: string }
@@ -48,6 +60,7 @@ export const liveAgent = (
     tokens: 0,
     action: null,
     open_call: null,
+    activity: quietActivity(),
     ...fields,
 })
 

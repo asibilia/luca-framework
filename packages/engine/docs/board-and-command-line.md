@@ -54,6 +54,7 @@ it or without it. `runSpec` gives `runEngine` its path; without `live_file`
     tokens: number,              // the turn's tokens so far, cache reads included
     action: { tool, target, at } | null,              // the latest action
     open_call: { tool, target, started_at } | null,   // a tool call still running
+    activity: number[],          // 30 counts, one per second, oldest first (#631)
   }],
 }
 ```
@@ -73,6 +74,14 @@ far, the latest tool call it saw, the call the guard hook let through until
 its result comes back, and the turn's plan-usage readings, the first of
 them within seconds. `runEngine` wraps its launcher so each turn's progress
 lands in the file while the turn runs.
+
+An agent's `activity` feeds the board's heartbeat (#631): each progress
+heard is one tick in the second it came, and each second a tool call is
+open adds one low tick, so a long command shows a steady ripple. The
+launcher turns on the SDK's partial messages (`includePartialMessages`), so
+each streamed chunk is heard too and a thinking model still moves the
+heartbeat. Nothing of a chunk is kept: the tokens come from the whole
+messages, and the journal is the same with partial messages on.
 
 ## The command line: `luca-run`
 

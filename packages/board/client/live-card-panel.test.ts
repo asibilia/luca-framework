@@ -9,8 +9,10 @@ import {
     LAYOUT,
     THEME,
     render,
+    styleOf,
     textOf,
     textsIn,
+    type HostNode,
     type Screen,
 } from './testing/render-native'
 
@@ -317,5 +319,148 @@ describe('the live file on the cards (#628)', () => {
         )
         expect(describing.length).toBeGreaterThan(0)
         expect(describing.join('\n')).toMatch(/live file/i)
+    })
+})
+
+/**
+ * The heartbeat (#631): at the end of a busy card's step-dots line, a `View`
+ * labelled "Heartbeat" whose children are 20 bar `View`s, oldest on the
+ * left. Each bar has a numeric `height` and a `backgroundColor`. The bars
+ * are the newest 20 of the agent's 30 activity counts in the live file
+ * (`activity`, oldest first): a taller bar for a bigger count, in the
+ * theme's success colour while working; a flat line (all bars one height)
+ * in the muted colour when nothing happened in those seconds.
+ */
+const BARS = 20
+
+/** The card's heartbeat node, or `null` with none. */
+const heartbeatOf = ({ shown }: { shown: Screen }): HostNode | null =>
+    shown.all().find((node) => node.props.accessibilityLabel === 'Heartbeat') ??
+    null
+
+/** The bars of a heartbeat, left to right. */
+const barsOf = ({ beat }: { beat: HostNode }): HostNode[] =>
+    beat.children.filter(
+        (child): child is HostNode => typeof child !== 'string'
+    )
+
+const heightsOf = ({ beat }: { beat: HostNode }): number[] =>
+    barsOf({ beat }).map((bar) => Number(styleOf(bar).height))
+
+const colorsOf = ({ beat }: { beat: HostNode }): unknown[] =>
+    barsOf({ beat }).map((bar) => styleOf(bar).backgroundColor)
+
+/** A 30-second activity: `recent` (the newest seconds) after older seconds of `before`. */
+const activityOf = ({
+    before,
+    recent,
+}: {
+    before: number
+    recent: number[]
+}): number[] => [
+    ...Array.from({ length: 30 - recent.length }, () => before),
+    ...recent,
+]
+
+describe('the heartbeat on busy cards (#631)', () => {
+    test("a working card's 20 bars follow the newest 20 activity counts, taller for more, in green", async () => {
+        const { board, run_id, runs_dir } = await startedRun({
+            entries: implementerAtWork(),
+        })
+        const recent = [
+            0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+        ]
+        await writeLiveFile({
+            runs_dir,
+            run_id,
+            written_at: ago(1),
+            // The oldest 10 seconds are loud and must not show.
+            agents: [editing({ activity: activityOf({ before: 40, recent }) })],
+        })
+
+        const shown = showCard({ state: await board.stateOf({ run_id }) })
+
+        const beat = heartbeatOf({ shown })
+        expect(beat).not.toBeNull()
+        if (beat === null) return
+        // At the end of the step-dots line.
+        const dots = shown
+            .all()
+            .find((node) =>
+                String(node.props.accessibilityLabel ?? '').startsWith('Steps:')
+            )
+        expect(beat.parent).toBe(dots?.parent ?? null)
+        const heights = heightsOf({ beat })
+        const colors = colorsOf({ beat })
+        expect(heights).toHaveLength(BARS)
+        for (const [index, height] of heights.entries()) {
+            expect(Number.isFinite(height)).toBe(true)
+            if (index > 0) {
+                expect(height).toBeGreaterThanOrEqual(heights[index - 1] ?? 0)
+            }
+        }
+        // Equal counts, equal bars; more activity, a taller bar.
+        expect(heights[5]).toBe(heights[6])
+        expect(heights[7]).toBe(heights[8])
+        expect(heights[5]).toBeGreaterThan(heights[0] ?? 0)
+        expect(heights[19]).toBeGreaterThan(heights[5] ?? 0)
+        for (const index of [5, 10, 15, 19]) {
+            expect(colors[index]).toBe(THEME.colors.statusSuccess)
+        }
+    })
+
+    test('with no activity in those seconds, no tokens and no open tool call, the bars are a flat line in the muted colour', async () => {
+        const { board, run_id, runs_dir } = await startedRun({
+            entries: implementerAtWork(),
+        })
+        const flat = async (activity: number[]) => {
+            await writeLiveFile({
+                runs_dir,
+                run_id,
+                written_at: ago(1),
+                agents: [editing({ activity })],
+            })
+            const shown = showCard({ state: await board.stateOf({ run_id }) })
+            const beat = heartbeatOf({ shown })
+            expect(beat).not.toBeNull()
+            if (beat === null) return
+            const heights = heightsOf({ beat })
+            expect(heights).toHaveLength(BARS)
+            expect(new Set(heights).size).toBe(1)
+            expect(new Set(colorsOf({ beat }))).toEqual(
+                new Set([THEME.colors.foregroundMuted])
+            )
+        }
+
+        await flat(Array.from({ length: 30 }, () => 0))
+        // Older seconds that were busy don't count: the bars are the newest 20.
+        await flat(activityOf({ before: 9, recent: Array(20).fill(0) }))
+    })
+
+    test('a done, skipped, stuck or blocked card has no heartbeat, even with a live entry', async () => {
+        const { board, run_id, runs_dir } = await startedRun({
+            entries: implementerAtWork(),
+        })
+        await writeLiveFile({
+            runs_dir,
+            run_id,
+            written_at: ago(1),
+            agents: [editing({ activity: Array(30).fill(3) })],
+        })
+        const state = await board.stateOf({ run_id })
+        const busy = showCard({ state })
+        expect(heartbeatOf({ shown: busy })).not.toBeNull()
+
+        for (const stage of ['done', 'skipped', 'stuck', 'blocked'] as const) {
+            const shown = showCard({
+                state: {
+                    ...state,
+                    tickets: state.tickets.map((card) =>
+                        card.number === 13 ? { ...card, stage } : card
+                    ),
+                },
+            })
+            expect([stage, heartbeatOf({ shown })]).toEqual([stage, null])
+        }
     })
 })
