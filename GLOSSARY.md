@@ -37,7 +37,7 @@ The branch a run's finished tickets join one at a time, and that its one pull re
 _Avoid_: integration branch, feature branch
 
 **Intake**:
-The check, before a run starts, that a spec and all its open tickets are ready to build. If anything fails, the run does not start. Tickets for a person are left out, not checked.
+The check, before a run starts, that a spec and all its open tickets are ready to build. It also checks that acceptance criteria hold no placeholders or untestable asks. If anything fails, the run does not start. Tickets for a person are left out, not checked.
 _Avoid_: preflight, validation
 
 **Engine**:
@@ -104,6 +104,10 @@ _Avoid_: code review, self-review
 The review of a whole run's branch through several lenses, before the pull request opens.
 _Avoid_: whole-branch review, audit
 
+**Fresh pass**:
+The final review's last read before the pull request, in which every lens reads the whole branch again, without earlier findings, after the last fix round.
+_Avoid_: re-review, second review
+
 **Lens**:
 The single angle a reviewer judges code from, such as security, architecture, or the repo's rules.
 _Avoid_: perspective, reviewer type
@@ -149,7 +153,7 @@ A pause before intake while an earlier run on the same repo is still going, so t
 _Avoid_: queue, lock
 
 **Run budget**:
-The token cap for one run. A run that uses it all is stuck until a person says whether to keep going.
+The token cap for one run. A run that uses it all is stuck until a person says whether to keep going. A `retry` adds more tokens (half a budget, or the amount named, such as `retry +3M`), not a whole new budget.
 _Avoid_: quota, token limit
 
 **Config reload**:

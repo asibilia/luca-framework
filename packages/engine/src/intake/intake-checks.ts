@@ -2,6 +2,7 @@ import groupBy from 'lodash/groupBy'
 import sortBy from 'lodash/sortBy'
 import uniq from 'lodash/uniq'
 
+import { criteriaProblems } from './criteria-checks'
 import type {
     IntakeOutcome,
     IntakeProblem,
@@ -277,6 +278,9 @@ export const configProblems = ({
  * ticket that waits on one, directly or through other tickets, is left out
  * too, but still checked, so a later run can build it. The run builds the
  * rest. A ticket with neither ready label is still refused.
+ *
+ * Each open agent ticket's acceptance criteria must hold no placeholders and
+ * no untestable asks (#541, `criteriaProblems`); the spec's text isn't checked.
  */
 export const checkIntake = ({
     config,
@@ -341,6 +345,12 @@ export const checkIntake = ({
         }).map((text, index) => ({ id: `AC${index + 1}`, text }))
         if (criteria.length === 0) {
             onTicket('The ticket has no checkbox under "Acceptance criteria".')
+        }
+        for (const message of criteriaProblems({
+            ticket: ticket.number,
+            criteria,
+        })) {
+            onTicket(message)
         }
         if (!ticket.labels.includes(READY_LABEL)) {
             onTicket(`The ticket does not have the ${READY_LABEL} label.`)

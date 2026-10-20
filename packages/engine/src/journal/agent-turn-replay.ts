@@ -1,7 +1,7 @@
 /**
  * Small pure reads of an agent turn, shared by ticket and final review
  * replay: a finished agent's assumptions and bad test, the sessions after a
- * turn, the fixer roles, a fix round's answers and `other_role` hand-offs,
+ * turn, the out-of-turns counts, the fixer roles, a fix round's answers and `other_role` hand-offs,
  * and the "won't fix" answers a review let go.
  */
 import omit from 'lodash/omit'
@@ -47,6 +47,18 @@ export const sessionsAfter = ({
     const rest = omit(sessions, role)
     return session_id === null ? rest : { ...rest, [role]: session_id }
 }
+
+/** The out-of-turns counts after a failed turn (#543): one more for its role if it reached its limit. */
+export const outOfTurnsAfter = ({
+    counts,
+    failed,
+}: {
+    counts: Partial<Record<AgentRole, number>>
+    failed: { role: AgentRole; out_of_turns: boolean }
+}): Partial<Record<AgentRole, number>> =>
+    failed.out_of_turns
+        ? { ...counts, [failed.role]: (counts[failed.role] ?? 0) + 1 }
+        : counts
 
 export const isFixerRole = (role: AgentRole): boolean =>
     role === 'test-writer' || role === 'implementer'

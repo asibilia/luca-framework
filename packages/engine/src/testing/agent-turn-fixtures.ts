@@ -222,6 +222,8 @@ export const agentFailed = ({
     failure,
     error,
     session_id,
+    session_gone,
+    out_of_turns,
 }: {
     /** `null` for the final review. */
     ticket: number | null
@@ -231,6 +233,10 @@ export const agentFailed = ({
     error?: string
     /** Defaults to `SESSIONS[role]`; `null` for a turn with no session. */
     session_id?: string | null
+    /** A follow-up found its session closed or gone (#521). Left out by default. */
+    session_gone?: boolean
+    /** The turn reached its role's turn limit (#543). Left out by default. */
+    out_of_turns?: boolean
 }): JournalEntry => ({
     kind: 'agent_failed',
     ticket,
@@ -240,6 +246,8 @@ export const agentFailed = ({
         failure,
         error: error ?? 'It broke.',
         session_id: session_id === undefined ? SESSIONS[role] : session_id,
+        ...(session_gone === undefined ? {} : { session_gone }),
+        ...(out_of_turns === undefined ? {} : { out_of_turns }),
     },
 })
 

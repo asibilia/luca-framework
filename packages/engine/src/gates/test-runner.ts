@@ -190,7 +190,7 @@ export const runTestsInHeldSlot = async ({
         files_without_results: test_files.filter(
             (file) => !withResults.has(file)
         ),
-        output: `${shell.timed_out ? timedOutLine({ timeout_ms, hint: TEST_TIMEOUT_HINT }) : ''}${clipOutput({ text: output })}`,
+        output: `${shell.timed_out ? timedOutLine({ timeout_ms, hint: TEST_TIMEOUT_HINT, survivors: shell.survivors }) : ''}${clipOutput({ text: output })}`,
     }
 }
 

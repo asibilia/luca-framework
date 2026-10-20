@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterAll, beforeAll } from 'bun:test'
+import omit from 'lodash/omit'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
@@ -18,9 +19,15 @@ import { createPracticeRepo } from '../testing/practice-repo'
 export type Practice = Awaited<ReturnType<typeof createPracticeRepo>>
 export type Ran = Awaited<ReturnType<Practice['run']>>
 
+/**
+ * Each failed turn's content, without `session_gone` (#521) or `out_of_turns`
+ * (#543): no guard test follows up a gone session or reaches a turn limit.
+ */
 export const failures = (records: JournalRecord[]) =>
     records.flatMap((record) =>
-        record.kind === 'agent_failed' ? [record.content] : []
+        record.kind === 'agent_failed'
+            ? [omit(record.content, 'session_gone', 'out_of_turns')]
+            : []
     )
 
 export const commits = (records: JournalRecord[]) =>

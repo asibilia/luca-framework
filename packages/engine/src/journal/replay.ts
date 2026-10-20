@@ -1,7 +1,8 @@
 import uniq from 'lodash/uniq'
 
 import {
-    closedSessionAfter,
+    closedSessionsAfter,
+    goneSessionOf,
     resumedAfter,
     undoneJoinsAfter,
 } from './cross-ticket-replay'
@@ -80,12 +81,25 @@ const applyRecord = ({
 }: {
     state: RunState
     record: JournalRecord
+}): RunState =>
+    closedSessionsAfter({ state: applyKind({ state, record }), record })
+
+const applyKind = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: JournalRecord
 }): RunState => {
     const base = {
         ...state,
         last_seq: record.seq,
         crashes: crashesAfter({ crashes: state.crashes, record }),
     }
+    // A follow-up found its session gone (#521): only the session is
+    // forgotten (see `closedSessionsAfter`), so its fix round goes to a
+    // fresh agent, and no engine failure is counted.
+    if (goneSessionOf(record) !== null) return base
     const next =
         record.kind === 'gates_run' && record.content.target === 'run_branch'
             ? {
@@ -331,6 +345,9 @@ const applyRecord = ({
         // The run kept its config; only the board and the log read why.
         case 'config_reload_refused':
             return next
+        // A failing `ps` changes no step: the wait goes on (#624).
+        case 'repo_wait_ps_failed':
+            return next
         case 'comment_read':
             return { ...next, comments: [...state.comments, record.content] }
         case 'run_stuck':
@@ -418,11 +435,9 @@ const applyRecord = ({
                     ...record.content.paths,
                 ]),
             }
+        // Forgotten in `closedSessionsAfter`, after every record.
         case 'agent_session_closed':
-            return closedSessionAfter({
-                state: next,
-                session_id: record.content.session_id,
-            })
+            return next
         case 'agent_finished':
             return applyTicketRecord({
                 state: { ...next, run_notes: notesAfter({ state, record }) },

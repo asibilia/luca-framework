@@ -63,16 +63,18 @@ export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
 /**
  * The run budget (#435): whether the run is stuck on it (or on its PR,
- * #508) and told, and how many more full budgets the owner's `retry`
- * replies added.
+ * #508) and told, and how many tokens the owner's `retry` replies added.
  */
 export type RunBudgetState = {
     /** The run is stuck, until the owner's `retry`. */
     stuck: { reason: RunStuckReason; detail: string } | null
     /** The spec issue's comment that told the owner the run is stuck. */
     report: { comment_id: number } | null
-    /** Full budgets added by `retry`: the run may use `1 + retries` budgets. */
-    retries: number
+    /**
+     * Tokens added by `retry` (#543): the run may use its budget plus these.
+     * A retry journaled with no top-up added one whole budget.
+     */
+    top_ups: number
 }
 
 /**
@@ -120,6 +122,11 @@ export type RunState = {
     usage_recorded: { tickets: Record<number, number>; run: boolean }
     /** The worktrees the engine removed at the end of the run. */
     removed_worktrees: string[]
+    /**
+     * Every session journaled as closed (`agent_session_closed`), or found
+     * gone by a follow-up (#521). None is ever a follow-up target again.
+     */
+    closed_sessions: string[]
     /**
      * Every run note from every finished agent in the run, oldest first
      * (journal order), word for word.
@@ -192,6 +199,7 @@ export const EMPTY_STATE: RunState = {
     },
     usage_recorded: { tickets: {}, run: false },
     removed_worktrees: [],
+    closed_sessions: [],
     run_notes: [],
     run_branch_gates: null,
     prepare_made: [],
@@ -203,7 +211,7 @@ export const EMPTY_STATE: RunState = {
     stop: null,
     final_stuck_report: null,
     final_reply: null,
-    run_budget: { stuck: null, report: null, retries: 0 },
+    run_budget: { stuck: null, report: null, top_ups: 0 },
     repo_wait: { status: 'none', since: null },
     memory: EMPTY_MEMORY,
     crashes: {},

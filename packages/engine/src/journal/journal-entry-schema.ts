@@ -86,6 +86,7 @@ import {
 } from './pull-request-entries'
 import {
     RepoWaitEndedEntrySchema,
+    RepoWaitPsFailedEntrySchema,
     RepoWaitSkippedEntrySchema,
     RepoWaitStartedEntrySchema,
 } from './repo-wait-entries'
@@ -210,6 +211,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RepoWaitStartedEntrySchema,
     RepoWaitEndedEntrySchema,
     RepoWaitSkippedEntrySchema,
+    RepoWaitPsFailedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */

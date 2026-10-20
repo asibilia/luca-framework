@@ -57,8 +57,8 @@ runs, even for a one-ticket spec.
   join it, with the lenses' findings). A fix round they alone opened has no
   findings, so its gates run first (the slow tests again among them), a
   fresh implementer gets their failure as it gets failed gates, and the gate
-  fix loop runs until they pass, then the commit and the push. It ends there:
-  the review passes, with no lens round after it. Still failing at the gate
+  fix loop runs until they pass, then the commit and the push. No lens
+  re-reviews it; the fresh pass comes next. Still failing at the gate
   fix loop's cap, the final review is stuck with `gates_failed`, naming
   `slow_test`. So the review only passes once the slow tests passed on the
   run branch's latest commit: round 1 passes only after they passed on its
@@ -70,6 +70,18 @@ runs, even for a one-ticket spec.
   them so). A final review still asking for changes after `MAX_FIX_ROUNDS`
   (3) fix rounds (the 4th round) is stuck (`changes_requested`, listing the
   open findings).
+- **The fresh pass (#548).** Once a fix commit was pushed since round 1 (a
+  findings fix or a slow-test fix) and no blocking finding is left, the review
+  doesn't pass yet: all five lenses read the whole branch again, each a new
+  agent with round 1's prompt (from where the run branch started), and no
+  earlier findings, answers, or rulings. `final_review_started` says so
+  (`fresh: true`; `false` otherwise and in older journals). Its blockers get
+  one fix round, even past `MAX_FIX_ROUNDS`, and the lenses that had them
+  re-review it as usual; then the review passes, and what they still hold
+  open tops the PR's "Open findings". Its findings never get the review
+  stuck, though its gate fix loop keeps its cap. Its nits join the PR's
+  nits. There is one per final review, none with no fix commit (round 1
+  was already a full read), and none after a `ship`.
 - **Failed tries.** A lens's failed try launches a fresh lens, a fixer's gets
   a follow-up in its session (fresh with none); `MAX_FIX_ROUNDS` failed tries
   per role over the whole final review, or `MAX_ENGINE_FAILURES` engine

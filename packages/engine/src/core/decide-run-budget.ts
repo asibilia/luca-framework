@@ -1,12 +1,22 @@
-import { pendingReplies, waitForReply, type StuckAction } from './decide-stuck'
+import {
+    amountTokens,
+    pendingReplies,
+    waitForReply,
+    type StuckAction,
+} from './decide-stuck'
 import { repoBusyStuckComment } from './repo-wait-text'
 import {
     pullRequestStuckComment,
+    replyAnswer,
     runBudgetDetail,
     runStuckComment,
 } from './stuck-text'
 
-import type { JournalRecord, RunStuckReason } from '../journal/journal-record'
+import type {
+    JournalRecord,
+    ReplyProblem,
+    RunStuckReason,
+} from '../journal/journal-record'
 import type { RunState } from '../journal/replay'
 import { runBudgetOf, runTokensIn } from '../limits/run-budget'
 
@@ -38,13 +48,16 @@ export type RunBudgetAction =
 /**
  * The run budget half of the decision step. Pure. Once the run's tokens
  * (`runTokensIn`) reach its budget (the config's `run_budget_tokens`, else
- * the default, once more for each `retry`), the run is stuck with the
- * reason "run budget": that is its only step, and nothing new starts. The
- * spec issue is told, then the run waits for the owner: a bare `retry`
- * adds one more full budget (replay does that), and `stop` ends the run.
- * The owner's other replies wait until the run carries on. A run whose PR
- * didn't open (#508) is stuck the same way, told why, and a `retry` tries
- * the PR again, adding no budget. `null` when
+ * the default, plus every top-up a `retry` granted), the run is stuck with
+ * the reason "run budget": that is its only step, and nothing new starts.
+ * The spec issue is told, then the run waits for the owner: a bare `retry`
+ * tops the budget up by half a budget, rounded down, and `retry +3M` by the
+ * amount named (#543; replay adds the top-up); `stop` ends the run. A zero
+ * or unreadable amount is sent back (`bad_amount`). The owner's other
+ * replies wait until the run carries on. A run whose PR didn't open (#508)
+ * or whose repo wait ran out is stuck the same way, told why, and a bare
+ * `retry` tries again, adding no budget; an amount there is sent back
+ * (`amount_only_for_run_budget`). `null` when
  * the budget has nothing to say: the run is under it, stopping, or its PR
  * is open.
  *
@@ -62,11 +75,11 @@ export const decideRunBudget = ({
     spec_number: number
 }): (RunBudgetAction | StuckAction)[] | null => {
     if (state.stop !== null || state.pull_request !== null) return null
-    const { stuck, report, retries } = state.run_budget
+    const { stuck, report, top_ups } = state.run_budget
     const budget = runBudgetOf({ config: state.config })
     if (stuck === null) {
         const tokens = runTokensIn({ records })
-        const allowed = budget * (1 + retries)
+        const allowed = budget + top_ups
         if (tokens < allowed) return null
         return [
             {
@@ -90,12 +103,48 @@ export const decideRunBudget = ({
             word === 'stop' || (word === 'retry' && ticket === null)
     )
     if (reply === undefined) return [waitForReply({ state, spec_number })]
+    const ignore = (reason: ReplyProblem): StuckAction[] => [
+        {
+            type: 'ignore_reply',
+            comment_id: reply.comment_id,
+            spec_number,
+            reason,
+            answer: replyAnswer({ problem: reason, named: null, stuck: [] }),
+        },
+    ]
+    if (reply.word === 'stop') {
+        return [
+            {
+                type: 'take_reply',
+                comment_id: reply.comment_id,
+                word: 'stop',
+                ticket: null,
+            },
+        ]
+    }
+    if (stuck.reason !== 'run_budget') {
+        if (reply.amount !== null) return ignore('amount_only_for_run_budget')
+        return [
+            {
+                type: 'take_reply',
+                comment_id: reply.comment_id,
+                word: 'retry',
+                ticket: null,
+            },
+        ]
+    }
+    const top_up =
+        reply.amount === null
+            ? Math.floor(budget / 2)
+            : amountTokens({ amount: reply.amount })
+    if (top_up === null) return ignore('bad_amount')
     return [
         {
             type: 'take_reply',
             comment_id: reply.comment_id,
-            word: reply.word === 'stop' ? 'stop' : 'retry',
+            word: 'retry',
             ticket: null,
+            top_up,
         },
     ]
 }

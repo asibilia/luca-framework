@@ -49,7 +49,7 @@ export const runStuckComment = ({
         ].join('\n'),
         [
             'Reply with one word on this issue:',
-            `- \`retry\`: add one more full run budget (${tokensText(budget)} tokens) and carry on where it stopped.`,
+            `- \`retry\`: add half a run budget (${tokensText(Math.floor(budget / 2))} tokens) and carry on where it stopped. \`retry +500k\` or \`retry +3M\` adds the amount you name instead.`,
             '- `stop`: end the run without a PR. The branch is kept.',
             '',
             'Only the spec owner counts.',

@@ -24,6 +24,7 @@ export const finalReviewStarted = ({
     files,
     rules,
     slow_due,
+    fresh,
 }: {
     round: number
     /** Defaults to `b0`, where the fixtures' run branch starts. */
@@ -40,6 +41,11 @@ export const finalReviewStarted = ({
      * `slow_due`, as an older engine's has none.
      */
     slow_due?: boolean
+    /**
+     * The final review's fresh pass (#548). Left out, the record has no
+     * `fresh`, as an older engine's has none.
+     */
+    fresh?: boolean
 }): JournalEntry => ({
     kind: 'final_review_started',
     ticket: null,
@@ -52,6 +58,7 @@ export const finalReviewStarted = ({
         files: files ?? ['src/sum.test.ts', 'src/sum.ts'],
         rules: rules ?? [],
         ...(slow_due === undefined ? {} : { slow_due }),
+        ...(fresh === undefined ? {} : { fresh }),
     },
 })
 
@@ -167,6 +174,7 @@ export const lensRound = ({
     from_sha,
     head_sha,
     slow_due,
+    fresh,
 }: {
     round: number
     /** Defaults to every lens. */
@@ -176,6 +184,8 @@ export const lensRound = ({
     head_sha?: string
     /** The round's slow tests are due (#563); see `finalReviewStarted`. */
     slow_due?: boolean
+    /** The fresh pass (#548); see `finalReviewStarted`. */
+    fresh?: boolean
 }): JournalEntry[] => {
     const due = lenses ?? [...LENS_NAMES]
     return [
@@ -185,6 +195,7 @@ export const lensRound = ({
             from_sha,
             head_sha,
             slow_due,
+            fresh,
         }),
         ...due.flatMap((lens) =>
             lensReviewed({ lens, round, findings: findings?.[lens] })

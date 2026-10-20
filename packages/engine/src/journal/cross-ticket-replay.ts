@@ -1,11 +1,12 @@
 /**
  * Records that reach across tickets in replay: a restarted engine's
- * `run_resumed`, a closed session, and the other joins an undo took off the
- * run branch.
+ * `run_resumed`, a closed or gone session, and the other joins an undo took
+ * off the run branch.
  */
 import mapValues from 'lodash/mapValues'
 import omit from 'lodash/omit'
 import omitBy from 'lodash/omitBy'
+import uniq from 'lodash/uniq'
 
 import { isFixerRole } from './agent-turn-replay'
 import type { JournalRecord } from './journal-record'
@@ -139,6 +140,50 @@ export const closedSessionAfter = ({
             },
         },
     }
+}
+
+/**
+ * The session a follow-up found gone (#521), or `null`: no agent ran, so the
+ * record changes no step and counts no engine failure.
+ */
+export const goneSessionOf = (record: JournalRecord): string | null =>
+    record.kind === 'agent_failed' && record.content.session_gone
+        ? record.content.session_id
+        : null
+
+/**
+ * Closed sessions after a record: one journaled as closed, or found gone by
+ * a follow-up (#521), joins them and is forgotten; a later turn's end that
+ * names a closed session again (`agent_finished`, `agent_failed`) has it
+ * forgotten again, so it is never a follow-up target.
+ */
+export const closedSessionsAfter = ({
+    state,
+    record,
+}: {
+    state: RunState
+    record: JournalRecord
+}): RunState => {
+    const closed =
+        record.kind === 'agent_session_closed'
+            ? record.content.session_id
+            : goneSessionOf(record)
+    if (closed !== null) {
+        return closedSessionAfter({
+            state: {
+                ...state,
+                closed_sessions: uniq([...state.closed_sessions, closed]),
+            },
+            session_id: closed,
+        })
+    }
+    if (record.kind !== 'agent_finished' && record.kind !== 'agent_failed') {
+        return state
+    }
+    const { session_id } = record.content
+    return session_id !== null && state.closed_sessions.includes(session_id)
+        ? closedSessionAfter({ state, session_id })
+        : state
 }
 
 /**

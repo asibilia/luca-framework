@@ -100,7 +100,10 @@ export type LauncherFailure = z.infer<typeof LauncherFailureSchema>
  * the same way; a success with no structured output is a failed try.
  * `session_id` names the session the turn ran in, so the engine can send that
  * same agent a follow-up in a fix loop. `session` is the launcher's summary
- * of the model session, for the journal.
+ * of the model session, for the journal. `session_gone` marks a follow-up
+ * that found its session closed or unknown (#521): no agent ran, and the
+ * engine hands the follow-up's message to a fresh agent. `out_of_turns`
+ * marks a turn that reached its role's turn limit (#543).
  */
 export type AgentTurn =
     | {
@@ -115,6 +118,8 @@ export type AgentTurn =
           error: string
           session_id?: string
           session?: AgentSession
+          session_gone?: boolean
+          out_of_turns?: boolean
       }
 
 /**
@@ -179,7 +184,7 @@ export type AgentLauncher = {
      * as a failed gate's output in a fix loop, and returns the session's new
      * result. The agent keeps everything it knew from its earlier turns, the
      * guards it was launched with, and its model. A session the launcher doesn't know,
-     * or one that has closed, is an engine failure.
+     * or one that has closed, is an engine failure with `session_gone`.
      *
      * @example
      * const turn = await launcher.followUp({ session_id, role: 'implementer', ticket: 11, message: 'lint failed: ...', cwd, config })

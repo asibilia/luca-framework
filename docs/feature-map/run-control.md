@@ -100,7 +100,7 @@ Tests:
 
 ## Token counts and the run budget
 
-Each ticket's and each run's exact tokens are journaled per model, and a run that uses its whole budget is stuck until the owner says whether to go on.
+Each ticket's and each run's exact tokens are journaled per model, and a run that uses its whole budget is stuck until the owner says whether to go on: a bare `retry` tops it up by half a budget, and `retry +3M` by the amount named.
 
 Reached by: the run card on the board; `run_budget_tokens` in a repo's `.luca/config.json`.
 
@@ -111,5 +111,6 @@ Tests:
 - `packages/engine/src/limits/plan-usage-tokens.test.ts`
 - `packages/board/server/run-tokens-panel.test.ts`
 - `packages/engine/src/core/decide-run-budget.test.ts`
+- `packages/engine/src/core/decide-run-budget-top-ups.test.ts`
 - `packages/engine/src/limits/run-budget.test.ts`
 - `packages/board/server/run-budget-panel.test.ts`

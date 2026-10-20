@@ -129,6 +129,7 @@ export const executeFinalReviewAction = async ({
                     ...(hasSlowTests({ config })
                         ? { slow_due: action.round === 1 }
                         : {}),
+                    fresh: action.fresh ?? false,
                 },
             })
             return

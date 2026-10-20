@@ -31,6 +31,8 @@ const failTurn = ({
     error,
     failure,
     session_id,
+    session_gone,
+    out_of_turns,
 }: {
     context: BuildContext
     ticket: number | null
@@ -38,12 +40,21 @@ const failTurn = ({
     error: string
     failure: AgentFailure
     session_id: string | null
+    session_gone: boolean
+    out_of_turns: boolean
 }) => {
     context.journal.append({
         kind: 'agent_failed',
         ticket,
         role,
-        content: { role, error, failure, session_id },
+        content: {
+            role,
+            error,
+            failure,
+            session_id,
+            ...(session_gone ? { session_gone } : {}),
+            ...(out_of_turns ? { out_of_turns } : {}),
+        },
     })
 }
 
@@ -144,27 +155,54 @@ export const runTurn = async ({
         throw new Error(`Run stopped: ${turn.error}`)
     }
     const session_id = turn.session_id ?? null
-    const fail = (failure: AgentFailure, error: string) => {
-        failTurn({ context, ticket, role, error, failure, session_id })
+    const fail = ({
+        failure,
+        error,
+        session_gone = false,
+        out_of_turns = false,
+    }: {
+        failure: AgentFailure
+        error: string
+        session_gone?: boolean
+        out_of_turns?: boolean
+    }) => {
+        failTurn({
+            context,
+            ticket,
+            role,
+            error,
+            failure,
+            session_id,
+            session_gone,
+            out_of_turns,
+        })
         return null
     }
     if (violations.length > 0) {
-        return fail(
-            'guard',
-            describeViolations({ role: guard_role, violations })
-        )
+        return fail({
+            failure: 'guard',
+            error: describeViolations({ role: guard_role, violations }),
+        })
     }
     if (!turn.ok) {
-        return fail(turn.failure === 'engine' ? 'engine' : 'agent', turn.error)
+        return fail({
+            failure: turn.failure === 'engine' ? 'engine' : 'agent',
+            error: turn.error,
+            session_gone: turn.session_gone === true,
+            out_of_turns: turn.out_of_turns === true,
+        })
     }
     if (
         turn.structured_output === undefined ||
         turn.structured_output === null
     ) {
-        return fail('result', `The ${role} finished with no structured output.`)
+        return fail({
+            failure: 'result',
+            error: `The ${role} finished with no structured output.`,
+        })
     }
     const checked = parseRoleResult({ role, output: turn.structured_output })
-    if (!checked.ok) return fail('result', checked.error)
+    if (!checked.ok) return fail({ failure: 'result', error: checked.error })
     // The chores the writer asked for (#618), before any check or commit.
     const problems = await doChores({
         context,
@@ -174,7 +212,10 @@ export const runTurn = async ({
         guard: { role: guard_role, may_edit_tests },
     })
     if (problems.length > 0) {
-        return fail('chore', problems.map((line) => `- ${line}`).join('\n'))
+        return fail({
+            failure: 'chore',
+            error: problems.map((line) => `- ${line}`).join('\n'),
+        })
     }
     context.journal.append({
         kind: 'agent_finished',

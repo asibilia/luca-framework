@@ -189,13 +189,15 @@ export const HAPPY_TURNS: ScriptedTurn[] = [
 ]
 
 /**
- * The turns, then a clean final review of spec #10 and an empty learner to
- * fall back on: the scripted launcher plays the first unused turn of a
- * role, so lens and learner turns in `turns` go first, a lens the turns
- * don't script approves, and a learner they don't script learns nothing.
+ * The turns, then two clean final review rounds of spec #10 (round 1's, and
+ * the fresh pass's after a fix round, #548) and an empty learner to fall
+ * back on: the scripted launcher plays the first unused turn of a role, so
+ * lens and learner turns in `turns` go first, a lens the turns don't script
+ * approves, and a learner they don't script learns nothing.
  */
 const withCleanLenses = (turns: ScriptedTurn[]): ScriptedTurn[] => [
     ...turns,
+    ...CLEAN_LENS_TURNS(10),
     ...CLEAN_LENS_TURNS(10),
     EMPTY_LEARNER_TURN(10),
 ]

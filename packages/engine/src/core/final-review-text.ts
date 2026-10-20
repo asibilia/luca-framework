@@ -257,6 +257,37 @@ export const openFinalFindingsText = ({
     findings: FinalFinding[]
 }): string => findingList(findings)
 
+/** Each open finding as a PR line, with its lens, severity, and file. */
+const openFindingLines = ({
+    findings,
+}: {
+    findings: FinalFinding[]
+}): string[] =>
+    findings.map(
+        ({ lens, severity, file, id, title }) =>
+            `- ${lens} lens, ${SEVERITY_TEXT[severity]}${file === null ? '' : ` (${file})`}: ${id} ${title}`
+    )
+
+/**
+ * The "Open findings" section a PR starts with when the fresh pass's
+ * re-check (#548) still holds findings open: the final review passed
+ * without them, so the owner reviews them.
+ *
+ * @example
+ * freshFindingsSection({ findings })
+ * // '## Open findings\n\n...\n\n- security lens, blocker (src/sum.ts): security-S2 Sum overflows silently'
+ */
+export const freshFindingsSection = ({
+    findings,
+}: {
+    findings: FinalFinding[]
+}): string =>
+    [
+        '## Open findings',
+        "After the final review's last fix round, every lens read the whole branch once more. Its findings got one fix round, and the lenses still hold these open, so this PR opened with them for you to review:",
+        openFindingLines({ findings }).join('\n'),
+    ].join('\n\n')
+
 /**
  * The "Open findings" section a shipped final review's PR starts with: why
  * it was stuck, each finding still open with its lens, severity, and file,
@@ -277,10 +308,7 @@ export const shippedFindingsSection = ({
     /** The commit of the edits left uncommitted at ship time, if any. */
     edits: { message: string; files: string[] } | null
 }): string => {
-    const lines = findings.map(
-        ({ lens, severity, file, id, title }) =>
-            `- ${lens} lens, ${SEVERITY_TEXT[severity]}${file === null ? '' : ` (${file})`}: ${id} ${title}`
-    )
+    const lines = openFindingLines({ findings })
     return [
         '## Open findings',
         `The final review got stuck (\`${stuck.reason}\`) and you replied \`ship\`, so this PR opened with the final review unfinished.`,

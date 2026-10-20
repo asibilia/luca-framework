@@ -13,6 +13,7 @@ import {
     repoPerTest,
     result,
 } from './claude-launcher-helpers'
+import { MAX_TURNS } from './claude-options'
 
 /**
  * The launcher seam, the result of a turn: what a success, a failure, and a
@@ -150,6 +151,55 @@ describe('the result', () => {
             ok: false,
             failure: 'agent',
             error: expect.stringContaining(subtype),
+        })
+    })
+
+    test("only a turn that reached its role's turn limit is out of turns, whatever its error text says, and the limits are unchanged", async () => {
+        const limited = fakeQuery({
+            messages: [
+                INIT,
+                result({
+                    subtype: 'error_max_turns',
+                    is_error: true,
+                    errors: ['It ran long.'],
+                }),
+            ],
+        })
+        const crashed = fakeQuery({
+            messages: [
+                INIT,
+                result({
+                    subtype: 'error_during_execution',
+                    is_error: true,
+                    errors: ['Reached the maximum number of turns (120)'],
+                }),
+            ],
+        })
+
+        const out = await launch({ query: limited.query, role: 'implementer' })
+        const other = await launch({
+            query: crashed.query,
+            role: 'implementer',
+        })
+
+        expect(out).toMatchObject({
+            ok: false,
+            failure: 'agent',
+            out_of_turns: true,
+        })
+        expect(other).toMatchObject({ ok: false, failure: 'agent' })
+        expect(other).not.toMatchObject({ out_of_turns: true })
+        expect(limited.calls[0]?.options.maxTurns).toBe(120)
+        expect(MAX_TURNS).toEqual({
+            'test-writer': 80,
+            implementer: 120,
+            'ticket-reviewer': 60,
+            'architecture-lens': 60,
+            'simplification-lens': 60,
+            'security-lens': 60,
+            'integration-lens': 60,
+            'rules-lens': 60,
+            learner: 40,
         })
     })
 

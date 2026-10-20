@@ -2,7 +2,9 @@ import { describe, expect, test } from 'bun:test'
 
 import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './decide-build'
 import { decideAfter, stepsUpTo } from './decide-build-helpers'
+import { followUpSection } from './fix-loop-text'
 
+import type { JournalEntry } from '../journal/journal-record'
 import {
     agentFailed,
     agentStarted,
@@ -10,9 +12,15 @@ import {
     implemented,
     leftoverScan,
     redCheck,
+    runBranchCreated,
     testsWritten,
     ticketBuilt,
 } from '../testing/build-fixtures'
+import {
+    finalReviewFixing,
+    lensFinding,
+    lensRound,
+} from '../testing/final-review-fixtures'
 
 /**
  * The decision steps for a ticket that goes wrong while it builds: it gets
@@ -394,6 +402,136 @@ describe('decision step: failed tries', () => {
                 target: 'ticket',
             }
         )
+    })
+})
+
+describe('decision step: a follow-up whose session is gone (#521)', () => {
+    const redFailed = [...stepsUpTo(2), redCheck({ ticket: 11, ok: false })]
+
+    /** The message a step's follow-up carries, as the decision step sends it. */
+    const followUpMessage = (entries: JournalEntry[]): string => {
+        const step = decideAfter(entries)
+        if (
+            step.type !== 'follow_up_agent' &&
+            step.type !== 'follow_up_final_fixer'
+        ) {
+            throw new Error(step.type)
+        }
+        return step.message
+    }
+
+    const goneFollowUp = ({
+        ticket,
+        role,
+        message,
+    }: {
+        ticket: number | null
+        role: 'test-writer' | 'implementer'
+        message: string
+    }): JournalEntry[] => [
+        agentStarted({
+            ticket,
+            role,
+            prompt: message,
+            follow_up_of: role === 'test-writer' ? 'tw-1' : 'impl-1',
+        }),
+        agentFailed({
+            ticket,
+            role,
+            failure: 'engine',
+            error: 'The session is gone.',
+            session_gone: true,
+        }),
+    ]
+
+    test("a red check fix round whose session is gone goes to a fresh test-writer, with the fix message in its prompt's follow-up section", () => {
+        const message = followUpMessage(redFailed)
+        const action = decideAfter([
+            ...redFailed,
+            ...goneFollowUp({ ticket: 11, role: 'test-writer', message }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+            may_edit_tests: true,
+        })
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        expect(action.prompt).toContain(followUpSection({ message }))
+    })
+
+    test('three gone sessions in a row do not make the ticket stuck', () => {
+        const message = followUpMessage(redFailed)
+        const gone = goneFollowUp({ ticket: 11, role: 'test-writer', message })
+
+        expect(
+            decideAfter([...redFailed, ...gone, ...gone, ...gone])
+        ).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+        })
+    })
+
+    test("a final review gate fix round whose fixer's session is gone goes to a fresh fixer, with the fix message", () => {
+        const failedGates = [
+            runBranchCreated(),
+            ...ticketBuilt({ ticket: 11 }),
+            ...lensRound({
+                round: 1,
+                findings: { security: [lensFinding({ id: 'S1' })] },
+            }),
+            finalReviewFixing({ round: 1 }),
+            implemented({
+                ticket: null,
+                finding_responses: [
+                    {
+                        finding_id: 'security-S1',
+                        response: 'fixed',
+                        reason: '',
+                    },
+                ],
+            }),
+            gatesRun({ ticket: null, target: 'run_branch', ok: false }),
+        ]
+        const message = followUpMessage(failedGates)
+        const action = decideAfter([
+            ...failedGates,
+            ...goneFollowUp({ ticket: null, role: 'implementer', message }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'launch_final_fixer',
+            role: 'implementer',
+        })
+        if (action.type !== 'launch_final_fixer') throw new Error(action.type)
+        expect(action.prompt).toContain(followUpSection({ message }))
+    })
+
+    test('a session with an agent_session_closed record is never followed up: its fix round goes to a fresh test-writer', () => {
+        const closed: JournalEntry = {
+            kind: 'agent_session_closed',
+            ticket: 11,
+            role: 'test-writer',
+            content: { role: 'test-writer', session_id: 'tw-1' },
+        }
+        const message = followUpMessage(redFailed)
+        const action = decideAfter([
+            ...stepsUpTo(1),
+            agentStarted({ ticket: 11, role: 'test-writer' }),
+            closed,
+            testsWritten({ ticket: 11 }),
+            redCheck({ ticket: 11, ok: false }),
+        ])
+
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            ticket: 11,
+            role: 'test-writer',
+        })
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        expect(action.prompt).toContain(followUpSection({ message }))
     })
 })
 

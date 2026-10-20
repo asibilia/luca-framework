@@ -103,6 +103,8 @@ export type Failed = {
     ok: false
     failure: 'agent' | 'engine' | 'stop' | 'plan'
     error: string
+    /** The turn reached its role's turn limit (#543). */
+    out_of_turns?: boolean
 }
 
 export type Outcome = { ok: true; structured_output: unknown } | Failed

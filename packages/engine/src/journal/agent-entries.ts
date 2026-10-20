@@ -89,7 +89,14 @@ export const AgentFailureSchema = z.enum([
 
 export type AgentFailure = z.infer<typeof AgentFailureSchema>
 
-/** An agent's turn failed, journaled once per turn with how it failed. */
+/**
+ * An agent's turn failed, journaled once per turn with how it failed.
+ * `session_gone`: a follow-up found its session closed or gone (#521), so no
+ * agent ran. Replay forgets the session as a closed one, and counts no engine
+ * failure; the fix round goes to a fresh agent. `false` in older journals.
+ * `out_of_turns`: the turn reached its role's turn limit (#543), as the
+ * launcher said; the PR lists such tickets. `false` in older journals.
+ */
 export const AgentFailedEntrySchema = z.object({
     ...ENTRY_FIELDS,
     kind: z.literal('agent_failed'),
@@ -98,6 +105,8 @@ export const AgentFailedEntrySchema = z.object({
         error: z.string(),
         failure: AgentFailureSchema.default('agent'),
         ...SESSION_FIELDS,
+        session_gone: z.boolean().default(false),
+        out_of_turns: z.boolean().default(false),
     }),
 })
 
@@ -130,8 +139,9 @@ export const AgentSessionEntrySchema = z.object({
 /**
  * The engine closed an agent's session: nothing can send it a follow-up
  * anymore (its step's result was accepted, or its step ended another way).
- * The decision step never follows up a closed session; a fix round that
- * would have gone to it goes to a fresh agent.
+ * The decision step never follows up a closed session, even one a later
+ * record names again; a fix round that would have gone to it goes to a
+ * fresh agent.
  */
 export const AgentSessionClosedEntrySchema = z.object({
     ...ENTRY_FIELDS,

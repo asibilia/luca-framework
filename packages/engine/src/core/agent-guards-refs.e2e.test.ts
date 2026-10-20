@@ -34,18 +34,27 @@ const commonDir = async (cwd: string) =>
     ).trim()
 
 describe('refs, excludes, and judging a result, on one run', () => {
-    // The test-writer makes a branch and a tag at HEAD, then writes a
-    // non-test file that another process hides with an excludes entry; on
-    // its third try the other process takes the entry out again. The
+    // The test-writer commits, then makes a branch and a tag at that new
+    // HEAD, then writes a non-test file that another process hides with an
+    // excludes entry; on its third try the other process takes the entry
+    // out again, and makes a branch at the commit the turn started on. The
     // implementer finishes with no structured output, then with a result
     // that misfits its schema, then cleanly.
-    const shared = { leftInPlace: '' }
+    const shared = { leftInPlace: '', bystanderAt: '' }
     const run = shareRun(() => {
         const { testWriter, implementer, reviewer } = happyTurns()
         return [
             {
                 ...testWriter,
                 act: async (cwd) => {
+                    await git(
+                        cwd,
+                        'commit',
+                        '-q',
+                        '--allow-empty',
+                        '-m',
+                        'sneaky'
+                    )
                     await git(cwd, 'branch', 'sneaky')
                     await git(cwd, 'tag', '-a', 'v9', '-m', 'sneaky')
                 },
@@ -74,6 +83,12 @@ describe('refs, excludes, and judging a result, on one run', () => {
                         exclude,
                         shared.leftInPlace.replace('src/sum.ts\n', '')
                     )
+                    // Another process in the shared repo makes a branch at
+                    // the commit this turn started on; no commit is made.
+                    shared.bystanderAt = (
+                        await git(cwd, 'rev-parse', 'HEAD')
+                    ).trim()
+                    await git(cwd, 'branch', 'bystander')
                 },
             },
             { role: 'implementer', ticket: 11, files: implementer.files },
@@ -96,6 +111,24 @@ describe('refs, excludes, and judging a result, on one run', () => {
         expect(refs).not.toContain('refs/tags/v9')
         // Kept aside, never lost: the engine can't tell who made a ref.
         expect(refs).toContain('refs/luca-undone/heads/sneaky')
+    })
+
+    test("a branch another process makes at the turn's start commit counts against no one and stays", async () => {
+        const { action, records, repo } = run()
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        // Only the first two test-writer tries failed; the third was clean.
+        expect(
+            failures(records).filter(({ role }) => role === 'test-writer')
+        ).toHaveLength(2)
+        expect(shared.bystanderAt).not.toBe('')
+        const refs = await git(
+            repo,
+            'for-each-ref',
+            '--format=%(refname) %(objectname)'
+        )
+        expect(refs).toContain(`refs/heads/bystander ${shared.bystanderAt}`)
+        expect(refs).not.toContain('refs/luca-undone/heads/bystander')
     })
 
     test('an excludes entry cannot hide a file its role may not write', () => {

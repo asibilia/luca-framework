@@ -53,6 +53,10 @@ export const ignoredText = ({
             return 'nothing is stuck right now'
         case 'ship_needs_final_review':
             return '`ship` is only for a stuck final review'
+        case 'amount_only_for_run_budget':
+            return 'an amount is only for a run stuck on its budget'
+        case 'bad_amount':
+            return 'the amount is not a whole number above zero'
         default:
             return reason.replaceAll('_', ' ')
     }

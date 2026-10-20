@@ -265,19 +265,8 @@ describe('slow tests at the final review (#563)', () => {
             round: 1,
             message: 'fix: final review round 1 for spec #10',
         })
-
-        const pushedFix = [
-            ...passed,
-            leftoverScan({ ticket: null, stage: 'fix' }),
-            commitMade({
-                ticket: null,
-                stage: 'fix',
-                sha: 'fix-1',
-                files: ['src/sum.ts'],
-            }),
-            pushed({ ticket: null, sha: 'fix-1' }),
-        ]
-        expect(stepAfter(pushedFix)).toEqual({ type: 'pass_final_review' })
+        // After its push comes the fresh pass (#548), not a re-review: see
+        // decide-final-review-fresh.test.ts.
     })
 
     test(`slow tests still failing after ${MAX_FIX_ROUNDS} gate fix rounds leave the review stuck with gates_failed, naming slow_test`, () => {

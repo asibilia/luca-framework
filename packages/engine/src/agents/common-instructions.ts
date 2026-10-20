@@ -1,6 +1,7 @@
 /**
  * The instruction sections more than one role gets: the shell rules, agent
- * messages, helpers, the rules for every agent, and fixing review findings.
+ * messages, helpers, the sandbox, the repo's rule files, the rules for every
+ * agent, and fixing review findings.
  */
 import type { AgentRole } from './role-results'
 
@@ -71,6 +72,28 @@ export const COMMON = `## Rules for every agent
 - If something is unclear, make your best call and list it under "assumptions". Don't stop to ask.
 - "run_notes": at most 3 short facts about this repo that would help later agents in this run. Can be empty.
 - Finish by giving your structured result. A turn without one counts as failed.`
+
+/** What every role's sandbox blocks, and that the gates run outside it (#540). */
+export const SANDBOX = `## Your sandbox
+- The engine runs the gates (tests, types, lint) outside your sandbox and gives you their results.
+- The sandbox blocks the network and local ports, writes outside your worktree, git internals, \`node_modules\`, lockfiles, test setup files, test files for roles that may not edit them, and secret files.
+- A command that fails only inside your sandbox isn't yours to fix or work around. Rely on the engine's gate results, and say so.`
+
+/**
+ * The writers' list of the repo's rule files (#646), named, not pasted in,
+ * or nothing when the repo names none.
+ */
+export const repoRules = ({ config }: { config: EngineConfig }): string[] =>
+    config.rule_files.length === 0
+        ? []
+        : [
+              [
+                  '## Repo rules',
+                  "This repo's rules are in these files:",
+                  ...config.rule_files.map((path) => `- \`${path}\``),
+                  'Read them before you start, and follow them.',
+              ].join('\n'),
+          ]
 
 export const REVIEW_FIXER = `## Fixing review findings
 Sometimes you are sent a ticket review's findings to fix, after the ticket's work is committed, or the final review's findings to fix on the whole run branch, after every ticket joined it. Then:

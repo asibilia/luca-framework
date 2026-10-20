@@ -122,6 +122,9 @@ export const executeStuckAction = async ({
                     ticket: action.ticket,
                     comment_id: action.comment_id,
                     author: comment?.author ?? '',
+                    ...(action.top_up === undefined
+                        ? {}
+                        : { top_up: action.top_up }),
                 },
             })
             return

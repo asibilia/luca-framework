@@ -1,174 +1,39 @@
 import { describe, expect, test } from 'bun:test'
 
-import { decideSteps } from './decide'
-
-import type { AgentRole } from '../agents/role-results'
-import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
 import { DEFAULT_RUN_BUDGET_TOKENS } from '../limits/run-budget'
 import {
     commentRead,
-    intakePassed,
-    practiceTicket,
     replyReceived,
     runBranchCreated,
-    SESSIONS,
     ticketBuilt,
-    withInstalls,
 } from '../testing/build-fixtures'
-import { recordsFrom } from '../testing/intake-fixtures'
+import {
+    BUDGET,
+    HAIKU,
+    OPUS,
+    oneSteps,
+    PRODUCT,
+    runStuck,
+    runStuckReported,
+    stepsAfter,
+    SUM,
+    sumSpent,
+    sumWritten,
+    tokens,
+    told,
+    turnOf,
+    turnSession,
+} from '../testing/run-budget-fixtures'
 
 /**
  * Seam 1 for the run budget (#435): the decision step, handed a journal
  * whose agent turns carry their tokens per model, makes the run stuck with
  * the reason "run budget" once the run's tokens reach its budget. The spec
- * owner's `retry` adds one more full budget; `stop` ends the run.
+ * owner's `retry` journaled with no top-up (from before #543) adds one more
+ * full budget; `stop` ends the run. Top-ups are in
+ * `decide-run-budget-top-ups.test.ts`.
  */
-
-const SUM = practiceTicket({ number: 11, title: 'Add sum' })
-const PRODUCT = practiceTicket({ number: 12, title: 'Add product' })
-
-/** The budget the tests give the run in its engine config. */
-const BUDGET = 50_000
-
-type Tokens = {
-    input_tokens: number
-    output_tokens: number
-    cache_read_input_tokens: number
-    cache_creation_input_tokens: number
-}
-
-const tokens = (
-    input: number,
-    output: number,
-    cache_read: number,
-    cache_creation: number
-): Tokens => ({
-    input_tokens: input,
-    output_tokens: output,
-    cache_read_input_tokens: cache_read,
-    cache_creation_input_tokens: cache_creation,
-})
-
-const OPUS = 'claude-opus-5-5'
-const HAIKU = 'claude-haiku-4-5-20251001'
-
-/** One agent turn's session, with its tokens per model. */
-const turnSession = ({
-    ticket,
-    role,
-    model_usage,
-}: {
-    ticket: number | null
-    role: AgentRole
-    model_usage: Record<string, Tokens>
-}): JournalEntry => ({
-    kind: 'agent_session',
-    ticket,
-    role,
-    content: {
-        role,
-        session: {
-            session_id: SESSIONS[role],
-            usage: tokens(0, 0, 0, 0),
-            model_usage,
-            rate_limit_events: [],
-            billing_error: false,
-        },
-    },
-})
-
-/** A turn that counts exactly `counted` tokens, all output, on Opus. */
-const turnOf = ({
-    ticket,
-    role,
-    counted,
-}: {
-    ticket: number
-    role: AgentRole
-    counted: number
-}): JournalEntry =>
-    turnSession({
-        ticket,
-        role,
-        model_usage: { [OPUS]: tokens(0, counted, 0, 0) },
-    })
-
-/**
- * The decision step's actions for a run with these tickets and entries
- * after intake. `budget` is the config's `run_budget_tokens`; leave it out
- * for a config without one.
- */
-const stepsAfter = ({
-    tickets,
-    entries,
-    budget,
-}: {
-    tickets: TicketSnapshot[]
-    entries: JournalEntry[]
-    budget?: number
-}) =>
-    decideSteps({
-        records: recordsFrom({
-            entries: [
-                ...intakePassed({ tickets }).map(
-                    (entry): JournalEntry =>
-                        entry.kind === 'run_started' && budget !== undefined
-                            ? {
-                                  ...entry,
-                                  content: {
-                                      ...entry.content,
-                                      config: {
-                                          ...entry.content.config,
-                                          run_budget_tokens: budget,
-                                      },
-                                  },
-                              }
-                            : entry
-                ),
-                ...withInstalls({ entries }),
-            ],
-        }),
-    })
-
-const oneSteps = (entries: JournalEntry[], budget: number | undefined) =>
-    stepsAfter({ tickets: [SUM], entries, budget })
-
-/** #11's worktree, baseline, and tests written: its red check is next. */
-const sumWritten = (): JournalEntry[] => ticketBuilt({ ticket: 11 }).slice(0, 3)
-
-/** #11 with its tests written, and its test-writer's turn counting `counted`. */
-const sumSpent = (counted: number): JournalEntry[] => [
-    runBranchCreated(),
-    ...sumWritten(),
-    turnOf({ ticket: 11, role: 'test-writer', counted }),
-]
-
-/** The run went stuck on its budget. */
-const runStuck = (): JournalEntry => ({
-    kind: 'run_stuck',
-    ticket: null,
-    role: null,
-    content: {
-        reason: 'run_budget',
-        detail: `The run used ${BUDGET} tokens of its ${BUDGET} budget.`,
-    },
-})
-
-/** The engine told the spec issue the run is stuck, in comment 150. */
-const runStuckReported = (): JournalEntry => ({
-    kind: 'stuck_reported',
-    ticket: null,
-    role: null,
-    content: { comment_id: 150, body: 'stuck' },
-})
-
-/** #11 used the whole budget; the run is stuck and the spec issue told. */
-const told = (): JournalEntry[] => [
-    ...sumSpent(BUDGET),
-    runStuck(),
-    runStuckReported(),
-]
 
 describe('the run budget: reaching it makes the run stuck', () => {
     test('a run whose tokens reach its configured budget goes stuck with the reason "run budget", before any other step', () => {
@@ -308,12 +173,13 @@ describe('the run budget: the default and the config', () => {
 
 describe('the run budget: replies', () => {
     test('`retry` from the spec owner is taken as the reply for the run', () => {
+        // Its top-up is checked in decide-run-budget-top-ups.test.ts.
         expect(
             oneSteps(
                 [...told(), commentRead({ comment_id: 160, body: 'retry' })],
                 BUDGET
             )
-        ).toEqual([
+        ).toMatchObject([
             {
                 type: 'take_reply',
                 comment_id: 160,
@@ -355,6 +221,7 @@ describe('the run budget: replies', () => {
     })
 
     test('`retry` adds one more full budget, and the run carries on where it stopped', () => {
+        // A retry journaled before top-ups (#543): no top_up in its record.
         const retried = [
             ...told(),
             commentRead({ comment_id: 160, body: 'retry' }),
@@ -367,6 +234,7 @@ describe('the run budget: replies', () => {
 
     test('after one `retry`, the run goes stuck again once its tokens reach two full budgets', () => {
         const steps = ticketBuilt({ ticket: 11 })
+        // A retry journaled before top-ups (#543): no top_up in its record.
         const retried = [
             ...told(),
             commentRead({ comment_id: 160, body: 'retry' }),

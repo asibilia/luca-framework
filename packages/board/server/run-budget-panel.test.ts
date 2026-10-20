@@ -140,6 +140,53 @@ describe('the run stuck on its budget', () => {
         expect(state.final_review.state).toBe('waiting')
     })
 
+    test('a `retry` journaled with a top-up grows the run budget by that top-up only', async () => {
+        const { board } = await runWith({
+            budget: BUDGET,
+            entries: [
+                ...spent(BUDGET),
+                runStuck(),
+                {
+                    ...replyReceived({ word: 'retry', ticket: null }),
+                    content: {
+                        word: 'retry',
+                        ticket: null,
+                        comment_id: 501,
+                        author: 'owner',
+                        top_up: 10_000,
+                    },
+                },
+            ],
+        })
+
+        const state = await board.state()
+        expect(state.run_budget_tokens).toBe(BUDGET + 10_000)
+        expect(state.needs_you).toEqual([])
+    })
+
+    test('a `retry` on a run stuck on its pull request leaves the run budget as it is', async () => {
+        const { board } = await runWith({
+            budget: BUDGET,
+            entries: [
+                ...spent(100),
+                {
+                    kind: 'run_stuck',
+                    ticket: null,
+                    role: null,
+                    content: {
+                        reason: 'pull_request_failed',
+                        detail: 'gh pr create failed.',
+                    },
+                },
+                replyReceived({ word: 'retry', ticket: null }),
+            ],
+        })
+
+        const state = await board.state()
+        expect(state.run_budget_tokens).toBe(BUDGET)
+        expect(state.needs_you).toEqual([])
+    })
+
     test('`stop` clears the question and keeps the budget', async () => {
         const { board } = await runWith({
             budget: BUDGET,

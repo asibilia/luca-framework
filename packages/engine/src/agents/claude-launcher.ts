@@ -107,6 +107,7 @@ export const createClaudeLauncher = ({
                 ok: false,
                 failure: 'engine',
                 session_id,
+                session_gone: true,
                 error: `No open agent session ${session_id}: it closed or never started.`,
             }
         }

@@ -4,12 +4,15 @@ import uniq from 'lodash/uniq'
 
 import { alreadyDoneNote } from './already-done'
 import { evidenceSection } from './evidence-text'
-import { shippedFindingsSection } from './final-review-text'
+import {
+    freshFindingsSection,
+    shippedFindingsSection,
+} from './final-review-text'
 import { leftOutSections } from './left-out'
 import { newMemoriesSection } from './memory-text'
 import { reasonLine } from './stuck-text'
 
-import type { MergeDanger } from '../agents/role-results'
+import type { AgentRole, MergeDanger } from '../agents/role-results'
 import {
     EMPTY_FINAL_REVIEW,
     type FinalReviewState,
@@ -58,13 +61,57 @@ const mergeDangerSection = (danger: MergeDanger | null): string =>
         ? '## Merge danger\n\nNot available: the final review gave no merge danger.'
         : `## Merge danger\n\n- **Door:** ${DOOR_TEXT[danger.door]}: ${danger.door_reason}\n- **Blast radius:** ${danger.blast_radius}: ${danger.blast_radius_reason}`
 
+/** One line per role that ran out of turns, under `where`. */
+const outOfTurnsLines = ({
+    where,
+    counts,
+}: {
+    where: string
+    counts: Partial<Record<AgentRole, number>>
+}): string[] =>
+    Object.entries(counts).map(
+        ([role, times]) =>
+            `- ${where}: ${role}, ${times} ${times === 1 ? 'time' : 'times'}`
+    )
+
+/**
+ * The Out of turns section (#543): each ticket's roles whose agents ran out
+ * of turns, and how often, then the final review's. Empty with none.
+ */
+const outOfTurnsSection = ({
+    ticket_order,
+    tickets,
+    review,
+}: {
+    ticket_order: number[]
+    tickets: Record<number, TicketProgress>
+    review: FinalReviewState
+}): string => {
+    const lines = [
+        ...flatMap(ticket_order, (number) =>
+            outOfTurnsLines({
+                where: `#${number}`,
+                counts: tickets[number]?.out_of_turns ?? {},
+            })
+        ),
+        ...outOfTurnsLines({
+            where: 'the final review',
+            counts: review.out_of_turns,
+        }),
+    ]
+    return lines.length === 0
+        ? ''
+        : `## Out of turns\n\nThese agents ran out of turns: a sign the ticket may have been too big for one go.\n\n${lines.join('\n')}`
+}
+
 /**
  * The run's pull request title and body, from the snapshot, each ticket's
  * progress, and the final review: which tickets it closes (an already-done
  * one with the commits that did its work, #484), the tickets left for a
  * person and the ones waiting on them (#499), the tickets left
  * out (skipped, and why), the assumptions agents made (from every round of
- * every agent on each ticket, and in the final review), the reviews' nits,
+ * every agent on each ticket, and in the final review), the tickets whose
+ * agents ran out of turns (#543), the reviews' nits,
  * the findings declined through "won't fix", and the memories the learner
  * added or updated (#370). A final review shipped
  * while stuck puts its open findings at the very top. Right after the
@@ -166,14 +213,17 @@ export const pullRequestText = ({
             })
         ),
     ]
+    const stillOpen = review.fix?.findings ?? []
     const shipped =
         review.shipped && review.stuck !== null
             ? shippedFindingsSection({
-                  findings: review.fix?.findings ?? [],
+                  findings: stillOpen,
                   stuck: review.stuck,
                   edits: review.shipped_edits,
               })
-            : ''
+            : review.fresh_started && stillOpen.length > 0
+              ? freshFindingsSection({ findings: stillOpen })
+              : ''
     const body = [
         shipped,
         `Built by the Luca engine from spec #${spec.number}.`,
@@ -188,6 +238,11 @@ export const pullRequestText = ({
         assumptions.length + finalAssumptions.length === 0
             ? ''
             : `## Assumptions\n\nCalls agents made by themselves. Please check them.\n\n${[...assumptions, ...finalAssumptions].join('\n')}`,
+        outOfTurnsSection({
+            ticket_order: snapshot.ticket_order,
+            tickets,
+            review,
+        }),
         nits.length === 0
             ? ''
             : `## Nits\n\nSmall things the ticket reviews and the final review noted but did not send back.\n\n${nits.join('\n')}`,
@@ -219,6 +274,7 @@ export const PULL_REQUEST_FILE = 'pull-request.md'
 const MOVABLE_HEADINGS = [
     '## Evidence',
     '## Assumptions',
+    '## Out of turns',
     '## Nits',
     '## Declined findings',
     '## New memories',
@@ -289,7 +345,8 @@ const packed = ({
  * its full text (#508). A body under `budget` goes as it is. A longer one
  * keeps its essentials (open findings, the Summary and Merge danger, the
  * tickets it closes, and the tickets left out), and its long parts (the
- * Evidence, assumptions, nits, declined findings, new memories) as long as
+ * Evidence, assumptions, out of turns, nits, declined findings, new
+ * memories) as long as
  * they fit beside every essential (#513); the rest moves into PR
  * comments, each under the budget, cut between list items, and the body
  * says so. Whatever is still too long is clipped, pointing at the full

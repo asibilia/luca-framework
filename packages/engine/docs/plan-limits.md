@@ -94,8 +94,15 @@ decide ──> take_reply (retry or stop, ticket null) ──> reply_received
 
 The spec owner replies on the spec issue with one word:
 
-- `retry` adds one more full budget (the run may now use 2 budgets, then 3,
-  ...), and the run carries on where it stopped.
+- `retry` tops the budget up by half a budget, rounded down, and the run
+  carries on where it stopped. `retry +500k`, `retry +3M` or
+  `retry +3000000` tops it up by the amount named instead (`k` and `M` in
+  any case). The top-up is journaled with the reply (`top_up` on
+  `reply_received`), and replay adds it to the run's allowed tokens. A
+  retry journaled before top-ups has none, and counts as one whole budget.
+- An amount after `retry` on any other stop is sent back
+  (`amount_only_for_run_budget`), and so is a zero or unreadable amount
+  (`bad_amount`). Neither grants anything.
 - `stop` ends the run without a PR, as for any stop.
 
 Only the spec owner counts. While the run is stuck on its budget, only a

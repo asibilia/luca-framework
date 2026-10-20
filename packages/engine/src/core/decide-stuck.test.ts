@@ -269,6 +269,23 @@ describe('replies', () => {
         ])
     })
 
+    test('an amount after `retry` on a stuck ticket is sent back with the reason amount_only_for_run_budget', () => {
+        expect(
+            oneSteps([
+                ...told(),
+                commentRead({ comment_id: 120, body: 'retry +3M' }),
+            ])
+        ).toEqual([
+            {
+                type: 'ignore_reply',
+                comment_id: 120,
+                spec_number: 10,
+                reason: 'amount_only_for_run_budget',
+                answer: expect.stringMatching(/\S/),
+            },
+        ])
+    })
+
     test('a reply taken or sent back is never read again', () => {
         const entries = [
             ...bothTold(),

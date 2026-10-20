@@ -14,6 +14,11 @@ export const REVIEW_VOCABULARY = {
         /** `ship` is only for a stuck final review. */
         word: z.enum(['retry', 'skip', 'stop', 'ship']),
         ticket: z.number().int().nullable().optional(),
+        /**
+         * The tokens a `retry` of the run stuck on its budget added (#543);
+         * absent before top-ups, when it added one whole budget.
+         */
+        top_up: z.number().int().positive().optional().catch(undefined),
     }),
     /** A reply the engine couldn't use; it answered why on the spec issue. */
     reply_ignored: z.looseObject({

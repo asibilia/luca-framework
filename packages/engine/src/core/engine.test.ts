@@ -163,6 +163,38 @@ describe('engine: intake refuses the run', () => {
         expect(action).toEqual({ type: 'done', outcome: 'refused' })
         expect(tracker.labelsOf({ number: 11 })).toEqual(['needs-info'])
     })
+
+    test('a placeholder or an untestable ask in a criterion gets the comment, needs-info and intake_refused', async () => {
+        const { tracker, action, kinds } = await runSpec({
+            config: CONFIG,
+            issues: [
+                specIssue({ number: 10 }),
+                ticketIssue({ number: 11 }),
+                ticketIssue({ number: 12, criteria: ['Retries N times'] }),
+                ticketIssue({ number: 13, criteria: ['Attach a screenshot'] }),
+            ],
+            sub_tickets: [11, 12, 13],
+        })
+
+        expect(action).toEqual({ type: 'done', outcome: 'refused' })
+        expect(kinds).toEqual(['run_started', 'intake_read', 'intake_refused'])
+        expect(tracker.commentsOn({ number: 11 })).toEqual([])
+        const [placeholder] = tracker.commentsOn({ number: 12 })
+        expect(placeholder).toContain('Retries N times')
+        expect(placeholder).toContain('pin the exact text')
+        expect(tracker.labelsOf({ number: 12 })).toEqual(['needs-info'])
+        const [untestable] = tracker.commentsOn({ number: 13 })
+        expect(untestable).toContain('Attach a screenshot')
+        expect(untestable).toContain(
+            'no agent can check this; move it out of the acceptance criteria'
+        )
+        expect(tracker.labelsOf({ number: 13 })).toEqual(['needs-info'])
+        expect(
+            replayRun({ records: journal.read() }).problems?.map(
+                ({ ticket }) => ticket
+            )
+        ).toEqual([12, 13])
+    })
 })
 
 describe('engine: a refusal whose labels fail (#500)', () => {

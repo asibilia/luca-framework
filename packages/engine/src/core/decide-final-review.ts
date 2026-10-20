@@ -61,9 +61,14 @@ const lensStep = ({
  * tests once every lens finished, and settles only once they ran; failing
  * ones open the fix round (or join it). A fix round with no finding, opened only
  * by them, is just its gates (which run the slow tests again) with their
- * fix loop, the commit, and the push, and the review passes there.
+ * fix loop, the commit, and the push, with no lens re-review.
  * A review still asking for changes after `MAX_FIX_ROUNDS` fix
  * rounds is stuck, and so is a failed fix loop, a bad test, or a leftover.
+ * Once a fix commit was pushed and no blocking finding is left, the fresh
+ * pass (#548) has all five lenses read the whole branch again, without
+ * earlier findings; its blocking findings get one fix round (past the round
+ * cap, too) and one re-review, and what is still open then tops the PR
+ * instead of getting the review stuck.
  * Failed tries are capped per role like a ticket's. A stuck final review
  * waits for a reply; `ship` opens the PR anyway. A final review step cut
  * off by a crash `MAX_CRASHES` times in a row is stuck too.
@@ -117,15 +122,31 @@ export const decideFinalReview = (args: DecideArgs): FinalReviewDecision => {
     if (review.slow_due && review.slow_tests === null) {
         return working([{ type: 'run_final_slow_tests' }])
     }
-    if (review.fix === null) return working([{ type: 'pass_final_review' }])
+    // Clean after a fix commit: every lens reads the whole branch once more,
+    // fresh, before the PR opens (#548). Once per final review; with no fix
+    // commit, round 1 was already a full fresh read.
+    const ending: FinalReviewAction =
+        review.fix_pushed && !review.fresh_started
+            ? {
+                  type: 'start_final_review',
+                  round: review.round + 1,
+                  from_sha: run_branch.base_sha,
+                  lenses: [...LENS_NAMES],
+                  fresh: true,
+              }
+            : { type: 'pass_final_review' }
+    if (review.fix === null) return working([ending])
+    // The fresh pass's fix was re-checked: what is still open tops the PR,
+    // and the final review never gets stuck on it (#548).
+    if (review.fresh_started && !review.fresh) {
+        return working([{ type: 'pass_final_review' }])
+    }
     const step = fixStep(args)
     if (step !== null) return working([step])
     // A fix round opened only by failing slow tests ends at its push: its
     // gates ran the slow tests on what was pushed, and no lens had a finding
-    // to look at again (#563).
-    if (review.fix.findings.length === 0) {
-        return working([{ type: 'pass_final_review' }])
-    }
+    // to look at again (#563), so the fresh pass comes next.
+    if (review.fix.findings.length === 0) return working([ending])
     // The fixes are pushed: the lenses with blocking findings look again.
     return working([
         {

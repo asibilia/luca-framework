@@ -198,6 +198,85 @@ describe('a PR body over the limit, on one run', () => {
     })
 })
 
+describe('agents that ran out of turns, on one run', () => {
+    // One run, built once: the implementer and a lens run out of turns, and
+    // a test-writer fails with an error that only mentions the turn limit.
+    let root = ''
+    let run: Awaited<
+        ReturnType<Awaited<ReturnType<typeof createPracticeRepo>>['run']>
+    >
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-pull-request-'))
+        const practice = await createPracticeRepo({ root })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        run = await practice.run({
+            turns: [
+                {
+                    role: 'test-writer',
+                    ticket: 11,
+                    failure: 'agent',
+                    error: "The agent's turn ended with error_max_turns: Reached maximum number of turns (80)",
+                },
+                testWriter,
+                {
+                    role: 'implementer',
+                    ticket: 11,
+                    failure: 'agent',
+                    error: 'The agent stopped.',
+                    out_of_turns: true,
+                },
+                implementer,
+                reviewer,
+                {
+                    role: 'security-lens',
+                    ticket: 10,
+                    failure: 'agent',
+                    error: 'The lens stopped.',
+                    out_of_turns: true,
+                },
+            ],
+        })
+    }, 120_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('agent_failed records out_of_turns true only for the turns that reached their limit', () => {
+        const failed = run.records.flatMap((record) =>
+            record.kind === 'agent_failed'
+                ? [
+                      {
+                          ticket: record.ticket,
+                          role: record.content.role,
+                          out_of_turns: record.content.out_of_turns,
+                      },
+                  ]
+                : []
+        )
+
+        expect(failed).toEqual([
+            { ticket: 11, role: 'test-writer', out_of_turns: false },
+            { ticket: 11, role: 'implementer', out_of_turns: true },
+            { ticket: null, role: 'security-lens', out_of_turns: true },
+        ])
+    })
+
+    test('the PR lists them right after Assumptions, the lens under the final review', () => {
+        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [pr] = run.tracker.pullRequests()
+        const body = pr?.body ?? ''
+
+        expect(body).toContain(
+            '## Assumptions\n\nCalls agents made by themselves. Please check them.\n\n- #11: sum takes a list of numbers.\n\n' +
+                '## Out of turns\n\nThese agents ran out of turns: a sign the ticket may have been too big for one go.\n\n' +
+                '- #11: implementer, 1 time\n- the final review: security-lens, 1 time'
+        )
+        expect(body).not.toContain('test-writer, 1 time')
+    })
+})
+
 describe('a failed gh pr create', () => {
     const folder = eachRoot()
 

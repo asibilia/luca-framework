@@ -29,19 +29,32 @@ export const repoWaitComment = ({ runs }: { runs: RepoWaitRun[] }): string =>
     ].join('\n\n')
 
 /**
- * Why the run is stuck on its repo wait, in one line.
+ * Why the run is stuck on its repo wait, in one line, naming the `ps`
+ * failure when the wait couldn't check whether those runs are going (#624).
  *
  * @example
- * repoBusyDetail({ runs: [{ run_id: 'run-a', spec: 7 }] })
+ * repoBusyDetail({ runs: [{ run_id: 'run-a', spec: 7 }], ps_error: null })
  * // 'The run waited 24 hours for an earlier run on this repo: run-a (spec #7).'
  */
-export const repoBusyDetail = ({ runs }: { runs: RepoWaitRun[] }): string =>
-    `The run waited 24 hours for an earlier run on this repo: ${runs
+export const repoBusyDetail = ({
+    runs,
+    ps_error = null,
+}: {
+    runs: RepoWaitRun[]
+    ps_error?: string | null
+}): string => {
+    const named = runs
         .map(
             ({ run_id, spec }) =>
                 `${run_id}${spec === null ? ' (a demo)' : ` (spec #${spec})`}`
         )
-        .join(', ')}.`
+        .join(', ')
+    const ps =
+        ps_error === null
+            ? ''
+            : ` Luca couldn't list the processes (${ps_error}), so it couldn't tell whether those runs are still going.`
+    return `The run waited 24 hours for an earlier run on this repo: ${named}.${ps}`
+}
 
 /**
  * The comment on the spec issue when the run is stuck after 24 hours of

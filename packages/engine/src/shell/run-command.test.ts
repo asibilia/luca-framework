@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os'
 
 import { describe, expect, test } from 'bun:test'
 
-import { runShell } from './run-command'
+import { runShell, timedOutLine } from './run-command'
 
 /**
  * A command that runs past its time limit is really stopped (#485): the
@@ -28,6 +28,16 @@ const goneWithin = async (pid: number, ms: number): Promise<boolean> => {
         await Bun.sleep(50)
     }
     return !isRunning(pid)
+}
+
+/** Kills a process a test left behind, if it still runs. */
+const killQuietly = (pid: number): void => {
+    if (!Number.isInteger(pid)) return
+    try {
+        process.kill(pid, 'SIGKILL')
+    } catch {
+        // Already gone.
+    }
 }
 
 /** The first line of the output, as a process id. */
@@ -96,4 +106,86 @@ describe('runShell', () => {
         // the escaped child holds the pipe, and inside a fast test's limit.
         expect(took).toBeLessThan(1_500)
     }, 30_000)
+
+    test('a child that started its own process group is no longer running after a timeout', async () => {
+        const result = await runShell({
+            // perl leaves the shell's group for one of its own, then becomes
+            // a sleep, like a test's server holding ports (#571).
+            command:
+                'perl -e "setpgrp(0,0); exec q(sleep), 20" & echo $!; sleep 20',
+            cwd: tmpdir(),
+            timeout_ms: 300,
+            pipe_grace_ms: 200,
+        })
+        const child = firstPid(result.stdout)
+        const gone = await goneWithin(child, 2_000)
+        killQuietly(child)
+
+        expect(result.timed_out).toBe(true)
+        expect(Number.isInteger(child)).toBe(true)
+        expect(gone).toBe(true)
+    }, 30_000)
+
+    test('a timeout stops a grandchild in its own process group under a child in another', async () => {
+        const result = await runShell({
+            // The child takes a group of its own, then forks a grandchild
+            // that takes yet another; only a walk by parent id finds both.
+            command: `perl -e '$| = 1; setpgrp(0,0); my $p = fork(); if ($p == 0) { setpgrp(0,0); exec "sleep", "20" } print "$$ $p\\n"; sleep 20' & sleep 20`,
+            cwd: tmpdir(),
+            timeout_ms: 500,
+            pipe_grace_ms: 200,
+        })
+        const pids = (result.stdout.trim().split('\n')[0] ?? '')
+            .split(' ')
+            .map((text) => Number.parseInt(text, 10))
+        const gone = await Promise.all(
+            pids.map((pid) => goneWithin(pid, 2_000))
+        )
+        for (const pid of pids) killQuietly(pid)
+
+        expect(result.timed_out).toBe(true)
+        expect(pids).toHaveLength(2)
+        expect(pids.every((pid) => Number.isInteger(pid))).toBe(true)
+        expect(gone).toEqual([true, true])
+    }, 30_000)
+
+    test('a timeout that stopped everything names no survivors and keeps its message', async () => {
+        const result = await runShell({
+            command: 'sleep 20 & sleep 20',
+            cwd: tmpdir(),
+            timeout_ms: 300,
+        })
+
+        expect(result.timed_out).toBe(true)
+        expect(result.survivors).toEqual([])
+        expect(
+            timedOutLine({
+                timeout_ms: 300,
+                hint: 'To give it longer, raise `test_timeout_ms`.',
+                survivors: result.survivors,
+            })
+        ).toBe(
+            'Timed out after 0.3 seconds, so the engine stopped it and everything it started. To give it longer, raise `test_timeout_ms`.\n'
+        )
+    }, 30_000)
+})
+
+describe('timedOutLine', () => {
+    test('names each process still running after the kill', () => {
+        const line = timedOutLine({
+            timeout_ms: 300_000,
+            hint: 'To give it longer, raise `test_timeout_ms`.',
+            survivors: [
+                { pid: 1234, command: 'node server.js' },
+                { pid: 5678, command: 'sleep 20' },
+            ],
+        })
+
+        expect(line.startsWith('Timed out after 5 minutes')).toBe(true)
+        expect(line).toContain(
+            'These were still running after the kill: pid 1234 (node server.js), pid 5678 (sleep 20)'
+        )
+        expect(line).toContain('To give it longer, raise `test_timeout_ms`.')
+        expect(line).not.toContain('everything it started')
+    })
 })

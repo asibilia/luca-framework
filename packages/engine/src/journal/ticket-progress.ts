@@ -227,6 +227,11 @@ export type TicketProgress = {
     sessions: Partial<Record<AgentRole, string>>
     /** Every assumption any agent on the ticket made, oldest first. */
     assumptions: string[]
+    /**
+     * How many turns each role on the ticket ran out of turns (#543), in the
+     * order each first did, for the PR.
+     */
+    out_of_turns: Partial<Record<AgentRole, number>>
     /** The latest ticket review's result. */
     review: TicketReviewResult | null
     /** Ticket reviews finished on this ticket. */
@@ -350,6 +355,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     bad_test_source: null,
     sessions: {},
     assumptions: [],
+    out_of_turns: {},
     review: null,
     review_rounds: 0,
     reviewed_sha: null,

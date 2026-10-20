@@ -391,6 +391,8 @@ describe('finished agents’ sessions close, end to end', () => {
                     seen.reReview = launcher.openSessions()
                 },
             },
+            // The fresh pass after the fix round (#548) approves.
+            ...CLEAN_LENS_TURNS(10),
         ])
 
         const { action, records } = await practice.run({ launcher })

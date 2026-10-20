@@ -54,14 +54,20 @@ export type ReplyParts = {
 
 const REPLY_PATTERN = /^(retry|skip|stop|ship)(?: #(\d+))?$/
 
+/** `retry` with an amount for the run stuck on its budget (#543). */
+const AMOUNT_REPLY_PATTERN = /^retry \+\S+$/
+
 /**
- * Splits one of `allowedReplies` into its word and ticket, to match it
- * with the engine's `reply_received`. `null` for anything else.
+ * Splits one of `allowedReplies`, or a `retry +<amount>` the owner typed,
+ * into its word and ticket, to match it with the engine's `reply_received`.
+ * `null` for anything else.
  *
  * @example
  * replyParts({ reply: 'retry #12' }) // { word: 'retry', ticket: 12 }
+ * replyParts({ reply: 'retry +3M' }) // { word: 'retry', ticket: null }
  */
 export const replyParts = ({ reply }: { reply: string }): ReplyParts | null => {
+    if (AMOUNT_REPLY_PATTERN.test(reply)) return { word: 'retry', ticket: null }
     const match = REPLY_PATTERN.exec(reply)
     const word = z.enum(['retry', 'skip', 'stop', 'ship']).safeParse(match?.[1])
     if (!match || !word.success) return null

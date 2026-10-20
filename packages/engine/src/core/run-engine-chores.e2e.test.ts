@@ -1,4 +1,12 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import {
+    chmod,
+    mkdir,
+    mkdtemp,
+    rm,
+    stat,
+    symlink,
+    writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -138,6 +146,57 @@ describe('file modes a writer asks for (#618)', () => {
         const entry = await git(practice.origin, 'ls-tree', branch, 'README.md')
         expect(entry).toStartWith('100644 ')
     }, 90_000)
+
+    test('a mode whose real path, through a symlinked folder, leaves the worktree or is a path the role may not write is refused back to the implementer, and no mode changes', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const practice = await createPracticeRepo({ root })
+        // Outside the worktree: a script reached through `vendor`.
+        const outside = join(root, 'outside')
+        await mkdir(outside)
+        await writeFile(join(outside, 'tool.sh'), 'echo outside\n')
+        await chmod(join(outside, 'tool.sh'), 0o644)
+        await symlink(outside, join(practice.repo, 'vendor'))
+        // Inside it: `tools` is `src`, so `tools/sum.test.ts` is a test file.
+        await symlink('src', join(practice.repo, 'tools'))
+        await git(practice.repo, 'add', '-A')
+        await git(practice.repo, 'commit', '-q', '-m', 'symlinked folders')
+        await git(practice.repo, 'push', '-q', 'origin', 'main')
+
+        const { action, tracker, launches } = await practice.run({
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    result: {
+                        ...IMPLEMENTER_RESULT,
+                        file_modes: [
+                            { path: 'vendor/tool.sh', executable: true },
+                            { path: 'tools/sum.test.ts', executable: true },
+                        ],
+                    },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const calls = launches.filter(
+            ({ ticket, role }) => ticket === 11 && role === 'implementer'
+        )
+        expect(calls).toHaveLength(2)
+        expect(calls[1]?.prompt).toContain('vendor/tool.sh')
+        expect(calls[1]?.prompt).toContain('tools/sum.test.ts')
+        expect((await stat(join(outside, 'tool.sh'))).mode & 0o111).toBe(0)
+        const branch = tracker.pullRequests()[0]?.head ?? ''
+        const entry = await git(
+            practice.origin,
+            'ls-tree',
+            branch,
+            'src/sum.test.ts'
+        )
+        expect(entry).toStartWith('100644 ')
+    }, 90_000)
 })
 
 describe('generators a writer asks for (#618)', () => {
@@ -225,6 +284,45 @@ describe('generators a writer asks for (#618)', () => {
         )
         expect(calls).toHaveLength(2)
         expect(calls[1]?.prompt).toContain('make-docs')
+    }, 90_000)
+
+    test('a name only inherited from objects, such as constructor, toString or hasOwnProperty, is not a generator this repo names, and nothing runs', async () => {
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const practice = await createPracticeRepo({
+            root,
+            config: CHORES_CONFIG,
+            files: CHORES_FILES,
+        })
+        const { action, records, launches } = await practice.run({
+            turns: [
+                testWriter,
+                {
+                    ...implementer,
+                    result: {
+                        ...IMPLEMENTER_RESULT,
+                        run_generators: [
+                            'constructor',
+                            'toString',
+                            'hasOwnProperty',
+                        ],
+                    },
+                },
+                implementer,
+                reviewer,
+            ],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(generateChecks(records)).toEqual([])
+        const calls = launches.filter(
+            ({ ticket, role }) => ticket === 11 && role === 'implementer'
+        )
+        expect(calls).toHaveLength(2)
+        for (const name of ['constructor', 'toString', 'hasOwnProperty']) {
+            expect(calls[1]?.prompt).toContain(
+                `"${name}" is not a generator this repo names`
+            )
+        }
     }, 90_000)
 
     test('a failing generator is a failed generate check that goes back to the implementer', async () => {

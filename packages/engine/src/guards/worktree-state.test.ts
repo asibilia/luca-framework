@@ -196,6 +196,81 @@ describe('the after-turn check and the shared .git', () => {
     }, 60_000)
 })
 
+describe('the after-turn check and refs other processes make', () => {
+    const refNames = async (cwd: string): Promise<string[]> =>
+        (await $`git for-each-ref --format=${'%(refname)'}`.cwd(cwd).text())
+            .split('\n')
+            .filter((line) => line.length > 0)
+
+    test('a branch another process makes at the start commit is no violation and stays', async () => {
+        const startedOn = (await $`git rev-parse HEAD`.cwd(repo).text()).trim()
+
+        const { violations } = await turn({
+            role: 'implementer',
+            act: async () => {
+                await $`git branch research`.cwd(repo).quiet()
+            },
+        })
+
+        const refs = await refNames(repo)
+        expect(violations).toEqual([])
+        expect(refs).toContain('refs/heads/research')
+        expect(refs).not.toContain('refs/luca-undone/heads/research')
+        expect(
+            (await $`git rev-parse refs/heads/research`.cwd(repo).text()).trim()
+        ).toBe(startedOn)
+        await $`git branch -D research`.cwd(repo).quiet()
+    }, 60_000)
+
+    test('a new ref at a commit the turn made counts, but the ticket and run branches do not', async () => {
+        const copy = join(root, 'refs-copy')
+        await $`git clone -q ${repo} ${copy}`.quiet()
+        await $`git checkout -q -b run-x--ticket-11`.cwd(copy).quiet()
+        const branch = 'run-x--ticket-11'
+        const check = async (act: () => Promise<void>) => {
+            const before = await snapshotWorktree({
+                cwd: copy,
+                branch,
+                config: CONFIG,
+            })
+            await act()
+            return enforceAfterTurn({
+                cwd: copy,
+                branch,
+                role: 'implementer',
+                may_edit_tests: false,
+                config: CONFIG,
+                before,
+            })
+        }
+        // No commit in this turn: a branch at HEAD is another process's.
+        const quiet = await check(async () => {
+            await $`git branch bystander`.cwd(copy).quiet()
+        })
+        expect(quiet.violations).toEqual([])
+
+        const { violations } = await check(async () => {
+            await $`git -c user.name=t -c user.email=t@t commit -q --allow-empty -m turn`
+                .cwd(copy)
+                .quiet()
+            await $`git branch other`.cwd(copy).quiet()
+            await $`git branch run-x`.cwd(copy).quiet()
+            await $`git branch run-x--ticket-12`.cwd(copy).quiet()
+        })
+
+        const refs = await refNames(copy)
+        expect(refs).toContain('refs/heads/bystander')
+        expect(violations).toContainEqual({
+            kind: 'git',
+            detail: 'new refs at HEAD: refs/heads/other',
+        })
+        expect(refs).toContain('refs/luca-undone/heads/other')
+        expect(refs).not.toContain('refs/heads/other')
+        expect(refs).toContain('refs/heads/run-x')
+        expect(refs).toContain('refs/heads/run-x--ticket-12')
+    }, 60_000)
+})
+
 describe('the after-turn check and a worktree that is gone', () => {
     test('a snapshot of a removed folder says why it failed', async () => {
         const gone = await mkdtemp(join(tmpdir(), 'luca-engine-gone-'))

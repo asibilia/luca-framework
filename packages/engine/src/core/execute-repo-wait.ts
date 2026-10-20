@@ -24,7 +24,8 @@ export type GoingRunsReader = () => ReturnType<typeof goingRuns>
 /**
  * The earlier runs going on this run's repo (see `earlierRuns`), by
  * `going_runs`. None when the board's registry can't be read: the wait
- * never holds a run up on a list it can't trust.
+ * never holds a run up on a list it can't trust. `ps_error` says why `ps`
+ * failed, when it did: then every unfinished run counts as going (#624).
  */
 export const readEarlierRuns = async ({
     going_runs,
@@ -32,14 +33,17 @@ export const readEarlierRuns = async ({
 }: {
     going_runs: GoingRunsReader
     journal: Journal
-}): Promise<RepoWaitRun[]> => {
+}): Promise<{ runs: RepoWaitRun[]; ps_error: string | null }> => {
     const listing = await going_runs()
-    if (!listing.ok) return []
-    return earlierRuns({
-        runs: listing.runs,
-        run_id: basename(dirname(journal.file)),
-        records: journal.read(),
-    })
+    if (!listing.ok) return { runs: [], ps_error: null }
+    return {
+        runs: earlierRuns({
+            runs: listing.runs,
+            run_id: basename(dirname(journal.file)),
+            records: journal.read(),
+        }),
+        ps_error: listing.ps_error,
+    }
 }
 
 /**
@@ -47,7 +51,8 @@ export const readEarlierRuns = async ({
  * it waits for, then is journaled. The wait reads the going runs, then
  * naps by `clock` and reads them again, until no earlier run on the repo is
  * going (`repo_wait_ended`) or `until` comes (the run is stuck as
- * `repo_busy`). Without `going_runs`, none is going.
+ * `repo_busy`). Without `going_runs`, none is going. A `ps` that fails is
+ * journaled once (`repo_wait_ps_failed`), and the wait goes on.
  */
 export const executeRepoWaitAction = async ({
     action,
@@ -81,11 +86,22 @@ export const executeRepoWaitAction = async ({
         return
     }
     const end = Date.parse(action.until)
+    let ps_error: string | null = null
     for (;;) {
-        const runs =
+        const read =
             going_runs === undefined
-                ? []
+                ? { runs: [], ps_error: null }
                 : await readEarlierRuns({ going_runs, journal })
+        const { runs } = read
+        if (read.ps_error !== null && ps_error === null) {
+            ps_error = read.ps_error
+            journal.append({
+                kind: 'repo_wait_ps_failed',
+                ticket: null,
+                role: null,
+                content: { error: ps_error },
+            })
+        }
         if (runs.length === 0) {
             journal.append({
                 kind: 'repo_wait_ended',
@@ -103,7 +119,7 @@ export const executeRepoWaitAction = async ({
                 role: null,
                 content: {
                     reason: 'repo_busy',
-                    detail: repoBusyDetail({ runs }),
+                    detail: repoBusyDetail({ runs, ps_error }),
                 },
             })
             return
