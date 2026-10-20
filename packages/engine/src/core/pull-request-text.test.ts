@@ -7,14 +7,24 @@ import {
     withNotInRun,
 } from './pull-request-text'
 
+import type { JournalEntry } from '../journal/journal-record'
 import {
     EMPTY_FINAL_REVIEW,
     EMPTY_TICKET_PROGRESS,
+    replayRun,
     type FinalReviewState,
     type ReplayedSnapshot,
     type TicketProgress,
 } from '../journal/replay'
+import {
+    agentFailed,
+    implemented,
+    testsWritten,
+} from '../testing/agent-turn-fixtures'
 import { practiceTicket } from '../testing/build-fixtures'
+import { finalReviewStarted } from '../testing/final-review-fixtures'
+import { recordsFrom } from '../testing/intake-fixtures'
+import { intakePassed } from '../testing/run-fixtures'
 
 /**
  * Before the PR opens, the engine re-reads the spec's sub-issues. The open
@@ -270,5 +280,164 @@ describe('fitting a long PR body with Summary, Merge danger, and Evidence', () =
         expect(body.length).toBeLessThan(budget)
         expect(body).not.toContain('## Evidence')
         expect(body).toContain('- Closes #410: Add sum')
+    })
+})
+
+/**
+ * The PR lists the tickets whose agents ran out of turns (#543), a sign a
+ * ticket may have been too big for one go. The journal marks such a turn
+ * with `out_of_turns`; nothing matches its error text.
+ */
+
+const OUT_OF_TURNS_INTRO =
+    'These agents ran out of turns: a sign the ticket may have been too big for one go.'
+
+/** The PR body of a run with tickets #11 and #12 and these records after intake. */
+const pullRequestOf = (entries: JournalEntry[]): string => {
+    const state = replayRun({
+        records: recordsFrom({
+            entries: [
+                ...intakePassed({
+                    tickets: [
+                        practiceTicket({ number: 11 }),
+                        practiceTicket({ number: 12, title: 'Export rows' }),
+                    ],
+                }),
+                ...entries,
+            ],
+        }),
+    })
+    return pullRequestText({
+        snapshot: state.snapshot ?? SNAPSHOT,
+        tickets: state.tickets,
+        final_review: state.final_review,
+    }).body
+}
+
+describe('the out of turns section', () => {
+    test('comes right after Assumptions, with one line per ticket and role and how many times', () => {
+        const body = pullRequestOf([
+            agentFailed({
+                ticket: 11,
+                role: 'test-writer',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+            testsWritten({ ticket: 11 }),
+            agentFailed({
+                ticket: 11,
+                role: 'implementer',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+            implemented({ ticket: 11 }),
+            agentFailed({
+                ticket: 12,
+                role: 'test-writer',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+            agentFailed({
+                ticket: 12,
+                role: 'test-writer',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+            testsWritten({ ticket: 12, assumptions: [] }),
+        ])
+
+        expect(
+            body.endsWith(
+                [
+                    '## Assumptions\n\nCalls agents made by themselves. Please check them.\n\n- #11: Numbers are integers.',
+                    `## Out of turns\n\n${OUT_OF_TURNS_INTRO}\n\n- #11: test-writer, 1 time\n- #11: implementer, 1 time\n- #12: test-writer, 2 times`,
+                ].join('\n\n')
+            )
+        ).toBe(true)
+    })
+
+    test('lists final review agents under the final review, and not a failure whose error only mentions the turn limit', () => {
+        const body = pullRequestOf([
+            testsWritten({ ticket: 11 }),
+            agentFailed({
+                ticket: 11,
+                role: 'implementer',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+            implemented({ ticket: 11 }),
+            finalReviewStarted({ round: 1 }),
+            agentFailed({
+                ticket: null,
+                role: 'security-lens',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+            agentFailed({
+                ticket: null,
+                role: 'rules-lens',
+                failure: 'agent',
+                error: "The agent's turn ended with error_max_turns: Reached maximum number of turns (60)",
+            }),
+        ])
+
+        expect(body).toContain(
+            `## Out of turns\n\n${OUT_OF_TURNS_INTRO}\n\n- #11: implementer, 1 time\n- the final review: security-lens, 1 time`
+        )
+        expect(body).not.toContain('rules-lens')
+    })
+
+    test("is left out when no agent ran out of turns, as in an older journal's failed turns", () => {
+        const records = recordsFrom({
+            entries: [
+                agentFailed({
+                    ticket: 11,
+                    role: 'implementer',
+                    failure: 'agent',
+                    error: "The agent's turn ended with error_max_turns: Reached maximum number of turns (120)",
+                }),
+            ],
+        })
+        const [failed] = records
+
+        expect(failed?.kind === 'agent_failed' && failed.content).toMatchObject(
+            { out_of_turns: false }
+        )
+        const body = pullRequestOf([
+            testsWritten({ ticket: 11 }),
+            agentFailed({
+                ticket: 11,
+                role: 'implementer',
+                failure: 'agent',
+                error: "The agent's turn ended with error_max_turns: Reached maximum number of turns (120)",
+            }),
+            implemented({ ticket: 11 }),
+        ])
+        expect(body).not.toContain('## Out of turns')
+        expect(body).not.toContain(OUT_OF_TURNS_INTRO)
+    })
+
+    test('a long out of turns section moves to the PR comments like the other long sections', () => {
+        const lines = Array.from(
+            { length: 1_000 },
+            (_, index) => `- #${11 + index}: implementer, 2 times`
+        )
+        const full = [
+            'Built by the Luca engine from spec #10.',
+            '## Tickets\n\n- Closes #11: Add sum',
+            `## Out of turns\n\n${OUT_OF_TURNS_INTRO}\n\n${lines.join('\n')}`,
+        ].join('\n\n')
+        const budget = 20_000
+        expect(full.length).toBeGreaterThan(budget)
+
+        const { body, comments } = fitPullRequestBody({ body: full, budget })
+
+        expect(body.length).toBeLessThan(budget)
+        expect(body).toContain('- Closes #11: Add sum')
+        expect(body).not.toContain('## Out of turns')
+        expect(body).toContain('## More in the PR comments')
+        const moved = comments.join('\n')
+        expect(moved).toContain(`## Out of turns\n\n${OUT_OF_TURNS_INTRO}`)
+        expect(lines.filter((line) => !moved.includes(line))).toEqual([])
     })
 })

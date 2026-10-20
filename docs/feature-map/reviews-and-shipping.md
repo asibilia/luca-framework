@@ -35,7 +35,7 @@ Tests:
 
 ## The pull request and changesets
 
-A run ends in one PR with a Summary, Merge danger, and Evidence, its open findings, and the run's changeset in a repo that uses changesets.
+A run ends in one PR with a Summary, Merge danger, and Evidence, its open findings, the tickets whose agents ran out of turns, and the run's changeset in a repo that uses changesets.
 
 Reached by: the end of every run that built something; a spec with more than one release label is refused at intake.
 
