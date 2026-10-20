@@ -103,6 +103,7 @@ Tests:
 - `packages/engine/src/agents/claude-launcher-stops.test.ts`
 - `packages/engine/src/agents/role-instructions.test.ts`
 - `packages/engine/src/agents/role-instructions-other-role.test.ts`
+- `packages/engine/src/agents/role-instructions-rules-and-sandbox.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
 - `packages/engine/src/core/run-session-close.e2e.test.ts`
