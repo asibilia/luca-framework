@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.20
+
+### Minor Changes
+
+- b3a2b40: Spec: Wave 3: a fresh pass before the PR, budget top-ups, exact text at intake, the repo's rules for writers, and four bug fixes ([#641](https://github.com/asibilia/luca-framework/issues/641))
+
 ## 14.0.0-alpha.19
 
 ### Minor Changes
