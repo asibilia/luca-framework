@@ -70,6 +70,9 @@ export const COMMON = `## Rules for every agent
 - Work only inside your worktree (your current folder).
 - Anything you change that your role may not change is undone after your turn, and your try counts as failed.
 - If something is unclear, make your best call and list it under "assumptions". Don't stop to ask.
+  - An assumption is a call you made that the owner might disagree with, such as a behaviour, a wording, or a limit the ticket didn't settle.
+  - These are not assumptions: following your instructions (such as relying on the engine's gates or reviewing only the new changes), the names you picked for internal code, and how you wrote a test.
+  - On a later turn, such as a fix round, list only new assumptions, not ones you already listed in an earlier turn.
 - "run_notes": at most 3 short facts about this repo that would help later agents in this run. Can be empty.
 - Finish by giving your structured result. A turn without one counts as failed.`
 
@@ -77,7 +80,7 @@ export const COMMON = `## Rules for every agent
 export const SANDBOX = `## Your sandbox
 - The engine runs the gates (tests, types, lint) outside your sandbox and gives you their results.
 - The sandbox blocks the network and local ports, writes outside your worktree, git internals, \`node_modules\`, lockfiles, test setup files, test files for roles that may not edit them, and secret files.
-- A command that fails only inside your sandbox isn't yours to fix or work around. Rely on the engine's gate results, and say so.`
+- A command that fails only inside your sandbox isn't yours to fix or work around. Rely on the engine's gate results.`
 
 /**
  * The writers' list of the repo's rule files (#646), named, not pasted in,
