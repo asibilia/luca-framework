@@ -100,6 +100,11 @@ export type FinalReviewState = {
     declined: FinalDeclined[]
     /** Every assumption a final review agent made, oldest first. */
     assumptions: string[]
+    /**
+     * How many turns each final review role ran out of turns (#543), in the
+     * order each first did, for the PR.
+     */
+    out_of_turns: Partial<Record<AgentRole, number>>
     passed: boolean
     stuck: { reason: StuckReason; detail: string } | null
     shipped: boolean
@@ -154,6 +159,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     nits: [],
     declined: [],
     assumptions: [],
+    out_of_turns: {},
     passed: false,
     stuck: null,
     shipped: false,

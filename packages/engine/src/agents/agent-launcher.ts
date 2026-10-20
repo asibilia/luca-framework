@@ -102,7 +102,8 @@ export type LauncherFailure = z.infer<typeof LauncherFailureSchema>
  * same agent a follow-up in a fix loop. `session` is the launcher's summary
  * of the model session, for the journal. `session_gone` marks a follow-up
  * that found its session closed or unknown (#521): no agent ran, and the
- * engine hands the follow-up's message to a fresh agent.
+ * engine hands the follow-up's message to a fresh agent. `out_of_turns`
+ * marks a turn that reached its role's turn limit (#543).
  */
 export type AgentTurn =
     | {
@@ -118,6 +119,7 @@ export type AgentTurn =
           session_id?: string
           session?: AgentSession
           session_gone?: boolean
+          out_of_turns?: boolean
       }
 
 /**

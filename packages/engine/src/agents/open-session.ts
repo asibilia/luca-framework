@@ -161,6 +161,7 @@ export const watch = ({
         ok: false,
         failure: 'agent',
         error: `The agent's turn ended with ${done.subtype}: ${detail}`,
+        ...(done.subtype === 'error_max_turns' ? { out_of_turns: true } : {}),
     }
 }
 

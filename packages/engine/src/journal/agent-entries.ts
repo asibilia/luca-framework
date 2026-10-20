@@ -94,6 +94,8 @@ export type AgentFailure = z.infer<typeof AgentFailureSchema>
  * `session_gone`: a follow-up found its session closed or gone (#521), so no
  * agent ran. Replay forgets the session as a closed one, and counts no engine
  * failure; the fix round goes to a fresh agent. `false` in older journals.
+ * `out_of_turns`: the turn reached its role's turn limit (#543), as the
+ * launcher said; the PR lists such tickets. `false` in older journals.
  */
 export const AgentFailedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -104,6 +106,7 @@ export const AgentFailedEntrySchema = z.object({
         failure: AgentFailureSchema.default('agent'),
         ...SESSION_FIELDS,
         session_gone: z.boolean().default(false),
+        out_of_turns: z.boolean().default(false),
     }),
 })
 

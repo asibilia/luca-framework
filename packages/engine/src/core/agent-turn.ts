@@ -32,6 +32,7 @@ const failTurn = ({
     failure,
     session_id,
     session_gone,
+    out_of_turns,
 }: {
     context: BuildContext
     ticket: number | null
@@ -40,6 +41,7 @@ const failTurn = ({
     failure: AgentFailure
     session_id: string | null
     session_gone: boolean
+    out_of_turns: boolean
 }) => {
     context.journal.append({
         kind: 'agent_failed',
@@ -51,6 +53,7 @@ const failTurn = ({
             failure,
             session_id,
             ...(session_gone ? { session_gone } : {}),
+            ...(out_of_turns ? { out_of_turns } : {}),
         },
     })
 }
@@ -155,7 +158,7 @@ export const runTurn = async ({
     const fail = (
         failure: AgentFailure,
         error: string,
-        session_gone = false
+        { session_gone = false, out_of_turns = false } = {}
     ) => {
         failTurn({
             context,
@@ -165,6 +168,7 @@ export const runTurn = async ({
             failure,
             session_id,
             session_gone,
+            out_of_turns,
         })
         return null
     }
@@ -178,7 +182,10 @@ export const runTurn = async ({
         return fail(
             turn.failure === 'engine' ? 'engine' : 'agent',
             turn.error,
-            turn.session_gone === true
+            {
+                session_gone: turn.session_gone === true,
+                out_of_turns: turn.out_of_turns === true,
+            }
         )
     }
     if (

@@ -5,7 +5,11 @@
 import omit from 'lodash/omit'
 import uniqBy from 'lodash/uniqBy'
 
-import { assumptionsOf, sessionsAfter } from './agent-turn-replay'
+import {
+    assumptionsOf,
+    outOfTurnsAfter,
+    sessionsAfter,
+} from './agent-turn-replay'
 import type { JournalRecord } from './journal-record'
 import type { RunState } from './run-state'
 import { EMPTY_TICKET_PROGRESS, type TicketProgress } from './ticket-progress'
@@ -134,9 +138,14 @@ const progressChange = ({
         case 'agent_failed': {
             const { role, error, failure, session_id } = record.content
             const agent_failure = { role, error, failure, session_id }
+            const out_of_turns = outOfTurnsAfter({
+                counts: progress.out_of_turns,
+                failed: record.content,
+            })
             if (failure === 'engine') {
                 return {
                     agent_failure,
+                    out_of_turns,
                     engine_failures: progress.engine_failures + 1,
                 }
             }
@@ -144,6 +153,7 @@ const progressChange = ({
             // failures is over.
             return {
                 agent_failure,
+                out_of_turns,
                 engine_failures: 0,
                 ...failedTryChange({ progress, role }),
             }

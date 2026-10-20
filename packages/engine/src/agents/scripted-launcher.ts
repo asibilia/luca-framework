@@ -50,6 +50,8 @@ export type ScriptedTurn = {
     result?: unknown
     failure?: LauncherFailure
     error?: string
+    /** With `failure`: the turn reached its role's turn limit (#543). */
+    out_of_turns?: boolean
     /** A session summary for the engine to journal. */
     session?: AgentSession
 }
@@ -169,6 +171,7 @@ export const createScriptedLauncher = ({
                 failure: turn.failure,
                 session_id,
                 error: turn.error ?? `The scripted ${role} failed.`,
+                ...(turn.out_of_turns === true ? { out_of_turns: true } : {}),
                 ...session,
             }
         }

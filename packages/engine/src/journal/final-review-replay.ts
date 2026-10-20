@@ -5,7 +5,12 @@
  */
 import omit from 'lodash/omit'
 
-import { assumptionsOf, isFixerRole, sessionsAfter } from './agent-turn-replay'
+import {
+    assumptionsOf,
+    isFixerRole,
+    outOfTurnsAfter,
+    sessionsAfter,
+} from './agent-turn-replay'
 import { finalResultChange, roundDone, settleRound } from './final-review-round'
 import type { FinalReviewState } from './final-review-state'
 import type { JournalRecord } from './journal-record'
@@ -157,10 +162,15 @@ export const finalReviewAfter = ({
                 ...review.agent_failures,
                 [role]: { role, error, failure, session_id },
             }
+            const out_of_turns = outOfTurnsAfter({
+                counts: review.out_of_turns,
+                failed: record.content,
+            })
             if (failure === 'engine') {
                 return {
                     ...review,
                     agent_failures,
+                    out_of_turns,
                     engine_failures: {
                         ...review.engine_failures,
                         [role]: (review.engine_failures[role] ?? 0) + 1,
@@ -170,6 +180,7 @@ export const finalReviewAfter = ({
             return {
                 ...review,
                 agent_failures,
+                out_of_turns,
                 engine_failures: omit(review.engine_failures, role),
                 failed_tries: {
                     ...review.failed_tries,
