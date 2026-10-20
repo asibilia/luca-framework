@@ -123,6 +123,11 @@ export type RunState = {
     /** The worktrees the engine removed at the end of the run. */
     removed_worktrees: string[]
     /**
+     * Every session journaled as closed (`agent_session_closed`), or found
+     * gone by a follow-up (#521). None is ever a follow-up target again.
+     */
+    closed_sessions: string[]
+    /**
      * Every run note from every finished agent in the run, oldest first
      * (journal order), word for word.
      */
@@ -194,6 +199,7 @@ export const EMPTY_STATE: RunState = {
     },
     usage_recorded: { tickets: {}, run: false },
     removed_worktrees: [],
+    closed_sessions: [],
     run_notes: [],
     run_branch_gates: null,
     prepare_made: [],

@@ -164,14 +164,19 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
             })
         }
         const session_id = review.sessions.implementer
+        const message = gateFixMessage({ gates })
         if (session_id === undefined) {
-            return launchFixer({ ...args, role: 'implementer' })
+            return launchFixer({
+                ...args,
+                role: 'implementer',
+                follow_up: message,
+            })
         }
         return {
             type: 'follow_up_final_fixer',
             role: 'implementer',
             session_id,
-            message: gateFixMessage({ gates }),
+            message,
         }
     }
     if (review.commit === null) {

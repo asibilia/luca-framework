@@ -31,6 +31,7 @@ const failTurn = ({
     error,
     failure,
     session_id,
+    session_gone,
 }: {
     context: BuildContext
     ticket: number | null
@@ -38,12 +39,19 @@ const failTurn = ({
     error: string
     failure: AgentFailure
     session_id: string | null
+    session_gone: boolean
 }) => {
     context.journal.append({
         kind: 'agent_failed',
         ticket,
         role,
-        content: { role, error, failure, session_id },
+        content: {
+            role,
+            error,
+            failure,
+            session_id,
+            ...(session_gone ? { session_gone } : {}),
+        },
     })
 }
 
@@ -144,8 +152,20 @@ export const runTurn = async ({
         throw new Error(`Run stopped: ${turn.error}`)
     }
     const session_id = turn.session_id ?? null
-    const fail = (failure: AgentFailure, error: string) => {
-        failTurn({ context, ticket, role, error, failure, session_id })
+    const fail = (
+        failure: AgentFailure,
+        error: string,
+        session_gone = false
+    ) => {
+        failTurn({
+            context,
+            ticket,
+            role,
+            error,
+            failure,
+            session_id,
+            session_gone,
+        })
         return null
     }
     if (violations.length > 0) {
@@ -155,7 +175,11 @@ export const runTurn = async ({
         )
     }
     if (!turn.ok) {
-        return fail(turn.failure === 'engine' ? 'engine' : 'agent', turn.error)
+        return fail(
+            turn.failure === 'engine' ? 'engine' : 'agent',
+            turn.error,
+            turn.session_gone === true
+        )
     }
     if (
         turn.structured_output === undefined ||

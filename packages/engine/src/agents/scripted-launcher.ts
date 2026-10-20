@@ -223,6 +223,7 @@ export const createScriptedLauncher = ({
                     ok: false,
                     failure: 'engine',
                     session_id,
+                    session_gone: true,
                     error: `No scripted session ${session_id}.`,
                 }
             }
