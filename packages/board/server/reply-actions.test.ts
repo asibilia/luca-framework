@@ -72,6 +72,15 @@ describe('replyParts', () => {
         })
     })
 
+    test('reads a `retry` with an amount as a bare retry', () => {
+        for (const reply of ['retry +3M', 'retry +500k', 'retry +3000000']) {
+            expect(replyParts({ reply })).toMatchObject({
+                word: 'retry',
+                ticket: null,
+            })
+        }
+    })
+
     test('anything else is null', () => {
         expect(replyParts({ reply: 'retry 12' })).toBeNull()
         expect(replyParts({ reply: 'Retry #12' })).toBeNull()
