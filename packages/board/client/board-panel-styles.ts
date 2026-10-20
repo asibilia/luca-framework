@@ -161,6 +161,8 @@ export const makeStyles = ({
             backgroundColor: colors.surface2,
         },
         confidenceFill: { height: 5 },
+        /** A running helper's line (#636), its left edge in its model's colour. */
+        helperLine: { borderLeftWidth: 2, paddingLeft: 6 },
         dots: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
         dotCell: { flexDirection: 'row', alignItems: 'center' },
         link: { width: compact ? 7 : 10, height: 2 },

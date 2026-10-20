@@ -28,6 +28,7 @@ import {
 } from '../server/testing/journal-fixtures'
 import {
     liveAgent,
+    liveHelper,
     writeLiveFile,
     type LiveAgent,
 } from '../server/testing/live-file-fixtures'
@@ -259,6 +260,40 @@ describe('the status bar (#633)', () => {
             modelColor({ model: 'sonnet', theme: THEME })
         )
         expect(textOf(barLine({ shown }))).toContain(' · 2·1 agents · ')
+    })
+
+    test("running helpers count among the agents, in Haiku's colour, and a finished helper doesn't (#636)", async () => {
+        const state = await stateOfRun({
+            entries: runOfTen(),
+            agents: [
+                liveAgent({
+                    ticket: 25,
+                    role: 'implementer',
+                    model: 'opus',
+                    helpers: [
+                        liveHelper(),
+                        liveHelper({ done: true }),
+                        liveHelper(),
+                    ],
+                }),
+                liveAgent({
+                    ticket: 26,
+                    role: 'implementer',
+                    model: 'opus',
+                    helpers: [liveHelper()],
+                }),
+                liveAgent({ ticket: 27, role: 'implementer', model: 'sonnet' }),
+            ],
+        })
+        clockAfterLatest({ state, seconds: 2 })
+
+        const shown = showBar({ state })
+
+        expect(textOf(barLine({ shown }))).toContain(' · 2·1·3 agents · ')
+        const haiku = textShowing({ shown, text: '3' })
+        expect(haiku && styleOf(haiku).color).toBe(
+            modelColor({ model: 'haiku', theme: THEME })
+        )
     })
 
     test("the tokens are out of the run's budget", async () => {

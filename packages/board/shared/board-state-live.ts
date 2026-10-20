@@ -40,6 +40,18 @@ export const LiveOpenCallSchema = z.object({
     started_at: z.string(),
 })
 
+/**
+ * One of an agent's helpers (#636): a read-only Haiku session it started,
+ * with its latest action and whether it's done.
+ */
+export const LiveHelperSchema = z.object({
+    model: z.string().nullable().default(null),
+    action: LiveActionSchema.nullable().default(null),
+    done: z.boolean().default(false),
+})
+
+export type LiveHelper = z.infer<typeof LiveHelperSchema>
+
 /** One agent in a turn, as the live file has it. */
 export const LiveAgentSchema = z.object({
     ticket: z.number().int().nullable(),
@@ -54,6 +66,8 @@ export const LiveAgentSchema = z.object({
      * oldest first; a file from before has none.
      */
     activity: z.array(z.number().min(0)).catch([]).default([]),
+    /** The agent's helpers (#636), oldest first; a file from before has none. */
+    helpers: z.array(LiveHelperSchema).catch([]).default([]),
 })
 
 export type LiveAgent = z.infer<typeof LiveAgentSchema>

@@ -18,7 +18,8 @@ import { elapsedText, type BoardState } from '../shared/board-state'
 const MODEL_ORDER = ['opus', 'sonnet', 'haiku']
 
 /**
- * The agents in a turn, counted per model, in `MODEL_ORDER`.
+ * The agents in a turn and their running helpers, counted per model, in
+ * `MODEL_ORDER`.
  *
  * @example
  * agentsPerModel({ state }) // [{ model: 'opus', count: 2 }, { model: 'sonnet', count: 1 }]
@@ -29,9 +30,16 @@ const agentsPerModel = ({
     state: BoardState
 }): { model: string; count: number }[] => {
     const counts = new Map<string, number>()
-    for (const agent of state.live_agents) {
-        const model = (agent.model ?? 'unknown').toLowerCase()
+    const count = (name: string | null) => {
+        const model = (name ?? 'unknown').toLowerCase()
         counts.set(model, (counts.get(model) ?? 0) + 1)
+    }
+    for (const agent of state.live_agents) {
+        count(agent.model)
+        // Running helpers count too (#636), on their own model.
+        for (const helper of agent.helpers) {
+            if (!helper.done) count(helper.model)
+        }
     }
     const rank = (model: string) => {
         const found = MODEL_ORDER.indexOf(model)

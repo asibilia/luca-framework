@@ -5,9 +5,9 @@ import { join } from 'node:path'
  * The live file (#628) as the engine writes it in a run folder,
  * `<runs_dir>/<run_id>/live.json`: replaced whole on each write, never
  * journaled. Per agent in a turn, its ticket, role, model, tokens so far,
- * latest action and open tool call; per run, the first plan-usage reading,
- * the waits inside a step (#632) and the live feed, its last actions
- * across tickets.
+ * latest action, open tool call and helpers; per run, the first plan-usage
+ * reading, the waits inside a step (#632) and the live feed, its last
+ * actions across tickets.
  */
 
 /** The live file's name inside a run folder. */
@@ -22,6 +22,17 @@ export type LiveOpenCall = { tool: string; target: string; started_at: string }
 /** How many seconds of activity the live file keeps for each agent (#631). */
 export const ACTIVITY_SECONDS = 30
 
+/**
+ * One of an agent's helpers (#636): a read-only Haiku session it started,
+ * with its model, its latest action (and that action's time), and whether
+ * it's done.
+ */
+export type LiveHelper = {
+    model: string
+    action: LiveAction | null
+    done: boolean
+}
+
 export type LiveAgent = {
     ticket: number | null
     role: string
@@ -34,6 +45,8 @@ export type LiveAgent = {
      * oldest first, so the newest second is last.
      */
     activity: number[]
+    /** The agent's helpers (#636); left out, as before them. */
+    helpers?: LiveHelper[]
 }
 
 /**
@@ -76,6 +89,14 @@ export const liveAgent = (
     action: null,
     open_call: null,
     activity: quietActivity(),
+    ...fields,
+})
+
+/** A helper on Haiku, still running with nothing done yet unless told. */
+export const liveHelper = (fields: Partial<LiveHelper> = {}): LiveHelper => ({
+    model: 'haiku',
+    action: null,
+    done: false,
     ...fields,
 })
 

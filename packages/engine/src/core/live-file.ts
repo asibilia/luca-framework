@@ -8,7 +8,7 @@
  * while something changed, and at least every 5 seconds while the engine
  * runs, each with its `written_at` time. Each agent's entry carries its
  * activity for each of the last 30 seconds (#631), for the board's
- * heartbeat.
+ * heartbeat, and its helpers (#636), whose actions go in the feed too.
  */
 import { mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path'
 import type { AgentLauncher } from '../agents/agent-launcher'
 import type {
     ProgressAction,
+    ProgressHelper,
     ProgressListener,
     ProgressOpenCall,
     TurnProgress,
@@ -57,6 +58,8 @@ type LiveAgent = {
     tokens: number
     action: ProgressAction | null
     open_call: ProgressOpenCall | null
+    /** The helpers the agent started this turn (#636). */
+    helpers: ProgressHelper[]
 }
 
 /** One action of the live feed: who did it, on which model, and what. */
@@ -184,19 +187,35 @@ export const createLiveFile = ({ file }: { file: string }) => {
         const agent = agents.get(key)
         if (agent === undefined) return
         activities.get(key)?.tick(Date.now())
-        const { action } = progress
+        const { action, helpers = [] } = progress
+        const { ticket, role, model } = agent
         // A message that only adds tokens repeats the action it was on.
-        if (action !== null && !sameAction(agent.action, action)) {
-            const { ticket, role, model } = agent
-            feed = [...feed, { ...action, ticket, role, model }].slice(
-                -LIVE_FEED_SIZE
-            )
-        }
+        const fresh = [
+            ...(action !== null && !sameAction(agent.action, action)
+                ? [{ ...action, ticket, role, model }]
+                : []),
+            // A helper's actions go in the feed too, on its own model.
+            ...helpers.flatMap((helper, index) =>
+                helper.action !== null &&
+                !sameAction(agent.helpers[index]?.action ?? null, helper.action)
+                    ? [
+                          {
+                              ...helper.action,
+                              ticket,
+                              role: 'helper',
+                              model: helper.model,
+                          },
+                      ]
+                    : []
+            ),
+        ]
+        if (fresh.length > 0) feed = [...feed, ...fresh].slice(-LIVE_FEED_SIZE)
         agents.set(key, {
             ...agent,
             tokens: progress.tokens,
             action: progress.action,
             open_call: progress.open_call,
+            helpers,
         })
         plan_usage ??= progress.rate_limit_events[0] ?? null
         changed = true
@@ -214,7 +233,13 @@ export const createLiveFile = ({ file }: { file: string }) => {
     }): Promise<T> => {
         const key = next
         next += 1
-        agents.set(key, { ...who, tokens: 0, action: null, open_call: null })
+        agents.set(key, {
+            ...who,
+            tokens: 0,
+            action: null,
+            open_call: null,
+            helpers: [],
+        })
         activities.set(key, createActivity())
         changed = true
         try {

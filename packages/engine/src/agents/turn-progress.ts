@@ -1,6 +1,6 @@
 /**
  * A turn's live progress (#628), for the engine's live file: what the
- * agent is doing now, read from the SDK messages (streamed chunks too,
+ * agent and its helpers (#636) are doing now, read from the SDK messages (streamed chunks too,
  * #631) and the guard hook. It
  * holds only short words: a tool and a target (a path relative to the
  * worktree, or the first words of a command), never a prompt, a file's
@@ -9,6 +9,8 @@
 import { basename, isAbsolute, join, relative } from 'node:path'
 
 import { z } from 'zod'
+
+import { HELPER_MODEL, HELPER_TOOL } from '../guards/helper-rules'
 
 /** The agent's latest action: a tool and a short target, with its time (ISO). */
 export type ProgressAction = { tool: string; target: string; at: string }
@@ -20,12 +22,24 @@ export type ProgressOpenCall = {
     started_at: string
 }
 
+/**
+ * A helper the agent started this turn (#636): its model, its latest
+ * action, and whether its result has come back.
+ */
+export type ProgressHelper = {
+    model: string
+    action: ProgressAction | null
+    done: boolean
+}
+
 /** What one turn has done so far, as `on_progress` hears it. */
 export type TurnProgress = {
     /** Every token the turn's messages read or wrote so far, cache reads included. */
     tokens: number
     action: ProgressAction | null
     open_call: ProgressOpenCall | null
+    /** The turn's helpers, oldest first; none when left out. */
+    helpers?: ProgressHelper[]
     /** The turn's `rate_limit_event` readings so far, each with `arrived_at`. */
     rate_limit_events: Record<string, unknown>[]
 }
@@ -159,12 +173,15 @@ export const createTurnProgress = ({
     let tokens = new Map<string, number>()
     let action: ProgressAction | null = null
     let open = new Map<string, ProgressOpenCall>()
+    /** The turn's helpers, by the `Agent` call that started each. */
+    let helpers = new Map<string, ProgressHelper>()
 
     const tell = (): void => {
         listener?.({
             tokens: [...tokens.values()].reduce((sum, each) => sum + each, 0),
             action,
             open_call: [...open.values()].at(-1) ?? null,
+            helpers: [...helpers.values()].map((helper) => ({ ...helper })),
             rate_limit_events: [...readings()],
         })
     }
@@ -174,6 +191,7 @@ export const createTurnProgress = ({
         tokens = new Map()
         action = null
         open = new Map()
+        helpers = new Map()
     }
 
     /**
@@ -203,21 +221,25 @@ export const createTurnProgress = ({
                         (usage.cache_creation_input_tokens ?? 0)
                 )
             }
-            // A helper's own calls aren't its agent's action.
-            if (parent_tool_use_id === null) {
-                for (const block of message.content) {
-                    const call = ToolUseSchema.safeParse(block)
-                    if (!call.success) continue
-                    action = {
-                        tool: call.data.name,
-                        target: targetOf({
-                            tool_name: call.data.name,
-                            tool_input: call.data.input,
-                            worktree,
-                        }),
-                        at: new Date().toISOString(),
-                    }
+            // A helper's own calls are its action, not its agent's.
+            const helper =
+                parent_tool_use_id === null
+                    ? undefined
+                    : helpers.get(parent_tool_use_id)
+            for (const block of message.content) {
+                const call = ToolUseSchema.safeParse(block)
+                if (!call.success) continue
+                const latest = {
+                    tool: call.data.name,
+                    target: targetOf({
+                        tool_name: call.data.name,
+                        tool_input: call.data.input,
+                        worktree,
+                    }),
+                    at: new Date().toISOString(),
                 }
+                if (parent_tool_use_id === null) action = latest
+                else if (helper !== undefined) helper.action = latest
             }
             tell()
             return
@@ -228,8 +250,12 @@ export const createTurnProgress = ({
             const result = ToolResultSchema.safeParse(block)
             return result.success ? [result.data.tool_use_id] : []
         })
-        if (!ids.some((id) => open.has(id))) return
-        for (const id of ids) open.delete(id)
+        if (!ids.some((id) => open.has(id) || helpers.has(id))) return
+        for (const id of ids) {
+            open.delete(id)
+            const helper = helpers.get(id)
+            if (helper !== undefined) helper.done = true
+        }
         tell()
     }
 
@@ -248,6 +274,13 @@ export const createTurnProgress = ({
             target: targetOf({ tool_name, tool_input, worktree }),
             started_at: new Date().toISOString(),
         })
+        if (tool_name === HELPER_TOOL) {
+            helpers.set(tool_use_id, {
+                model: HELPER_MODEL,
+                action: null,
+                done: false,
+            })
+        }
         tell()
     }
 

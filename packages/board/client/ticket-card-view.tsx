@@ -4,11 +4,11 @@
  * details when opened. With an entry in the run's live file (#628), the
  * step text gives way to what its agent is doing now, and its tokens count
  * up with the turn, followed by the latest action's age; a busy card's
- * line ends in its heartbeat (#631), and a check waiting there for a slot
- * (#632) reads as a wait, with the amber bar. In a run with no sign of
- * life (#635), a busy card's step text says so, its heartbeat is a flat
- * red line, and its timers stop at the last sign of life. Each line stays
- * on one line (`one-line.tsx`): the
+ * line ends in its heartbeat (#631), each running helper gets a line under
+ * it (#636), and a check waiting there for a slot (#632) reads as a wait,
+ * with the amber bar. In a run with no sign of life (#635), a busy card's
+ * step text says so, its heartbeat is a flat red line, and its timers stop
+ * at the last sign of life. Each line stays on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
  */
@@ -20,6 +20,7 @@ import { Counter, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
 import { noLife } from './engine-life'
 import { Heartbeat } from './heartbeat'
+import { HelperLines } from './helper-lines'
 import { liveAgeText, liveText } from './live-line'
 import { ModelLine } from './model-line'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
@@ -157,6 +158,12 @@ export const TicketCardView = ({
                         </>
                     ) : null}
                 </View>
+                <HelperLines
+                    live={ticket.live}
+                    now={clock}
+                    theme={theme}
+                    styles={styles}
+                />
                 {ticket.current_step && doing === null && wait === null ? (
                     <StepLine
                         step={ticket.current_step}
