@@ -20,7 +20,7 @@ import {
     MessageCountsSchema,
     NO_MEMORY,
 } from './board-state-counts'
-import { LiveFeedEntrySchema } from './board-state-live'
+import { LiveAgentSchema, LiveFeedEntrySchema } from './board-state-live'
 import { FinalReviewSchema } from './board-state-review'
 import {
     DEFAULT_CONFIDENCE_BAR,
@@ -143,6 +143,12 @@ export const BoardStateSchema = z.object({
     run_steps: z
         .array(CurrentStepSchema.extend({ key: z.string() }))
         .default([]),
+    /**
+     * Every agent in a turn, from the run's live file (#628), those on no
+     * ticket too. Laid over the state on each read, never journaled.
+     * Defaulted, so a board state from before it still parses.
+     */
+    live_agents: z.array(LiveAgentSchema).default([]),
     /** The newest of `run_steps`, `null` when none runs. */
     current_step: CurrentStepSchema.nullable().default(null),
     /**

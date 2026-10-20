@@ -14,9 +14,10 @@ import { makeStyles } from './board-panel-styles'
 import { FinalReviewStack } from './final-review-stack'
 import { LiveFeed } from './live-feed'
 import { NeedsYouSection } from './needs-you-section'
-import { SharedBubbles } from './one-line'
+import { BubbleProvider, SharedBubbles } from './one-line'
 import { RunFooter } from './run-footer'
 import { RunHeader } from './run-header'
+import { StatusBar } from './status-bar'
 import { TicketStack } from './ticket-stack'
 
 import { boardReadRpc } from '../shared/board-rpc'
@@ -31,13 +32,14 @@ import {
  * limit-wait banner, "Needs you" pinned on top, the tickets as a stack of
  * stages (Blocked → Building → Reviewing → Testing → Fixing → Joining → Done
  * → Skipped) with step dots, then the final review's 5 lenses as a second
- * stack, then the live feed, folded. It polls `board.read`.
+ * stack, then the live feed, folded, and the status bar pinned below them
+ * all. It polls `board.read`.
  *
  * The sections are in their own modules: `run-header.tsx` (the top, with
  * `run-picker.tsx` and `usage-line.tsx`), `needs-you-section.tsx`,
  * `ticket-stack.tsx` (with `ticket-card-view.tsx`, `ticket-detail.tsx` and
- * `step-dots.tsx`), `final-review-stack.tsx`, `live-feed.tsx` and
- * `run-footer.tsx`. They share
+ * `step-dots.tsx`), `final-review-stack.tsx`, `live-feed.tsx`,
+ * `run-footer.tsx` and `status-bar.tsx`. They share
  * `board-panel-styles.ts`, `board-panel-stages.ts` and `board-panel-parts.tsx`,
  * and `one-line.tsx` keeps one bubble open at a time across the panel.
  * This module keeps what a person has opened, folded and picked.
@@ -105,43 +107,51 @@ export const BoardPanel = ({
     const chat_agent_id = board.data?.chat_agent_id ?? null
 
     return (
-        <ScrollView style={styles.screen} contentContainerStyle={styles.fill}>
-            <SharedBubbles style={[styles.content, styles.fill]}>
-                <RunHeader
-                    state={state}
-                    runs={runs}
-                    setPicked={setPicked}
-                    layout={layout}
-                    {...look}
-                />
-                <NeedsYouSection
-                    state={state}
-                    posted={posted}
-                    chat_agent_id={chat_agent_id}
-                    {...look}
-                />
-                <TicketStack
-                    state={state}
-                    folded={folded}
-                    setFolded={setFolded}
-                    openCards={openCards}
-                    setOpenCards={setOpenCards}
-                    {...look}
-                />
-                {showsFinalReview({ state }) ? (
-                    <>
-                        <View style={styles.rule} />
-                        <FinalReviewStack state={state} {...look} />
-                    </>
-                ) : null}
-                <LiveFeed
-                    state={state}
-                    folded={feedFolded}
-                    onToggle={() => setFeedFolded((was) => !was)}
-                    {...look}
-                />
-                <RunFooter state={state} {...look} />
-            </SharedBubbles>
-        </ScrollView>
+        <BubbleProvider>
+            <View style={styles.screen}>
+                <ScrollView
+                    style={styles.scroll}
+                    contentContainerStyle={styles.fill}
+                >
+                    <SharedBubbles style={[styles.content, styles.fill]}>
+                        <RunHeader
+                            state={state}
+                            runs={runs}
+                            setPicked={setPicked}
+                            layout={layout}
+                            {...look}
+                        />
+                        <NeedsYouSection
+                            state={state}
+                            posted={posted}
+                            chat_agent_id={chat_agent_id}
+                            {...look}
+                        />
+                        <TicketStack
+                            state={state}
+                            folded={folded}
+                            setFolded={setFolded}
+                            openCards={openCards}
+                            setOpenCards={setOpenCards}
+                            {...look}
+                        />
+                        {showsFinalReview({ state }) ? (
+                            <>
+                                <View style={styles.rule} />
+                                <FinalReviewStack state={state} {...look} />
+                            </>
+                        ) : null}
+                        <LiveFeed
+                            state={state}
+                            folded={feedFolded}
+                            onToggle={() => setFeedFolded((was) => !was)}
+                            {...look}
+                        />
+                        <RunFooter state={state} {...look} />
+                    </SharedBubbles>
+                </ScrollView>
+                <StatusBar state={state} {...look} />
+            </View>
+        </BubbleProvider>
     )
 }

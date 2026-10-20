@@ -94,6 +94,7 @@ export const createBoardState = ({
     memory: NO_MEMORY,
     shared_git_changed: 0,
     run_steps: [],
+    live_agents: [],
     current_step: null,
     feed: [],
     event_count: 0,

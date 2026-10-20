@@ -20,6 +20,18 @@ export const makeStyles = ({
         content: { padding: compact ? 10 : 16, gap: 8 },
         /** Fills the scroll area, so a tap on its blank part lands too. */
         fill: { flexGrow: 1 },
+        /** The cards' scroll area, above the pinned status bar. */
+        scroll: { flex: 1 },
+        /** The status bar, pinned at the bottom of the panel. */
+        statusBar: {
+            flexShrink: 0,
+            gap: 4,
+            borderTopColor: colors.border,
+            borderTopWidth: 1,
+            backgroundColor: colors.surface1,
+            paddingHorizontal: compact ? 10 : 16,
+            paddingVertical: 5,
+        },
         row: {
             flexDirection: 'row',
             alignItems: 'center',

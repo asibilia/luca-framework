@@ -92,6 +92,7 @@ export const withLive = ({
     const reading = live?.plan_usage ?? null
     return {
         ...state,
+        live_agents: agents,
         tickets: state.tickets.map((card) => ({
             ...card,
             live: agents.find((agent) => agent.ticket === card.number) ?? null,

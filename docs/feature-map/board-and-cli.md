@@ -38,6 +38,7 @@ Tests:
 - `packages/board/client/one-line-panel.test.ts`
 - `packages/board/client/model-line-panel.test.ts`
 - `packages/board/client/wait-line-panel.test.ts`
+- `packages/board/client/status-bar-panel.test.ts`
 
 ## The board: the live file
 

@@ -51,8 +51,41 @@ const SharedContext = createContext<Shared | null>(null)
 const ScopeContext = createContext<Bubbles | null>(null)
 
 /**
- * One open bubble for the whole panel. A tap on any part of the panel that
- * isn't a button of its own closes it.
+ * One open bubble for everything under it: the scrolling panel and the
+ * status bar pinned below it.
+ */
+export const BubbleProvider = ({ children }: { children: ReactNode }) => {
+    const [open, show] = useState<OpenBubble | null>(null)
+    return (
+        <SharedContext.Provider value={{ open, show }}>
+            {children}
+        </SharedContext.Provider>
+    )
+}
+
+const ClosesBubble = ({
+    style,
+    children,
+}: {
+    style: StyleProp<ViewStyle>
+    children: ReactNode
+}) => {
+    const shared = useContext(SharedContext)
+    return (
+        <Pressable
+            accessible={false}
+            onPress={() => shared?.show(null)}
+            style={style}
+        >
+            {children}
+        </Pressable>
+    )
+}
+
+/**
+ * One open bubble for the whole panel (a `BubbleProvider`'s, when inside
+ * one). A tap on any part of the panel that isn't a button of its own
+ * closes it.
  */
 export const SharedBubbles = ({
     style,
@@ -61,18 +94,9 @@ export const SharedBubbles = ({
     style: StyleProp<ViewStyle>
     children: ReactNode
 }) => {
-    const [open, show] = useState<OpenBubble | null>(null)
-    return (
-        <SharedContext.Provider value={{ open, show }}>
-            <Pressable
-                accessible={false}
-                onPress={() => show(null)}
-                style={style}
-            >
-                {children}
-            </Pressable>
-        </SharedContext.Provider>
-    )
+    const shared = useContext(SharedContext)
+    const body = <ClosesBubble style={style}>{children}</ClosesBubble>
+    return shared ? body : <BubbleProvider>{body}</BubbleProvider>
 }
 
 /** Closes the panel's open bubble: for a button's tap that does more. */
@@ -112,25 +136,28 @@ export const BubbleScope = ({
 /**
  * A line of text cut at its end with "…". Inside a `BubbleScope`, a tap
  * (or hovering) opens its full text in a bubble, or `full` when given: a
- * short line's longer sentence.
+ * short line's longer sentence. `children`, when given, draw the line in
+ * place of `text` (as nested, colored texts), which stays its plain words.
  */
 export const CutLine = ({
     text,
     full,
     style,
     styles,
+    children,
 }: {
     text: string
     full?: string
     style: StyleProp<TextStyle>
     styles: Styles
+    children?: ReactNode
 }) => {
     const bubbles = useContext(ScopeContext)
     const line = useId()
     const shown = full ?? text
     const label = (
         <Text style={style} numberOfLines={1} ellipsizeMode="tail">
-            {text}
+            {children ?? text}
         </Text>
     )
     if (!bubbles) return label
