@@ -53,7 +53,7 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started. |
+| `src/shell/run-command.ts` | Runs a command in its own process group, with a timeout, and collects its output. A timed-out command is killed with everything it started, found by walking its process tree, and anything that survives is named in the timeout line. |
 
 ## `src/tracker/`
 

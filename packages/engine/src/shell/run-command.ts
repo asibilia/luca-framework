@@ -1,3 +1,10 @@
+/** A process the command started that still ran after a timeout's kill. */
+export type Survivor = {
+    pid: number
+    /** Its command line, from `ps`. */
+    command: string
+}
+
 /** What a finished command left behind. */
 export type CommandResult = {
     /** `null` when the command was killed. */
@@ -5,6 +12,8 @@ export type CommandResult = {
     stdout: string
     stderr: string
     timed_out: boolean
+    /** Set on a timeout only: what still ran after the kill (#571). */
+    survivors?: Survivor[]
 }
 
 /** Commands the engine runs give up after this long unless told otherwise. */
@@ -38,6 +47,110 @@ const signalGroup = ({
     } catch {
         // The group is gone already.
     }
+}
+
+/** One line of `ps`: a process, its parent, and its process group. */
+type ProcessEntry = Survivor & { ppid: number; pgid: number }
+
+/**
+ * Every process now running, from `ps`. Empty when `ps` fails: then the
+ * engine can only kill the command's own group.
+ */
+const listProcessTable = async (): Promise<ProcessEntry[]> => {
+    try {
+        const ps = Bun.spawn(
+            ['ps', '-axww', '-o', 'pid=,ppid=,pgid=,command='],
+            {
+                stdin: 'ignore',
+                stdout: 'pipe',
+                stderr: 'ignore',
+            }
+        )
+        const [text, code] = await Promise.all([
+            new Response(ps.stdout).text(),
+            ps.exited,
+        ])
+        if (code !== 0) return []
+        return text.split('\n').flatMap((line) => {
+            const match = /^\s*(\d+)\s+(\d+)\s+(\d+)\s(.*)$/.exec(line)
+            if (match === null) return []
+            const [, pid, ppid, pgid, command] = match
+            return [
+                {
+                    pid: Number(pid),
+                    ppid: Number(ppid),
+                    pgid: Number(pgid),
+                    command: (command ?? '').trim(),
+                },
+            ]
+        })
+    } catch {
+        return []
+    }
+}
+
+/** Every process below `pid`, found by parent process id. */
+const descendantsOf = async (pid: number): Promise<ProcessEntry[]> => {
+    const table = await listProcessTable()
+    const found: ProcessEntry[] = []
+    const parents = new Set([pid])
+    for (let grew = true; grew; ) {
+        grew = false
+        for (const entry of table) {
+            if (!parents.has(entry.ppid) || parents.has(entry.pid)) continue
+            parents.add(entry.pid)
+            found.push(entry)
+            grew = true
+        }
+    }
+    return found
+}
+
+/** Whether a process with this id still runs. */
+const isRunning = (pid: number): boolean => {
+    try {
+        process.kill(pid, 0)
+        return true
+    } catch {
+        return false
+    }
+}
+
+/** How long the engine waits for killed processes to go before naming them. */
+const SURVIVOR_WAIT_MS = 500
+
+/** Of `processes`, those still running after up to `SURVIVOR_WAIT_MS`. */
+const survivorsOf = async (processes: ProcessEntry[]): Promise<Survivor[]> => {
+    const end = Date.now() + SURVIVOR_WAIT_MS
+    let alive = processes.filter(({ pid }) => isRunning(pid))
+    while (alive.length > 0 && Date.now() < end) {
+        await Bun.sleep(25)
+        alive = alive.filter(({ pid }) => isRunning(pid))
+    }
+    return alive.map(({ pid, command }) => ({ pid, command }))
+}
+
+/**
+ * Kills a timed-out command and everything it started (#571). It first walks
+ * the process tree from the command, while the tree is still whole, then
+ * kills the command's group and the group of every process below it, so a
+ * child that started a group of its own goes too. Returns what it found.
+ */
+const killTree = async (pid: number): Promise<ProcessEntry[]> => {
+    const descendants = await descendantsOf(pid)
+    signalGroup({ pid, signal: 'SIGKILL' })
+    for (const entry of descendants) {
+        // Never the engine's own group.
+        if (entry.pgid > 1 && entry.pgid !== process.pid) {
+            signalGroup({ pid: entry.pgid, signal: 'SIGKILL' })
+        }
+        try {
+            process.kill(entry.pid, 'SIGKILL')
+        } catch {
+            // Gone already.
+        }
+    }
+    return descendants
 }
 
 /** Sends `signal` to every command still running. */
@@ -98,10 +211,11 @@ const collectText = (
  * Runs a command and collects its output. Never throws on a non-zero exit.
  *
  * The command runs in its own process group. One that runs past
- * `timeout_ms` is killed with everything it started (the whole group) and
- * marked `timed_out`, with `exit_code: null`. The engine then waits at most
- * a moment more for its output (`pipe_grace_ms`, default `PIPE_GRACE_MS`), so
- * a child that left the group can't hold the engine.
+ * `timeout_ms` is killed with everything it started (its group, and the
+ * group of every process below it) and marked `timed_out`, with
+ * `exit_code: null` and the `survivors` the kill missed. The engine then
+ * waits at most a moment more for its output (`pipe_grace_ms`, default
+ * `PIPE_GRACE_MS`), so a child that escaped the kill can't hold the engine.
  *
  * @example
  * const result = await runCommand({ cmd: ['git', 'status'], cwd })
@@ -140,16 +254,17 @@ export const runCommand = async ({
     liveGroups.add(proc.pid)
     const stdout = collectText(proc.stdout)
     const stderr = collectText(proc.stderr)
-    let timedOut = false
+    let killed: Promise<ProcessEntry[]> | undefined
     let grace: ReturnType<typeof setTimeout> | undefined
     const timer = setTimeout(() => {
-        timedOut = true
-        signalGroup({ pid: proc.pid, signal: 'SIGKILL' })
-        proc.kill('SIGKILL')
-        grace = setTimeout(() => {
-            stdout.stop()
-            stderr.stop()
-        }, pipe_grace_ms ?? PIPE_GRACE_MS)
+        killed = killTree(proc.pid).then((descendants) => {
+            proc.kill('SIGKILL')
+            grace = setTimeout(() => {
+                stdout.stop()
+                stderr.stop()
+            }, pipe_grace_ms ?? PIPE_GRACE_MS)
+            return descendants
+        })
     }, timeout_ms ?? DEFAULT_COMMAND_TIMEOUT_MS)
     const [out, err, exitCode] = await Promise.all([
         stdout.text,
@@ -157,14 +272,18 @@ export const runCommand = async ({
         proc.exited,
     ])
     clearTimeout(timer)
+    const descendants = await killed
     clearTimeout(grace)
     liveGroups.delete(proc.pid)
-    return {
-        exit_code: timedOut ? null : exitCode,
+    const result = {
+        exit_code: killed === undefined ? exitCode : null,
         stdout: out,
         stderr: err,
-        timed_out: timedOut,
+        timed_out: killed !== undefined,
     }
+    return descendants === undefined
+        ? result
+        : { ...result, survivors: await survivorsOf(descendants) }
 }
 
 /** Runs a command line from the engine config through `sh -c`. */
@@ -197,7 +316,8 @@ export const durationText = (ms: number): string => {
 
 /**
  * The line a timed-out command's output starts with: how long it had, that
- * the engine stopped it, then `hint`, if any.
+ * the engine stopped it, then `hint`, if any. With `survivors`, it names
+ * each one instead of claiming everything was stopped (#571).
  *
  * @example
  * timedOutLine({ timeout_ms: 300_000, hint: 'To give it longer, raise `test_timeout_ms`.' })
@@ -206,12 +326,20 @@ export const durationText = (ms: number): string => {
 export const timedOutLine = ({
     timeout_ms,
     hint,
+    survivors,
 }: {
     timeout_ms: number
     /** How to give the command longer. */
     hint?: string
-}): string =>
-    `Timed out after ${durationText(timeout_ms)}, so the engine stopped it and everything it started.${hint === undefined ? '' : ` ${hint}`}\n`
+    /** What still ran after the kill. */
+    survivors?: Survivor[]
+}): string => {
+    const stopped =
+        survivors === undefined || survivors.length === 0
+            ? 'so the engine stopped it and everything it started.'
+            : `so the engine stopped it. These were still running after the kill: ${survivors.map(({ pid, command }) => `pid ${pid} (${command})`).join(', ')}.`
+    return `Timed out after ${durationText(timeout_ms)}, ${stopped}${hint === undefined ? '' : ` ${hint}`}\n`
+}
 
 /** Keeps the start and end of long output, for the journal and prompts. */
 export const clipOutput = ({

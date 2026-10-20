@@ -45,7 +45,11 @@ export const shellCheck = async ({
     const result = await runShell({ command, cwd, timeout_ms: limit })
     const ok = result.exit_code === 0
     const timedOut = result.timed_out
-        ? timedOutLine({ timeout_ms: limit, hint: timeout_hint })
+        ? timedOutLine({
+              timeout_ms: limit,
+              hint: timeout_hint,
+              survivors: result.survivors,
+          })
         : ''
     return {
         name,
