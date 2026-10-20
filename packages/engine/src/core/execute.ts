@@ -3,12 +3,13 @@
  * steps at the same time. Re-exports the run's first records and
  * `executeAction` from the modules that carry them out.
  */
-import { decideSteps, type EngineAction } from './decide'
+import { decideNext, type EngineAction } from './decide'
 import { repoWaitUnchecked } from './decide-repo-wait'
 import { executeAction, type StepTry } from './execute-action'
 import type { BuildDeps } from './execute-build'
 import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
 import { executeWithJev } from './execute-with-jev'
+import { createLiveFile } from './live-file'
 import {
     agentRoleOf,
     crashesIn,
@@ -28,6 +29,7 @@ import {
 } from './session-close'
 
 import type { BoardSync } from '../board/board-sync'
+import { hearSlotWaits } from '../gates/slot-waits'
 import { shadowAsker, type JevShadow } from '../jev/jev-shadow'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
@@ -95,6 +97,11 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * With `board`, the whole journal is sent to the board once before the
  * first step and again after each step settles.
  *
+ * A ticket held on purpose between steps (another ticket's shared
+ * baseline, the join queue, the start queue) gets one `ticket_waiting` as
+ * its wait starts, from the same decision as the steps (`decideNext`),
+ * sent to the board at once.
+ *
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
  * run for good (`done`, outcome `stopped`).
@@ -106,6 +113,12 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * With `going_runs`, a run started while an earlier run on the same repo
  * is going waits for it before intake: a **repo wait** (see
  * `decide-repo-wait.ts`).
+ *
+ * With `live_file`, the engine keeps the run's live file there while it
+ * runs (`live-file.ts`, #628): what each agent in a turn is doing now,
+ * never journaled, and each ticket check's wait for a prepare slot or a
+ * test slot while it lasts (#632). It is written a last time, with no
+ * agents, at the end.
  *
  * Crash recovery: every step it starts (not a wait) is journaled between a
  * `step_started` and a `step_ended` (none when the step throws). On start,
@@ -136,6 +149,7 @@ export const runEngine = async ({
     memory,
     usage,
     going_runs,
+    live_file,
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -163,13 +177,20 @@ export const runEngine = async ({
      * intake. Left out, there is no repo wait.
      */
     going_runs?: GoingRunsReader
+    /**
+     * Where to keep the run's live file (#628), such as
+     * `runLiveFilePath({ runs_dir, run_id })`. Left out, there is none.
+     */
+    live_file?: string
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
+    const live =
+        live_file === undefined ? null : createLiveFile({ file: live_file })
     const build =
         git === undefined || launcher === undefined
             ? undefined
-            : { git, launcher }
+            : { git, launcher: live?.launcher(launcher) ?? launcher }
     const inFlight = new Map<string, InFlight>()
     let started = 0
     // The run's own asker, so turning the decision model off lasts this run.
@@ -209,14 +230,14 @@ export const runEngine = async ({
      */
     const decideNow = async (
         records: JournalRecord[]
-    ): Promise<EngineAction[]> => {
+    ): Promise<ReturnType<typeof decideNext>> => {
         const earlier_runs =
             going_runs !== undefined && repoWaitUnchecked({ records })
                 ? await readEarlierRuns({ going_runs, journal })
                 : undefined
-        if (usage === undefined) return decideSteps({ records, earlier_runs })
+        if (usage === undefined) return decideNext({ records, earlier_runs })
         await usage.share(runReadings({ records }))
-        return decideSteps({
+        return decideNext({
             records,
             usage_lines: await usage.read_lines(),
             shared_readings: await usage.read_shared(),
@@ -258,10 +279,18 @@ export const runEngine = async ({
             ...who,
             content: { key, step, first_seq },
         })
-        await execute(action, {
-            first_seq: first_seq ?? started.seq,
-            redo: first_seq !== null,
-        })
+        const run = () =>
+            execute(action, {
+                first_seq: first_seq ?? started.seq,
+                redo: first_seq !== null,
+            })
+        // A ticket's check waiting for a slot shows in the live file (#632).
+        await (live === null || who.ticket === null
+            ? run()
+            : hearSlotWaits({
+                  listener: live.slotWaits({ ticket: who.ticket }),
+                  run,
+              }))
         journal.append({ kind: 'step_ended', ...who, content: { key, step } })
     }
 
@@ -292,10 +321,8 @@ export const runEngine = async ({
             await closeFinished({ all: false })
             const records = journal.read()
             const crashes = crashesIn(records)
-            const actions = redosFirst({
-                actions: await decideNow(records),
-                crashes,
-            })
+            const decided = await decideNow(records)
+            const actions = redosFirst({ actions: decided.actions, crashes })
             const stop = actions.find((action) => stops.has(action.type))
             if (stop !== undefined && inFlight.size === 0) {
                 if (STOP_ACTIONS.has(stop.type)) {
@@ -304,7 +331,24 @@ export const runEngine = async ({
                 return stop
             }
             let slowStarted = false
+            let waited = false
             if (stop === undefined) {
+                // A wait between steps is journaled once, as it starts, and
+                // shows on the board at once: the step it waits on may run
+                // for minutes.
+                for (const wait of decided.waits) {
+                    journal.append({
+                        kind: 'ticket_waiting',
+                        ticket: wait.ticket,
+                        role: null,
+                        content: {
+                            for: wait.for,
+                            on_ticket: wait.on_ticket,
+                            since: new Date().toISOString(),
+                        },
+                    })
+                    waited = true
+                }
                 for (const action of actions) {
                     const key = keyOf(action)
                     if (!canStart({ action, key })) continue
@@ -329,8 +373,11 @@ export const runEngine = async ({
                     if (SLOW_ACTIONS.has(action.type)) slowStarted = true
                 }
             }
-            // A slow step shows on the board while it runs, not only once it ends.
-            if (slowStarted) await board?.sync({ records: journal.read() })
+            // A slow step shows on the board while it runs, not only once it
+            // ends; so does a wait.
+            if (slowStarted || waited) {
+                await board?.sync({ records: journal.read() })
+            }
             if (inFlight.size === 0) {
                 throw new Error(
                     `The engine could start none of: ${actions.map(({ type }) => type).join(', ')}.`
@@ -364,5 +411,7 @@ export const runEngine = async ({
         // The run ends here, so no session stays open.
         await closeFinished({ all: true })
         throw error
+    } finally {
+        live?.close()
     }
 }

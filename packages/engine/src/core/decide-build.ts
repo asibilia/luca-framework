@@ -2,7 +2,7 @@ import type { BuildAction } from './build-action'
 import { withChangesetsSections, withWriterSection } from './build-launch'
 import { haltSteps, installSteps } from './decide-build-early'
 import { finishSteps } from './decide-build-ending'
-import { ticketSteps } from './decide-build-tickets'
+import { ticketSteps, type TicketWait } from './decide-build-tickets'
 import { buildViewOf } from './decide-build-view'
 import { replySteps } from './decide-stuck'
 
@@ -75,14 +75,29 @@ export {
  * decideBuild({ state, spec_number })
  * // [{ type: 'create_ticket_worktree', ticket: 11, ... }, { type: 'create_ticket_worktree', ticket: 12, ... }]
  */
-export const decideBuild = ({
+export const decideBuild = (args: {
+    state: RunState
+    spec_number: number
+}): BuildAction[] => decideBuildPlan(args).steps
+
+/**
+ * `decideBuild`'s steps, and beside them the tickets that wait on purpose
+ * between steps now (#559): the same decision, so a wait is only ever one
+ * that left its ticket no step. None while the run is halted, holds on its
+ * install, or has yet to make its run branch.
+ *
+ * @example
+ * decideBuildPlan({ state, spec_number })
+ * // { steps: [{ type: 'run_baseline_tests', ticket: 11 }], waits: [{ ticket: 12, for: 'baseline', on_ticket: 11 }] }
+ */
+export const decideBuildPlan = ({
     state,
     spec_number,
 }: {
     state: RunState
     spec_number: number
-}): BuildAction[] => {
-    const steps = buildSteps({ state, spec_number })
+}): { steps: BuildAction[]; waits: TicketWait[] } => {
+    const { steps, waits } = buildSteps({ state, spec_number })
     const command = state.config?.prepare
     const prepared =
         command === undefined
@@ -105,13 +120,17 @@ export const decideBuild = ({
                       only: 'test-writer',
                   })
               )
-    return state.changesets ? mapped.map(withChangesetsSections) : mapped
+    return {
+        steps: state.changesets ? mapped.map(withChangesetsSections) : mapped,
+        waits,
+    }
 }
 
 /**
  * `decideBuild`'s steps, before the prepare command joins any prompt: the run
  * branch, then the steps that end the run or hold it on the run branch's
- * install, each ticket's next step, and last the finish (`finishSteps`).
+ * install, each ticket's next step, and last the finish (`finishSteps`);
+ * with the tickets' waits once they are decided.
  */
 const buildSteps = ({
     state,
@@ -119,24 +138,29 @@ const buildSteps = ({
 }: {
     state: RunState
     spec_number: number
-}): BuildAction[] => {
+}): { steps: BuildAction[]; waits: TicketWait[] } => {
     const { snapshot, run_branch } = state
     if (run_branch === null || snapshot === null) {
-        return [
-            {
-                type: 'create_run_branch',
-                spec_number,
-                base_branch: state.base_branch ?? 'main',
-            },
-        ]
+        return {
+            steps: [
+                {
+                    type: 'create_run_branch',
+                    spec_number,
+                    base_branch: state.base_branch ?? 'main',
+                },
+            ],
+            waits: [],
+        }
     }
     const view = buildViewOf({ state, spec_number, snapshot, run_branch })
     const halted = haltSteps({ state, view })
-    if (halted !== null) return halted
+    if (halted !== null) return { steps: halted, waits: [] }
     const replies = replySteps({ state, spec_number, numbers: view.numbers })
     const installing = installSteps({ state, view, replies })
-    if (installing !== null) return installing
-    const steps = ticketSteps({ state, view })
-    if (steps.length > 0 || replies.length > 0) return [...steps, ...replies]
-    return finishSteps({ state, view, replies })
+    if (installing !== null) return { steps: installing, waits: [] }
+    const { steps, waits } = ticketSteps({ state, view })
+    if (steps.length > 0 || replies.length > 0) {
+        return { steps: [...steps, ...replies], waits }
+    }
+    return { steps: finishSteps({ state, view, replies }), waits }
 }

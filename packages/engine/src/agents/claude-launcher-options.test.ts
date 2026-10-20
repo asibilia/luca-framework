@@ -61,10 +61,19 @@ describe('the options', () => {
             mcpServers: {},
             skills: [],
             persistSession: false,
-            tools: ['Read', 'Grep', 'Glob', 'Edit', 'Write', 'Bash'],
             systemPrompt: { type: 'preset', preset: 'claude_code' },
             outputFormat: { type: 'json_schema' },
         })
+        // Besides `Agent`, for its helpers (#627).
+        const tools = Array.isArray(options?.tools) ? options.tools : []
+        expect(tools.filter((tool) => tool !== 'Agent')).toEqual([
+            'Read',
+            'Grep',
+            'Glob',
+            'Edit',
+            'Write',
+            'Bash',
+        ])
         expect(options?.sandbox).toMatchObject({
             enabled: true,
             failIfUnavailable: true,

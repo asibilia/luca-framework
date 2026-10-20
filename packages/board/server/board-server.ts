@@ -9,7 +9,8 @@
  * - `board-server-events.ts`: `engine.event`.
  * - `board-server-read.ts`: `board.read` and `reply.post`, and the runs the
  *   plugin didn't start.
- * - `board-server-check.ts`: the engine check.
+ * - `board-server-check.ts`: the engine check, which also labels the runs
+ *   the plugin didn't start whose engine is gone.
  */
 import { createEngineChecks } from './board-server-check'
 import { createEngineProcess } from './board-server-engine'
@@ -73,7 +74,7 @@ export const createBoardServer = (config: BoardServerConfig) => {
     const starter = createStarter({ config, store, engine, resumer })
     const events = createEngineEvents({ store })
     const reads = createBoardReads({ config, store })
-    const checks = createEngineChecks({ config, store, engine })
+    const checks = createEngineChecks({ config, store, engine, reads })
 
     /** Resolves when every queued piece of work (and any check) has finished. */
     const idle = async () => {

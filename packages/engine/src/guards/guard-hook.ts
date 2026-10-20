@@ -3,6 +3,7 @@ import type {
     HookJSONOutput,
 } from '@anthropic-ai/claude-agent-sdk'
 
+import { checkHelperTool, HELPER_TOOL, MAX_HELPERS } from './helper-rules'
 import { checkToolCall, type GuardRole } from './role-rules'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -12,6 +13,13 @@ import type { EngineConfig } from '../config/engine-config'
  * `checkToolCall` before it runs. A denial goes back to the agent with its
  * reason. An allowed call gets no opinion from the hook, so the SDK's own
  * permission rules still apply. Any error in the guard itself denies.
+ *
+ * Helpers (#627): a call from inside a helper (one with the SDK's
+ * `agent_id`) may only read and search, whatever the agent may do. An
+ * allowed helper goes into `helpers`, by the id of the call that started it,
+ * until its result comes back (the launcher takes it out); a helper past
+ * `MAX_HELPERS` running is denied. `on_helper` is called for each one
+ * started.
  *
  * @example
  * const hook = createGuardHook({ role: 'implementer', may_edit_tests: false, worktree, config, on_deny: (denial) => denials.push(denial) })
@@ -23,6 +31,9 @@ export const createGuardHook = ({
     worktree,
     config,
     on_deny,
+    helpers = new Set(),
+    on_helper,
+    on_allow,
 }: {
     role: GuardRole
     /** Whether the agent may edit test files. */
@@ -32,6 +43,16 @@ export const createGuardHook = ({
     config: EngineConfig
     /** Called for each denied call, such as to count it. */
     on_deny?: (denial: { tool_name: string; reason: string }) => void
+    /** The agent's running helpers, by the tool call that started each. */
+    helpers?: Set<string>
+    /** Called for each helper started, such as to count it. */
+    on_helper?: () => void
+    /** Called for each of the agent's own calls let through (not a helper's), such as to show it running. */
+    on_allow?: (call: {
+        tool_name: string
+        tool_input: unknown
+        tool_use_id: string
+    }) => void
 }): HookCallback => {
     const denied = (reason: string): HookJSONOutput => ({
         hookSpecificOutput: {
@@ -40,20 +61,47 @@ export const createGuardHook = ({
             permissionDecisionReason: reason,
         },
     })
-    return async (input): Promise<HookJSONOutput> => {
+    return async (input, tool_use_id): Promise<HookJSONOutput> => {
         if (input.hook_event_name !== 'PreToolUse') return {}
         try {
-            const decision = checkToolCall({
-                role,
-                may_edit_tests,
-                tool_name: input.tool_name,
-                tool_input: input.tool_input,
-                worktree,
-                config,
-            })
-            if (decision.allow) return {}
-            on_deny?.({ tool_name: input.tool_name, reason: decision.reason })
-            return denied(decision.reason)
+            const fromHelper = input.agent_id !== undefined
+            const helperTool = fromHelper
+                ? checkHelperTool({ tool_name: input.tool_name })
+                : null
+            const decision =
+                helperTool !== null && !helperTool.allow
+                    ? helperTool
+                    : checkToolCall({
+                          role,
+                          may_edit_tests,
+                          tool_name: input.tool_name,
+                          tool_input: input.tool_input,
+                          worktree,
+                          config,
+                      })
+            const full =
+                decision.allow &&
+                input.tool_name === HELPER_TOOL &&
+                helpers.size >= MAX_HELPERS
+            if (decision.allow && !full) {
+                if (input.tool_name === HELPER_TOOL) {
+                    helpers.add(tool_use_id ?? input.tool_use_id)
+                    on_helper?.()
+                }
+                if (!fromHelper) {
+                    on_allow?.({
+                        tool_name: input.tool_name,
+                        tool_input: input.tool_input,
+                        tool_use_id: tool_use_id ?? input.tool_use_id,
+                    })
+                }
+                return {}
+            }
+            const reason = decision.allow
+                ? `At most ${MAX_HELPERS} helpers run at once: wait for one to finish.`
+                : decision.reason
+            on_deny?.({ tool_name: input.tool_name, reason })
+            return denied(reason)
         } catch (error) {
             return denied(
                 `The guard could not check this call: ${String(error)}`

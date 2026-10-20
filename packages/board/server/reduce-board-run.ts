@@ -1,12 +1,13 @@
 /**
- * The run's own records: how it starts and resumes, intake and the spec's
- * snapshot, the run branch, the pull request, and a stop.
+ * The run's own records: how it starts and resumes, its repo wait, intake
+ * and the spec's snapshot, the run branch, the pull request, and a stop.
  */
 import type { BoardRecord, LeftOutList } from './board-vocabulary'
 import { numbersText } from './reduce-board-text'
 import { updateTicket, withTried } from './reduce-board-update'
 
 import {
+    DEFAULT_CONFIDENCE_BAR,
     DEFAULT_RUN_BUDGET_TOKENS,
     type BoardState,
     type PersonTicket,
@@ -86,6 +87,8 @@ const specOwner = ({
 /** The record kinds the run's own records. */
 export const RUN_KINDS = [
     'run_started',
+    'repo_wait_started',
+    'repo_wait_ended',
     'engine_resumed',
     'config_reloaded',
     'config_reload_refused',
@@ -119,6 +122,9 @@ export const applyRunKind = ({
                 ...state,
                 run_budget_tokens: budget,
                 run_budget_each: budget,
+                confidence_bar:
+                    record.content.config?.models?.confidence_bar ??
+                    DEFAULT_CONFIDENCE_BAR,
                 run: {
                     ...state.run,
                     spec_number: record.content.spec_number,
@@ -127,6 +133,16 @@ export const applyRunKind = ({
                 },
             }
         }
+        case 'repo_wait_started':
+            return {
+                ...state,
+                repo_wait: {
+                    runs: record.content.runs.map(({ run_id }) => run_id),
+                    since: record.time,
+                },
+            }
+        case 'repo_wait_ended':
+            return { ...state, repo_wait: null }
         case 'engine_resumed':
             return {
                 ...state,

@@ -6,6 +6,8 @@ import { z } from 'zod'
 
 import { FindingCountsSchema } from './board-vocabulary-shapes'
 
+import { WaitForSchema } from '../shared/board-state'
+
 export const REVIEW_VOCABULARY = {
     /** The owner's reply on the spec issue, read by the engine (#366). */
     reply_received: z.looseObject({
@@ -95,4 +97,14 @@ export const REVIEW_VOCABULARY = {
     step_started: z.looseObject({ key: z.string(), step: z.string() }),
     /** The step on `key` settled. */
     step_ended: z.looseObject({ key: z.string(), step: z.string() }),
+    /**
+     * A ticket began to wait between steps (#559), for `for` on
+     * `on_ticket`, since `since`; its next `step_started` ends it. A reason
+     * the board doesn't know reads as `null`.
+     */
+    ticket_waiting: z.looseObject({
+        for: WaitForSchema.nullable().catch(null),
+        on_ticket: z.number().int().nullable().catch(null),
+        since: z.string(),
+    }),
 } as const

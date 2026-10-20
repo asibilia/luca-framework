@@ -15,11 +15,13 @@ import {
     ResultSchema,
     modelTotalsOf,
     stop,
+    toolResultIds,
     turnTokens,
     type Outcome,
 } from './claude-messages'
 import type { createInputChannel } from './input-channel'
 import type { AgentRole } from './role-results'
+import type { TurnProgressKeeper } from './turn-progress'
 
 import { planSignal } from '../limits/plan-signals'
 
@@ -48,6 +50,13 @@ export type OpenSession = {
     input: ReturnType<typeof createInputChannel>
     /** What the launcher has seen of the session; per-turn fields reset each turn. */
     summary: AgentSession
+    /**
+     * The helpers running now, by the tool call that started each: the guard
+     * hook adds one, and its result (or the turn's end) takes it out.
+     */
+    helpers: Set<string>
+    /** The turn's live progress (#628), told to the turn's `on_progress`. */
+    progress: TurnProgressKeeper
     /** The SDK's running tokens per model, as of the session's last result. */
     model_totals: Record<string, ModelTokens>
     /** Resolves the turn waiting for the session's next outcome. */
@@ -127,8 +136,10 @@ export const watch = ({
         summary.billing_error = true
         return planCut('assistant error billing_error')
     }
+    for (const id of toolResultIds(raw)) open.helpers.delete(id)
     const result = ResultSchema.safeParse(raw)
     if (!result.success) return null
+    open.helpers.clear()
     const done = result.data
     summary.num_turns = done.num_turns
     summary.usage = done.usage
@@ -167,6 +178,7 @@ export const pumpMessages = async ({
     try {
         for await (const raw of open.running) {
             const outcome = watch({ open, raw })
+            open.progress.heard(raw)
             if (outcome === null) continue
             deliver({ open, outcome })
             if (open.ended !== null) break

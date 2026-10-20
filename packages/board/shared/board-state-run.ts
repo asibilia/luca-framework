@@ -89,6 +89,13 @@ export type NeedsYou = z.infer<typeof NeedsYouSchema>
  */
 export const DEFAULT_RUN_BUDGET_TOKENS = 9_000_000
 
+/**
+ * The engine's default `models.confidence_bar` (in
+ * `engine/src/config/engine-config-schema.ts`): the decision model is sharp at or
+ * over it, split under it. Kept here for the same reason.
+ */
+export const DEFAULT_CONFIDENCE_BAR = 0.8
+
 export const EngineEndedSchema = z.object({
     ok: z.boolean(),
     message: z.string(),
@@ -155,6 +162,23 @@ export const RunInfoSchema = z.object({
 })
 
 export type RunInfo = z.infer<typeof RunInfoSchema>
+
+/** The run phases after which no engine is needed. */
+export const OVER_PHASES: ReadonlySet<RunPhase> = new Set<RunPhase>([
+    'done',
+    'refused',
+    'nothing_to_do',
+])
+
+/**
+ * Whether a run may still need an engine: not ended, not over. The
+ * server's engine check and the panel's "no sign of life" both go by it.
+ *
+ * @example
+ * needsEngine({ state }) // true while the run builds
+ */
+export const needsEngine = ({ state }: { state: { run: RunInfo } }): boolean =>
+    state.run.engine_ended === null && !OVER_PHASES.has(state.run.phase)
 
 /**
  * An open ticket the run left out for a person (#499): one labeled

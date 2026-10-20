@@ -20,8 +20,10 @@ import {
     MessageCountsSchema,
     NO_MEMORY,
 } from './board-state-counts'
+import { LiveAgentSchema, LiveFeedEntrySchema } from './board-state-live'
 import { FinalReviewSchema } from './board-state-review'
 import {
+    DEFAULT_CONFIDENCE_BAR,
     DEFAULT_RUN_BUDGET_TOKENS,
     NeedsYouSchema,
     PersonTicketSchema,
@@ -31,6 +33,7 @@ import { CurrentStepSchema, TicketCardSchema } from './board-state-ticket'
 import { PlanUsedSchema, USAGE_LABEL, UsageSchema } from './board-state-usage'
 
 export * from './board-state-counts'
+export * from './board-state-live'
 export * from './board-state-review'
 export * from './board-state-run'
 export * from './board-state-ticket'
@@ -77,6 +80,12 @@ export const BoardStateSchema = z.object({
     run_budget_tokens: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
     /** One full run budget: the engine config's, else the default. */
     run_budget_each: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
+    /**
+     * The engine config's `models.confidence_bar` (#630): the decision
+     * model is sharp at or over it. Defaulted, so an older board state
+     * still parses.
+     */
+    confidence_bar: z.number().min(0).max(1).default(DEFAULT_CONFIDENCE_BAR),
     /** The plan limit was hit; the engine waits and then carries on. */
     limit_wait: z
         .object({
@@ -102,6 +111,19 @@ export const BoardStateSchema = z.object({
             percent: z.number(),
             /** When the window resets. */
             resets_at: z.string(),
+            since: z.string(),
+        })
+        .nullable()
+        .default(null),
+    /**
+     * The run waits for the earlier runs on its repo that are going (#615),
+     * from `repo_wait_started` until `repo_wait_ended`. Defaulted, so a
+     * board state from before it still parses.
+     */
+    repo_wait: z
+        .object({
+            /** The run ids of the earlier runs it waits for. */
+            runs: z.array(z.string()),
             since: z.string(),
         })
         .nullable()
@@ -134,12 +156,41 @@ export const BoardStateSchema = z.object({
     run_steps: z
         .array(CurrentStepSchema.extend({ key: z.string() }))
         .default([]),
+    /**
+     * Every agent in a turn, from the run's live file (#628), those on no
+     * ticket too. Laid over the state on each read, never journaled.
+     * Defaulted, so a board state from before it still parses.
+     */
+    live_agents: z.array(LiveAgentSchema).default([]),
     /** The newest of `run_steps`, `null` when none runs. */
     current_step: CurrentStepSchema.nullable().default(null),
+    /**
+     * The run's last actions across tickets, oldest first, from its live
+     * file (#634), never from the journal. Defaulted, so a board state
+     * from before it still parses.
+     */
+    feed: z.array(LiveFeedEntrySchema).default([]),
+    /**
+     * When the engine last wrote the run's live file, `null` with none: its
+     * last sign of life (#635). Defaulted, so a board state from before it
+     * still parses.
+     */
+    live_written_at: z.string().nullable().default(null),
+    /**
+     * The plugin's process check found no engine for this run, which it
+     * didn't start and so never restarts (#635). Defaulted, so a board
+     * state from before it still parses.
+     */
+    engine_gone: z.boolean().default(false),
     /** Journal records applied so far. */
     event_count: z.number().int().min(0),
     /** The latest thing that happened, in words (for the footer). */
     latest: z.string().nullable(),
+    /**
+     * When `latest` happened (its record's time), so the footer can say how
+     * long ago. Defaulted, so a board state from before it still parses.
+     */
+    latest_at: z.string().nullable().default(null),
 })
 
 export type BoardState = z.infer<typeof BoardStateSchema>

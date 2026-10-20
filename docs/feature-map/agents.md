@@ -87,7 +87,7 @@ Tests:
 
 ## Agents and their launcher
 
-Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends.
+Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends. Any agent may start up to 3 read-only Haiku helpers (`searcher`) to search the repo; their tokens count toward the run budget.
 
 Reached by: every agent turn of a real run; scripted stand-in agents run the end-to-end tests.
 
@@ -95,6 +95,8 @@ Tests:
 
 - `packages/engine/src/agents/claude-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher-options.test.ts`
+- `packages/engine/src/agents/claude-launcher-searchers.test.ts`
+- `packages/engine/src/agents/helpers-glossary.test.ts`
 - `packages/engine/src/agents/claude-launcher-follow-ups.test.ts`
 - `packages/engine/src/agents/claude-launcher-messages.test.ts`
 - `packages/engine/src/agents/claude-launcher-result.test.ts`

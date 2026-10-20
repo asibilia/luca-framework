@@ -32,6 +32,8 @@ const entry = <Kind extends BoardKind>({ kind }: { kind: Kind }) =>
 
 const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_started' }),
+    entry({ kind: 'repo_wait_started' }),
+    entry({ kind: 'repo_wait_ended' }),
     entry({ kind: 'engine_resumed' }),
     entry({ kind: 'config_reloaded' }),
     entry({ kind: 'config_reload_refused' }),
@@ -94,6 +96,7 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'memories_reported' }),
     entry({ kind: 'step_started' }),
     entry({ kind: 'step_ended' }),
+    entry({ kind: 'ticket_waiting' }),
 ])
 
 /** A record the board understands, with its content parsed. */

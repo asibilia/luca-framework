@@ -9,6 +9,7 @@ import { Pressable, Text, View } from 'react-native'
 
 import { useNow } from './board-look'
 import type { Look, Styles } from './board-panel-styles'
+import { CutLine, useCloseBubble } from './one-line'
 
 import {
     LOOP_CAP,
@@ -29,28 +30,36 @@ export const Counter = ({
               ? theme.colors.statusWarning
               : theme.colors.foregroundMuted
     return (
-        <Text style={[styles.counter, { color, borderColor: color }]}>
+        <Text
+            style={[styles.counter, { color, borderColor: color }]}
+            numberOfLines={1}
+        >
             {label} {value}/{LOOP_CAP}
         </Text>
     )
 }
 
-/** A running step with its time, counting up by itself. */
+/** A running step with its time, counting up by itself, on one line. */
 export const StepLine = ({
     step,
     prefix,
+    at = null,
     styles,
 }: {
     step: CurrentStep
     prefix: string
+    /** A stopped clock (#635), in ms, in place of the ticking one. */
+    at?: number | null
     styles: Styles
 }) => {
-    const now = useNow()
+    const ticking = useNow()
+    const now = at ?? ticking
     return (
-        <Text style={styles.muted} numberOfLines={1}>
-            {prefix}
-            {currentStepText({ step, now })}
-        </Text>
+        <CutLine
+            text={`${prefix}${currentStepText({ step, now })}`}
+            style={styles.muted}
+            styles={styles}
+        />
     )
 }
 
@@ -73,6 +82,7 @@ export const StageHeader = ({
     folded: boolean | null
     onPress: (() => void) | null
 } & Look) => {
+    const closeBubble = useCloseBubble()
     const empty = count === 0
     const tint = empty ? theme.colors.foregroundMuted : color
     const content = (
@@ -103,7 +113,10 @@ export const StageHeader = ({
         <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${title}, ${count}. ${folded ? 'Open' : 'Fold'} this stage`}
-            onPress={onPress}
+            onPress={() => {
+                closeBubble()
+                onPress()
+            }}
             style={style}
         >
             {content}

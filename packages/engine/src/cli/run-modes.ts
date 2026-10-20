@@ -18,6 +18,7 @@ import {
     startRun,
 } from '../core/execute'
 import type { GoingRunsReader } from '../core/execute-repo-wait'
+import { runLiveFilePath } from '../core/live-file'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { UsageLineDeps } from '../limits/usage-line'
@@ -39,7 +40,8 @@ export {
 
 /**
  * A real run of `spec_number` on `repo`: loads the repo's engine config,
- * opens (or resumes) the run's journal at `<runs_dir>/<run_id>`, and runs the
+ * opens (or resumes) the run's journal at `<runs_dir>/<run_id>` (its live
+ * file, `live.json`, goes beside it), and runs the
  * engine with the board kept in step, the agents from `launcher`, and the
  * decision model in shadow mode if given (`decision_model`; with no
  * credentials it is off for the run, see `openDecisionModel`). With `memory`, a new run turns memory on (#370),
@@ -154,6 +156,7 @@ export const runSpec = async ({
                 usage,
                 going_runs,
                 board: board ?? undefined,
+                live_file: runLiveFilePath({ runs_dir, run_id }),
             }),
     })
 }

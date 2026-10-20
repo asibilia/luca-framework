@@ -6,12 +6,17 @@ import type { BoardRecord } from './board-vocabulary'
 import { roleWords } from './reduce-board-text'
 import { updateTicket } from './reduce-board-update'
 
-import type { BoardState, TicketCard, TicketStage } from '../shared/board-state'
+import {
+    BASELINE_STEP_TEXT,
+    type BoardState,
+    type TicketCard,
+    type TicketStage,
+} from '../shared/board-state'
 
 /** A step's action type in words, when it reads better than its name. */
 const STEP_WORDS: Record<string, string> = {
     install_dependencies: 'installing packages',
-    run_baseline_tests: 'running the baseline tests',
+    run_baseline_tests: BASELINE_STEP_TEXT,
     run_red_check: 'running the red check',
     run_gates: 'running the checks',
     run_final_gates: 'running the checks',
@@ -130,6 +135,8 @@ const stepStarted = ({
                 ...card,
                 stage: stepStage({ card, step: record.content.step }),
                 current_step: ended ? card.current_step : current_step,
+                // Its next step ends any wait.
+                wait: null,
             }),
         })
     }
@@ -155,7 +162,13 @@ const stepEnded = ({
         return updateTicket({
             state,
             number: record.ticket,
-            update: (card) => ({ ...card, current_step: null }),
+            // Between steps now: what it waits for is worked out on the
+            // card, unless the engine journals it (`ticket_waiting`).
+            update: (card) => ({
+                ...card,
+                current_step: null,
+                wait: { for: null, on_ticket: null, since: record.time },
+            }),
         })
     }
     return withRunSteps({
@@ -166,8 +179,31 @@ const stepEnded = ({
     })
 }
 
-/** The record kinds of a step. */
-export const STEP_KINDS = ['step_started', 'step_ended'] as const
+/** A ticket began to wait between steps, for what the engine says (#559). */
+const ticketWaiting = ({
+    state,
+    record,
+}: {
+    state: BoardState
+    record: Extract<BoardRecord, { kind: 'ticket_waiting' }>
+}): BoardState => {
+    const { for: waiting_for, on_ticket, since } = record.content
+    return updateTicket({
+        state,
+        number: record.ticket,
+        update: (card) => ({
+            ...card,
+            wait: { for: waiting_for, on_ticket, since },
+        }),
+    })
+}
+
+/** The record kinds of a step, and of a wait between steps. */
+export const STEP_KINDS = [
+    'step_started',
+    'step_ended',
+    'ticket_waiting',
+] as const
 
 type StepRecord = Extract<BoardRecord, { kind: (typeof STEP_KINDS)[number] }>
 
@@ -184,5 +220,7 @@ export const applyStepKind = ({
             return stepStarted({ state, record })
         case 'step_ended':
             return stepEnded({ state, record })
+        case 'ticket_waiting':
+            return ticketWaiting({ state, record })
     }
 }

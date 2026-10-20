@@ -116,7 +116,10 @@ export const StepDots = ({
                     </View>
                 )
             })}
-            <Text style={[styles.stepLabel, { color: labelColor }]}>
+            <Text
+                style={[styles.stepLabel, { color: labelColor }]}
+                numberOfLines={1}
+            >
                 {stepLabel({ ticket })}
             </Text>
         </View>

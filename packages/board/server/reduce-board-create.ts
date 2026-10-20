@@ -3,6 +3,7 @@
  * card when its snapshot first arrives.
  */
 import {
+    DEFAULT_CONFIDENCE_BAR,
     DEFAULT_RUN_BUDGET_TOKENS,
     LENS_NAMES,
     NO_MEMORY,
@@ -74,8 +75,10 @@ export const createBoardState = ({
     run_tokens: 0,
     run_budget_tokens: DEFAULT_RUN_BUDGET_TOKENS,
     run_budget_each: DEFAULT_RUN_BUDGET_TOKENS,
+    confidence_bar: DEFAULT_CONFIDENCE_BAR,
     limit_wait: null,
     usage_line_wait: null,
+    repo_wait: null,
     run_plan_used: [],
     needs_you: [],
     tickets: [],
@@ -92,9 +95,14 @@ export const createBoardState = ({
     memory: NO_MEMORY,
     shared_git_changed: 0,
     run_steps: [],
+    live_agents: [],
     current_step: null,
+    feed: [],
+    live_written_at: null,
+    engine_gone: false,
     event_count: 0,
     latest: null,
+    latest_at: null,
 })
 
 export const newTicket = ({
@@ -117,7 +125,11 @@ export const newTicket = ({
     step: -1,
     activity: 'queued',
     role: null,
+    model: null,
+    model_answer: null,
+    model_answers: {},
     current_step: null,
+    wait: null,
     fix_round: 0,
     review_round: 0,
     review_fix_round: 0,
@@ -130,4 +142,6 @@ export const newTicket = ({
     agent_tokens: {},
     tried: [],
     plan_used: [],
+    live: null,
+    slot_wait: null,
 })

@@ -5,7 +5,11 @@
  */
 import { z } from 'zod'
 
-import { JevJobSchema, TestRunSchema } from './board-vocabulary-shapes'
+import {
+    JevAnsweredSchema,
+    JevJobSchema,
+    TestRunSchema,
+} from './board-vocabulary-shapes'
 
 export const ENGINE_VOCABULARY = {
     worktree_reset: z.looseObject({}),
@@ -82,7 +86,7 @@ export const ENGINE_VOCABULARY = {
     // The decision model (Clef; Jev in older journals) in shadow mode:
     // counted, never acted on.
     jev_asked: JevJobSchema,
-    jev_answered: JevJobSchema,
+    jev_answered: JevAnsweredSchema,
     jev_failed: JevJobSchema,
     /**
      * The decision model is off for the rest of the run (#534): no

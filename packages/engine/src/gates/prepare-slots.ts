@@ -4,12 +4,15 @@ export type Slots = {
      * Waits for a slot (at most `limit` pieces of work at once), then runs
      * `work`. The slot is freed when `work` settles, even when it throws.
      * An `exclusive` take waits until no work holds a slot, then holds them
-     * all: nothing else starts until it settles.
+     * all: nothing else starts until it settles. A take that must wait
+     * calls `on_wait` with the slots in use, and what that gives back once
+     * the slot is taken.
      */
     run: <T>(args: {
         limit: number
         work: () => Promise<T>
         exclusive?: boolean
+        on_wait?: (in_use: number) => () => void
     }) => Promise<T>
     /** How many pieces of work hold a slot now. */
     busy: () => number
@@ -50,18 +53,32 @@ export const createSlots = (): Slots => {
     const take = ({
         limit,
         exclusive,
+        on_wait,
     }: {
         limit: number
         exclusive: boolean
-    }): Promise<void> =>
-        new Promise((start) => {
-            waiting.push({ limit, exclusive, start })
+        on_wait: ((in_use: number) => () => void) | undefined
+    }): Promise<void> => {
+        let started = false
+        const taken_now = new Promise<void>((start) => {
+            waiting.push({
+                limit,
+                exclusive,
+                start: () => {
+                    started = true
+                    start()
+                },
+            })
             startWaiting()
         })
+        if (started || on_wait === undefined) return taken_now
+        const slot_taken = on_wait(taken)
+        return taken_now.then(() => slot_taken())
+    }
 
     return {
-        run: async ({ limit, work, exclusive = false }) => {
-            await take({ limit, exclusive })
+        run: async ({ limit, work, exclusive = false, on_wait }) => {
+            await take({ limit, exclusive, on_wait })
             try {
                 return await work()
             } finally {

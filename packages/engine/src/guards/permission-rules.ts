@@ -7,6 +7,7 @@ import {
     type GuardArgs,
     type GuardRole,
 } from './guard-roles'
+import { HELPER_TOOL, HELPER_TYPE } from './helper-rules'
 import {
     checkCommands,
     GIT_READ_SUBCOMMANDS,
@@ -23,8 +24,6 @@ import {
 
 /** Built-in tools no agent gets, and secret files no agent reads. */
 export const BASE_DISALLOWED_TOOLS = [
-    'Agent',
-    'Task',
     'Workflow',
     'Skill',
     'WebFetch',
@@ -142,10 +141,12 @@ export const permissionRules = ({
         reviewer: { allowed: [], disallowed: ['Edit', 'Write'] },
         learner: { allowed: [], disallowed: ['Edit', 'Write', 'Bash'] },
     }
+    // Every role may start read-only `searcher` helpers (#627).
     return {
-        tools: TOOLS[role],
+        tools: [...TOOLS[role], HELPER_TOOL],
         allowed: [
             ...READ_TOOLS,
+            `${HELPER_TOOL}(${HELPER_TYPE})`,
             ...writes[role].allowed,
             ...checks,
             ...shell,

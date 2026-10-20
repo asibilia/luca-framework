@@ -80,6 +80,7 @@ export const JournalKindSchema = z.enum([
     'memories_reported',
     'step_started',
     'step_ended',
+    'ticket_waiting',
     'run_resumed',
     'join_started',
     'engine_resumed',

@@ -19,7 +19,10 @@ import {
 export const RUN_VOCABULARY = {
     run_started: z.looseObject({
         spec_number: z.number().int(),
-        /** The engine config; the board reads only its run budget. */
+        /**
+         * The engine config; the board reads only its run budget and the
+         * decision model's confidence bar.
+         */
         config: z
             .looseObject({
                 run_budget_tokens: z
@@ -28,12 +31,27 @@ export const RUN_VOCABULARY = {
                     .positive()
                     .optional()
                     .catch(undefined),
+                models: z
+                    .looseObject({
+                        confidence_bar: z.number().optional().catch(undefined),
+                    })
+                    .optional()
+                    .catch(undefined),
             })
             .optional()
             .catch(undefined),
         /** Luca's version the run started on (#460); older journals have none. */
         luca_version: z.string().nullable().catch(null),
     }),
+    /**
+     * Before intake, the run waits for the earlier runs on its repo that
+     * are going (#615); the board reads only their run ids.
+     */
+    repo_wait_started: z.looseObject({
+        runs: z.array(z.looseObject({ run_id: z.string() })).catch([]),
+    }),
+    /** No earlier run on the repo is going anymore. */
+    repo_wait_ended: z.looseObject({}),
     /** The engine started again on the run's journal, on Luca's `luca_version`. */
     engine_resumed: z.looseObject({ luca_version: z.string() }),
     /**
@@ -83,6 +101,10 @@ export const RUN_VOCABULARY = {
         role: z.string(),
         /** The session a fix-loop or failed-try follow-up went to. */
         follow_up_of: z.string().nullable().catch(null),
+        /** The model it runs on (#599); older journals have none. */
+        model: z.string().nullable().catch(null),
+        /** Why it got that model (#603), such as `unsure`; older journals have none. */
+        model_reason: z.string().nullable().catch(null),
     }),
     agent_finished: z.looseObject({
         role: z.string(),

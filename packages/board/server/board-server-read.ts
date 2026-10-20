@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import type { RunStore } from './board-server-store'
 import type { BoardServerConfig, OutsideRun } from './board-server-types'
+import { readLiveFile, withLive } from './live-file'
 import { createBoardState } from './reduce-board'
 import type { ReplyRun } from './reply-post'
 import { listJournals } from './run-journals'
@@ -20,6 +21,7 @@ import type {
     ReplyPostInput,
     ReplyPostOutput,
 } from '../shared/board-rpc'
+import { needsEngine } from '../shared/board-state'
 
 const RunRepoSchema = z.object({ repo: z.string().min(1) })
 
@@ -79,6 +81,7 @@ export const createBoardReads = ({
                     size,
                     changed_ms,
                     repo: null,
+                    engine_gone: false,
                 }
                 applyInOrder({ memory: run, records })
                 run.size = size
@@ -92,7 +95,7 @@ export const createBoardReads = ({
     /**
      * `board.read`: the runs started from the workspace's chats and the runs
      * this plugin didn't start whose repo is the workspace's folder, newest
-     * first, and one of them in full.
+     * first, and one of them in full, with its live file laid over it.
      */
     const readBoard = async (
         input: BoardReadInput
@@ -104,9 +107,16 @@ export const createBoardReads = ({
             ...[...runs.values()].filter(
                 (memory) => memory.entry.workspace_id === input.workspace_id
             ),
-            ...[...outside.values()].filter(
-                (run) => directory !== null && run.repo === directory
-            ),
+            ...[...outside.values()]
+                .filter((run) => directory !== null && run.repo === directory)
+                .map((run) => ({
+                    state: {
+                        ...run.state,
+                        engine_gone:
+                            run.engine_gone &&
+                            needsEngine({ state: run.state }),
+                    },
+                })),
         ]
             .map(({ state }) => state)
             .toSorted((left, right) =>
@@ -119,6 +129,10 @@ export const createBoardReads = ({
                 ? list.find((state) => state.run.run_id === input.run_id)
                 : undefined) ?? list[0]
         const selected_id = selected?.run.run_id ?? null
+        const live =
+            runs_dir === null || selected_id === null
+                ? null
+                : await readLiveFile({ runs_dir, run_id: selected_id })
         return {
             runs: list.map((state) => ({
                 run_id: state.run.run_id,
@@ -129,7 +143,10 @@ export const createBoardReads = ({
                 started_at: state.run.started_at,
                 needs_you: state.needs_you.length,
             })),
-            selected: selected ?? null,
+            selected:
+                selected === undefined
+                    ? null
+                    : withLive({ state: selected, live }),
             chat_agent_id:
                 selected_id === null
                     ? null
@@ -169,5 +186,5 @@ export const createBoardReads = ({
         return poster.postReply({ run, input })
     }
 
-    return { outside, readBoard, postReply }
+    return { outside, readOutside, readBoard, postReply }
 }

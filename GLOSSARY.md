@@ -52,6 +52,10 @@ _Avoid_: deploy, install
 One model session doing one role on one ticket.
 _Avoid_: subagent, worker
 
+**Helper**:
+A read-only Haiku session an agent starts to search the repo; not an agent.
+_Avoid_: subagent, searcher agent
+
 **Role**:
 The job an agent does in a run, such as test-writer, implementer, or reviewer.
 _Avoid_: mode, persona
@@ -197,3 +201,7 @@ _Avoid_: savepoint, snapshot
 **Board**:
 The live view of a run: its tickets, its agents, and what each one is doing.
 _Avoid_: dashboard, statusline
+
+**Live file**:
+A small file the engine keeps in the run folder with what each agent in a turn is doing now, for the board to show between journal records. Each write replaces it whole; it is never part of the journal and never replayed.
+_Avoid_: status file, live journal

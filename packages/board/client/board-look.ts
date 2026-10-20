@@ -13,7 +13,8 @@ import type {
 
 /**
  * Colors and words shared by the side panel and the chat rows, so both views
- * match. Every color comes from the host theme.
+ * match. Every color comes from the host theme, except the models' own
+ * (`MODEL_COLORS`).
  */
 
 export const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' })
@@ -153,6 +154,31 @@ export const statusColor = ({
             return theme.colors.foregroundMuted
     }
 }
+
+/**
+ * The models' colors (#630): Opus purple, Sonnet orange, Haiku blue, and
+ * Clef (the decision model) green. Fixed hues that read on light and dark
+ * themes alike: the one exception to "every color from the host theme".
+ */
+export const MODEL_COLORS: ReadonlyMap<string, string> = new Map([
+    ['opus', '#a371f7'],
+    ['sonnet', '#e8833a'],
+    ['haiku', '#3b9fe8'],
+    ['clef', '#3fb950'],
+])
+
+/** Clef's confidence bar: green when sharp, orange when split. */
+export const CONFIDENCE_COLORS = { sharp: '#3fb950', split: '#e3a23b' }
+
+/** A model's color; the engine, or a model the board doesn't know, is muted. */
+export const modelColor = ({
+    model,
+    theme,
+}: {
+    model: string
+    theme: PluginTheme
+}): string =>
+    MODEL_COLORS.get(model.toLowerCase()) ?? theme.colors.foregroundMuted
 
 /** A run status in words. */
 export const statusText = ({ status }: { status: RunStatus }): string => {

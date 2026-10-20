@@ -1,8 +1,8 @@
 /**
  * The top of the side panel: the title and status, the run tabs, the run's
  * title and pull request, plan usage, what the engine is doing now, the
- * run's tokens and plan used, and the banners (a limit wait, a version note,
- * a stop, the engine ending, intake refusing the run).
+ * run's tokens and plan used, and the banners (a repo wait, a limit wait, a
+ * version note, a stop, the engine ending, intake refusing the run).
  */
 import type { PluginWorkspacePanelProps } from '@getpaseo/plugin/client'
 import { ExternalLink } from '@getpaseo/plugin/client/ui'
@@ -15,9 +15,12 @@ import {
     statusText,
     tokensText,
     usageLineWaitText,
+    useNow,
 } from './board-look'
 import { Banner, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { noLife } from './engine-life'
+import { RepoWaitBanner } from './repo-wait-banner'
 import { RunPicker } from './run-picker'
 import { UsageLine } from './usage-line'
 
@@ -43,6 +46,8 @@ export const RunHeader = ({
 } & Look) => {
     const { run } = state
     const look = { theme, styles }
+    // With no sign of life (#635), the step's time and the repo wait's stop.
+    const lifeless = noLife({ state, now: useNow() })
     return (
         <>
             <View style={styles.row}>
@@ -90,6 +95,7 @@ export const RunHeader = ({
                 <StepLine
                     step={state.current_step}
                     prefix="Now: "
+                    at={lifeless?.at ?? null}
                     styles={styles}
                 />
             ) : null}
@@ -105,6 +111,13 @@ export const RunHeader = ({
                     This run used:{' '}
                     {planUsedText({ used: state.run_plan_used, sign: '' })}
                 </Text>
+            ) : null}
+            {state.repo_wait && run.engine_ended === null ? (
+                <RepoWaitBanner
+                    wait={state.repo_wait}
+                    lifeless={lifeless}
+                    {...look}
+                />
             ) : null}
             {state.limit_wait ? (
                 <Banner

@@ -36,6 +36,85 @@ The link finds the daemon at `PASEO_HOST`, or the `listen` field of
 `ws://<listen>/ws` as a `cli` client (with `PASEO_PASSWORD` if set), keeps
 that connection for the run, and reconnects once when a send fails.
 
+## The live file
+
+While a run goes, the engine keeps its **live file**, `live.json`, in the
+run folder beside the journal (`runLiveFilePath`, `src/core/live-file.ts`),
+for the board to show what is happening between journal records (#628). It
+is never journaled and never replayed, so a run's journal is the same with
+it or without it. `runSpec` gives `runEngine` its path; without `live_file`
+(the demo, most tests) there is none.
+
+```ts
+{
+  written_at: string,            // ISO; set on every write
+  plan_usage: object | null,     // the run's first rate_limit_event reading, with arrived_at
+  agents: [{
+    ticket: number, role: string, model: string | null,
+    tokens: number,              // the turn's tokens so far, cache reads included
+    action: { tool, target, at } | null,              // the latest action
+    open_call: { tool, target, started_at } | null,   // a tool call still running
+    activity: number[],          // 30 counts, one per second, oldest first (#631)
+    helpers: [{                  // the helpers it started this turn, oldest first (#636)
+      model: string,             // always 'haiku'
+      action: { tool, target, at } | null,   // the helper's latest action
+      done: boolean,             // its result came back
+    }],
+  }],
+  waits: [{                      // a ticket's check waiting for a slot (#632)
+    ticket: number, for: 'prepare_slot' | 'test_slot',
+    in_use: number, slots: number, since: string,
+  }],
+  feed: [{                       // the run's last 50 actions, oldest first (#634)
+    at: string, ticket: number, role: string, model: string | null,
+    tool: string, target: string,
+  }],
+}
+```
+
+An agent's `helpers` are the read-only helpers it started in this turn
+(see "Helpers" in `agent-messages-and-guards.md`): each one's latest action comes from the SDK messages
+it sends back under its `Agent` call, and `done` turns true once that
+call's result comes back. They leave the file with their agent's turn.
+
+The `feed` is the board's live feed: each new action of an agent, or of
+one of its helpers (with role `helper` and the helper's model), across
+every ticket, newest last, never more than `LIVE_FEED_SIZE` (50). A message
+that only adds tokens adds no entry. Unlike `agents`, it stays in the
+file's last write at the end of the run.
+
+A `target` is a path relative to the worktree, or the first words of a
+command; the file never holds a prompt, a file's contents or a command's
+output. Each write replaces the whole file (written aside, then renamed),
+at most once a second while something changed and at least every 5
+seconds while the engine runs, so its `written_at` tells a quiet agent from
+a dead engine. When the run ends, it is written one last time with no
+agents.
+
+What goes in comes from the launcher: `launch` and `followUp` take an
+optional `on_progress`, which the Claude launcher calls each time the turn
+changes (`src/agents/turn-progress.ts`): the tokens of each SDK message so
+far, the latest tool call it saw, the call the guard hook let through until
+its result comes back, and the turn's plan-usage readings, the first of
+them within seconds. `runEngine` wraps its launcher so each turn's progress
+lands in the file while the turn runs.
+
+An agent's `activity` feeds the board's heartbeat (#631): each progress
+heard is one tick in the second it came, and each second a tool call is
+open adds one low tick, so a long command shows a steady ripple. The
+launcher turns on the SDK's partial messages (`includePartialMessages`), so
+each streamed chunk is heard too and a thinking model still moves the
+heartbeat. Nothing of a chunk is kept: the tokens come from the whole
+messages, and the journal is the same with partial messages on.
+
+A wait inside a step goes in too (#632): `runEngine` runs each ticket's
+step with the live file listening for slot waits (`hearSlotWaits`,
+`src/gates/slot-waits.ts`). A prepare check or a test run that must wait
+for a slot (`PREPARE_SLOTS`, `TEST_SLOTS`) adds a `waits` entry as it
+starts waiting, with the slots in use, and takes it out once it has the
+slot. The journal gets nothing new: the wait's length is already the
+check's `wait_ms`.
+
 ## The command line: `luca-run`
 
 ```bash

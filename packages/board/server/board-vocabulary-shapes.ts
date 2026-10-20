@@ -84,7 +84,7 @@ const WindowReadingSchema = z.looseObject({
  * readings carry no top-level `utilization`; each window's is in
  * `unifiedWindows`, keyed by window name (`five_hour`, `seven_day`, ...).
  */
-const RateLimitReadingSchema = z.looseObject({
+export const RateLimitReadingSchema = z.looseObject({
     rateLimitType: z.string().optional().catch(undefined),
     utilization: z.number().optional().catch(undefined),
     resetsAt: z.number().optional().catch(undefined),
@@ -118,6 +118,27 @@ export const AgentSessionSchema = z.looseObject({
 })
 
 export const JevJobSchema = z.looseObject({ job: z.string() })
+
+/**
+ * A decision-model answer. The board reads only the `model` question's
+ * answer (an `agent_model` ask's pick and confidence, #630).
+ */
+export const JevAnsweredSchema = JevJobSchema.extend({
+    answers: z
+        .looseObject({
+            model: z
+                .looseObject({
+                    value: z
+                        .union([z.string(), z.number()])
+                        .nullable()
+                        .catch(null),
+                    confidence: z.number().nullable().catch(null),
+                })
+                .optional()
+                .catch(undefined),
+        })
+        .catch({}),
+})
 
 /**
  * The spec issue as intake read it. `author` (the spec's owner, whose

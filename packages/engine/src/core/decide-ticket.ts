@@ -98,25 +98,49 @@ const failedTurnStep = ({
     }
 }
 
-/**
- * How a ticket with no baseline gets one. Tickets whose worktrees start from
- * the same run-branch commit share one baseline test run: a ticket reuses a
- * baseline taken at its commit, or else the first such ticket still able to
- * move runs the tests and the rest wait for it. `null`: it waits.
- */
-export const sharedBaselineStep = ({
-    number,
-    numbers,
-    progress,
-    can_move,
-}: {
+type SharedBaselineArgs = {
     number: number
     /** The run's tickets, in order. */
     numbers: number[]
     progress: (number: number) => TicketProgress
     /** Whether a ticket is neither pushed, skipped, nor stuck. */
     can_move: (number: number) => boolean
-}): BuildAction | null => {
+}
+
+/**
+ * The ticket that runs the baseline tests a ticket with no baseline shares:
+ * the first ticket still able to move whose worktree starts from the same
+ * run-branch commit and has no baseline yet. `null` with no worktree.
+ */
+export const baselineRunner = ({
+    number,
+    numbers,
+    progress,
+    can_move,
+}: SharedBaselineArgs): number | null => {
+    const base_sha = progress(number).worktree?.base_sha
+    if (base_sha === undefined) return null
+    return (
+        numbers.find(
+            (other) =>
+                can_move(other) &&
+                progress(other).baseline === null &&
+                progress(other).worktree?.base_sha === base_sha
+        ) ?? null
+    )
+}
+
+/**
+ * How a ticket with no baseline gets one. Tickets whose worktrees start from
+ * the same run-branch commit share one baseline test run: a ticket reuses a
+ * baseline taken at its commit, or else the first such ticket still able to
+ * move runs the tests (`baselineRunner`) and the rest wait for it. `null`:
+ * it waits.
+ */
+export const sharedBaselineStep = (
+    args: SharedBaselineArgs
+): BuildAction | null => {
+    const { number, numbers, progress } = args
     const base_sha = progress(number).worktree?.base_sha
     if (base_sha === undefined) return null
     const lender = numbers.find(
@@ -133,13 +157,7 @@ export const sharedBaselineStep = ({
             base_sha,
         }
     }
-    const runner = numbers.find(
-        (other) =>
-            can_move(other) &&
-            progress(other).baseline === null &&
-            progress(other).worktree?.base_sha === base_sha
-    )
-    return runner === number
+    return baselineRunner(args) === number
         ? { type: 'run_baseline_tests', ticket: number }
         : null
 }

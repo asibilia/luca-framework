@@ -80,11 +80,14 @@ export type RunMemory = Replay & {
  * from its journal on disk. Read-only: no chat rows, no engine events, no
  * restarts. `size` and `changed_ms` are its journal's when last read.
  * `repo` is the repo its `run_started` names, `null` when it names none.
+ * `engine_gone` is set by the engine check (#635): no process names the
+ * run and its live file isn't fresh. It only labels the run.
  */
 export type OutsideRun = Replay & {
     size: number
     changed_ms: number
     repo: string | null
+    engine_gone: boolean
 }
 
 /**

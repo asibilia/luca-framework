@@ -8,6 +8,7 @@ import { Pressable, Text, View } from 'react-native'
 
 import { statusColor, statusText } from './board-look'
 import type { Look } from './board-panel-styles'
+import { useCloseBubble } from './one-line'
 
 import { foldRuns, type RunSummary } from '../shared/board-state'
 
@@ -24,7 +25,12 @@ export const RunPicker = ({
     onPick: (run_id: string) => void
 } & Look) => {
     const [showOlder, setShowOlder] = useState(false)
+    const closeBubble = useCloseBubble()
     const { shown, folded } = foldRuns({ runs, selected })
+    const pick = (run_id: string) => {
+        closeBubble()
+        onPick(run_id)
+    }
     return (
         <View style={styles.row}>
             {(showOlder ? [...shown, ...folded] : shown).map((run) => (
@@ -32,7 +38,7 @@ export const RunPicker = ({
                     key={run.run_id}
                     run={run}
                     on={run.run_id === selected}
-                    onPick={onPick}
+                    onPick={pick}
                     theme={theme}
                     styles={styles}
                 />
@@ -45,7 +51,10 @@ export const RunPicker = ({
                             ? 'Fold the older runs'
                             : `Show ${folded.length} older runs`
                     }
-                    onPress={() => setShowOlder((open) => !open)}
+                    onPress={() => {
+                        closeBubble()
+                        setShowOlder((open) => !open)
+                    }}
                     style={styles.chip}
                 >
                     <Text style={styles.small}>

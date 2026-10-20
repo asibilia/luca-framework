@@ -98,6 +98,7 @@ import {
     RunStoppedEntrySchema,
     StepEndedEntrySchema,
     StepStartedEntrySchema,
+    TicketWaitingEntrySchema,
 } from './run-entries'
 import {
     CommentReadEntrySchema,
@@ -200,6 +201,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     MemoriesReportedEntrySchema,
     StepStartedEntrySchema,
     StepEndedEntrySchema,
+    TicketWaitingEntrySchema,
     RunResumedEntrySchema,
     JoinStartedEntrySchema,
     EngineResumedEntrySchema,

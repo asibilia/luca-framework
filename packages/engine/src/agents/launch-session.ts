@@ -38,6 +38,7 @@ import {
     type OpenSession,
 } from './open-session'
 import type { SessionPool } from './session-pool'
+import { createTurnProgress } from './turn-progress'
 
 import { createGuardHook } from '../guards/guard-hook'
 import { guardRoleOf } from '../guards/role-rules'
@@ -79,6 +80,7 @@ export const createLaunch = ({
         config,
         messaging,
         model,
+        on_progress,
     }) => {
         const refused = checkLaunchModel({ model })
         if (refused !== null) return stop(refused)
@@ -102,6 +104,12 @@ export const createLaunch = ({
 
         const summary: AgentSession = AgentSessionSchema.parse({})
         const stderr: string[] = []
+        const helpers = new Set<string>()
+        const progress = createTurnProgress({
+            worktree,
+            readings: () => open.summary.rate_limit_events,
+        })
+        progress.start(on_progress)
         const options = agentOptions({
             role,
             may_edit_tests,
@@ -120,6 +128,11 @@ export const createLaunch = ({
                 config,
                 // The summary is swapped each turn, so this reads it late.
                 on_deny: (denial) => open.summary.guard_denials.push(denial),
+                helpers,
+                on_helper: () => {
+                    open.summary.helpers_started += 1
+                },
+                on_allow: progress.opened,
             }),
             // Kept in the session's options, so its follow-ups have them too.
             luca_server:
@@ -152,6 +165,8 @@ export const createLaunch = ({
             running,
             input,
             summary,
+            helpers,
+            progress,
             model_totals: {},
             waiter: null,
             ended: null,

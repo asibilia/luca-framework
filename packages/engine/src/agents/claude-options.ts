@@ -23,6 +23,7 @@ import {
     type EngineConfig,
 } from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
+import { HELPER_TYPE, SEARCHER } from '../guards/helper-rules'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
 
@@ -164,6 +165,7 @@ export const resultJsonSchema = ({
  * role's instructions, its result schema, `dontAsk` with only its own
  * pre-approved calls, the guard hook, the sandbox, a clean environment, and
  * nothing loaded from the machine: no settings, MCP servers, or skills.
+ * Every agent may start the read-only `searcher` helper (#627).
  * An agent with messaging also gets the engine's own `luca` server and the
  * delivery hook after every tool call, failed ones too; a reviewer gets
  * neither. Pure: the caller resolves every path and builds the server and
@@ -236,6 +238,8 @@ export const agentOptions = ({
         tools: rules.tools,
         allowedTools: rules.allowed,
         disallowedTools: rules.disallowed,
+        // The one helper every role may start (#627), always on Haiku.
+        agents: { [HELPER_TYPE]: SEARCHER },
         settingSources: [],
         strictMcpConfig: true,
         // Only the engine's own in-process server, and only for an agent
@@ -252,6 +256,9 @@ export const agentOptions = ({
         }),
         env,
         persistSession: false,
+        // Streamed chunks only feed the live file's heartbeat (#631); the
+        // launcher keeps nothing of them.
+        includePartialMessages: true,
         maxTurns: MAX_TURNS[role],
         hooks: {
             PreToolUse: [{ hooks: [guard_hook] }],

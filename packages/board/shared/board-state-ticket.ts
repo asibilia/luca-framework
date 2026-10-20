@@ -4,6 +4,7 @@
  */
 import { z } from 'zod'
 
+import { LiveAgentSchema, LiveWaitSchema } from './board-state-live'
 import { PlanUsedSchema } from './board-state-usage'
 
 /** The steps of a ticket, shown as dots on its card. */
@@ -71,6 +72,32 @@ export const CurrentStepSchema = z.object({
 
 export type CurrentStep = z.infer<typeof CurrentStepSchema>
 
+/** The baseline tests' step (`run_baseline_tests`) in words. */
+export const BASELINE_STEP_TEXT = 'running the baseline tests'
+
+/**
+ * What a ticket waits for between steps (#559): `baseline` another
+ * ticket's shared baseline tests, `join` the join queue, `start` the start
+ * queue, each on `on_ticket`. From the engine's `ticket_waiting`.
+ */
+export const WaitForSchema = z.enum(['baseline', 'join', 'start'])
+
+export type WaitFor = z.infer<typeof WaitForSchema>
+
+/**
+ * A ticket between steps, since `since`: from `ticket_waiting` with what it
+ * waits for, or from its last `step_ended` with `for` and `on_ticket` null
+ * (an old journal's wait, worked out from the board). Cleared by the
+ * ticket's next `step_started`.
+ */
+export const TicketWaitSchema = z.object({
+    for: WaitForSchema.nullable(),
+    on_ticket: z.number().int().nullable(),
+    since: z.string(),
+})
+
+export type TicketWait = z.infer<typeof TicketWaitSchema>
+
 /**
  * A time span in words: seconds under a minute, then minutes and seconds,
  * then hours and minutes.
@@ -106,6 +133,32 @@ export const currentStepText = ({
 }): string =>
     `${step.text} (${elapsedText({ ms: now - Date.parse(step.since) })})`
 
+/**
+ * The decision model's answer to an agent's `agent_model` ask: the model it
+ * picked and how sure it was, either `null` when the answer lacks it.
+ */
+export const ModelAnswerSchema = z.object({
+    role: z.string(),
+    pick: z.string().nullable(),
+    confidence: z.number().nullable(),
+})
+
+export type ModelAnswer = z.infer<typeof ModelAnswerSchema>
+
+/**
+ * The model the card's latest agent runs on (#630), from its
+ * `agent_started`, and why: its `model_reason` (`null` in older journals)
+ * and its `agent_model` answer, if any.
+ */
+export const AgentModelSchema = z.object({
+    role: z.string(),
+    name: z.string(),
+    reason: z.string().nullable(),
+    answer: ModelAnswerSchema.nullable(),
+})
+
+export type AgentModel = z.infer<typeof AgentModelSchema>
+
 export const TicketCardSchema = z.object({
     number: z.number().int(),
     title: z.string(),
@@ -125,10 +178,32 @@ export const TicketCardSchema = z.object({
     /** The role working on it now, `null` when no agent is. */
     role: z.string().nullable(),
     /**
+     * The latest agent's model and why; `null` before one starts, or when
+     * its journal names no model. Defaulted, so an older board state still
+     * parses.
+     */
+    model: AgentModelSchema.nullable().default(null),
+    /**
+     * The decision model's latest `agent_model` answer, kept until its
+     * agent starts. Defaulted, so an older board state still parses.
+     */
+    model_answer: ModelAnswerSchema.nullable().default(null),
+    /**
+     * Each role's last used `agent_model` answer, by role, for its
+     * follow-ups, which ask nothing new. Defaulted, so an older board state
+     * still parses.
+     */
+    model_answers: z.record(z.string(), ModelAnswerSchema).default({}),
+    /**
      * The engine's step on it now, `null` between steps. Defaulted, so a
      * board state from before it still parses.
      */
     current_step: CurrentStepSchema.nullable().default(null),
+    /**
+     * The ticket between steps, `null` in a step or before its first.
+     * Defaulted, so a board state from before it still parses.
+     */
+    wait: TicketWaitSchema.nullable().default(null),
     /** Fix rounds in the current fix loop; back to 0 once its check passes. */
     fix_round: z.number().int().min(0),
     review_round: z.number().int().min(0),
@@ -165,6 +240,18 @@ export const TicketCardSchema = z.object({
     tried: z.array(z.string()),
     /** How much of the plan the ticket used, per window; empty until known. */
     plan_used: z.array(PlanUsedSchema),
+    /**
+     * Its agent's entry in the run's live file (#628), `null` with none.
+     * Laid over the state on each read, never journaled. Defaulted, so a
+     * board state from before it still parses.
+     */
+    live: LiveAgentSchema.nullable().default(null),
+    /**
+     * Its check's wait for a prepare slot or a test slot (#632), from the
+     * live file the same way, `null` with none. Defaulted, so a board
+     * state from before it still parses.
+     */
+    slot_wait: LiveWaitSchema.nullable().default(null),
 })
 
 export type TicketCard = z.infer<typeof TicketCardSchema>

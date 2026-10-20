@@ -3,7 +3,7 @@
  * shared git folder, and what the memory searched, saved and learned.
  */
 import type { BoardRecord } from './board-vocabulary'
-import { withLearner } from './reduce-board-update'
+import { updateTicket, withLearner } from './reduce-board-update'
 
 import type { BoardState } from '../shared/board-state'
 
@@ -41,11 +41,29 @@ export const applyCounterKind = ({
                 ...state,
                 jev: { ...state.jev, asked: state.jev.asked + 1 },
             }
-        case 'jev_answered':
-            return {
+        case 'jev_answered': {
+            const counted = {
                 ...state,
                 jev: { ...state.jev, answered: state.jev.answered + 1 },
             }
+            const { job, answers } = record.content
+            const { role } = record
+            // An agent's model pick waits on its card for its `agent_started`.
+            if (job !== 'agent_model' || role === null) return counted
+            const pick = answers.model?.value ?? null
+            return updateTicket({
+                state: counted,
+                number: record.ticket,
+                update: (card) => ({
+                    ...card,
+                    model_answer: {
+                        role,
+                        pick: pick === null ? null : String(pick),
+                        confidence: answers.model?.confidence ?? null,
+                    },
+                }),
+            })
+        }
         case 'jev_failed':
             return {
                 ...state,

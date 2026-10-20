@@ -1,7 +1,8 @@
 /**
  * The engine check: finds runs whose engine process is gone although the run
  * hasn't ended, restarts the ones that can go on from their journal, and
- * marks the rest as stopped, with why.
+ * marks the rest as stopped, with why. The runs the plugin didn't start are
+ * only labelled (#635), never restarted.
  */
 
 import type { EngineProcess } from './board-server-engine'
@@ -9,9 +10,10 @@ import type { RunStore } from './board-server-store'
 import type {
     BoardServerConfig,
     EngineCheck,
+    OutsideRun,
     RunMemory,
 } from './board-server-types'
-import { errorText, OVER_PHASES } from './board-server-util'
+import { errorText } from './board-server-util'
 import {
     engineStoppedText,
     liveRunIds,
@@ -23,25 +25,66 @@ import {
     type StopWhy,
     type UnfinishedRun,
 } from './engine-watch'
+import { readLiveFile } from './live-file'
+
+import { liveIsFresh, needsEngine } from '../shared/board-state'
 
 export const createEngineChecks = ({
     config,
     store,
     engine,
+    reads,
 }: {
     config: BoardServerConfig
     store: RunStore
     engine: EngineProcess
+    /** The runs the plugin didn't start, and how to read them again. */
+    reads: {
+        outside: Map<string, OutsideRun>
+        readOutside: () => Promise<void>
+    }
 }) => {
-    const { list_processes, run_command, home_dir, log, now } = config
+    const {
+        list_processes,
+        run_command,
+        home_dir,
+        log,
+        now,
+        runs_dir = null,
+    } = config
     const { runs, enqueue, appendRows, header, updateEntry, endRun, ready } =
         store
     const { childEnv, findEngine, exclusive, spawnResume } = engine
 
-    /** Whether a run may still need an engine: not ended, not over. */
-    const needsEngine = ({ memory }: { memory: RunMemory }) =>
-        memory.state.run.engine_ended === null &&
-        !OVER_PHASES.has(memory.state.run.phase)
+    /**
+     * Labels each run the plugin didn't start whose engine is gone: no
+     * process names it, and its live file (if any) isn't fresh, as a run
+     * started from the command line without `--run-id` has no id on its
+     * command line. Never restarts them.
+     */
+    const labelOutside = async ({
+        others,
+        live,
+    }: {
+        others: OutsideRun[]
+        live: Set<string>
+    }) => {
+        let at: number | null = null
+        await Promise.all(
+            others.map(async (run) => {
+                const { run_id } = run.state.run
+                if (live.has(run_id) || runs_dir === null) {
+                    run.engine_gone = false
+                    return
+                }
+                const file = await readLiveFile({ runs_dir, run_id })
+                at ??= now().getTime()
+                run.engine_gone =
+                    file === null ||
+                    !liveIsFresh({ written_at: file.written_at, now: at })
+            })
+        )
+    }
 
     /**
      * Asks the engine which unfinished runs may be restarted
@@ -110,11 +153,13 @@ export const createEngineChecks = ({
         }
         const restart = memory.entry.restarts + 1
         updateEntry({ memory, change: { restarts: restart } })
-        const row = restartRow({ run_id, restart, time: now().toISOString() })
+        const time = now().toISOString()
+        const row = restartRow({ run_id, restart, time })
         memory.state = {
             ...memory.state,
             run: { ...memory.state.run, engine_ended: null },
             latest: restartText({ restart }),
+            latest_at: time,
         }
         log(
             `[${run_id}] restarted ${engine.command} with --resume (pid ${pid ?? '?'}, restart ${restart} of ${MAX_AUTO_RESTARTS}), log ${log_path}`
@@ -126,11 +171,15 @@ export const createEngineChecks = ({
     /** One check: see `checkEngines`. */
     const runCheck = async (): Promise<EngineCheck> => {
         await ready
+        await reads.readOutside()
         const summary: EngineCheck = { restarted: [], stopped: [] }
         const candidates = [...runs.values()].filter((memory) =>
-            needsEngine({ memory })
+            needsEngine({ state: memory.state })
         )
-        if (candidates.length === 0) return summary
+        const others = [...reads.outside.values()].filter((run) =>
+            needsEngine({ state: run.state })
+        )
+        if (candidates.length === 0 && others.length === 0) return summary
         let command_lines: string[]
         try {
             command_lines = await list_processes()
@@ -143,6 +192,7 @@ export const createEngineChecks = ({
             return summary
         }
         const live = liveRunIds({ command_lines })
+        await labelOutside({ others, live })
         const dead = candidates.filter(
             (memory) => !live.has(memory.entry.run_id)
         )
@@ -156,7 +206,7 @@ export const createEngineChecks = ({
 
         const settle = async ({ memory }: { memory: RunMemory }) => {
             // The engine may have ended the run while this check ran.
-            if (!needsEngine({ memory })) return
+            if (!needsEngine({ state: memory.state })) return
             const { run_id, log_path } = memory.entry
             const stop = async ({ why }: { why: StopWhy }) => {
                 const message = engineStoppedText({ why, run_id, log_path })
@@ -216,7 +266,8 @@ export const createEngineChecks = ({
      * Finds runs whose engine process is gone although the run hasn't ended,
      * and restarts the ones that can go on from their journal
      * (`--resume`, at most `MAX_AUTO_RESTARTS` times per run). The rest show
-     * "engine stopped" with why. When the processes can't be listed, nothing
+     * "engine stopped" with why. The runs the plugin didn't start are only
+     * labelled when their engine is gone (#635). When the processes can't be listed, nothing
      * is done. Only one check runs at a time: a call while one runs gets the
      * same promise. Never rejects.
      *

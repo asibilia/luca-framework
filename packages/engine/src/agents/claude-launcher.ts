@@ -38,7 +38,10 @@ export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60_000
  *    cuts the turn off as `plan`, with the reason in its session, for the
  *    decision step to turn into a limit wait or a billing stop;
  * 5. returns the result's structured output and the session's id (from its
- *    init message).
+ *    init message);
+ * 6. tells the turn's `on_progress`, if given, what the agent is doing as it
+ *    happens: its tokens so far, its latest action, the tool call still
+ *    open, and its plan-usage readings (`turn-progress.ts`, #628).
  *
  * The session stays open after its turn, in streaming-input mode, so
  * `followUp` can send it another message; the same watch applies to every
@@ -95,6 +98,7 @@ export const createClaudeLauncher = ({
         role,
         ticket,
         message,
+        on_progress,
     }) => {
         const open = sessions.get(session_id)
         if (open === undefined || open.ended !== null) {
@@ -115,6 +119,7 @@ export const createClaudeLauncher = ({
             }
         }
         startTurn(open)
+        open.progress.start(on_progress)
         return runTurn({
             open,
             message,

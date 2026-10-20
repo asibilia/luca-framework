@@ -38,6 +38,26 @@ export const AssistantSchema = z.object({
     error: z.string().optional(),
 })
 
+const UserSchema = z.object({
+    type: z.literal('user'),
+    message: z.object({ content: z.array(z.unknown()) }),
+})
+
+const ToolResultSchema = z.object({
+    type: z.literal('tool_result'),
+    tool_use_id: z.string(),
+})
+
+/** The ids of the tool calls a user message carries results for, if any. */
+export const toolResultIds = (raw: unknown): string[] => {
+    const user = UserSchema.safeParse(raw)
+    if (!user.success) return []
+    return user.data.message.content.flatMap((block) => {
+        const tool = ToolResultSchema.safeParse(block)
+        return tool.success ? [tool.data.tool_use_id] : []
+    })
+}
+
 export const ResultSchema = z.object({
     type: z.literal('result'),
     subtype: z.string(),

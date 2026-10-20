@@ -347,6 +347,7 @@ export const createPracticeRepo = async ({
         memory,
         git: wrapGit,
         journal: wrapJournal,
+        live_file,
     }: {
         /**
          * Scripted agents' turns, then a clean final review for any lens they
@@ -385,6 +386,8 @@ export const createPracticeRepo = async ({
          * Defaults to the journal as is.
          */
         journal?: (real: Journal) => Journal
+        /** Where the engine keeps the run's live file (#628). Left out, it keeps none. */
+        live_file?: string
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
@@ -419,6 +422,7 @@ export const createPracticeRepo = async ({
                 memory === undefined
                     ? undefined
                     : { client: memory.client, timeout_ms: memory.timeout_ms },
+            live_file,
         })
         return {
             action,
