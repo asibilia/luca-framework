@@ -110,6 +110,52 @@ describe('every role and its sandbox (#646)', () => {
             expect(said).toMatch(/fails only inside your sandbox/)
             expect(said).toMatch(/(isn't|is not) yours to fix/)
             expect(said).toMatch(/rely on the engine's gate results/i)
+            // Leaning on the gates is not worth an assumption (#655).
+            expect(said).not.toContain('and say so')
+        }
+    })
+})
+
+/** Every role's Rules for every agent section; the learner gets none. */
+const commonRules = (): string[] =>
+    AgentRoleSchema.options
+        .filter((role) => role !== 'learner')
+        .map(
+            (role) =>
+                sectionOf({
+                    text: roleInstructions({
+                        role,
+                        may_edit_tests: role === 'test-writer',
+                        config: PRACTICE_ENGINE_CONFIG,
+                    }),
+                    heading: '## Rules for every agent',
+                }) ?? ''
+        )
+
+describe('what agents list as assumptions (#654, #655)', () => {
+    test('an assumption is a call the owner might disagree with, and following instructions, internal names and how a test is written are not one', () => {
+        for (const said of commonRules()) {
+            expect(said).toContain('"assumptions"')
+            expect(said).toContain("Don't stop to ask.")
+            expect(said).toMatch(/owner might disagree with/)
+            for (const call of ['a behaviour', 'a wording', 'a limit'])
+                expect(said).toContain(call)
+            for (const notOne of [
+                'following your instructions',
+                "relying on the engine's gates",
+                'reviewing only the new changes',
+                'the names you picked for internal code',
+                'how you wrote a test',
+            ])
+                expect(said).toContain(notOne)
+        }
+    })
+
+    test('on a later turn, such as a fix round, an agent lists only new assumptions, not ones it already listed', () => {
+        for (const said of commonRules()) {
+            expect(said).toMatch(/later turn[^\n]*fix round/)
+            expect(said).toMatch(/only new assumptions/)
+            expect(said).toMatch(/already listed/)
         }
     })
 })

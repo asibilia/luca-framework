@@ -19,6 +19,8 @@ const CONFIG: EngineConfig = {
 const PIN = 'pin the exact text'
 const UNTESTABLE =
     'no agent can check this; move it out of the acceptance criteria'
+const UNCHANGED =
+    "describes behaviour that doesn't change, so no test can fail first; move it out of the acceptance criteria (for example into the ticket's notes)"
 
 /** Intake's problems for a spec #10 with these tickets; none when it passes. */
 const problemsFor = ({
@@ -186,6 +188,45 @@ describe('decision step: intake checks acceptance criteria', () => {
             },
         ])
     })
+
+    test("criteria about behaviour that doesn't change are refused, once each, quoted, with the fix (#653)", () => {
+        const criteria = [
+            'The exit code is unchanged',
+            'Other commands stay the same',
+            'The log format stays the same',
+            'The board looks AS TODAY',
+            'Retries work as before',
+            'The help text is Unchanged and stays the same as before',
+        ]
+
+        const problems = problemsFor({ tickets: oneTicketEach(criteria) })
+
+        expect(problems).toEqual(quoting(criteria))
+        for (const message of messages(problems)) {
+            expect(message).toContain(UNCHANGED)
+        }
+        expect(messages(problems)[0]).toBe(
+            `Acceptance criterion AC1 of #11 ${UNCHANGED}. It reads: \`The exit code is unchanged\``
+        )
+    })
+
+    test('the unchanged phrases inside code spans or inside other words pass (#653)', () => {
+        const problems = problemsFor({
+            tickets: [
+                ticketIssue({
+                    number: 11,
+                    criteria: [
+                        'The flag `--unchanged` lists files',
+                        'Prints `stays the same` when idle',
+                        'The `as before` column is shown',
+                        'Counts unchangedness in the report',
+                    ],
+                }),
+            ],
+        })
+
+        expect(problems).toEqual([])
+    })
 })
 
 describe('the glossary on intake', () => {
@@ -199,5 +240,6 @@ describe('the glossary on intake', () => {
         expect(entry).toContain('acceptance criteria')
         expect(entry).toContain('placeholders')
         expect(entry).toContain('untestable')
+        expect(entry).toContain("behaviour that doesn't change")
     })
 })

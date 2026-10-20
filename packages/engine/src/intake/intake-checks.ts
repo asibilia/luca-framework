@@ -279,8 +279,9 @@ export const configProblems = ({
  * too, but still checked, so a later run can build it. The run builds the
  * rest. A ticket with neither ready label is still refused.
  *
- * Each open agent ticket's acceptance criteria must hold no placeholders and
- * no untestable asks (#541, `criteriaProblems`); the spec's text isn't checked.
+ * Each open agent ticket's acceptance criteria must hold no placeholders, no
+ * untestable asks (#541), and nothing about behaviour that doesn't change
+ * (#653), per `criteriaProblems`; the spec's text isn't checked.
  */
 export const checkIntake = ({
     config,

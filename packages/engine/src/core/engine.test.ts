@@ -164,7 +164,7 @@ describe('engine: intake refuses the run', () => {
         expect(tracker.labelsOf({ number: 11 })).toEqual(['needs-info'])
     })
 
-    test('a placeholder or an untestable ask in a criterion gets the comment, needs-info and intake_refused', async () => {
+    test("a placeholder, an untestable ask or behaviour that doesn't change in a criterion gets the comment, needs-info and intake_refused", async () => {
         const { tracker, action, kinds } = await runSpec({
             config: CONFIG,
             issues: [
@@ -172,8 +172,12 @@ describe('engine: intake refuses the run', () => {
                 ticketIssue({ number: 11 }),
                 ticketIssue({ number: 12, criteria: ['Retries N times'] }),
                 ticketIssue({ number: 13, criteria: ['Attach a screenshot'] }),
+                ticketIssue({
+                    number: 14,
+                    criteria: ['The exit code is unchanged'],
+                }),
             ],
-            sub_tickets: [11, 12, 13],
+            sub_tickets: [11, 12, 13, 14],
         })
 
         expect(action).toEqual({ type: 'done', outcome: 'refused' })
@@ -189,11 +193,17 @@ describe('engine: intake refuses the run', () => {
             'no agent can check this; move it out of the acceptance criteria'
         )
         expect(tracker.labelsOf({ number: 13 })).toEqual(['needs-info'])
+        const [unchanged] = tracker.commentsOn({ number: 14 })
+        expect(unchanged).toContain('The exit code is unchanged')
+        expect(unchanged).toContain(
+            "describes behaviour that doesn't change, so no test can fail first"
+        )
+        expect(tracker.labelsOf({ number: 14 })).toEqual(['needs-info'])
         expect(
             replayRun({ records: journal.read() }).problems?.map(
                 ({ ticket }) => ticket
             )
-        ).toEqual([12, 13])
+        ).toEqual([12, 13, 14])
     })
 })
 

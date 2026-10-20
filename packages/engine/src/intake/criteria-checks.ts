@@ -7,6 +7,10 @@ export const PIN_TEXT = 'pin the exact text'
 export const UNTESTABLE_TEXT =
     'no agent can check this; move it out of the acceptance criteria'
 
+/** The fix intake asks for when a criterion describes what stays as it is. */
+export const UNCHANGED_TEXT =
+    "describes behaviour that doesn't change, so no test can fail first; move it out of the acceptance criteria (for example into the ticket's notes)"
+
 /**
  * Text that leaves an agent to guess, caught anywhere in a criterion, inside
  * quotes and code spans too (#541).
@@ -26,6 +30,16 @@ const UNTESTABLE_ASKS: RegExp[] = [
     /\bscreenshots?\b/gi,
     /\bchangesets?\b/gi,
     /\bADR[\s#-]*\d+/g,
+]
+
+/**
+ * Phrases for behaviour that doesn't change, caught outside code spans only
+ * (#653): no test can fail first on them.
+ */
+const UNCHANGED_PHRASES: RegExp[] = [
+    /\bunchanged\b/gi,
+    /\bstays? the same\b/gi,
+    /\bas (?:today|before)\b/gi,
 ]
 
 /** Inline code spans: a run of backticks up to the same run. */
@@ -59,8 +73,10 @@ const asCode = (text: string): string => {
 
 /**
  * Intake's problems with one ticket's acceptance criteria: a placeholder
- * anywhere in a criterion, or an untestable ask (a screenshot, a changeset,
- * an ADR number) outside its code spans. Each problem names the ticket,
+ * anywhere in a criterion, an untestable ask (a screenshot, a changeset,
+ * an ADR number) outside its code spans, or, outside its code spans, words
+ * for behaviour that doesn't change ("unchanged", "stays the same", "as
+ * today", "as before"), once per criterion. Each problem names the ticket,
  * quotes the criterion, and says what to do. Pure. Empty when all are clean.
  *
  * @example
@@ -78,10 +94,10 @@ export const criteriaProblems = ({
         const named = `Acceptance criterion ${id} of #${ticket}`
         const quoted = `It reads: ${asCode(text)}`
         const placeholders = found({ text, patterns: PLACEHOLDERS })
-        const asks = found({
-            text: text.replace(CODE_SPAN, ' '),
-            patterns: UNTESTABLE_ASKS,
-        })
+        const prose = text.replace(CODE_SPAN, ' ')
+        const asks = found({ text: prose, patterns: UNTESTABLE_ASKS })
+        const unchanged =
+            found({ text: prose, patterns: UNCHANGED_PHRASES }).length > 0
         return [
             ...(placeholders.length === 0
                 ? []
@@ -93,5 +109,6 @@ export const criteriaProblems = ({
                 : [
                       `${named} asks for ${asks.map(asCode).join(', ')}: ${UNTESTABLE_TEXT}. ${quoted}`,
                   ]),
+            ...(unchanged ? [`${named} ${UNCHANGED_TEXT}. ${quoted}`] : []),
         ]
     })

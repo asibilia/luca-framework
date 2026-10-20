@@ -441,3 +441,47 @@ describe('the out of turns section', () => {
         expect(lines.filter((line) => !moved.includes(line))).toEqual([])
     })
 })
+
+/** The text of the PR body's section headed `heading`, up to the next one. */
+const sectionIn = ({
+    body,
+    heading,
+}: {
+    body: string
+    heading: string
+}): string =>
+    body.split(/^(?=## )/m).find((part) => part.startsWith(heading)) ?? ''
+
+describe('the assumptions section (#654)', () => {
+    test("a role's later turn repeating an earlier assumption word for word shows it once, and different assumptions from different turns are all kept", () => {
+        const body = pullRequestOf([
+            testsWritten({
+                ticket: 11,
+                assumptions: ['Numbers are integers.', 'Sums never overflow.'],
+            }),
+            implemented({ ticket: 11, assumptions: ['Sum of nothing is 0.'] }),
+            testsWritten({
+                ticket: 11,
+                assumptions: [
+                    'Numbers are integers.',
+                    'Order does not matter.',
+                ],
+            }),
+            implemented({
+                ticket: 11,
+                assumptions: ['Sum of nothing is 0.', 'Strings are refused.'],
+            }),
+        ])
+
+        expect(sectionIn({ body, heading: '## Assumptions' }).trim()).toBe(
+            [
+                '## Assumptions\n\nCalls agents made by themselves. Please check them.\n',
+                '- #11: Numbers are integers.',
+                '- #11: Sums never overflow.',
+                '- #11: Sum of nothing is 0.',
+                '- #11: Order does not matter.',
+                '- #11: Strings are refused.',
+            ].join('\n')
+        )
+    })
+})
