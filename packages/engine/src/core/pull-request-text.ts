@@ -4,7 +4,10 @@ import uniq from 'lodash/uniq'
 
 import { alreadyDoneNote } from './already-done'
 import { evidenceSection } from './evidence-text'
-import { shippedFindingsSection } from './final-review-text'
+import {
+    freshFindingsSection,
+    shippedFindingsSection,
+} from './final-review-text'
 import { leftOutSections } from './left-out'
 import { newMemoriesSection } from './memory-text'
 import { reasonLine } from './stuck-text'
@@ -210,14 +213,17 @@ export const pullRequestText = ({
             })
         ),
     ]
+    const stillOpen = review.fix?.findings ?? []
     const shipped =
         review.shipped && review.stuck !== null
             ? shippedFindingsSection({
-                  findings: review.fix?.findings ?? [],
+                  findings: stillOpen,
                   stuck: review.stuck,
                   edits: review.shipped_edits,
               })
-            : ''
+            : review.fresh_started && stillOpen.length > 0
+              ? freshFindingsSection({ findings: stillOpen })
+              : ''
     const body = [
         shipped,
         `Built by the Luca engine from spec #${spec.number}.`,

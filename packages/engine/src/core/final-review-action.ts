@@ -22,13 +22,14 @@ export type FinalReviewAction =
     /**
      * Start a final review round: read the run branch's HEAD, the files
      * since `from_sha`, and the config's rule files, then journal
-     * `final_review_started`.
+     * `final_review_started`. `fresh`: the fresh pass (#548).
      */
     | {
           type: 'start_final_review'
           round: number
           from_sha: string
           lenses: LensName[]
+          fresh?: boolean
       }
     /** Start a fresh, read-only lens reviewer on the run branch. */
     | { type: 'launch_lens'; lens: LensName; role: LensRole; prompt: string }

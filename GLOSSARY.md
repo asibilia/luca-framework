@@ -104,6 +104,10 @@ _Avoid_: code review, self-review
 The review of a whole run's branch through several lenses, before the pull request opens.
 _Avoid_: whole-branch review, audit
 
+**Fresh pass**:
+The final review's last read before the pull request, in which every lens reads the whole branch again, without earlier findings, after the last fix round.
+_Avoid_: re-review, second review
+
 **Lens**:
 The single angle a reviewer judges code from, such as security, architecture, or the repo's rules.
 _Avoid_: perspective, reviewer type

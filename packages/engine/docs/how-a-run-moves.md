@@ -75,7 +75,11 @@ once every ticket pushed, the final review, on the run branch's worktree:
       commit_final_fix                 leftover scan, then commit         ──> leftover_scan, commit_made
       push_final_fixes                                                    ──> run_branch_pushed
       start_final_review               only the lenses with findings, only the new changes
-                                       (a fix round only failed slow tests opened passes here instead)
+                                       (a fix round only failed slow tests opened goes to the fresh pass instead)
+    clean after a fix commit: the fresh pass (#548), once per final review
+      start_final_review               fresh: every lens, the whole branch, no earlier findings ──> final_review_started (fresh: true)
+      its blockers: one fix round (past the cap too) and one re-review, then pass_final_review
+                                       with what is still open at the top of the PR, never stuck on it
     still asking after 3 fix rounds (or a failed loop): mark_final_review_stuck ──> final_review_stuck
       done (final_review_stuck); a ship reply (edits left uncommitted get their own commit
       "fix: final review round N, shipped with open findings", then shipFinalReview ──> final_review_shipped) opens the PR anyway

@@ -93,7 +93,7 @@ export const finalReviewAfter = ({
 }): FinalReviewState => {
     switch (record.kind) {
         case 'final_review_started': {
-            const { round, from_sha, head_sha, lenses, files, rules } =
+            const { round, from_sha, head_sha, lenses, files, rules, fresh } =
                 record.content
             return {
                 ...review,
@@ -106,6 +106,10 @@ export const finalReviewAfter = ({
                 results: {},
                 slow_due: record.content.slow_due ?? false,
                 slow_tests: null,
+                fresh,
+                fresh_started: review.fresh_started || fresh,
+                // The fresh pass sees no earlier findings or answers (#548).
+                ...(fresh ? { fix: null } : {}),
             }
         }
         case 'agent_started':
@@ -213,7 +217,11 @@ export const finalReviewAfter = ({
                 },
             }
         case 'run_branch_pushed':
-            return { ...review, pushed: record.content.sha }
+            return {
+                ...review,
+                pushed: record.content.sha,
+                fix_pushed: true,
+            }
     }
 }
 

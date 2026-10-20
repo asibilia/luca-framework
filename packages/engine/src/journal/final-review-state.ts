@@ -93,6 +93,12 @@ export type FinalReviewState = {
     pushed: string | null
     /** This round's slow tests are due (#563): round 1, with a slow command. */
     slow_due: boolean
+    /** A fix commit was pushed since round 1: a fresh pass is due once clean (#548). */
+    fix_pushed: boolean
+    /** This round is the fresh pass (#548), or its fix round. */
+    fresh: boolean
+    /** The fresh pass started; there is at most one per final review (#548). */
+    fresh_started: boolean
     /** This round's slow test run (`gates_run` `final_slow`), once journaled. */
     slow_tests: ReplayedGates | null
     /** Every nit the lenses reported, one per id. */
@@ -155,6 +161,9 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     commit: null,
     pushed: null,
     slow_due: false,
+    fix_pushed: false,
+    fresh: false,
+    fresh_started: false,
     slow_tests: null,
     nits: [],
     declined: [],

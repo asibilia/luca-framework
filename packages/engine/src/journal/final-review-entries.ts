@@ -12,10 +12,10 @@ import { LensNameSchema } from '../agents/role-results'
 
 /**
  * A final review round started: the run branch is reviewed from `from_sha`
- * (round 1: where the run branch started; later rounds: the previous
- * round's `head_sha`) to `head_sha`, its HEAD now. `lenses` are the lenses
- * due this round (every lens in round 1, then only those that had blocking
- * findings), `files` the files that diff changes, and `rules` the rule files
+ * (round 1 and the fresh pass: where the run branch started; later rounds:
+ * the previous round's `head_sha`) to `head_sha`, its HEAD now. `lenses` are
+ * the lenses due this round (every lens in round 1 and the fresh pass, then
+ * only those that had blocking findings), `files` the files that diff changes, and `rules` the rule files
  * of the engine config, read by the engine word for word (`text` is `null`
  * for a file it could not read), for the rules lens. Written with
  * `ticket: null`.
@@ -37,6 +37,12 @@ export const FinalReviewStartedEntrySchema = z.object({
          * lenses are in (#563). An older engine's record has none.
          */
         slow_due: z.boolean().optional(),
+        /**
+         * The fresh pass (#548): every lens reads the whole run branch again,
+         * without earlier findings, after the last fix round. `false` for
+         * any other round, and in older journals.
+         */
+        fresh: z.boolean().default(false),
     }),
 })
 

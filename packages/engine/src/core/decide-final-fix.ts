@@ -112,7 +112,8 @@ export const fixStep = (args: DecideArgs): FinalReviewAction | null => {
     const { review, run_branch, snapshot } = args
     const { fix } = review
     if (fix === null) return null
-    if (fix.round > MAX_FIX_ROUNDS) {
+    // The fresh pass's one fix round runs past the cap (#548).
+    if (fix.round > MAX_FIX_ROUNDS && !review.fresh) {
         return stuck({
             reason: 'changes_requested',
             detail: `The final review still asks for changes after ${MAX_FIX_ROUNDS} fix rounds:\n${openFinalFindingsText({ findings: fix.findings })}`,
