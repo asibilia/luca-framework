@@ -89,17 +89,17 @@ const fakeClock = (from = Date.now()) => {
     return { clock, now: () => now }
 }
 
-type Listing = { runs: GoingRun[]; stopped?: GoingRun[] }
+type Listing = { runs: GoingRun[]; stopped?: GoingRun[]; ps_error?: string }
 
 /** A fake `goingRuns` whose answer depends on the clock. */
 const fakeGoingRuns =
     (clock: EngineClock, listing: (now: number) => Listing) => async () => {
-        const { runs, stopped } = listing(clock.now())
+        const { runs, stopped, ps_error } = listing(clock.now())
         return {
             ok: true as const,
             runs,
             stopped: stopped ?? [],
-            ps_error: null,
+            ps_error: ps_error ?? null,
         }
     }
 
@@ -250,6 +250,57 @@ describe('repo waits (#615)', () => {
         expect(kinds()).not.toContain('intake_read')
         expect(time.now() - t0).toBeGreaterThanOrEqual(DAY)
         expect(time.now() - t0).toBeLessThan(DAY + 60 * MINUTE)
+    })
+
+    test('when ps fails during the wait, the engine journals one repo_wait_ps_failed record with the error, and keeps waiting', async () => {
+        start()
+        const time = fakeClock()
+        const t0 = time.now()
+        const earlier = going({
+            run_id: 'run-a',
+            started_at: ownStart() - 10 * MINUTE,
+        })
+
+        const action = await runToIntake({
+            clock: time.clock,
+            listing: (now) =>
+                now < t0 + 30 * MINUTE
+                    ? { runs: [earlier, self()], ps_error: 'ps: not found' }
+                    : { runs: [self()] },
+        })
+
+        const failed = journal
+            .read()
+            .filter(({ kind }) => String(kind) === 'repo_wait_ps_failed')
+        expect(failed).toHaveLength(1)
+        expect(JSON.stringify(failed[0]?.content)).toContain('ps: not found')
+        expect(action.type).toBe('read_intake')
+        expect(kinds()).toContain('repo_wait_ended')
+        expect(time.now()).toBeGreaterThanOrEqual(t0 + 30 * MINUTE)
+    })
+
+    test('a wait that ends in a repo_busy stop while ps fails names the ps error in the stop detail', async () => {
+        start()
+        const time = fakeClock()
+        const earlier = going({ run_id: 'run-a', started_at: ownStart() - 1 })
+
+        const action = await runToIntake({
+            clock: time.clock,
+            listing: () => ({
+                runs: [earlier, self()],
+                ps_error: 'ps: not found',
+            }),
+        })
+
+        expect(action.type).toBe('wait_for_reply')
+        const stuck = recordOf('run_stuck')
+        expect(stuck).toMatchObject({ content: { reason: 'repo_busy' } })
+        expect(
+            stuck?.kind === 'run_stuck' ? stuck.content.detail : ''
+        ).toContain('ps: not found')
+        expect(
+            kinds().filter((kind) => kind === 'repo_wait_ps_failed')
+        ).toHaveLength(1)
     })
 
     test('an engine killed during the wait waits again on resume, and the spec issue still hears of it once', async () => {
