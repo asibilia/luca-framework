@@ -477,6 +477,28 @@ describe("decision step: the fresh pass's findings (#548)", () => {
             'final review, simplification lens: simplification-N2 (src/sum.ts): Name the reducer'
         )
     })
+
+    test("a fresh nit that reuses an earlier nit's id with other content still goes to the PR's nits", () => {
+        expect(stepAfter(fixedAndClean())).toMatchObject(FRESH_START)
+        const reused = lensFinding({
+            id: 'N1',
+            severity: 'nit',
+            title: 'Name the reducer',
+        })
+        const nitsOnly = [
+            ...fixedAndClean(),
+            ...freshRound({ simplification: [reused] }),
+        ]
+
+        expect(stepAfter(nitsOnly)).toEqual({ type: 'pass_final_review' })
+        const body = prBody([...nitsOnly, finalReviewPassed()])
+        expect(body).toContain(
+            'final review, simplification lens: simplification-N1 (src/sum.ts): Shorter name'
+        )
+        expect(body).toContain(
+            'final review, simplification lens: simplification-fresh-N1 (src/sum.ts): Name the reducer'
+        )
+    })
 })
 
 describe('the glossary on the fresh pass (#548)', () => {

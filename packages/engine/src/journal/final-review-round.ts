@@ -57,6 +57,62 @@ const namespaced = ({
 })
 
 /**
+ * A fresh-pass finding's id (#548). The fresh lenses see no earlier
+ * findings, so an id they choose may already name a different earlier nit
+ * or declined finding: such an id gets `fresh-` after its lens prefix. The
+ * same nit found again keeps its id, so the PR lists it once.
+ */
+const freshId = ({
+    lens,
+    finding,
+    earlier,
+}: {
+    lens: LensName
+    finding: Finding
+    earlier: Finding[]
+}): string => {
+    const clash = earlier.find(({ id }) => id === finding.id)
+    if (clash === undefined) return finding.id
+    const sameNit =
+        !isBlocking(clash) &&
+        !isBlocking(finding) &&
+        clash.title === finding.title &&
+        clash.file === finding.file
+    return sameNit
+        ? finding.id
+        : `${lens}-fresh-${finding.id.slice(lens.length + 1)}`
+}
+
+/**
+ * A lens's result, namespaced, with its finding ids kept apart from the
+ * earlier rounds' nits and declined findings if this round is the fresh
+ * pass (see `freshId`).
+ */
+const lensResultOf = ({
+    review,
+    lens,
+    result,
+}: {
+    review: FinalReviewState
+    lens: LensName
+    result: LensReviewResult
+}): LensReviewResult => {
+    const named = namespaced({ lens, result })
+    if (!review.fresh) return named
+    const earlier = [
+        ...review.nits,
+        ...review.declined.map(({ finding }) => finding),
+    ]
+    return {
+        ...named,
+        findings: named.findings.map((finding) => ({
+            ...finding,
+            id: freshId({ lens, finding, earlier }),
+        })),
+    }
+}
+
+/**
  * Every due lens finished this round, and its slow tests ran if they were
  * due (#563): the round can settle.
  */
@@ -172,7 +228,11 @@ export const finalResultChange = ({
             merge_danger: merge_danger ?? review.merge_danger,
             results: {
                 ...review.results,
-                [lens]: namespaced({ lens, result: finished.result }),
+                [lens]: lensResultOf({
+                    review,
+                    lens,
+                    result: finished.result,
+                }),
             },
         }
         return roundDone({ review: next })
