@@ -75,6 +75,7 @@ export const createBoardState = ({
     run_tokens: 0,
     run_budget_tokens: DEFAULT_RUN_BUDGET_TOKENS,
     run_budget_each: DEFAULT_RUN_BUDGET_TOKENS,
+    run_stuck_reason: null,
     confidence_bar: DEFAULT_CONFIDENCE_BAR,
     limit_wait: null,
     usage_line_wait: null,

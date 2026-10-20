@@ -63,16 +63,18 @@ export type ReplayedRunNote = { ticket: number; role: AgentRole; note: string }
 
 /**
  * The run budget (#435): whether the run is stuck on it (or on its PR,
- * #508) and told, and how many more full budgets the owner's `retry`
- * replies added.
+ * #508) and told, and how many tokens the owner's `retry` replies added.
  */
 export type RunBudgetState = {
     /** The run is stuck, until the owner's `retry`. */
     stuck: { reason: RunStuckReason; detail: string } | null
     /** The spec issue's comment that told the owner the run is stuck. */
     report: { comment_id: number } | null
-    /** Full budgets added by `retry`: the run may use `1 + retries` budgets. */
-    retries: number
+    /**
+     * Tokens added by `retry` (#543): the run may use its budget plus these.
+     * A retry journaled with no top-up added one whole budget.
+     */
+    top_ups: number
 }
 
 /**
@@ -203,7 +205,7 @@ export const EMPTY_STATE: RunState = {
     stop: null,
     final_stuck_report: null,
     final_reply: null,
-    run_budget: { stuck: null, report: null, retries: 0 },
+    run_budget: { stuck: null, report: null, top_ups: 0 },
     repo_wait: { status: 'none', since: null },
     memory: EMPTY_MEMORY,
     crashes: {},

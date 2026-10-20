@@ -57,7 +57,7 @@ export type RunStuckReason = z.infer<typeof RunStuckReasonSchema>
 
 /**
  * The whole run is stuck (`ticket: null`): nothing new starts until the
- * spec owner replies `retry` (one more full run budget, another try at
+ * spec owner replies `retry` (a top-up of the run budget, another try at
  * the PR, or another repo wait) or `stop`.
  */
 export const RunStuckEntrySchema = z.object({
@@ -107,7 +107,9 @@ export type ReplyWord = z.infer<typeof ReplyWordSchema>
  * The engine took the spec owner's reply: `retry` or `skip` for `ticket`,
  * `stop` for the whole run, `retry` for the run stuck on its budget, or
  * `retry` or `ship` for the stuck final review (`ticket` is `null` for
- * these).
+ * these). A `retry` of the run stuck on its budget carries the tokens it
+ * added (`top_up`, #543); one journaled before top-ups has none, and counts
+ * as one whole budget.
  */
 export const ReplyReceivedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -117,6 +119,7 @@ export const ReplyReceivedEntrySchema = z.object({
         ticket: z.number().int().positive().nullable(),
         comment_id: z.number().int(),
         author: z.string(),
+        top_up: z.number().int().positive().optional(),
     }),
 })
 
@@ -124,7 +127,9 @@ export const ReplyReceivedEntrySchema = z.object({
  * Why the spec owner's reply could not be used: it named no ticket while
  * more than one is stuck, named a ticket that isn't stuck, or was `ship`
  * (the final review's word) while no final review is stuck, or was `skip`
- * for the final review, which can't be skipped.
+ * for the final review, which can't be skipped. A `retry +<amount>` is only
+ * for the run stuck on its budget (`amount_only_for_run_budget`), and its
+ * amount must be a whole number above zero (`bad_amount`).
  */
 export const ReplyProblemSchema = z.enum([
     'no_ticket_named',
@@ -132,6 +137,8 @@ export const ReplyProblemSchema = z.enum([
     'nothing_stuck',
     'ship_needs_final_review',
     'skip_not_for_final_review',
+    'amount_only_for_run_budget',
+    'bad_amount',
 ])
 
 export type ReplyProblem = z.infer<typeof ReplyProblemSchema>

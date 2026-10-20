@@ -49,7 +49,7 @@ export const finalReasonText = ({ reason }: { reason: string }): string =>
 /** Why the whole run is stuck (`run_stuck`'s reason), in words. */
 const RUN_STUCK_REASONS: Record<string, string> = {
     run_budget:
-        'The run used up its run budget of tokens. `retry` adds one more full budget.',
+        'The run used up its run budget of tokens. `retry` adds half a budget more, and `retry +3M` the amount named.',
     pull_request_failed:
         "The run's pull request didn't open. `retry` tries again, reusing a PR already open from the run branch.",
 }

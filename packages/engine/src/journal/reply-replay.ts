@@ -9,6 +9,8 @@ import type { JournalRecord } from './journal-record'
 import { engineCommentsAfter, type RunState } from './run-state'
 import { applyTicketRecord } from './ticket-replay'
 
+import { runBudgetOf } from '../limits/run-budget'
+
 /**
  * An owner's reply: `stop` ends the run, a bare `retry` or `ship` is the
  * stuck run's or the final review's, and the rest go to its ticket.
@@ -33,11 +35,17 @@ export const replyReceivedAfter = ({
     }
     const { word, comment_id, ticket } = record.content
     if (word === 'stop') return { ...handled, stop: { comment_id } }
-    // A bare `retry` while the run is stuck on its budget adds one
-    // more full budget, and the run carries on; stuck on its PR,
-    // the PR is tried again; stuck on its repo wait, it waits 24 hours more.
+    // A bare `retry` while the run is stuck on its budget adds its top-up
+    // (one whole budget for a retry journaled before top-ups, #543), and
+    // the run carries on; stuck on its PR, the PR is tried again; stuck on
+    // its repo wait, it waits 24 hours more.
     const { stuck } = state.run_budget
     if (ticket === null && word === 'retry' && stuck !== null) {
+        const top_up =
+            stuck.reason === 'run_budget'
+                ? (record.content.top_up ??
+                  runBudgetOf({ config: state.config }))
+                : 0
         return {
             ...handled,
             repo_wait:
@@ -47,9 +55,7 @@ export const replyReceivedAfter = ({
             run_budget: {
                 stuck: null,
                 report: null,
-                retries:
-                    state.run_budget.retries +
-                    (stuck.reason === 'run_budget' ? 1 : 0),
+                top_ups: state.run_budget.top_ups + top_up,
             },
         }
     }

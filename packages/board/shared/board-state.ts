@@ -74,12 +74,19 @@ export const BoardStateSchema = z.object({
     run_tokens: z.number().min(0).default(0),
     /**
      * The tokens the run may use before it is stuck (#435): one full run
-     * budget, plus one more for each `retry` the owner gave it. Defaulted,
-     * so an older board state still parses.
+     * budget, plus the top-up of each `retry` the owner gave the run stuck
+     * on its budget (#543; one whole budget for a retry journaled with no
+     * top-up). Defaulted, so an older board state still parses.
      */
     run_budget_tokens: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
     /** One full run budget: the engine config's, else the default. */
     run_budget_each: z.number().min(0).default(DEFAULT_RUN_BUDGET_TOKENS),
+    /**
+     * Why the whole run is stuck (`run_stuck`'s reason), until the owner's
+     * reply; `null` while it isn't. Defaulted, so an older board state
+     * still parses.
+     */
+    run_stuck_reason: z.string().nullable().default(null),
     /**
      * The engine config's `models.confidence_bar` (#630): the decision
      * model is sharp at or over it. Defaulted, so an older board state

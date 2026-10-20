@@ -151,14 +151,20 @@ const replyReceived = ({
                     key: ticketKey({ ticket }),
                 })
             }
-            // A bare `retry` while the run is stuck on its budget adds one
-            // more full budget; the final review is left as it is.
+            // A bare `retry` while the run is stuck on its budget adds its
+            // top-up (one whole budget for a retry journaled with none,
+            // #543); stuck for another reason, no budget. The final review
+            // is left as it is.
             if (state.needs_you.some((item) => item.key === RUN_KEY)) {
+                const top_up =
+                    state.run_stuck_reason === 'run_budget'
+                        ? (record.content.top_up ?? state.run_budget_each)
+                        : 0
                 return resolveNeedsYou({
                     state: {
                         ...state,
-                        run_budget_tokens:
-                            state.run_budget_tokens + state.run_budget_each,
+                        run_budget_tokens: state.run_budget_tokens + top_up,
+                        run_stuck_reason: null,
                     },
                     key: RUN_KEY,
                 })
@@ -245,7 +251,7 @@ export const applyNeedsYouKind = ({
         }
         case 'run_stuck':
             return addNeedsYou({
-                state,
+                state: { ...state, run_stuck_reason: record.content.reason },
                 item: {
                     key: RUN_KEY,
                     ticket: null,

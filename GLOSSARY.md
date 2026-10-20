@@ -149,7 +149,7 @@ A pause before intake while an earlier run on the same repo is still going, so t
 _Avoid_: queue, lock
 
 **Run budget**:
-The token cap for one run. A run that uses it all is stuck until a person says whether to keep going.
+The token cap for one run. A run that uses it all is stuck until a person says whether to keep going. A `retry` adds more tokens (half a budget, or the amount named, such as `retry +3M`), not a whole new budget.
 _Avoid_: quota, token limit
 
 **Config reload**:

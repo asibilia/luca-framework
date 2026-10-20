@@ -64,5 +64,9 @@ export const replyAnswer = ({
             return '`ship` is only for a stuck final review. For a stuck ticket, reply `retry #n`, `skip #n`, or `stop`.'
         case 'skip_not_for_final_review':
             return "The final review can't be skipped. Reply `retry`, `stop`, or `ship` (opens the PR with the open findings listed at the top)."
+        case 'amount_only_for_run_budget':
+            return 'An amount after `retry` is only for a run stuck on its budget. Reply a bare `retry` here instead.'
+        case 'bad_amount':
+            return "Luca can't read that amount. Reply a bare `retry` to add half a run budget, or name a whole number of tokens above zero, such as `retry +500k` or `retry +3M`."
     }
 }

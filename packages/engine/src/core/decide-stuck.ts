@@ -32,12 +32,16 @@ export type StuckAction =
      * work waits for a reply; other tickets keep building meanwhile.
      */
     | { type: 'wait_for_reply'; spec_number: number; since_id: number }
-    /** The owner's comment is a reply: journal it. */
+    /**
+     * The owner's comment is a reply: journal it. A `retry` of the run stuck
+     * on its budget carries the tokens it adds (`top_up`, #543).
+     */
     | {
           type: 'take_reply'
           comment_id: number
           word: ReplyWord
           ticket: number | null
+          top_up?: number
       }
     /** The owner's comment looks like a reply but can't be used: say why. */
     | {
@@ -70,24 +74,64 @@ export type StuckAction =
           body: string
       }
 
-/** A reply word, and the ticket it names if any, from a comment's text. */
-type ParsedReply = { word: ReplyWord | 'ship'; ticket: number | null }
+/**
+ * A reply word, the ticket it names if any, and the text after `retry +`
+ * (`amount`, #543) if any, from a comment's text.
+ */
+type ParsedReply = {
+    word: ReplyWord | 'ship'
+    ticket: number | null
+    amount: string | null
+}
 
 const REPLY_PATTERN = /^(retry|skip|stop|ship)(?:\s+#?(\d+))?[\s.!]*$/i
 
+const AMOUNT_REPLY_PATTERN = /^retry\s+\+(\S*?)[\s.!]*$/i
+
 /**
  * Reads a one-word reply: `retry`, `skip`, `stop`, or `ship`, optionally
- * naming a ticket (`retry #12`, `skip 12`). Anything else is not a reply.
+ * naming a ticket (`retry #12`, `skip 12`), or `retry` with an amount
+ * (`retry +3M`). Anything else is not a reply.
  *
  * @example
- * parseReply({ body: 'Retry #12' }) // { word: 'retry', ticket: 12 }
+ * parseReply({ body: 'Retry #12' }) // { word: 'retry', ticket: 12, amount: null }
+ * parseReply({ body: 'retry +3M' }) // { word: 'retry', ticket: null, amount: '3M' }
  * parseReply({ body: 'Looking at it.' }) // null
  */
 export const parseReply = ({ body }: { body: string }): ParsedReply | null => {
+    const amount = AMOUNT_REPLY_PATTERN.exec(body.trim())
+    if (amount !== null) {
+        return { word: 'retry', ticket: null, amount: amount[1] ?? '' }
+    }
     const match = REPLY_PATTERN.exec(body.trim())
     if (match === null) return null
     const word = match[1]?.toLowerCase() as ParsedReply['word']
-    return { word, ticket: match[2] === undefined ? null : Number(match[2]) }
+    return {
+        word,
+        ticket: match[2] === undefined ? null : Number(match[2]),
+        amount: null,
+    }
+}
+
+const AMOUNT_PATTERN = /^(\d+)([km]?)$/i
+
+const AMOUNT_SCALES: Record<string, number> = { '': 1, k: 1_000, m: 1_000_000 }
+
+/**
+ * The tokens an amount after `retry +` names: a whole number, optionally
+ * followed by `k` or `M` in any case. `null` for zero, or for anything that
+ * can't be read.
+ *
+ * @example
+ * amountTokens({ amount: '500k' }) // 500_000
+ * amountTokens({ amount: '1.5M' }) // null
+ */
+export const amountTokens = ({ amount }: { amount: string }): number | null => {
+    const match = AMOUNT_PATTERN.exec(amount)
+    if (match === null) return null
+    const scale = AMOUNT_SCALES[(match[2] ?? '').toLowerCase()] ?? 1
+    const tokens = Number(match[1]) * scale
+    return tokens > 0 && Number.isSafeInteger(tokens) ? tokens : null
 }
 
 /**
@@ -321,6 +365,8 @@ export const replySteps = ({
                 },
             ]
         }
+        // Only the run stuck on its budget takes an amount (decideRunBudget).
+        if (next.amount !== null) return ignore('amount_only_for_run_budget')
         if (next.ticket !== null && !waiting.includes(next.ticket)) {
             return ignore('not_stuck')
         }
