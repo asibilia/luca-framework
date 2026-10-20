@@ -11,6 +11,7 @@ Reached by: `/luca-run <spec>` in a Paseo chat, or `luca-run --spec <n>`.
 Tests:
 
 - `packages/engine/src/core/decide.test.ts`
+- `packages/engine/src/core/decide-intake-criteria.test.ts`
 - `packages/engine/src/core/engine.test.ts`
 - `packages/engine/src/core/run-from-origin.e2e.test.ts`
 - `packages/engine/src/core/run-from-origin.test.ts`
