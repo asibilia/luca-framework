@@ -16,6 +16,7 @@ import { usageAfter } from './reduce-board-usage'
 import {
     LiveAgentSchema,
     LiveFeedEntrySchema,
+    LiveWaitSchema,
     type BoardState,
 } from '../shared/board-state'
 
@@ -38,6 +39,19 @@ const LiveFileSchema = z.object({
         .transform((agents) =>
             agents.flatMap((agent) => {
                 const parsed = LiveAgentSchema.safeParse(agent)
+                return parsed.success ? [parsed.data] : []
+            })
+        ),
+    /**
+     * The waits inside a step going now (#632); one that doesn't read is
+     * left out, and a file from before them has none.
+     */
+    waits: z
+        .array(z.unknown())
+        .catch([])
+        .transform((waits) =>
+            waits.flatMap((wait) => {
+                const parsed = LiveWaitSchema.safeParse(wait)
                 return parsed.success ? [parsed.data] : []
             })
         ),
@@ -78,8 +92,9 @@ export const readLiveFile = async ({
 
 /**
  * The state with its live file laid over it: each card gets its agent's
- * entry (or none), the feed is the file's, and the plan usage, with no
- * reading yet, fills in from the file's first one.
+ * entry (or none) and its check's slot wait (or none), the feed is the
+ * file's, and the plan usage, with no reading yet, fills in from the
+ * file's first one.
  */
 export const withLive = ({
     state,
@@ -89,6 +104,7 @@ export const withLive = ({
     live: LiveFile | null
 }): BoardState => {
     const agents = live?.agents ?? []
+    const waits = live?.waits ?? []
     const reading = live?.plan_usage ?? null
     return {
         ...state,
@@ -96,6 +112,8 @@ export const withLive = ({
         tickets: state.tickets.map((card) => ({
             ...card,
             live: agents.find((agent) => agent.ticket === card.number) ?? null,
+            slot_wait:
+                waits.find((wait) => wait.ticket === card.number) ?? null,
         })),
         feed: live?.feed ?? [],
         usage:

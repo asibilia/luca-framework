@@ -4,7 +4,8 @@
  * details when opened. With an entry in the run's live file (#628), the
  * step text gives way to what its agent is doing now, and its tokens count
  * up with the turn, followed by the latest action's age; a busy card's
- * line ends in its heartbeat (#631). Each line stays on one line (`one-line.tsx`): the
+ * line ends in its heartbeat (#631), and a check waiting there for a slot
+ * (#632) reads as a wait, with the amber bar. Each line stays on one line (`one-line.tsx`): the
  * number, pill, dots, counters and tokens keep their size, the text beside
  * them is cut, and a tap on it shows it whole in a bubble.
  */
@@ -20,7 +21,7 @@ import { ModelLine } from './model-line'
 import { BubbleScope, CutLine, useBubbles } from './one-line'
 import { StepDots } from './step-dots'
 import { TicketDetail } from './ticket-detail'
-import { ticketWait } from './ticket-wait'
+import { slotWait, ticketWait } from './ticket-wait'
 import { WaitLine } from './wait-line'
 
 import {
@@ -53,8 +54,9 @@ export const TicketCardView = ({
 } & Look) => {
     const bubbles = useBubbles()
     const now = useNow()
-    // A ticket waiting on purpose between steps reads "waiting", in amber.
-    const wait = ticketWait({ state, ticket })
+    // A ticket waiting on purpose between steps, or its check waiting for
+    // a slot (#632), reads "waiting", in amber.
+    const wait = ticketWait({ state, ticket }) ?? slotWait({ ticket })
     // What its agent is doing now, from the live file, in place of the step text.
     const doing = liveText({ live: ticket.live, now })
     const color = wait
@@ -135,7 +137,7 @@ export const TicketCardView = ({
                         </>
                     ) : null}
                 </View>
-                {ticket.current_step && doing === null ? (
+                {ticket.current_step && doing === null && wait === null ? (
                     <StepLine
                         step={ticket.current_step}
                         prefix=""

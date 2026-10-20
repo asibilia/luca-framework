@@ -53,6 +53,20 @@ export const ticketWaiting = ({
         content: { for: waiting_for, on_ticket, since },
     })
 
+/**
+ * `repo_wait_started` (#615): before intake, the run waits for the earlier
+ * runs on its repo that are going.
+ */
+export const repoWaitStarted = ({
+    runs,
+}: {
+    runs: { run_id: string; spec: number | null }[]
+}): Entry => entry({ kind: 'repo_wait_started', content: { runs } })
+
+/** `repo_wait_ended`: no earlier run on the repo is going anymore. */
+export const repoWaitEnded = (): Entry =>
+    entry({ kind: 'repo_wait_ended', content: {} })
+
 /** `step_started` of a ticket's step (`key` is its number). */
 export const stepOn = ({
     ticket,

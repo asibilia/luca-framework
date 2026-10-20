@@ -1,8 +1,8 @@
 /**
  * The top of the side panel: the title and status, the run tabs, the run's
  * title and pull request, plan usage, what the engine is doing now, the
- * run's tokens and plan used, and the banners (a limit wait, a version note,
- * a stop, the engine ending, intake refusing the run).
+ * run's tokens and plan used, and the banners (a repo wait, a limit wait, a
+ * version note, a stop, the engine ending, intake refusing the run).
  */
 import type { PluginWorkspacePanelProps } from '@getpaseo/plugin/client'
 import { ExternalLink } from '@getpaseo/plugin/client/ui'
@@ -18,6 +18,7 @@ import {
 } from './board-look'
 import { Banner, StepLine } from './board-panel-parts'
 import type { Look } from './board-panel-styles'
+import { RepoWaitBanner } from './repo-wait-banner'
 import { RunPicker } from './run-picker'
 import { UsageLine } from './usage-line'
 
@@ -105,6 +106,9 @@ export const RunHeader = ({
                     This run used:{' '}
                     {planUsedText({ used: state.run_plan_used, sign: '' })}
                 </Text>
+            ) : null}
+            {state.repo_wait && run.engine_ended === null ? (
+                <RepoWaitBanner wait={state.repo_wait} {...look} />
             ) : null}
             {state.limit_wait ? (
                 <Banner

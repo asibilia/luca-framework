@@ -1,8 +1,9 @@
 /**
  * The run's **live file** (#628): `live.json` in the run folder, what each
- * agent in a turn is doing now, for the board to show between journal
- * records, and the run's last 50 actions across tickets, its live feed
- * (#634). It is never journaled and never replayed: each write replaces
+ * agent in a turn is doing now, and each check waiting for a prepare slot
+ * or a test slot (#632), for the board to show between journal records,
+ * and the run's last 50 actions across tickets, its live feed (#634). It
+ * is never journaled and never replayed: each write replaces
  * the whole file (written aside, then renamed), at most once a second
  * while something changed, and at least every 5 seconds while the engine
  * runs, each with its `written_at` time. Each agent's entry carries its
@@ -19,6 +20,7 @@ import type {
     ProgressOpenCall,
     TurnProgress,
 } from '../agents/turn-progress'
+import type { SlotWait, SlotWaitListener } from '../gates/slot-waits'
 
 /** The live file's name inside a run folder. */
 export const LIVE_FILE = 'live.json'
@@ -76,6 +78,9 @@ const sameAction = (
     left.target === right.target &&
     left.at === right.at
 
+/** A ticket's check waiting for a slot (#632), as the live file has it. */
+type LiveWait = SlotWait & { ticket: number; since: string }
+
 /**
  * One agent's activity (#631): a count per second, by the second it
  * happened in. Each progress heard is one tick, and so is each second a
@@ -119,7 +124,8 @@ const createActivity = () => {
  * Keeps the live file at `file` from the moment it is made until `close`,
  * which writes it one last time with no agents. `launcher` wraps an agent
  * launcher so each turn's progress (`on_progress`) goes into the file while
- * the turn runs. A write that fails is skipped; the run never stops for it.
+ * the turn runs; `slotWaits` hears a ticket step's slot waits (see
+ * `hearSlotWaits`). A write that fails is skipped; the run never stops for it.
  *
  * @example
  * const live = createLiveFile({ file: runLiveFilePath({ runs_dir, run_id }) })
@@ -129,6 +135,7 @@ const createActivity = () => {
 export const createLiveFile = ({ file }: { file: string }) => {
     const agents = new Map<number, LiveAgent>()
     const activities = new Map<number, ReturnType<typeof createActivity>>()
+    const waits = new Map<number, LiveWait>()
     let plan_usage: Record<string, unknown> | null = null
     let feed: LiveFeedEntry[] = []
     let changed = false
@@ -146,6 +153,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
                 ...agent,
                 activity: activities.get(key)?.recent(at) ?? [],
             })),
+            waits: [...waits.values()],
             feed,
         })
         try {
@@ -256,12 +264,31 @@ export const createLiveFile = ({ file }: { file: string }) => {
         }
     }
 
+    /** Shows each slot wait of `ticket`'s step in the file while it lasts. */
+    const slotWaits =
+        ({ ticket }: { ticket: number }): SlotWaitListener =>
+        (wait) => {
+            const key = next
+            next += 1
+            waits.set(key, {
+                ticket,
+                ...wait,
+                since: new Date().toISOString(),
+            })
+            changed = true
+            return () => {
+                waits.delete(key)
+                changed = true
+            }
+        }
+
     const close = (): void => {
         clearInterval(timer)
         agents.clear()
         activities.clear()
+        waits.clear()
         write()
     }
 
-    return { launcher, close }
+    return { launcher, slotWaits, close }
 }

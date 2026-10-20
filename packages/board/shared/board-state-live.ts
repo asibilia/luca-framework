@@ -47,3 +47,17 @@ export const LiveFeedEntrySchema = z.object({
 })
 
 export type LiveFeedEntry = z.infer<typeof LiveFeedEntrySchema>
+
+/**
+ * A wait inside a step (#632): a ticket's check waits for a prepare slot
+ * or a test slot, while `in_use` of the engine's `slots` are taken.
+ */
+export const LiveWaitSchema = z.object({
+    ticket: z.number().int(),
+    for: z.enum(['prepare_slot', 'test_slot']),
+    in_use: z.number().int().min(0),
+    slots: z.number().int().min(0),
+    since: z.string(),
+})
+
+export type LiveWait = z.infer<typeof LiveWaitSchema>

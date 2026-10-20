@@ -43,6 +43,15 @@ export const RUN_VOCABULARY = {
         /** Luca's version the run started on (#460); older journals have none. */
         luca_version: z.string().nullable().catch(null),
     }),
+    /**
+     * Before intake, the run waits for the earlier runs on its repo that
+     * are going (#615); the board reads only their run ids.
+     */
+    repo_wait_started: z.looseObject({
+        runs: z.array(z.looseObject({ run_id: z.string() })).catch([]),
+    }),
+    /** No earlier run on the repo is going anymore. */
+    repo_wait_ended: z.looseObject({}),
     /** The engine started again on the run's journal, on Luca's `luca_version`. */
     engine_resumed: z.looseObject({ luca_version: z.string() }),
     /**

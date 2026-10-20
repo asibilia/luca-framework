@@ -56,6 +56,10 @@ it or without it. `runSpec` gives `runEngine` its path; without `live_file`
     open_call: { tool, target, started_at } | null,   // a tool call still running
     activity: number[],          // 30 counts, one per second, oldest first (#631)
   }],
+  waits: [{                      // a ticket's check waiting for a slot (#632)
+    ticket: number, for: 'prepare_slot' | 'test_slot',
+    in_use: number, slots: number, since: string,
+  }],
 }
 ```
 
@@ -82,6 +86,14 @@ launcher turns on the SDK's partial messages (`includePartialMessages`), so
 each streamed chunk is heard too and a thinking model still moves the
 heartbeat. Nothing of a chunk is kept: the tokens come from the whole
 messages, and the journal is the same with partial messages on.
+
+A wait inside a step goes in too (#632): `runEngine` runs each ticket's
+step with the live file listening for slot waits (`hearSlotWaits`,
+`src/gates/slot-waits.ts`). A prepare check or a test run that must wait
+for a slot (`PREPARE_SLOTS`, `TEST_SLOTS`) adds a `waits` entry as it
+starts waiting, with the slots in use, and takes it out once it has the
+slot. The journal gets nothing new: the wait's length is already the
+check's `wait_ms`.
 
 ## The command line: `luca-run`
 

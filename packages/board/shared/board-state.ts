@@ -115,6 +115,19 @@ export const BoardStateSchema = z.object({
         })
         .nullable()
         .default(null),
+    /**
+     * The run waits for the earlier runs on its repo that are going (#615),
+     * from `repo_wait_started` until `repo_wait_ended`. Defaulted, so a
+     * board state from before it still parses.
+     */
+    repo_wait: z
+        .object({
+            /** The run ids of the earlier runs it waits for. */
+            runs: z.array(z.string()),
+            since: z.string(),
+        })
+        .nullable()
+        .default(null),
     /** How much of the plan the whole run used, per window. */
     run_plan_used: z.array(PlanUsedSchema),
     needs_you: z.array(NeedsYouSchema),

@@ -1,4 +1,5 @@
 import { createSlots, type Slots } from './prepare-slots'
+import { onSlotWait } from './slot-waits'
 
 /**
  * The engine's test slots (#544): one set for the whole engine process, so
@@ -9,7 +10,8 @@ export const TEST_SLOTS: Slots = createSlots()
 /**
  * Runs `work` in a test slot, at most `test_concurrency` at once, and adds
  * how long it waited for one as `wait_ms`; the work's own time limit and
- * timing start inside, after the wait. An `exclusive` take waits for every
+ * timing start inside, after the wait. The step's slot-wait listener hears
+ * the wait while it lasts (see `slot-waits.ts`). An `exclusive` take waits for every
  * test run to end, and holds off new ones until it settles.
  *
  * With `test_concurrency` left out there is no cap, but the work still holds
@@ -32,9 +34,11 @@ export const inTestSlot = async <T extends object>({
     exclusive?: boolean
 }): Promise<T & { wait_ms?: number }> => {
     const asked = performance.now()
+    const limit = test_concurrency ?? Infinity
     return TEST_SLOTS.run({
-        limit: test_concurrency ?? Infinity,
+        limit,
         exclusive,
+        on_wait: onSlotWait({ kind: 'test_slot', limit }),
         work: async () => {
             if (test_concurrency === undefined && !exclusive) return work()
             const wait_ms = Math.round(performance.now() - asked)

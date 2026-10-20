@@ -78,6 +78,7 @@ export const createBoardState = ({
     confidence_bar: DEFAULT_CONFIDENCE_BAR,
     limit_wait: null,
     usage_line_wait: null,
+    repo_wait: null,
     run_plan_used: [],
     needs_you: [],
     tickets: [],
@@ -140,4 +141,5 @@ export const newTicket = ({
     tried: [],
     plan_used: [],
     live: null,
+    slot_wait: null,
 })

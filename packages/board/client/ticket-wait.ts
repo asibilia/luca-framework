@@ -3,6 +3,7 @@
  * purpose between steps. The engine's `ticket_waiting` names the reason; an
  * old journal without it gets the same reasons from the board's own rules,
  * or "waiting for the engine's next step" when none fits, never a guess.
+ * A check waiting for a slot inside its step (#632) comes from the live file.
  */
 import {
     BASELINE_STEP_TEXT,
@@ -53,6 +54,27 @@ export const waitText = ({
             return other === null
                 ? 'waiting to start'
                 : `starts once ${other} has joined`
+    }
+}
+
+/**
+ * What a ticket's check waits for inside its step (#632), from the live
+ * file, or `null` when it waits for no slot.
+ *
+ * @example
+ * slotWait({ ticket }) // { text: 'waiting for a test slot (2 of 2 in use)', since: '2026-...' }
+ */
+export const slotWait = ({
+    ticket,
+}: {
+    ticket: TicketCard
+}): ShownWait | null => {
+    const wait = ticket.slot_wait
+    if (wait === null) return null
+    const slot = wait.for === 'prepare_slot' ? 'a prepare slot' : 'a test slot'
+    return {
+        text: `waiting for ${slot} (${wait.in_use} of ${wait.slots} in use)`,
+        since: wait.since,
     }
 }
 

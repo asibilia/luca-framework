@@ -5,8 +5,9 @@ import { join } from 'node:path'
  * The live file (#628) as the engine writes it in a run folder,
  * `<runs_dir>/<run_id>/live.json`: replaced whole on each write, never
  * journaled. Per agent in a turn, its ticket, role, model, tokens so far,
- * latest action and open tool call; per run, the first plan-usage reading
- * and the live feed, its last actions across tickets.
+ * latest action and open tool call; per run, the first plan-usage reading,
+ * the waits inside a step (#632) and the live feed, its last actions
+ * across tickets.
  */
 
 /** The live file's name inside a run folder. */
@@ -52,6 +53,20 @@ export type LiveFeedEntry = {
 export const quietActivity = (): number[] =>
     Array.from({ length: ACTIVITY_SECONDS }, () => 0)
 
+/**
+ * A wait inside a step (#632): a ticket's check waits for a prepare slot
+ * or a test slot, while `in_use` of the engine's `slots` are taken, since
+ * `since`. The engine puts it in when the wait starts and takes it out
+ * once the slot is taken.
+ */
+export type LiveWait = {
+    ticket: number
+    for: 'prepare_slot' | 'test_slot'
+    in_use: number
+    slots: number
+    since: string
+}
+
 /** One agent in a turn, on Opus with nothing done yet unless told. */
 export const liveAgent = (
     fields: Partial<LiveAgent> & { ticket: number | null; role: string }
@@ -71,6 +86,7 @@ export const writeLiveFile = async ({
     written_at,
     agents = [],
     plan_usage = null,
+    waits,
     feed,
 }: {
     runs_dir: string
@@ -79,6 +95,8 @@ export const writeLiveFile = async ({
     agents?: LiveAgent[]
     /** The run's first plan-usage reading, as a `rate_limit_event` sent it. */
     plan_usage?: Record<string, unknown> | null
+    /** The waits inside a step going now; left out, the file has none. */
+    waits?: LiveWait[]
     /** The run's last actions, oldest first; left out, as before #634. */
     feed?: LiveFeedEntry[]
 }) => {
@@ -89,6 +107,7 @@ export const writeLiveFile = async ({
             written_at,
             plan_usage,
             agents,
+            ...(waits === undefined ? {} : { waits }),
             ...(feed === undefined ? {} : { feed }),
         })
     )

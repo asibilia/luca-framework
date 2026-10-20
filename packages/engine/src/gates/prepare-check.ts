@@ -5,6 +5,7 @@
 import type { GateCheck } from './gate-schemas'
 import { PREPARE_SLOTS } from './prepare-slots'
 import { msSince, shellCheck } from './shell-check'
+import { onSlotWait } from './slot-waits'
 
 import {
     prepareConcurrencyOf,
@@ -22,7 +23,8 @@ import {
  * At most `prepareConcurrencyOf` prepare runs go at once in the engine (see
  * `PREPARE_SLOTS`); the rest wait their turn. The time limit starts when a
  * run starts, so waiting for a turn never counts toward it. The check says
- * how long it waited for its turn, as `wait_ms` (#518).
+ * how long it waited for its turn, as `wait_ms` (#518), and the step's
+ * slot-wait listener hears the wait while it lasts (see `slot-waits.ts`).
  *
  * @example
  * const prepare = await prepareCheck({ config, cwd })
@@ -38,8 +40,10 @@ export const prepareCheck = async ({
     const { prepare } = config
     if (prepare === undefined) return null
     const asked = performance.now()
+    const limit = prepareConcurrencyOf({ config })
     return PREPARE_SLOTS.run({
-        limit: prepareConcurrencyOf({ config }),
+        limit,
+        on_wait: onSlotWait({ kind: 'prepare_slot', limit }),
         work: async () => {
             const wait_ms = msSince(asked)
             const check = await shellCheck({

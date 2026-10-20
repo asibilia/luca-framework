@@ -30,6 +30,7 @@ import {
 } from './session-close'
 
 import type { BoardSync } from '../board/board-sync'
+import { hearSlotWaits } from '../gates/slot-waits'
 import { shadowAsker, type JevShadow } from '../jev/jev-shadow'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
@@ -115,7 +116,9 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  *
  * With `live_file`, the engine keeps the run's live file there while it
  * runs (`live-file.ts`, #628): what each agent in a turn is doing now,
- * never journaled. It is written a last time, with no agents, at the end.
+ * never journaled, and each ticket check's wait for a prepare slot or a
+ * test slot while it lasts (#632). It is written a last time, with no
+ * agents, at the end.
  *
  * Crash recovery: every step it starts (not a wait) is journaled between a
  * `step_started` and a `step_ended` (none when the step throws). On start,
@@ -276,10 +279,18 @@ export const runEngine = async ({
             ...who,
             content: { key, step, first_seq },
         })
-        await execute(action, {
-            first_seq: first_seq ?? started.seq,
-            redo: first_seq !== null,
-        })
+        const run = () =>
+            execute(action, {
+                first_seq: first_seq ?? started.seq,
+                redo: first_seq !== null,
+            })
+        // A ticket's check waiting for a slot shows in the live file (#632).
+        await (live === null || who.ticket === null
+            ? run()
+            : hearSlotWaits({
+                  listener: live.slotWaits({ ticket: who.ticket }),
+                  run,
+              }))
         journal.append({ kind: 'step_ended', ...who, content: { key, step } })
     }
 

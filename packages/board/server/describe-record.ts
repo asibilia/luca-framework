@@ -376,6 +376,9 @@ export const describeRecord = ({
                 text: `The ${record.content.count} new ${record.content.count === 1 ? 'memory went' : 'memories went'} on the spec issue, since there is no PR.`,
                 tone: 'info',
             })
+        // The repo wait shows as a banner on the panel (#632).
+        case 'repo_wait_started':
+        case 'repo_wait_ended':
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':

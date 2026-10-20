@@ -4,7 +4,7 @@
  */
 import { z } from 'zod'
 
-import { LiveAgentSchema } from './board-state-live'
+import { LiveAgentSchema, LiveWaitSchema } from './board-state-live'
 import { PlanUsedSchema } from './board-state-usage'
 
 /** The steps of a ticket, shown as dots on its card. */
@@ -246,6 +246,12 @@ export const TicketCardSchema = z.object({
      * board state from before it still parses.
      */
     live: LiveAgentSchema.nullable().default(null),
+    /**
+     * Its check's wait for a prepare slot or a test slot (#632), from the
+     * live file the same way, `null` with none. Defaulted, so a board
+     * state from before it still parses.
+     */
+    slot_wait: LiveWaitSchema.nullable().default(null),
 })
 
 export type TicketCard = z.infer<typeof TicketCardSchema>
