@@ -160,6 +160,7 @@ describe('decision step: intake checks acceptance criteria', () => {
                         'It works',
                         'Max retries is 3',
                         'The board reads XML from Node',
+                        'Writes to `/etc/hosts` are denied',
                     ],
                 }),
                 ticketIssue({

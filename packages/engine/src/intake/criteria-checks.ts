@@ -14,7 +14,7 @@ export const UNTESTABLE_TEXT =
 const PLACEHOLDERS: RegExp[] = [
     /<[^<>\n]+>/g,
     /\be\.g\./gi,
-    /\betc\b\.?/gi,
+    /\betc\./gi,
     /\bTBD\b/g,
     /\bTODO\b/g,
     /\.\.\.|…/g,
