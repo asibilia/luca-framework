@@ -37,7 +37,7 @@ The branch a run's finished tickets join one at a time, and that its one pull re
 _Avoid_: integration branch, feature branch
 
 **Intake**:
-The check, before a run starts, that a spec and all its open tickets are ready to build. If anything fails, the run does not start. Tickets for a person are left out, not checked.
+The check, before a run starts, that a spec and all its open tickets are ready to build. It also checks that acceptance criteria hold no placeholders or untestable asks. If anything fails, the run does not start. Tickets for a person are left out, not checked.
 _Avoid_: preflight, validation
 
 **Engine**:
