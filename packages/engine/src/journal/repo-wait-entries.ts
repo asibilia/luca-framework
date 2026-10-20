@@ -32,6 +32,17 @@ export const RepoWaitEndedEntrySchema = z.object({
 })
 
 /**
+ * The repo wait couldn't check whether the earlier runs are going, since
+ * `ps` failed (#624): `error` says how. Journaled once per wait, which goes
+ * on, counting every unfinished run as going.
+ */
+export const RepoWaitPsFailedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('repo_wait_ps_failed'),
+    content: z.object({ error: z.string() }),
+})
+
+/**
  * The run was started with `luca-run --alongside`, so it never waits for
  * another run on its repo. Journaled right after `run_started`.
  */

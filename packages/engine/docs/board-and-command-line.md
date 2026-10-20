@@ -179,6 +179,9 @@ then goes on to intake. Like the other waits it has no step records: an
 engine killed mid-wait waits again on resume, and the spec issue still
 hears of it once. After 24 hours the run is stuck (`run_stuck`, reason
 `repo_busy`): a bare `retry` waits 24 hours more, and `stop` ends the run.
+When `ps` fails, every unfinished run counts as going: the wait journals
+`repo_wait_ps_failed { error }` once and keeps waiting, and a `repo_busy`
+stop's detail names the `ps` error (#624).
 `luca-run --alongside` journals `repo_wait_skipped` and goes straight on.
 Without `going_runs` (tests, the demo), there is no repo wait.
 

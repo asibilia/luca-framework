@@ -233,7 +233,7 @@ export const runEngine = async ({
     ): Promise<ReturnType<typeof decideNext>> => {
         const earlier_runs =
             going_runs !== undefined && repoWaitUnchecked({ records })
-                ? await readEarlierRuns({ going_runs, journal })
+                ? (await readEarlierRuns({ going_runs, journal })).runs
                 : undefined
         if (usage === undefined) return decideNext({ records, earlier_runs })
         await usage.share(runReadings({ records }))

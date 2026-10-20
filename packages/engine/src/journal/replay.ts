@@ -331,6 +331,9 @@ const applyRecord = ({
         // The run kept its config; only the board and the log read why.
         case 'config_reload_refused':
             return next
+        // A failing `ps` changes no step: the wait goes on (#624).
+        case 'repo_wait_ps_failed':
+            return next
         case 'comment_read':
             return { ...next, comments: [...state.comments, record.content] }
         case 'run_stuck':

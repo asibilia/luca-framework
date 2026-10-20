@@ -86,6 +86,7 @@ import {
 } from './pull-request-entries'
 import {
     RepoWaitEndedEntrySchema,
+    RepoWaitPsFailedEntrySchema,
     RepoWaitSkippedEntrySchema,
     RepoWaitStartedEntrySchema,
 } from './repo-wait-entries'
@@ -211,6 +212,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RepoWaitStartedEntrySchema.extend(STAMP_FIELDS),
     RepoWaitEndedEntrySchema.extend(STAMP_FIELDS),
     RepoWaitSkippedEntrySchema.extend(STAMP_FIELDS),
+    RepoWaitPsFailedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>

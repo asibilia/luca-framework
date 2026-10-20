@@ -3,8 +3,8 @@
  * file modes it asked for, and the repo's generators it named. Agents can
  * do neither themselves.
  */
-import { chmod, lstat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { chmod, lstat, realpath } from 'node:fs/promises'
+import { isAbsolute, join, relative, sep } from 'node:path'
 
 import type { BuildContext } from './build-context'
 
@@ -27,8 +27,9 @@ const choresOf = ({
         : null
 
 /**
- * Sets one file's mode, or says why not: a path the role may not write, or
- * no regular file there.
+ * Sets one file's mode, or says why not: a path the role may not write, no
+ * regular file there, or a real path (through a symlinked folder) that
+ * leaves the worktree or that the role may not write (#624).
  */
 const applyMode = async ({
     cwd,
@@ -47,11 +48,24 @@ const applyMode = async ({
     }
     const full = join(cwd, path)
     const found = await lstat(full).catch(() => null)
-    if (found === null || !found.isFile()) {
+    const real = await realpath(full).catch(() => null)
+    if (found === null || !found.isFile() || real === null) {
         return `file_modes: ${path} is not a file in the worktree, so no mode was set.`
     }
+    // A symlinked folder on the way must not lead the mode elsewhere.
+    const inside = relative(await realpath(cwd), real)
+    if (
+        inside === '..' ||
+        inside.startsWith(`..${sep}`) ||
+        isAbsolute(inside)
+    ) {
+        return `file_modes: ${path} is really ${real}, outside the worktree, so its mode was not changed.`
+    }
+    if (!mayWrite({ ...guard, path: inside, config: context.config })) {
+        return `file_modes: ${path} is really ${inside}, a path your role may not write, so its mode was not changed.`
+    }
     const mode_bits = executable ? found.mode | 0o111 : found.mode & ~0o111
-    await chmod(full, mode_bits & 0o7777)
+    await chmod(real, mode_bits & 0o7777)
     return null
 }
 
@@ -66,7 +80,10 @@ const runGenerator = async ({
     context: BuildContext
 }): Promise<{ check: GateCheck | null; problem: string | null }> => {
     const generators = context.config.generators ?? {}
-    const command = generators[name]
+    // Own names only: `constructor` and friends are inherited, not named.
+    const command = Object.hasOwn(generators, name)
+        ? generators[name]
+        : undefined
     if (command === undefined) {
         const known = Object.keys(generators).map((other) => `"${other}"`)
         return {
