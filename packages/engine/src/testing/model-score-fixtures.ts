@@ -113,6 +113,58 @@ export const modelAsk = ({
     ]
 }
 
+/**
+ * An `agent_effort` ask about `role`, in shadow mode, its fixed choice
+ * `ran`, and Clef's answer `pick`. `runOf` points the answer's `asked_seq`
+ * at the ask.
+ */
+export const effortAsk = ({
+    ticket,
+    role,
+    pick,
+    confidence,
+    ran,
+}: {
+    ticket: number
+    role: Built
+    pick: Effort
+    confidence: number | null
+    ran: Effort
+}): JournalEntry[] => [
+    {
+        kind: 'jev_asked',
+        ticket,
+        role,
+        content: {
+            job: 'agent_effort',
+            request: {
+                state: {},
+                questions: {
+                    effort: {
+                        type: 'choice',
+                        instructions:
+                            'Which effort should this agent use? Pick the lowest that will get it right.',
+                        criteria: { medium: null, high: null, xhigh: null },
+                    },
+                },
+            },
+            fixed: { effort: ran },
+            acted: false,
+        },
+    },
+    {
+        kind: 'jev_answered',
+        ticket,
+        role,
+        content: {
+            job: 'agent_effort',
+            asked_seq: 1,
+            answers: { effort: { value: pick, confidence, raw: {} } },
+            ms: 5,
+        },
+    },
+]
+
 export type Ask = Omit<Parameters<typeof modelAsk>[0], 'ticket'>
 
 /**
