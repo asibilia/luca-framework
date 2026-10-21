@@ -14,6 +14,7 @@ reads these records. The one exception is the model pick for a role whose
 | --- | --- | --- |
 | `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
 | `agent_model` | Before each fresh test-writer and implementer, and the learner: which model? It offers the models at or above the role's floor (all three, `opus`, `sonnet` and `haiku`, when the floor is `opus`). Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens, nor after the role failed a try on the ticket on a cheaper model, nor on a crash redo that kept its first try's model. | `opus`. |
+| `agent_effort` | Before each fresh test-writer and implementer on a ticket: which effort? Pick the lowest that will get it right, of `medium`, `high` and `xhigh`. Its facts are `agent_model`'s. Never for a follow-up, a final-review fixer, the ticket reviewer, a lens, or the learner. Always in shadow mode (#661): the agent runs at its role's effort. | The role's effort. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |

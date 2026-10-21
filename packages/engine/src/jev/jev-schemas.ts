@@ -105,6 +105,7 @@ export type JevAnswer = z.infer<typeof JevAnswerSchema>
 export const JevJobSchema = z.enum([
     'ticket_model',
     'agent_model',
+    'agent_effort',
     'agent_skills',
     'ticket_order',
     'failure_kind',
