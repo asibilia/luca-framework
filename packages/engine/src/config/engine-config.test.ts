@@ -8,6 +8,7 @@ import {
     EngineConfigSchema,
     featureMapPath,
     loadEngineConfig,
+    modelsOf,
 } from './engine-config'
 
 let repoRoot = ''
@@ -232,6 +233,82 @@ describe('the models block (#603)', () => {
                 expect(result.error).toContain(role)
                 expect(result.error).toContain('reviewers always run Opus')
             }
+        }
+    })
+})
+
+describe("the writers' effort in the models block (#660)", () => {
+    const loadEffort = async (effort: unknown) => {
+        await writeConfig({
+            text: JSON.stringify({
+                checks: { test: 'bun test' },
+                models: { effort },
+            }),
+        })
+        return loadEngineConfig({ repo_root: repoRoot })
+    }
+
+    test('each level parses for the test-writer, the implementer and the learner, and a role left out is medium, by the schema', async () => {
+        const allMedium = {
+            'test-writer': 'medium',
+            implementer: 'medium',
+            learner: 'medium',
+        }
+        expect(
+            modelsOf({ config: EngineConfigSchema.parse({}) })
+        ).toMatchObject({ effort: allMedium })
+        expect(await loadEffort({})).toMatchObject({
+            ok: true,
+            config: { models: { effort: allMedium } },
+        })
+        for (const level of ['low', 'medium', 'high', 'xhigh', 'max']) {
+            expect(
+                await loadEffort({ 'test-writer': level, learner: level })
+            ).toMatchObject({
+                ok: true,
+                config: {
+                    models: {
+                        effort: {
+                            'test-writer': level,
+                            implementer: 'medium',
+                            learner: level,
+                        },
+                    },
+                },
+            })
+        }
+    })
+
+    test("an effort for the ticket reviewer, a lens or any other role is an error naming it and saying reviewers and the final review's fixers always run at xhigh", async () => {
+        const ticketReviewer = await loadEffort({
+            'test-writer': 'high',
+            'ticket-reviewer': 'high',
+        })
+        expect(ticketReviewer.ok).toBe(false)
+        if (!ticketReviewer.ok) {
+            expect(ticketReviewer.error).toContain(
+                "models.effort can't set ticket-reviewer: reviewers and the final review's fixers always run at xhigh."
+            )
+        }
+        for (const role of ['security-lens', 'rules-lens', 'searcher']) {
+            const result = await loadEffort({ [role]: 'high' })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain(
+                    `models.effort can't set ${role}:`
+                )
+                expect(result.error).toContain('always run at xhigh')
+            }
+        }
+    })
+
+    test('an unknown level, such as extreme, is an error naming the field', async () => {
+        for (const level of ['extreme', 'High', 3]) {
+            const result = await loadEffort({ implementer: level })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) expect(result.error).toContain('models.effort')
         }
     })
 })

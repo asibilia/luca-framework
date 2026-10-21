@@ -54,14 +54,16 @@ Tests:
 
 ## Effort per role
 
-Each role runs at its own effort: the test-writer and the implementer on tickets, and the learner, at medium; the ticket reviewer, the five lenses and the final review's fixers at xhigh; the `searcher` helpers at low. A follow-up keeps its session's effort, and each `agent_started` record names the effort its agent ran at.
+Each role runs at its own effort: the test-writer and the implementer on tickets, and the learner, at medium; the ticket reviewer, the five lenses and the final review's fixers at xhigh; the `searcher` helpers at low. A follow-up keeps its session's effort, and each `agent_started` record names the effort its agent ran at. A repo can set the test-writer's, the implementer's and the learner's effort; a setting for any other role is refused, and a resumed run keeps the effort settings it started with.
 
-Reached by: every agent launch; each `agent_started` record in a run's journal.
+Reached by: every agent launch; each `agent_started` record in a run's journal; `models.effort` in a repo's `.luca/config.json`.
 
 Tests:
 
 - `packages/engine/src/core/run-effort.e2e.test.ts`
+- `packages/engine/src/core/run-effort-config.e2e.test.ts`
 - `packages/engine/src/agents/effort-glossary.test.ts`
+- `packages/engine/src/config/engine-config.test.ts`
 
 ## Agent messages and run notes
 
