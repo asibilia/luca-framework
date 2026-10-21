@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.22
+
+### Minor Changes
+
+- b291821: Spec: effort per role: medium writers, xhigh reviewers and final fixers, low helpers, and Clef's effort picks in shadow mode ([#658](https://github.com/asibilia/luca-framework/issues/658))
+
 ## 14.0.0-alpha.21
 
 No changes in this release.
