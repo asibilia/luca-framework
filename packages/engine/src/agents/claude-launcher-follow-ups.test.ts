@@ -42,6 +42,7 @@ describe('follow-ups', () => {
             config: CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
 
     const followUp = (

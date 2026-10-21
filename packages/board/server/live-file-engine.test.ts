@@ -129,6 +129,7 @@ const playTurn = async () => {
         config: CONFIG,
         messaging: null,
         model: 'opus',
+        effort: 'medium',
     })
     live.close()
     return seen

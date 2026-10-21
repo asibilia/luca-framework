@@ -129,6 +129,42 @@ describe('the agent_effort ask', () => {
         }
     })
 
+    test("its fixed choice is the role's configured effort when models.effort sets it", () => {
+        const [runStarted, ...rest] = intakePassed({
+            tickets: [practiceTicket({ number: 11 })],
+        })
+        if (runStarted?.kind !== 'run_started') throw new Error('no start')
+        const configured = replayRun({
+            records: stamp([
+                {
+                    ...runStarted,
+                    content: {
+                        ...runStarted.content,
+                        config: {
+                            ...runStarted.content.config,
+                            models: {
+                                effort: {
+                                    'test-writer': 'high',
+                                    implementer: 'xhigh',
+                                },
+                            },
+                        },
+                    },
+                },
+                ...rest,
+                ticketWorktreeCreated({ ticket: 11 }),
+            ]),
+        })
+        const fixedEffort = (role: 'test-writer' | 'implementer') =>
+            ofJob(
+                jevAsksBefore({ action: launchAgent(role), state: configured }),
+                'agent_effort'
+            )[0]?.fixed
+
+        expect(fixedEffort('test-writer')).toEqual({ effort: 'high' })
+        expect(fixedEffort('implementer')).toEqual({ effort: 'xhigh' })
+    })
+
     test('is never asked for the ticket reviewer, a lens, a final-review fixer, the learner, or a follow-up', () => {
         const state = startedRun()
         const effortAsks = (action: EngineAction) =>

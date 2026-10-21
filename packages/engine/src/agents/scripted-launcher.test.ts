@@ -35,6 +35,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         const second = await launcher.launch({
             role: 'test-writer',
@@ -45,6 +46,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
 
         expect(first.ok && second.ok).toBe(true)
@@ -73,6 +75,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         if (!first.ok) throw new Error(first.error)
         const next = await launcher.followUp({
@@ -127,6 +130,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'sonnet',
+            effort: 'medium',
         })
         if (!first.ok) throw new Error(first.error)
         await launcher.followUp({
@@ -153,9 +157,8 @@ describe('scripted launcher: follow-ups', () => {
                 { role: 'implementer', ticket: 10, result: { n: 2 } },
             ],
         })
-        // Built first, so the `effort` field compiles before the type names it.
-        const args = {
-            role: 'implementer' as const,
+        const first = await launcher.launch({
+            role: 'implementer',
             ticket: 10,
             prompt: 'p',
             cwd,
@@ -163,9 +166,8 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
-            effort: 'xhigh' as const,
-        }
-        const first = await launcher.launch(args)
+            effort: 'xhigh',
+        })
         if (!first.ok) throw new Error(first.error)
         await launcher.followUp({
             session_id: first.session_id,
@@ -177,10 +179,7 @@ describe('scripted launcher: follow-ups', () => {
         })
 
         expect(
-            launcher.launches().map((call) => ({
-                kind: call.kind,
-                effort: 'effort' in call ? call.effort : undefined,
-            }))
+            launcher.launches().map(({ kind, effort }) => ({ kind, effort }))
         ).toEqual([
             { kind: 'launch', effort: 'xhigh' },
             { kind: 'follow_up', effort: 'xhigh' },
@@ -217,6 +216,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         if (!first.ok) throw new Error(first.error)
 
@@ -247,6 +247,7 @@ describe('scripted launcher: closing sessions', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
 
     test('a launched session is counted as open until it is closed', async () => {

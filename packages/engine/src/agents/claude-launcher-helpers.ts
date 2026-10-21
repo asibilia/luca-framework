@@ -10,6 +10,7 @@ import { afterEach, beforeEach } from 'bun:test'
 import type { AgentMessaging, AgentTurn } from './agent-launcher'
 import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
 import { CLAUDE_MODEL } from './claude-options'
+import { roleEffort } from './role-effort'
 import type { AgentRole } from './role-results'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -222,6 +223,7 @@ export const launch = ({
         config: CONFIG,
         messaging: messaging ?? null,
         model: model ?? CLAUDE_MODEL,
+        effort: roleEffort({ role: role ?? 'ticket-reviewer', config: CONFIG }),
     })
 
 export const IMPLEMENTER_DONE = {

@@ -27,25 +27,10 @@ export const REVIEW_EFFORT: Effort = 'xhigh'
 export const PAST_EFFORT: Effort = 'high'
 
 /**
- * The effort each role launches at by default. Every agent of the final
- * review, lens or fixer, runs at `REVIEW_EFFORT` instead.
- */
-export const ROLE_EFFORT: Record<AgentRole, Effort> = {
-    'test-writer': DEFAULT_EFFORT,
-    implementer: DEFAULT_EFFORT,
-    'ticket-reviewer': REVIEW_EFFORT,
-    'architecture-lens': REVIEW_EFFORT,
-    'simplification-lens': REVIEW_EFFORT,
-    'security-lens': REVIEW_EFFORT,
-    'integration-lens': REVIEW_EFFORT,
-    'rules-lens': REVIEW_EFFORT,
-    learner: DEFAULT_EFFORT,
-}
-
-/**
  * The effort a role launches at in a run (#660): the config's
  * `models.effort` for the test-writer, the implementer and the learner, and
- * `ROLE_EFFORT` for every other role.
+ * `REVIEW_EFFORT` for the ticket reviewer and the lenses. Every agent of the
+ * final review, lens or fixer, runs at `REVIEW_EFFORT` instead.
  *
  * @example
  * roleEffort({ role: 'ticket-reviewer', config }) // 'xhigh'
@@ -64,6 +49,6 @@ export const roleEffort = ({
         case 'learner':
             return effort[role]
         default:
-            return ROLE_EFFORT[role]
+            return REVIEW_EFFORT
     }
 }

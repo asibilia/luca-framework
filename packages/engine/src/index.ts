@@ -35,7 +35,6 @@ export {
     DEFAULT_EFFORT,
     PAST_EFFORT,
     REVIEW_EFFORT,
-    ROLE_EFFORT,
 } from './agents/role-effort'
 export { roleInstructions } from './agents/role-instructions'
 export {

@@ -225,6 +225,7 @@ describe('helpers', () => {
             config: CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         await launcher.followUp({
             session_id: 'session-1',

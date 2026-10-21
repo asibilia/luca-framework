@@ -96,6 +96,7 @@ const launchWatched = async ({
         config: CONFIG,
         messaging: null,
         model: 'opus',
+        effort: 'medium',
         on_progress: (progress) => {
             heard.push(structuredClone(progress))
         },

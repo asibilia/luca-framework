@@ -174,10 +174,10 @@ export type AgentLauncher = {
          */
         model: string
         /**
-         * The effort the agent runs at (#659), whatever its model; left out,
-         * `DEFAULT_EFFORT`. The session's follow-ups run at it too.
+         * The effort the agent runs at (#659), whatever its model. The
+         * session's follow-ups run at it too.
          */
-        effort?: Effort
+        effort: Effort
         /**
          * Hears the turn's live progress (#628) each time it changes, before
          * the turn ends, for the engine's live file. Left out, nothing hears it.

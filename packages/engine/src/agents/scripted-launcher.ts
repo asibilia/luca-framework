@@ -74,9 +74,8 @@ export type ScriptedCall = {
      */
     model: string | null
     /**
-     * The effort a launch asked for (#659), `null` if it named none; a
-     * follow-up's is its session's, `null` for a session the launcher
-     * doesn't know.
+     * The effort a launch asked for (#659); a follow-up's is its session's,
+     * `null` for a session the launcher doesn't know.
      */
     effort: Effort | null
     /** What each of the turn's tool calls handed over, in order. */
@@ -121,7 +120,7 @@ export const createScriptedLauncher = ({
         {
             messaging: AgentMessaging | null
             model: string
-            effort: Effort | null
+            effort: Effort
         }
     >()
 
@@ -207,11 +206,7 @@ export const createScriptedLauncher = ({
             effort,
         }) => {
             const session_id = `scripted-${role}-${ticket}-${calls.length + 1}`
-            sessions.set(session_id, {
-                messaging,
-                model,
-                effort: effort ?? null,
-            })
+            sessions.set(session_id, { messaging, model, effort })
             const call: ScriptedCall = {
                 kind: 'launch',
                 role,
@@ -220,7 +215,7 @@ export const createScriptedLauncher = ({
                 session_id,
                 may_edit_tests,
                 model,
-                effort: effort ?? null,
+                effort,
                 delivered: [],
             }
             calls.push(call)

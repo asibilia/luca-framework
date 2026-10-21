@@ -33,7 +33,6 @@ import {
     type AgentQuerySession,
     type OpenSession,
 } from './open-session'
-import { DEFAULT_EFFORT } from './role-effort'
 import type { SessionPool } from './session-pool'
 import { createTurnProgress } from './turn-progress'
 
@@ -75,7 +74,7 @@ export const createLaunch = ({
         config,
         messaging,
         model,
-        effort = DEFAULT_EFFORT,
+        effort,
         on_progress,
     }) => {
         const refused = checkLaunchModel({ model })

@@ -10,7 +10,7 @@ import {
 } from './jev-schemas'
 import { offeredModels, type RoutedRole } from './model-pick'
 
-import { ROLE_EFFORT } from '../agents/role-effort'
+import { DEFAULT_EFFORT, roleEffort } from '../agents/role-effort'
 import type { Finding } from '../agents/role-results'
 import { DEFAULT_MODEL, modelsOf, type Effort } from '../config/engine-config'
 import type { EngineAction } from '../core/decide'
@@ -247,7 +247,12 @@ const agentEffortAsk = ({
             }),
         },
     },
-    fixed: { effort: ROLE_EFFORT[role] },
+    fixed: {
+        effort:
+            state.config === null
+                ? DEFAULT_EFFORT
+                : roleEffort({ role, config: state.config }),
+    },
     acted: false,
 })
 
