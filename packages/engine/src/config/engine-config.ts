@@ -29,6 +29,7 @@ export {
 } from './config-fields'
 export {
     DecisionModelConfigSchema,
+    DEFAULT_EFFORT,
     DEFAULT_MODEL,
     EffortSchema,
     ENGINE_CONFIG_FILE,

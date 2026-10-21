@@ -1,7 +1,7 @@
 import type { MemoryAction, MemorySaveStep } from './decide-memory'
 import { buildContext, need, runTurn, type BuildDeps } from './execute-build'
 
-import { ROLE_EFFORT } from '../agents/role-effort'
+import { roleEffort } from '../agents/role-effort'
 import { launchPick } from '../jev/model-pick'
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
@@ -417,6 +417,10 @@ export const executeMemoryAction = async ({
                 role: 'learner',
                 step,
             })
+            const effort = roleEffort({
+                role: 'learner',
+                config: built.config,
+            })
             journal.append({
                 kind: 'agent_started',
                 ticket: null,
@@ -427,7 +431,7 @@ export const executeMemoryAction = async ({
                     follow_up_of: null,
                     model,
                     model_reason,
-                    effort: ROLE_EFFORT.learner,
+                    effort,
                 },
             })
             await runTurn({
@@ -447,7 +451,7 @@ export const executeMemoryAction = async ({
                         // The learner writes nothing and talks to nobody.
                         messaging: null,
                         model,
-                        effort: ROLE_EFFORT.learner,
+                        effort,
                     }),
             })
             return

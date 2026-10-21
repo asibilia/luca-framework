@@ -72,8 +72,11 @@ each routed role's floor, the cheapest model it may run on, and the
 
 Only `test-writer`, `implementer` and `learner` have floors; one left out is
 `opus`, and a floor for any other role fails the config check, since
-reviewers always run Opus. Like `decision_model`, the block is fixed for a
-run at start. The launch step reads the answer it just journaled and picks
+reviewers always run Opus. The block's `effort` (#660) sets the same three
+roles' effort, `low`, `medium`, `high`, `xhigh` or `max`; one left out is
+`medium`, and an effort for any other role fails the config check, since
+reviewers and the final review's fixers always run at `xhigh`. Like
+`decision_model`, the block is fixed for a run at start. The launch step reads the answer it just journaled and picks
 the model (`pickModel` in `jev/model-pick.ts`); the first match wins:
 
 1. The ticket reviewer or a lens: `opus`, reason `locked`.

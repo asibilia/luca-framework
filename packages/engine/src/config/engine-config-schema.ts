@@ -79,8 +79,30 @@ export const EffortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max'])
 
 export type Effort = z.infer<typeof EffortSchema>
 
+/** The effort a writer and the learner run at, unless the config sets it. */
+export const DEFAULT_EFFORT: Effort = EffortSchema.enum.medium
+
 /** The roles with a model floor (#603); every other role always runs Opus. */
 export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
+
+/**
+ * The effort of each role a repo may set (#660); a role left out is
+ * `medium`. An effort for any other role, a reviewer, a lens or a helper, is
+ * refused.
+ */
+const RoleEffortsSchema = z.strictObject(
+    {
+        'test-writer': EffortSchema.default(DEFAULT_EFFORT),
+        implementer: EffortSchema.default(DEFAULT_EFFORT),
+        learner: EffortSchema.default(DEFAULT_EFFORT),
+    },
+    {
+        error: (issue) =>
+            issue.code === 'unrecognized_keys'
+                ? `models.effort can't set ${issue.keys.join(', ')}: reviewers and the final review's fixers always run at xhigh.`
+                : undefined,
+    }
+)
 
 /**
  * The cheapest model each routed role may run on; a role left out is
@@ -101,12 +123,13 @@ const ModelFloorsSchema = z.strictObject(
 )
 
 /**
- * The config's `models` block (#603): each routed role's model floor, and
- * how sure the decision model must be (`confidence_bar`) before its model
- * pick is used.
+ * The config's `models` block (#603): each routed role's model floor, how
+ * sure the decision model must be (`confidence_bar`) before its model pick
+ * is used, and the writers' and the learner's effort (#660).
  */
 export const ModelsConfigSchema = z.object({
     floors: ModelFloorsSchema.prefault({}),
+    effort: RoleEffortsSchema.prefault({}),
     confidence_bar: z.number().min(0).max(1).default(0.8),
 })
 

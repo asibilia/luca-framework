@@ -9,7 +9,7 @@ import { doChores } from './engine-chores'
 import { closeSessions } from './session-close'
 
 import type { AgentTurn } from '../agents/agent-launcher'
-import { PAST_EFFORT, ROLE_EFFORT } from '../agents/role-effort'
+import { PAST_EFFORT, roleEffort } from '../agents/role-effort'
 import {
     parseRoleResult,
     type AgentRole,
@@ -333,8 +333,9 @@ export const launchAgent = async ({
         role,
         step: context.step,
     })
-    // Each role's own effort, whichever model it runs on (#659).
-    const effort = ROLE_EFFORT[role]
+    // Each role's own effort, whichever model it runs on (#659), as the
+    // run's config sets it (#660).
+    const effort = roleEffort({ role, config: context.config })
     context.journal.append({
         kind: 'agent_started',
         ticket,
