@@ -146,6 +146,47 @@ describe('scripted launcher: follow-ups', () => {
         ])
     })
 
+    test("a launch records the effort it asked for, and its follow-up records that session's effort", async () => {
+        const launcher = createScriptedLauncher({
+            turns: [
+                { role: 'implementer', ticket: 10, result: { n: 1 } },
+                { role: 'implementer', ticket: 10, result: { n: 2 } },
+            ],
+        })
+        // Built first, so the `effort` field compiles before the type names it.
+        const args = {
+            role: 'implementer' as const,
+            ticket: 10,
+            prompt: 'p',
+            cwd,
+            may_edit_tests: false,
+            config: BUILD_CONFIG,
+            messaging: null,
+            model: 'opus',
+            effort: 'xhigh' as const,
+        }
+        const first = await launcher.launch(args)
+        if (!first.ok) throw new Error(first.error)
+        await launcher.followUp({
+            session_id: first.session_id,
+            role: 'implementer',
+            ticket: 10,
+            message: 'lint failed',
+            cwd,
+            config: BUILD_CONFIG,
+        })
+
+        expect(
+            launcher.launches().map((call) => ({
+                kind: call.kind,
+                effort: 'effort' in call ? call.effort : undefined,
+            }))
+        ).toEqual([
+            { kind: 'launch', effort: 'xhigh' },
+            { kind: 'follow_up', effort: 'xhigh' },
+        ])
+    })
+
     test('a follow-up to an unknown session fails', async () => {
         const launcher = createScriptedLauncher({
             turns: [{ role: 'implementer', ticket: 11, result: {} }],

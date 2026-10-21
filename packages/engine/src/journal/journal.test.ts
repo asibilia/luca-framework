@@ -332,6 +332,40 @@ describe('journal', () => {
         })
     })
 
+    test('agent_started keeps the effort it launched at, and older records read it as null (#659)', async () => {
+        const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
+        const journal = createJournal({ file })
+        journal.append({
+            kind: 'run_started',
+            ticket: null,
+            role: null,
+            content: { spec_number: 10, config: CONFIG },
+        })
+        const started = (seq: number, effort: object) => ({
+            seq,
+            time: '2026-10-20T00:00:00.000Z',
+            kind: 'agent_started',
+            ticket: 11,
+            role: 'implementer',
+            content: {
+                role: 'implementer',
+                prompt: 'p',
+                follow_up_of: null,
+                model: 'opus',
+                model_reason: 'floor',
+                ...effort,
+            },
+        })
+        await Bun.write(
+            file,
+            `${await readFile(file, 'utf8')}${JSON.stringify(started(2, { effort: 'medium' }))}\n${JSON.stringify(started(3, {}))}\n`
+        )
+
+        const [, launched, older] = journal.read()
+        expect(launched?.content).toMatchObject({ effort: 'medium' })
+        expect(older?.content).toMatchObject({ effort: null })
+    })
+
     test('Jev records from before Clef (#534) read and replay', async () => {
         const file = runJournalPath({ runs_dir: runsDir, run_id: 'run-1' })
         const journal = createJournal({ file })

@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 
+import type { EffortLevel } from '@anthropic-ai/claude-agent-sdk'
 import { describe, expect, test } from 'bun:test'
 
 import { createClaudeLauncher } from './claude-launcher'
@@ -20,7 +21,7 @@ import type { AgentRole } from './role-results'
  * The launcher seam: `createClaudeLauncher` with a fake `query` that plays
  * back SDK-shaped messages, and a fake `claude` path. No model, no process.
  *
- * Here: the model and the credentials check. The options are in
+ * Here: the model, the effort, and the credentials check. The options are in
  * `claude-launcher-options.test.ts`. The rest are in
  * `claude-launcher-*.test.ts`, and the helpers they share are in
  * `claude-launcher-helpers.ts`.
@@ -51,15 +52,55 @@ describe('the model', () => {
         }
     )
 
+    /**
+     * One launch on `model` at `effort`, on a launcher shared across
+     * launches. The arguments are built first, so the `effort` field
+     * compiles before the launcher's type names it.
+     */
+    const launchOn = ({
+        launcher,
+        role,
+        model,
+        effort = 'medium',
+    }: {
+        launcher: ReturnType<typeof createClaudeLauncher>
+        role: AgentRole
+        model: string
+        effort?: EffortLevel
+    }) => {
+        const args = {
+            role,
+            ticket: 11,
+            prompt: 'Work on ticket #11.',
+            cwd: repo,
+            may_edit_tests: role === 'test-writer',
+            config: CONFIG,
+            messaging: null,
+            model,
+            effort,
+        }
+        return launcher.launch(args)
+    }
+
     test('runs every role on Claude Opus 5.5 at the same effort', async () => {
         const fake = fakeQuery({ messages: [INIT, result({})] })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
         for (const role of [
             'test-writer',
             'implementer',
             'ticket-reviewer',
         ] as const) {
-            await launch({ query: fake.query, role })
+            await launchOn({
+                launcher,
+                role,
+                model: 'opus',
+                effort: 'high',
+            })
         }
+        await launcher.closeAll()
         const models = fake.calls.map(({ options }) => options.model)
         expect(models).toHaveLength(3)
         expect(new Set(models).size).toBe(1)
@@ -71,27 +112,6 @@ describe('the model', () => {
         ])
     })
 
-    /** One launch on `model`, on a launcher shared across launches. */
-    const launchOn = ({
-        launcher,
-        role,
-        model,
-    }: {
-        launcher: ReturnType<typeof createClaudeLauncher>
-        role: AgentRole
-        model: string
-    }) =>
-        launcher.launch({
-            role,
-            ticket: 11,
-            prompt: 'Work on ticket #11.',
-            cwd: repo,
-            may_edit_tests: role === 'test-writer',
-            config: CONFIG,
-            messaging: null,
-            model,
-        })
-
     test('before a launch, accepts opus, sonnet and haiku, and runs each launch on its own model at the same effort', async () => {
         const fake = fakeQuery({ messages: [INIT, result({})] })
         const launcher = createClaudeLauncher({
@@ -99,12 +119,23 @@ describe('the model', () => {
             claude_path: CLAUDE_PATH,
         })
         const turns = [
-            await launchOn({ launcher, role: 'test-writer', model: 'sonnet' }),
-            await launchOn({ launcher, role: 'implementer', model: 'haiku' }),
+            await launchOn({
+                launcher,
+                role: 'test-writer',
+                model: 'sonnet',
+                effort: 'high',
+            }),
+            await launchOn({
+                launcher,
+                role: 'implementer',
+                model: 'haiku',
+                effort: 'high',
+            }),
             await launchOn({
                 launcher,
                 role: 'ticket-reviewer',
                 model: 'opus',
+                effort: 'high',
             }),
         ]
         await launcher.closeAll()
@@ -120,6 +151,79 @@ describe('the model', () => {
             'high',
             'high',
         ])
+    })
+
+    test('runs each launch at the effort it asks for, whatever its model', async () => {
+        const fake = fakeQuery({ messages: [INIT, result({})] })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
+        const turns = [
+            await launchOn({
+                launcher,
+                role: 'test-writer',
+                model: 'sonnet',
+                effort: 'medium',
+            }),
+            await launchOn({
+                launcher,
+                role: 'implementer',
+                model: 'haiku',
+                effort: 'xhigh',
+            }),
+            await launchOn({
+                launcher,
+                role: 'ticket-reviewer',
+                model: 'opus',
+                effort: 'xhigh',
+            }),
+        ]
+        await launcher.closeAll()
+
+        expect(turns.map(({ ok }) => ok)).toEqual([true, true, true])
+        expect(fake.calls.map(({ options }) => options.model)).toEqual([
+            'sonnet',
+            'haiku',
+            'opus',
+        ])
+        expect(fake.calls.map(({ options }) => options.effort)).toEqual([
+            'medium',
+            'xhigh',
+            'xhigh',
+        ])
+    })
+
+    test("a follow-up runs in the session its launch started, at that launch's effort", async () => {
+        const fake = fakeQuery({
+            turns: [
+                [INIT, result({ structured_output: { n: 1 } })],
+                [result({ structured_output: { n: 2 } })],
+            ],
+        })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
+        await launchOn({
+            launcher,
+            role: 'implementer',
+            model: 'opus',
+            effort: 'xhigh',
+        })
+        const second = await launcher.followUp({
+            session_id: 'session-1',
+            role: 'implementer',
+            ticket: 11,
+            message: 'lint failed: fix it.',
+            cwd: repo,
+            config: CONFIG,
+        })
+        await launcher.closeAll()
+
+        expect(second).toMatchObject({ ok: true, structured_output: { n: 2 } })
+        expect(fake.calls).toHaveLength(1)
+        expect(fake.calls[0]?.options.effort).toBe('xhigh')
     })
 
     test('before a launch, refuses fable, every other short name, and a full model id, without starting a session', async () => {

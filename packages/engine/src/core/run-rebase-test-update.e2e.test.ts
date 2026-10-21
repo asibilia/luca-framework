@@ -334,6 +334,31 @@ describe('a test a joined ticket made wrong, end to end', () => {
         expect(implementer?.prompt).toContain('with #21 hint step')
     })
 
+    test("after the rebase, the writers' launches and the implementer's follow-up run at medium, and the reviewer at xhigh (#659)", () => {
+        const [rebased] = ofKind(run.records, 'ticket_rebased')
+        const started = ofKind(run.records, 'agent_started').filter(
+            ({ ticket, seq }) => ticket === 22 && seq > (rebased?.seq ?? 0)
+        )
+        const writerCalls = run.launches.filter(
+            ({ ticket, role }) => ticket === 22 && role !== 'ticket-reviewer'
+        )
+
+        expect(
+            started.map(
+                ({ content }) =>
+                    `${content.follow_up_of === null ? 'launch' : 'follow_up'} ${content.role} ${'effort' in content ? String(content.effort) : 'none'}`
+            )
+        ).toEqual([
+            'launch implementer medium',
+            'launch test-writer medium',
+            'follow_up implementer medium',
+            'launch ticket-reviewer xhigh',
+        ])
+        expect(
+            writerCalls.map((call) => ('effort' in call ? call.effort : null))
+        ).toEqual(writerCalls.map(() => 'medium'))
+    })
+
     test('the rejoin commit holds the updated test and the resolved clash', () => {
         const green = ofKind(run.records, 'commit_made')
             .filter(({ ticket }) => ticket === 22)

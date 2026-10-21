@@ -52,6 +52,17 @@ Tests:
 - `packages/engine/src/models/model-score-verdicts.test.ts`
 - `packages/engine/src/cli/luca-command.test.ts`
 
+## Effort per role
+
+Each role runs at its own effort: the test-writer and the implementer on tickets, and the learner, at medium; the ticket reviewer, the five lenses and the final review's fixers at xhigh; the `searcher` helpers at low. A follow-up keeps its session's effort, and each `agent_started` record names the effort its agent ran at.
+
+Reached by: every agent launch; each `agent_started` record in a run's journal.
+
+Tests:
+
+- `packages/engine/src/core/run-effort.e2e.test.ts`
+- `packages/engine/src/agents/effort-glossary.test.ts`
+
 ## Agent messages and run notes
 
 Agents send each other one-way messages, even across tickets that build at the same time, and hand run notes on to later agents.

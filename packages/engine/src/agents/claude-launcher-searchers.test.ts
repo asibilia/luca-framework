@@ -92,6 +92,21 @@ describe('helpers', () => {
         }
     })
 
+    test("every role's searcher helper runs at low effort", async () => {
+        const efforts: Record<string, unknown> = {}
+        for (const role of AgentRoleSchema.options) {
+            const fake = fakeQuery({ messages: [INIT, result({})] })
+            await launch({ query: fake.query, role })
+            efforts[role] = fake.calls[0]?.options.agents?.searcher?.effort
+        }
+
+        expect(efforts).toEqual(
+            Object.fromEntries(
+                AgentRoleSchema.options.map((role) => [role, 'low'])
+            )
+        )
+    })
+
     test('the guard refuses a helper of another type, and a fourth searcher while 3 run, as guard denials', async () => {
         const answers: HookJSONOutput[] = []
         const fake = fakeQuery({
