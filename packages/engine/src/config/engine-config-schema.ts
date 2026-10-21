@@ -71,6 +71,20 @@ export type ModelName = z.infer<typeof ModelNameSchema>
 /** The model reviewers run on, and every fallback of the model pick (#603). */
 export const DEFAULT_MODEL: ModelName = ModelNameSchema.enum.opus
 
+/**
+ * How hard an agent thinks before it acts (#659), lowest first: the levels
+ * the SDK's `effort` option takes.
+ */
+export const EffortLevelSchema = z.enum([
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+])
+
+export type EffortLevel = z.infer<typeof EffortLevelSchema>
+
 /** The roles with a model floor (#603); every other role always runs Opus. */
 export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
 

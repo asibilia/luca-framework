@@ -192,6 +192,10 @@ _Avoid_: minimum model, model tier
 How sure the decision model must be before the engine uses its model pick, 0.8 unless the config says otherwise. Below it, or with no confidence given, the agent runs Opus.
 _Avoid_: threshold, cutoff
 
+**Effort**:
+How hard an agent thinks before it acts: low, medium, high, xhigh or max. Each role has one; reviewers always run at xhigh.
+_Avoid_: thinking budget, reasoning level
+
 ### Seeing the work
 
 **Journal**:

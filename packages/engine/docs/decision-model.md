@@ -94,7 +94,8 @@ Each `agent_started` names its `model` and `model_reason` (older journals
 read both as `null`). A follow-up, a failed try's included, keeps its
 session's model and reason, so one session never switches models; the
 step-up comes at the role's next fresh agent. The final review's fixers
-always launch on `opus`, reason `locked`.
+always launch on `opus`, reason `locked`. A role's effort (#659) applies
+whichever model it runs on.
 
 ```ts
 import { createClefClient, loadDecisionModelCredentials, runEngine } from '@luca/engine'

@@ -10,9 +10,10 @@ import { afterEach, beforeEach } from 'bun:test'
 import type { AgentMessaging, AgentTurn } from './agent-launcher'
 import { createClaudeLauncher, type AgentQuery } from './claude-launcher'
 import { CLAUDE_MODEL } from './claude-options'
+import { REVIEW_EFFORT } from './role-effort'
 import type { AgentRole } from './role-results'
 
-import type { EngineConfig } from '../config/engine-config'
+import type { EffortLevel, EngineConfig } from '../config/engine-config'
 
 /**
  * Helpers shared by the launcher tests (`claude-launcher.test.ts` and the
@@ -199,12 +200,14 @@ export const repoPerTest = () => {
 export const launch = ({
     query,
     model,
+    effort,
     role,
     turn_timeout_ms,
     messaging,
 }: {
     query: AgentQuery
     model?: string
+    effort?: EffortLevel
     role?: AgentRole
     turn_timeout_ms?: number
     messaging?: AgentMessaging
@@ -222,6 +225,8 @@ export const launch = ({
         config: CONFIG,
         messaging: messaging ?? null,
         model: model ?? CLAUDE_MODEL,
+        // One effort for every role unless given, as the default reviewer's.
+        effort: effort ?? REVIEW_EFFORT,
     })
 
 export const IMPLEMENTER_DONE = {

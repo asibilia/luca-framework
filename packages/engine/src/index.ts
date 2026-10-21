@@ -15,7 +15,6 @@ export {
     type AgentQuerySession,
 } from './agents/claude-launcher'
 export {
-    AGENT_EFFORT,
     agentEnv,
     agentOptions,
     BANNED_ENV,
@@ -32,6 +31,7 @@ export {
     LUCA_SERVER,
     sendMessageDescription,
 } from './agents/message-tool'
+export { REVIEW_EFFORT, ROLE_EFFORT, roleEffort } from './agents/role-effort'
 export { roleInstructions } from './agents/role-instructions'
 export {
     rolePrompt,
