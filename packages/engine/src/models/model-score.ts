@@ -35,7 +35,8 @@ export {
  * The model score report (#605): how good each routed role's work was on
  * each model and effort it ran at, from run journals, so the owner knows
  * when to lower a model floor or raise one back. A ticket is compared only
- * with tickets whose ticket review ran at the same effort (#662). Pure: it
+ * with tickets whose ticket review ran at the same effort (#662). It also
+ * checks whether Clef's effort picks spot hard tickets (#663). Pure: it
  * reads records and never writes.
  */
 
@@ -80,9 +81,28 @@ export type FinalReviewSide = {
     findings_per_100_lines: number | null
 }
 
+export type EffortPicksVerdict =
+    | 'not enough data'
+    | 'Clef spots hard tickets'
+    | 'no sign yet'
+
+/**
+ * Clef's `agent_effort` answers for one writer role, in shadow mode (#663),
+ * counting only answers at or above the confidence bar.
+ */
+export type EffortPicks = {
+    role: ScoredRole
+    /** The tickets where Clef wanted more effort than the role ran at. */
+    wanted_more: ScoreSide
+    /** The tickets where it wanted the same effort or less. */
+    rest: ScoreSide
+    verdict: EffortPicksVerdict
+}
+
 export type ModelReport = {
     runs: number
     scores: ModelScore[]
+    effort_picks: EffortPicks[]
     /** Fresh learner agents per model; the learner isn't scored. */
     learner: { model: ModelName; agents: number }[]
     /** Runs with any agent on a cheaper model, and runs without. */
@@ -209,6 +229,51 @@ const scoreOf = ({
     }
 }
 
+/** Clef's effort picks read as the model verdict's rules read a baseline. */
+const EFFORT_PICKS_VERDICTS: Record<Verdict, EffortPicksVerdict> = {
+    'not enough data': 'not enough data',
+    worse: 'Clef spots hard tickets',
+    'about the same': 'no sign yet',
+}
+
+const rank = (effort: Effort): number => EffortSchema.options.indexOf(effort)
+
+/**
+ * The tickets where Clef's effort answer for `role` was higher than the
+ * effort its first agent ran at, against the rest, judged as a cheaper
+ * model is against its baseline. Tickets with no answer are in neither.
+ */
+const effortPicksOf = ({
+    tickets,
+    role,
+}: {
+    tickets: TicketFacts[]
+    role: ScoredRole
+}): EffortPicks => {
+    const answered = tickets.flatMap((ticket) => {
+        const pick = ticket.effort_picks[role]
+        const ran = ticket.efforts[role]
+        return pick === undefined || ran === undefined
+            ? []
+            : [{ ticket, wanted_more: rank(pick) > rank(ran) }]
+    })
+    const wanted_more = sideOf(
+        answered.filter((one) => one.wanted_more).map(({ ticket }) => ticket)
+    )
+    const rest = sideOf(
+        answered.filter((one) => !one.wanted_more).map(({ ticket }) => ticket)
+    )
+    return {
+        role,
+        wanted_more,
+        rest,
+        verdict:
+            EFFORT_PICKS_VERDICTS[
+                verdictOf({ side: wanted_more, baseline: rest })
+            ],
+    }
+}
+
 /** The final review's findings per 100 changed lines over `runs`. */
 const finalReviewOf = (runs: RunFacts[]): FinalReviewSide => {
     const reviewed = runs.filter(
@@ -260,6 +325,9 @@ export const scoreModels = ({
     return {
         runs: runs.length,
         scores,
+        effort_picks: SCORED_ROLES.map((role) =>
+            effortPicksOf({ tickets, role })
+        ),
         learner: ModelNameSchema.options
             .map((model) => ({
                 model,
@@ -310,12 +378,20 @@ const scoreText = (score: ModelScore): string[] => {
     ]
 }
 
+const effortPicksText = (picks: EffortPicks): string[] => [
+    "  Clef's effort picks (shadow mode), answers at or above the confidence bar:",
+    `    wanted more effort than it ran at: ${sideText(picks.wanted_more)}`,
+    `    the rest: ${sideText(picks.rest)}`,
+    `    verdict: ${picks.verdict}`,
+]
+
 const finalText = (label: string, side: FinalReviewSide): string =>
     `${decimal(side.findings_per_100_lines)} ${label} (${plural(side.runs, 'run')})`
 
 /**
  * The report as `luca models` prints it: each routed role's models and
- * efforts with their verdicts, the learner, the final review's line, and
+ * efforts with their verdicts, Clef's effort picks for each, the learner,
+ * the final review's line, and
  * the tickets left out of the rates. Pure.
  *
  * @example
@@ -334,6 +410,9 @@ export const formatModelReport = ({
             ...(scores.length === 0
                 ? ['  no tickets yet']
                 : scores.flatMap(scoreText)),
+            ...report.effort_picks
+                .filter((picks) => picks.role === role)
+                .flatMap(effortPicksText),
         ]
     })
     const learner =

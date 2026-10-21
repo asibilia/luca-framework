@@ -100,9 +100,9 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/models/model-score.ts` | The model score report `luca models` prints (`scoreModels`, `formatModelReport`): each routed role per model and effort, from the first ticket review's weighted findings per 100 changed lines, fix rounds, stuck tickets and tokens, against its shadow-pick baseline, comparing only tickets whose ticket review ran at the same effort (a `null` effort reads as `high`). Pure. |
+| `src/models/model-score.ts` | The model score report `luca models` prints (`scoreModels`, `formatModelReport`): each routed role per model and effort, from the first ticket review's weighted findings per 100 changed lines, fix rounds, stuck tickets and tokens, against its shadow-pick baseline, comparing only tickets whose ticket review ran at the same effort (a `null` effort reads as `high`), and for each writer role "Clef's effort picks (shadow mode)": the tickets where Clef's effort answer at or above the confidence bar was higher than the effort the agent ran at, against the rest. Pure. |
 | `src/models/model-score-constants.ts` | The model score report's constants in one place: finding weights, verdict edges, the effort a `null` reads as, and the scored roles. Re-exported by `model-score.ts`. |
-| `src/models/model-score-facts.ts` | What a run journal says for the model score report (`factsOf`): each ticket's models, efforts, Clef's picks, first-review findings and fix rounds, and the run's final review. Pure. |
+| `src/models/model-score-facts.ts` | What a run journal says for the model score report (`factsOf`): each ticket's models, efforts, Clef's model picks and effort answers at or above the run's confidence bar, first-review findings and fix rounds, and the run's final review. Pure. |
 
 ## `src/memory/`
 
