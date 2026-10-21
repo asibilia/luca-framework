@@ -6,8 +6,11 @@ import {
 } from './model-score-rules'
 
 import type { FindingSeverity } from '../agents/role-results'
+import { modelsOf } from '../config/config-fields'
 import {
+    EffortLevelSchema,
     ModelNameSchema,
+    ModelsConfigSchema,
     type EffortLevel,
     type ModelName,
 } from '../config/engine-config'
@@ -37,6 +40,11 @@ export type TicketFacts = {
     /** The first ticket review's effort, `high` when none is journaled. */
     review_effort: EffortLevel
     picks: Partial<Record<ScoredRole, Pick>>
+    /**
+     * Clef's first `agent_effort` answer for each role at or above the run's
+     * confidence bar.
+     */
+    effort_picks: Partial<Record<ScoredRole, EffortLevel>>
     reviews: number
     /** The first ticket review's weighted findings. */
     findings: number
@@ -92,6 +100,7 @@ const newTicket = (): TicketFacts => ({
     efforts: {},
     review_effort: EFFORT_BEFORE_659,
     picks: {},
+    effort_picks: {},
     reviews: 0,
     findings: 0,
     fix_rounds: 0,
@@ -113,14 +122,22 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
         return found
     }
     const asks = new Map<number, { role: string | null; shadow: boolean }>()
+    const effort_asks = new Map<number, string | null>()
     const reviewed = new Set<number>()
     const learner: LearnerRun[] = []
+    let bar = ModelsConfigSchema.parse({}).confidence_bar
     let routed = false
     let final_rounds = 0
     let final_findings = 0
     for (const record of records) {
         switch (record.kind) {
+            case 'run_started':
+                bar = modelsOf({ config: record.content.config }).confidence_bar
+                break
             case 'jev_asked':
+                if (record.content.job === 'agent_effort') {
+                    effort_asks.set(record.seq, record.role)
+                }
                 if (
                     record.content.job === 'agent_model' ||
                     record.content.job === 'ticket_model'
@@ -134,6 +151,22 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                 }
                 break
             case 'jev_answered': {
+                const effort_role = effort_asks.get(record.content.asked_seq)
+                if (effort_role !== undefined && record.ticket !== null) {
+                    const answer = record.content.answers.effort
+                    const level = EffortLevelSchema.safeParse(answer?.value)
+                    const confidence = answer?.confidence ?? null
+                    if (
+                        isScored(effort_role) &&
+                        level.success &&
+                        confidence !== null &&
+                        confidence >= bar
+                    ) {
+                        ticketOf(record.ticket).effort_picks[effort_role] ??=
+                            level.data
+                    }
+                    break
+                }
                 const ask = asks.get(record.content.asked_seq)
                 if (ask === undefined || record.ticket === null) break
                 const answer = record.content.answers.model

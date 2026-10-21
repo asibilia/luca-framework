@@ -73,6 +73,24 @@ export type ModelScore = ScoreSide & {
     verdict: Verdict | null
 }
 
+export type EffortPicksVerdict =
+    | 'not enough data'
+    | 'Clef spots hard tickets'
+    | 'no sign yet'
+
+/**
+ * Clef's shadow-mode effort picks for one writer role (#663): the tickets
+ * where its `agent_effort` answer, at or above the run's confidence bar,
+ * was higher than the effort the role's first agent ran at, against the
+ * tickets where it was the same or lower.
+ */
+export type EffortPicks = {
+    role: ScoredRole
+    wanted_more: ScoreSide
+    rest: ScoreSide
+    verdict: EffortPicksVerdict
+}
+
 /** The final review's findings over a set of runs. */
 export type FinalReviewSide = {
     runs: number
@@ -82,6 +100,8 @@ export type FinalReviewSide = {
 export type ModelReport = {
     runs: number
     scores: ModelScore[]
+    /** One per scored role. */
+    effort_picks: EffortPicks[]
     /** Fresh learner agents per model and effort; the learner isn't scored. */
     learner: { model: ModelName; effort: EffortLevel; agents: number }[]
     /** Runs with any agent on a cheaper model, and runs without. */
@@ -121,6 +141,15 @@ const sideOf = (tickets: TicketFacts[]): ScoreSide => ({
 const above = (value: number | null, base: number | null): boolean =>
     value !== null && base !== null && value > base * (1 + WORSE_BY) + EPSILON
 
+/** Whether either side has fewer than `MIN_TICKETS` tickets. */
+const tooFew = (a: ScoreSide, b: ScoreSide): boolean =>
+    a.tickets < MIN_TICKETS || b.tickets < MIN_TICKETS
+
+/** Whether `side`'s findings rate or fix rounds per ticket is above `base`'s. */
+const sideAbove = (side: ScoreSide, base: ScoreSide): boolean =>
+    above(side.findings_per_100_lines, base.findings_per_100_lines) ||
+    above(side.fix_rounds_per_ticket, base.fix_rounds_per_ticket)
+
 /**
  * The verdict on a cheaper model against its baseline: "not enough data"
  * while either side has fewer than `MIN_TICKETS` tickets, "worse" when its
@@ -134,13 +163,48 @@ export const verdictOf = ({
     side: ScoreSide
     baseline: ScoreSide
 }): Verdict => {
-    if (side.tickets < MIN_TICKETS || baseline.tickets < MIN_TICKETS) {
-        return 'not enough data'
+    if (tooFew(side, baseline)) return 'not enough data'
+    return sideAbove(side, baseline) ? 'worse' : 'about the same'
+}
+
+/**
+ * Clef's effort picks for `role` over every run's tickets: a ticket wants
+ * more when its pick is above the effort the role's first agent ran at, in
+ * `EffortLevelSchema`'s order. "Clef spots hard tickets" when the "wanted
+ * more" side's findings rate or fix rounds per ticket is more than
+ * `WORSE_BY` above the rest's, with `MIN_TICKETS` on each side.
+ */
+const effortPicksOf = ({
+    tickets,
+    role,
+}: {
+    tickets: TicketFacts[]
+    role: ScoredRole
+}): EffortPicks => {
+    const rank = (level: EffortLevel): number =>
+        EffortLevelSchema.options.indexOf(level)
+    const picked = tickets.flatMap((ticket) => {
+        const pick = ticket.effort_picks[role]
+        const ran = ticket.efforts[role]
+        return pick === undefined || ran === undefined
+            ? []
+            : [{ ticket, wants_more: rank(pick) > rank(ran) }]
+    })
+    const sideWhere = (wants_more: boolean): ScoreSide =>
+        sideOf(
+            picked.flatMap((entry) =>
+                entry.wants_more === wants_more ? [entry.ticket] : []
+            )
+        )
+    const wanted_more = sideWhere(true)
+    const rest = sideWhere(false)
+    const verdictOn = (): EffortPicksVerdict => {
+        if (tooFew(wanted_more, rest)) return 'not enough data'
+        return sideAbove(wanted_more, rest)
+            ? 'Clef spots hard tickets'
+            : 'no sign yet'
     }
-    const worse =
-        above(side.findings_per_100_lines, baseline.findings_per_100_lines) ||
-        above(side.fix_rounds_per_ticket, baseline.fix_rounds_per_ticket)
-    return worse ? 'worse' : 'about the same'
+    return { role, wanted_more, rest, verdict: verdictOn() }
 }
 
 /**
@@ -260,6 +324,9 @@ export const scoreModels = ({
     return {
         runs: runs.length,
         scores,
+        effort_picks: SCORED_ROLES.map((role) =>
+            effortPicksOf({ tickets, role })
+        ),
         learner: ModelNameSchema.options
             .flatMap((model) =>
                 levels.map((effort) => ({
@@ -315,13 +382,20 @@ const scoreText = (score: ModelScore): string[] => {
     ]
 }
 
+const effortPicksText = (picks: EffortPicks): string[] => [
+    "  Clef's effort picks (shadow mode)",
+    `    wanted more effort than it ran at: ${sideText(picks.wanted_more)}`,
+    `    the rest: ${sideText(picks.rest)}`,
+    `    verdict: ${picks.verdict}`,
+]
+
 const finalText = (label: string, side: FinalReviewSide): string =>
     `${decimal(side.findings_per_100_lines)} ${label} (${plural(side.runs, 'run')})`
 
 /**
  * The report as `luca models` prints it: each routed role's models and
- * efforts with their verdicts, the learner, the final review's line, and
- * the tickets left out of the rates. Pure.
+ * efforts with their verdicts and Clef's effort picks, the learner, the
+ * final review's line, and the tickets left out of the rates. Pure.
  *
  * @example
  * console.log(formatModelReport({ report: scoreModels({ runs }) }))
@@ -334,11 +408,13 @@ export const formatModelReport = ({
     const weights = `blocker ${FINDING_WEIGHTS.blocker}, should-fix ${FINDING_WEIGHTS.should_fix}, nit ${FINDING_WEIGHTS.nit}`
     const roles = SCORED_ROLES.flatMap((role) => {
         const scores = report.scores.filter((score) => score.role === role)
+        const picks = report.effort_picks.find((found) => found.role === role)
         return [
             role,
             ...(scores.length === 0
                 ? ['  no tickets yet']
                 : scores.flatMap(scoreText)),
+            ...(picks === undefined ? [] : effortPicksText(picks)),
         ]
     })
     const learner =
