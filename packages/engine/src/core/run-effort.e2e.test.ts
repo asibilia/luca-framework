@@ -1,16 +1,24 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 
+import { recordConfigReload, recordResume } from './run-start'
+
+import type { AgentLauncher } from '../agents/agent-launcher'
 import { LENS_ROLES, lensRole, type LensName } from '../agents/role-results'
-import type { ScriptedTurn } from '../agents/scripted-launcher'
+import {
+    createScriptedLauncher,
+    type ScriptedTurn,
+} from '../agents/scripted-launcher'
+import { loadEngineConfig } from '../config/engine-config'
 import { createFakeMuninn } from '../testing/fake-muninn'
 import {
     createPracticeRepo,
     happyTurns,
     IMPLEMENTER_RESULT,
+    PRACTICE_ENGINE_CONFIG,
     SUM,
     SUM_TEST,
     TEST_WRITER_RESULT,
@@ -247,5 +255,166 @@ describe('effort per role, end to end (#659)', () => {
         expect(starts.map(({ effort }) => effort)).toEqual(
             starts.map((start) => expected(start))
         )
+    })
+})
+
+/** The practice config with these writers' efforts under `models.effort`. */
+const withEffort = (effort: Record<string, string>) => ({
+    ...PRACTICE_ENGINE_CONFIG,
+    models: { effort },
+})
+
+/** Each scripted call's kind, role and effort, on `ticket`, for the writers. */
+const writerEfforts = (calls: PracticeRun['launches'], ticket: number) =>
+    calls
+        .filter(
+            ({ ticket: on, role }) =>
+                on === ticket &&
+                (role === 'test-writer' || role === 'implementer')
+        )
+        .map(({ kind, role, effort }) => ({ kind, role, effort }))
+
+describe('a configured writer effort, end to end (#660)', () => {
+    let root = ''
+    let run: PracticeRun | undefined
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-engine-effort-config-'))
+        const practice = await createPracticeRepo({
+            root,
+            config: withEffort({ 'test-writer': 'high' }),
+        })
+        const ran = await practice.run({
+            turns: [
+                testWriter,
+                implementer,
+                reviewer,
+                lensTurn('architecture', [
+                    finding({
+                        id: 'A1',
+                        kind: 'test',
+                        file: 'src/sum.test.ts',
+                        title: 'No test adds negative numbers',
+                    }),
+                ]),
+                {
+                    role: 'test-writer',
+                    ticket: 10,
+                    files: { 'src/sum.test.ts': SUM_TEST_WITH_NEGATIVES },
+                    result: {
+                        ...TEST_WRITER_RESULT,
+                        ...fixed('architecture-A1'),
+                    },
+                },
+                lensTurn('architecture'),
+            ],
+        })
+        run = { ...ran, origin: practice.origin }
+    }, 180_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    const shared = (): PracticeRun => {
+        if (run === undefined) throw new Error('The run was not built.')
+        return run
+    }
+
+    test("with the test-writer at high under models.effort, the test-writer launches at high on its ticket and at xhigh as the final review's fixer, and the implementer stays at medium", () => {
+        const done = shared()
+
+        expect(done.action).toMatchObject({
+            type: 'done',
+            outcome: 'pr_opened',
+        })
+        expect(writerEfforts(done.launches, 11)).toEqual([
+            { kind: 'launch', role: 'test-writer', effort: 'high' },
+            { kind: 'launch', role: 'implementer', effort: 'medium' },
+        ])
+        expect(writerEfforts(done.launches, 10)).toEqual([
+            { kind: 'launch', role: 'test-writer', effort: 'xhigh' },
+        ])
+    })
+
+    test("with the test-writer at high under models.effort, the test-writer's agent_started says high on its ticket and xhigh as the final review's fixer", () => {
+        const starts = shared().records.flatMap((record) =>
+            record.kind === 'agent_started' && record.role === 'test-writer'
+                ? [{ ticket: record.ticket, effort: record.content.effort }]
+                : []
+        )
+
+        expect(starts).toEqual([
+            { ticket: 11, effort: 'high' },
+            { ticket: null, effort: 'xhigh' },
+        ])
+    })
+})
+
+/** A launcher whose launches throw, as if the engine died mid-turn. */
+const crashingLaunches = (launcher: AgentLauncher): AgentLauncher => ({
+    launch: () => Promise.reject(new Error('The engine crashed.')),
+    followUp: (args) => launcher.followUp(args),
+    closeSession: (args) => launcher.closeSession(args),
+})
+
+describe('a resumed run keeps its effort settings (#660)', () => {
+    let root = ''
+    let run: PracticeRun | undefined
+
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-engine-effort-resume-'))
+        const practice = await createPracticeRepo({
+            root,
+            config: withEffort({ 'test-writer': 'high', implementer: 'high' }),
+        })
+        // The first run starts at high and crashes in the first launch.
+        await practice
+            .run({
+                launcher: crashingLaunches(
+                    createScriptedLauncher({ turns: [] })
+                ),
+            })
+            .catch(() => undefined)
+        // Since then, the config file lowers both efforts and a build field.
+        const changed = join(root, 'changed')
+        await mkdir(join(changed, '.luca'), { recursive: true })
+        await writeFile(
+            join(changed, '.luca', 'config.json'),
+            JSON.stringify({
+                ...withEffort({ 'test-writer': 'low', implementer: 'low' }),
+                test_timeout_ms: 600_000,
+            })
+        )
+        recordResume({ journal: practice.journal })
+        recordConfigReload({
+            journal: practice.journal,
+            loaded: await loadEngineConfig({ repo_root: changed }),
+        })
+        const ran = await practice.run({
+            resume: true,
+            turns: Object.values(happyTurns()),
+        })
+        run = { ...ran, origin: practice.origin }
+    }, 180_000)
+
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test('after a resume whose config file lowered the efforts, the test-writer and the implementer still launch at the high the run started with', () => {
+        if (run === undefined) throw new Error('The run was not built.')
+
+        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const reloads = run.records.flatMap((record) =>
+            record.kind === 'config_reloaded'
+                ? record.content.changes.map(({ field }) => field)
+                : []
+        )
+        expect(reloads).toEqual(['test_timeout_ms'])
+        expect(writerEfforts(run.launches, 11)).toEqual([
+            { kind: 'launch', role: 'test-writer', effort: 'high' },
+            { kind: 'launch', role: 'implementer', effort: 'high' },
+        ])
     })
 })

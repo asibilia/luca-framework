@@ -89,7 +89,9 @@ Tests:
 
 Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends. Each role runs at its own effort, whatever its model: the test-writer and the implementer on tickets, and the learner, at medium; the ticket reviewer, the five lenses and the final review's fixers at xhigh; a follow-up at its session's effort. A fix round whose session is gone goes to a fresh agent, with the fix message, and counts as no engine failure. Any agent may start up to 3 read-only Haiku helpers (`searcher`), at effort low, to search the repo; their tokens count toward the run budget.
 
-Reached by: every agent turn of a real run; scripted stand-in agents run the end-to-end tests.
+A repo can set the test-writer's, the implementer's and the learner's effort under `models.effort`; a setting for any other role is refused, and a resumed run keeps the effort settings it started with.
+
+Reached by: every agent turn of a real run; the `models.effort` block in a repo's `.luca/config.json`; scripted stand-in agents run the end-to-end tests.
 
 Tests:
 
