@@ -271,6 +271,26 @@ describe('model floors with a sure decision model (#603)', () => {
         })
     })
 
+    test("a test-writer routed to sonnet launches at medium, its role's effort on any model (#659)", () => {
+        const run = routed()
+
+        const writer = run.launches.find(
+            ({ kind, role, ticket }) =>
+                kind === 'launch' && role === 'test-writer' && ticket === 11
+        )
+        expect(writer).toMatchObject({ model: 'sonnet', effort: 'medium' })
+        const started = run.records.find(
+            (record) =>
+                record.kind === 'agent_started' &&
+                record.role === 'test-writer' &&
+                record.ticket === 11
+        )
+        expect(started?.content).toMatchObject({
+            model: 'sonnet',
+            effort: 'medium',
+        })
+    })
+
     test('the ticket reviewer and every lens launch on opus with reason locked, whatever the decision model answers', () => {
         const run = routed()
 

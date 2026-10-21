@@ -2,19 +2,10 @@ import { describe, expect, test } from 'bun:test'
 
 import { formatModelReport, scoreModels, type ModelScore } from './model-score'
 
-import type { AgentRole } from '../agents/role-results'
-import type { JournalEntry, JournalRecord } from '../journal/journal-record'
+import type { JournalEntry } from '../journal/journal-record'
 import {
     agentFailed,
-    agentSession,
-    finding,
-    implemented,
-    intakePassed,
-    practiceTicket,
     pullRequestOpened,
-    pushed,
-    reviewed,
-    testsWritten,
     ticketStuck,
 } from '../testing/build-fixtures'
 import {
@@ -22,7 +13,18 @@ import {
     lensFinding,
     lensRound,
 } from '../testing/final-review-fixtures'
-import { recordsFrom } from '../testing/intake-fixtures'
+import {
+    groups,
+    modelAsk,
+    runOf,
+    scoreOf,
+    started,
+    sure,
+    ticketRun,
+    type Ask,
+    type Model,
+    type Severity,
+} from '../testing/model-score-fixtures'
 
 /**
  * The model score report (#605) as a pure function: run journals in, built
@@ -32,252 +34,6 @@ import { recordsFrom } from '../testing/intake-fixtures'
  * `without_lines_changed` (tickets left out of the rates).
  * `formatModelReport({ report })` is the text `luca models` prints.
  */
-
-type Model = 'opus' | 'sonnet' | 'haiku'
-type Severity = 'blocker' | 'should_fix' | 'nit'
-type Built = 'test-writer' | 'implementer'
-
-/** An agent turn started on `model`; `null` writes one from before #600. */
-const started = ({
-    ticket,
-    role,
-    model,
-    follow_up_of,
-}: {
-    ticket: number | null
-    role: AgentRole
-    model: Model | null
-    follow_up_of?: string
-}): JournalEntry => ({
-    kind: 'agent_started',
-    ticket,
-    role,
-    content: {
-        role,
-        prompt: 'p',
-        follow_up_of: follow_up_of ?? null,
-        ...(model === null ? {} : { model }),
-    },
-})
-
-/**
- * An `agent_model` ask about `role` and Clef's answer, or with `role` null
- * an older journal's `ticket_model` ask, which named full model ids.
- * `runOf` points the answer's `asked_seq` at the ask.
- */
-const modelAsk = ({
-    ticket,
-    role,
-    pick,
-    confidence,
-    acted,
-}: {
-    ticket: number | null
-    role: Built | 'learner' | null
-    pick: string
-    confidence: number | null
-    acted?: boolean
-}): JournalEntry[] => {
-    const job = role === null ? 'ticket_model' : 'agent_model'
-    const options =
-        role === null
-            ? ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-4-5']
-            : ['opus', 'sonnet', 'haiku']
-    return [
-        {
-            kind: 'jev_asked',
-            ticket,
-            role,
-            content: {
-                job,
-                request: {
-                    state: {},
-                    questions: {
-                        model: {
-                            type: 'choice',
-                            instructions: 'Which model?',
-                            criteria: Object.fromEntries(
-                                options.map((option) => [option, null])
-                            ),
-                        },
-                    },
-                },
-                fixed: { model: options[0] ?? 'opus' },
-                ...(acted === undefined ? {} : { acted }),
-            },
-        },
-        {
-            kind: 'jev_answered',
-            ticket,
-            role,
-            content: {
-                job,
-                asked_seq: 1,
-                answers: { model: { value: pick, confidence, raw: {} } },
-                ms: 5,
-            },
-        },
-    ]
-}
-
-type Ask = Omit<Parameters<typeof modelAsk>[0], 'ticket'>
-
-/**
- * One ticket built: the test-writer on `tw`, the implementer on `impl`
- * (opus unless told), the first review's `findings`, then `rounds` fix
- * rounds (one when the findings block), each fix's review finding a
- * should-fix until the last approves, and a join of `lines` lines.
- */
-const ticketRun = ({
-    ticket,
-    tw = 'opus',
-    impl = 'opus',
-    asks = [],
-    findings = [],
-    rounds,
-    lines = 100,
-    tokens = 100,
-    tw_failed_first = false,
-}: {
-    ticket: number
-    tw?: Model | null
-    impl?: Model | null
-    asks?: Ask[]
-    findings?: Severity[]
-    rounds?: number
-    /** `null` joins as an older journal does, with no `lines_changed`. */
-    lines?: number | null
-    /** The ticket's tokens, all in its test-writer's session. */
-    tokens?: number
-    /** The test-writer on `tw` fails a try; a fresh one on opus follows. */
-    tw_failed_first?: boolean
-}): JournalEntry[] => {
-    const askFor = (role: Built | null) =>
-        asks
-            .filter((ask) => ask.role === role)
-            .flatMap((ask) => modelAsk({ ticket, ...ask }))
-    const fixes =
-        rounds ?? (findings.some((severity) => severity !== 'nit') ? 1 : 0)
-    const review = (list: Severity[], index: number): JournalEntry[] => [
-        started({ ticket, role: 'ticket-reviewer', model: 'opus' }),
-        reviewed({
-            ticket,
-            findings: list.map((severity, at) =>
-                finding({ id: `F${index}-${at}`, severity })
-            ),
-        }),
-    ]
-    return [
-        ...askFor(null),
-        ...askFor('test-writer'),
-        ...(tw_failed_first
-            ? [
-                  started({ ticket, role: 'test-writer', model: tw }),
-                  agentFailed({
-                      ticket,
-                      role: 'test-writer',
-                      failure: 'agent',
-                  }),
-              ]
-            : []),
-        started({
-            ticket,
-            role: 'test-writer',
-            model: tw_failed_first ? 'opus' : tw,
-        }),
-        testsWritten({ ticket }),
-        agentSession({
-            ticket,
-            role: 'test-writer',
-            output_tokens: tokens - 10,
-        }),
-        ...askFor('implementer'),
-        started({ ticket, role: 'implementer', model: impl }),
-        implemented({ ticket }),
-        ...review(findings, 0),
-        ...Array.from({ length: fixes }, (_, index) => [
-            started({
-                ticket,
-                role: 'implementer',
-                model: impl,
-                follow_up_of: 'impl-1',
-            }),
-            implemented({ ticket }),
-            ...review(index + 1 < fixes ? ['should_fix'] : [], index + 1),
-        ]).flat(),
-        {
-            kind: 'ticket_joined',
-            ticket,
-            role: null,
-            content: {
-                ok: true,
-                shas: ['r1', 'g1'],
-                ...(lines === null ? {} : { lines_changed: lines }),
-            },
-        },
-        pushed({ ticket }),
-        {
-            kind: 'usage_recorded',
-            ticket,
-            role: null,
-            content: {
-                scope: 'ticket',
-                ticket,
-                agent_turns: 1,
-                tokens: {
-                    input_tokens: 10,
-                    output_tokens: tokens - 10,
-                    cache_read_input_tokens: 0,
-                    cache_creation_input_tokens: 0,
-                },
-                windows: {},
-            },
-        },
-    ]
-}
-
-/** A run's records: its intake, then `body`, each answer after its ask. */
-const runOf = (body: JournalEntry[]): JournalRecord[] => {
-    const numbers = [
-        ...new Set(
-            body.flatMap(({ ticket }) => (ticket === null ? [] : [ticket]))
-        ),
-    ]
-    const entries = [
-        ...intakePassed({
-            tickets: numbers.map((number) => practiceTicket({ number })),
-        }),
-        ...body,
-    ]
-    return recordsFrom({
-        entries: entries.map((entry, index) =>
-            entry.kind === 'jev_answered'
-                ? { ...entry, content: { ...entry.content, asked_seq: index } }
-                : entry
-        ),
-    })
-}
-
-const scoreOf = (
-    scores: ModelScore[],
-    role: Built,
-    model: Model
-): ModelScore | undefined =>
-    scores.find((score) => score.role === role && score.model === model)
-
-/** The role and model of each score with tickets, sorted. */
-const groups = (scores: ModelScore[]): string[] =>
-    scores
-        .filter(({ tickets }) => tickets > 0)
-        .map(({ role, model }) => `${role}/${model}`)
-        .sort()
-
-const sure = (pick: Model, confidence = 0.9): Ask => ({
-    role: 'test-writer',
-    pick,
-    confidence,
-    acted: true,
-})
 
 const rate = (score: ModelScore | undefined) => score?.findings_per_100_lines
 

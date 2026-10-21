@@ -53,7 +53,6 @@ describe('the options', () => {
 
         expect(options).toMatchObject({
             cwd: worktree,
-            effort: 'high',
             pathToClaudeCodeExecutable: CLAUDE_PATH,
             permissionMode: 'dontAsk',
             settingSources: [],

@@ -47,8 +47,10 @@ describe('Jev in shadow mode on the happy run', () => {
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         expectSameRun({ run, without })
 
+        // The effort asks (#661) are checked in their own test below.
         const asks = asked(run.records).filter(
-            ({ content }) => content.job !== 'ticket_order'
+            ({ content }) =>
+                content.job !== 'ticket_order' && content.job !== 'agent_effort'
         )
         expect(asks.map(({ content }) => content.job).toSorted()).toEqual([
             'agent_model',
@@ -180,27 +182,91 @@ describe('Jev in shadow mode on the happy run', () => {
         const { run, jev } = happy()
 
         const jobs = asked(run.records).map(({ content }) => content.job)
-        expect(jobs.toSorted()).toEqual([
-            'agent_model',
-            'agent_model',
-            'agent_skills',
-            'agent_skills',
-            'agent_skills',
-        ])
+        // The effort asks (#661) are checked in their own test below.
+        expect(jobs.filter((job) => job !== 'agent_effort').toSorted()).toEqual(
+            [
+                'agent_model',
+                'agent_model',
+                'agent_skills',
+                'agent_skills',
+                'agent_skills',
+            ]
+        )
         expect(jobs).not.toContain('ticket_model')
         // Shadow mode: no ask's answer can change anything.
-        expect(asked(run.records).map(({ content }) => content.acted)).toEqual([
-            false,
-            false,
-            false,
-            false,
-            false,
-        ])
-        expect(jev.signals).toHaveLength(5)
+        expect(
+            new Set(asked(run.records).map(({ content }) => content.acted))
+        ).toEqual(new Set([false]))
+        expect(jev.signals).toHaveLength(jobs.length)
         expect(jev.requests.filter(hasOneOptionChoice)).toEqual([])
         expect(
             run.records.filter((record) => record.kind === 'jev_failed')
         ).toEqual([])
+    })
+
+    test("asks agent_effort before each fresh test-writer and implementer, with the agent_model ask's facts, fixed at medium and never acted on: Clef picks xhigh, yet the test-writer launches at medium", () => {
+        const { run, jev } = happy()
+
+        const all = asked(run.records)
+        expect(all.map(({ content }) => content.job).toSorted()).toEqual([
+            'agent_effort',
+            'agent_effort',
+            'agent_model',
+            'agent_model',
+            'agent_skills',
+            'agent_skills',
+            'agent_skills',
+        ])
+        expect(jev.signals).toHaveLength(all.length)
+
+        const efforts = all.filter(
+            ({ content }) => content.job === 'agent_effort'
+        )
+        expect(efforts.map(({ role }) => role)).toEqual([
+            'test-writer',
+            'implementer',
+        ])
+        for (const effort of efforts) {
+            expect(effort.ticket).toBe(11)
+            expect(effort.content.acted).toBe(false)
+            expect(effort.content.fixed).toEqual({ effort: 'medium' })
+            expect(effort.content.request.questions).toEqual({
+                effort: {
+                    type: 'choice',
+                    instructions:
+                        'Which effort should this agent use? Pick the lowest that will get it right.',
+                    criteria: { medium: null, high: null, xhigh: null },
+                },
+            })
+            const model = all.find(
+                ({ content, role }) =>
+                    content.job === 'agent_model' && role === effort.role
+            )
+            expect(effort.content.request.state).toEqual(
+                model?.content.request.state ?? {}
+            )
+            const reply = replyTo(run.records, effort)
+            expect(
+                reply?.kind === 'jev_answered' && reply.content.answers.effort
+            ).toMatchObject({ value: 'xhigh' })
+            // The next agent to start is this fresh one, at its role's effort.
+            const started = run.records.find(
+                (record) =>
+                    record.kind === 'agent_started' && record.seq > effort.seq
+            )
+            expect(started?.role).toBe(effort.role)
+            expect(
+                started?.kind === 'agent_started' && {
+                    follow_up_of: started.content.follow_up_of,
+                    effort: started.content.effort,
+                }
+            ).toEqual({ follow_up_of: null, effort: 'medium' })
+        }
+        expect(
+            run.launches
+                .filter(({ role }) => role === 'test-writer')
+                .map(({ kind, effort }) => ({ kind, effort }))
+        ).toEqual([{ kind: 'launch', effort: 'medium' }])
     })
 
     describe('with a token Cloudflare turns down', () => {

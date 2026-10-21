@@ -55,6 +55,34 @@ describe('the fields a resume reloads', () => {
         expect(configChanges({ current, next })).toEqual([])
     })
 
+    test('models is frozen: a resume keeps the effort settings the run started with (#660)', () => {
+        const current = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: { effort: { 'test-writer': 'high' } },
+        })
+        const next = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: { effort: { 'test-writer': 'low', implementer: 'max' } },
+        })
+
+        expect(next.models?.effort).toEqual({
+            'test-writer': 'low',
+            implementer: 'max',
+            learner: 'medium',
+        })
+        expect(configChanges({ current, next })).toEqual([])
+        expect(
+            withConfigChanges({
+                config: current,
+                changes: configChanges({ current, next }),
+            }).models?.effort
+        ).toEqual({
+            'test-writer': 'high',
+            implementer: 'medium',
+            learner: 'medium',
+        })
+    })
+
     test('leftover_allow is reloaded, not frozen (#520)', () => {
         expect(RELOADED_FIELDS).toContain('leftover_allow')
         expect(FROZEN_FIELDS).not.toContain('leftover_allow')

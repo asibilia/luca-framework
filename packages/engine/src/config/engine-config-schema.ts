@@ -71,6 +71,20 @@ export type ModelName = z.infer<typeof ModelNameSchema>
 /** The model reviewers run on, and every fallback of the model pick (#603). */
 export const DEFAULT_MODEL: ModelName = ModelNameSchema.enum.opus
 
+/**
+ * How hard an agent thinks before it acts (#659), lowest first: the levels
+ * the SDK's `effort` option takes.
+ */
+export const EffortLevelSchema = z.enum([
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+])
+
+export type EffortLevel = z.infer<typeof EffortLevelSchema>
+
 /** The roles with a model floor (#603); every other role always runs Opus. */
 export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
 
@@ -93,12 +107,33 @@ const ModelFloorsSchema = z.strictObject(
 )
 
 /**
- * The config's `models` block (#603): each routed role's model floor, and
- * how sure the decision model must be (`confidence_bar`) before its model
- * pick is used.
+ * The effort each writer runs at on tickets, and the learner's (#660); a
+ * role left out is `medium`. An effort for any other role, a reviewer or a
+ * lens, is refused: they, and the final review's fixers, always run at
+ * xhigh.
+ */
+const RoleEffortsSchema = z.strictObject(
+    {
+        'test-writer': EffortLevelSchema.default('medium'),
+        implementer: EffortLevelSchema.default('medium'),
+        learner: EffortLevelSchema.default('medium'),
+    },
+    {
+        error: (issue) =>
+            issue.code === 'unrecognized_keys'
+                ? `models.effort can't set ${issue.keys.join(', ')}: reviewers and the final review's fixers always run at xhigh.`
+                : undefined,
+    }
+)
+
+/**
+ * The config's `models` block (#603): each routed role's model floor, each
+ * writer's effort (#660), and how sure the decision model must be
+ * (`confidence_bar`) before its model pick is used.
  */
 export const ModelsConfigSchema = z.object({
     floors: ModelFloorsSchema.prefault({}),
+    effort: RoleEffortsSchema.prefault({}),
     confidence_bar: z.number().min(0).max(1).default(0.8),
 })
 
@@ -223,7 +258,10 @@ export const EngineConfigSchema = z.object({
     muninn: MuninnConfigSchema.optional(),
     /** The decision model shadow mode asks; left out, Clef. */
     decision_model: DecisionModelConfigSchema.optional(),
-    /** Each routed role's model floor and the confidence bar; left out, every role runs Opus. */
+    /**
+     * Each routed role's model floor, each writer's effort, and the
+     * confidence bar; left out, every role runs Opus, and writers at medium.
+     */
     models: ModelsConfigSchema.optional(),
     /**
      * The repo's run budget in tokens; left out, the engine's default

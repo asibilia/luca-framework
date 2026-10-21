@@ -87,6 +87,7 @@ const launchArgs = ({
     config: CONFIG,
     messaging: null,
     model,
+    effort: 'medium' as const,
 })
 
 describe('the live feed in the live file (#634)', () => {

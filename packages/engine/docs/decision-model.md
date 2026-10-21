@@ -14,6 +14,7 @@ reads these records. The one exception is the model pick for a role whose
 | --- | --- | --- |
 | `ticket_order` | Before a ticket's worktree: which ticket next? (Only tickets with no worktree are candidates.) | The ticket it is starting. |
 | `agent_model` | Before each fresh test-writer and implementer, and the learner: which model? It offers the models at or above the role's floor (all three, `opus`, `sonnet` and `haiku`, when the floor is `opus`). Its facts add the `role` and the `try`. Never for a follow-up, a final-review fixer, the ticket reviewer, or a lens, nor after the role failed a try on the ticket on a cheaper model, nor on a crash redo that kept its first try's model. | `opus`. |
+| `agent_effort` | Before each fresh test-writer and implementer on a ticket (after a failed try too): which effort? "Pick the lowest that will get it right." It offers `medium`, `high` and `xhigh`, with the same facts as `agent_model`'s. Shadow mode only (`acted` is always `false`): the agent runs at its role's effort whatever the answer. Never for a follow-up, a final-review fixer, the ticket reviewer, a lens, or the learner. | The role's effort. |
 | `agent_skills` | Before each agent: which stock skills? (one yes/no each) | None. |
 | `failure_kind` | After a failure: `code`, `test`, `agent`, or `clash`? | Where the engine routes it. |
 | `finding_severity` | After a ticket review with findings: how severe is each? | The reviewer's severity. |
@@ -94,7 +95,19 @@ Each `agent_started` names its `model` and `model_reason` (older journals
 read both as `null`). A follow-up, a failed try's included, keeps its
 session's model and reason, so one session never switches models; the
 step-up comes at the role's next fresh agent. The final review's fixers
-always launch on `opus`, reason `locked`.
+always launch on `opus`, reason `locked`. A role's effort (#659) applies
+whichever model it runs on.
+
+**Writers' effort (#660).** `models.effort` sets the effort the test-writer
+and the implementer run at on tickets, and the learner's: `low`, `medium`,
+`high`, `xhigh` or `max`, and a role left out is `medium`. An effort for any
+other role fails the config check, since reviewers and the final review's
+fixers always run at `xhigh`. It is fixed for a run at start, with the rest
+of the block.
+
+```json
+{ "models": { "effort": { "test-writer": "high" } } }
+```
 
 ```ts
 import { createClefClient, loadDecisionModelCredentials, runEngine } from '@luca/engine'

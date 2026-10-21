@@ -277,6 +277,7 @@ describe('agent messages', () => {
             config: CONFIG,
             messaging: fake.messaging,
             model: 'opus',
+            effort: 'medium',
         })
         const second = await launcher.followUp({
             session_id: 'session-1',

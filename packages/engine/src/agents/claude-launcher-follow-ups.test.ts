@@ -42,6 +42,7 @@ describe('follow-ups', () => {
             config: CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
 
     const followUp = (
@@ -89,6 +90,24 @@ describe('follow-ups', () => {
             fake.calls[0]?.prompts.map(({ message }) => message.content)
         ).toEqual(['Build ticket #11.', 'lint failed: fix it.'])
         expect(fake.calls[0]?.closed).toBe(true)
+    })
+
+    test('a follow-up runs at the effort its session started with (#659)', async () => {
+        const fake = fakeQuery({
+            turns: [
+                [INIT, result({ structured_output: { n: 1 } })],
+                [result({ structured_output: IMPLEMENTER_DONE })],
+            ],
+        })
+        const launcher = launcherFor(fake.query)
+        await launchImplementer(launcher)
+        const second = await followUp(launcher, 'session-1')
+        await launcher.closeAll()
+
+        expect(second).toMatchObject({ ok: true, session_id: 'session-1' })
+        expect(fake.calls).toHaveLength(1)
+        expect(fake.calls[0]?.options.effort).toBe('medium')
+        expect(fake.calls[0]?.prompts).toHaveLength(2)
     })
 
     test("each turn's session id is the one the session's init names", async () => {

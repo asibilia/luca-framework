@@ -33,9 +33,6 @@ export const MODEL_NAMES = ModelNameSchema.options
 /** The model reviewers run on, and every agent the decision model doesn't route (#603). */
 export const CLAUDE_MODEL = DEFAULT_MODEL
 
-/** Every role runs at the same effort level. */
-export const AGENT_EFFORT: EffortLevel = 'high'
-
 /** How many model turns one agent gets before its try ends. */
 export const MAX_TURNS: Record<AgentRole, number> = {
     'test-writer': 80,
@@ -161,7 +158,7 @@ export const resultJsonSchema = ({
 }
 
 /**
- * The SDK options for one agent: its model at one effort for every role, the
+ * The SDK options for one agent: its model at its launch's effort, the
  * role's instructions, its result schema, `dontAsk` with only its own
  * pre-approved calls, the guard hook, the sandbox, a clean environment, and
  * nothing loaded from the machine: no settings, MCP servers, or skills.
@@ -172,7 +169,7 @@ export const resultJsonSchema = ({
  * hooks.
  *
  * @example
- * const options = agentOptions({ role, may_edit_tests, cwd, model: CLAUDE_MODEL, effort: AGENT_EFFORT, claude_path, config, common_git_dir, home, env, guard_hook, luca_server: null, delivery_hook: null })
+ * const options = agentOptions({ role, may_edit_tests, cwd, model: CLAUDE_MODEL, effort: 'xhigh', claude_path, config, common_git_dir, home, env, guard_hook, luca_server: null, delivery_hook: null })
  */
 export const agentOptions = ({
     role,
@@ -238,7 +235,7 @@ export const agentOptions = ({
         tools: rules.tools,
         allowedTools: rules.allowed,
         disallowedTools: rules.disallowed,
-        // The one helper every role may start (#627), always on Haiku.
+        // The one helper every role may start (#627), always on Haiku at low effort.
         agents: { [HELPER_TYPE]: SEARCHER },
         settingSources: [],
         strictMcpConfig: true,

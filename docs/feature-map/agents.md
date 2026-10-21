@@ -32,6 +32,7 @@ Tests:
 - `packages/engine/src/jev/jev-schemas.test.ts`
 - `packages/engine/src/jev/jev-jobs.test.ts`
 - `packages/engine/src/jev/jev-jobs-limits.test.ts`
+- `packages/engine/src/jev/jev-jobs-effort.test.ts`
 - `packages/engine/src/jev/jev-shadow.test.ts`
 - `packages/engine/src/jev/jev-shadow.e2e.test.ts`
 - `packages/engine/src/jev/jev-shadow-findings.e2e.test.ts`
@@ -39,7 +40,7 @@ Tests:
 
 ## Model routing and its score
 
-Each role has a model floor: the decision model's model pick takes effect for a role whose floor is below Opus, when it is sure enough, and every other agent, reviewers and lenses always, runs Opus. `luca models` reads this repo's run journals and scores each routed role per model from the ticket review's findings, beside fix rounds, stuck tickets and tokens, against the tickets where the decision model picked that model in shadow mode.
+Each role has a model floor: the decision model's model pick takes effect for a role whose floor is below Opus, when it is sure enough, and every other agent, reviewers and lenses always, runs Opus. `luca models` reads this repo's run journals and scores each routed role per model and effort from the ticket review's findings, beside fix rounds, stuck tickets and tokens, against the tickets where the decision model picked that model in shadow mode, comparing only tickets whose ticket review ran at the same effort (an agent with no effort, from before #659, counts as `high`). Its "Clef's effort picks (shadow mode)" section, per writer role, compares the tickets where the decision model's `agent_effort` answer, at or above the run's confidence bar, wanted more effort than the agent ran at against the rest, with a verdict of "Clef spots hard tickets", "no sign yet" or "not enough data".
 
 Reached by: the `models` block (`floors`, `confidence_bar`) in a repo's `.luca/config.json`; each `agent_started` record names the model and why; `luca models` in a repo.
 
@@ -50,6 +51,8 @@ Tests:
 - `packages/engine/src/jev/decision-model-glossary.test.ts`
 - `packages/engine/src/models/model-score.test.ts`
 - `packages/engine/src/models/model-score-verdicts.test.ts`
+- `packages/engine/src/models/model-score-effort.test.ts`
+- `packages/engine/src/models/model-score-effort-picks.test.ts`
 - `packages/engine/src/cli/luca-command.test.ts`
 
 ## Agent messages and run notes
@@ -87,9 +90,11 @@ Tests:
 
 ## Agents and their launcher
 
-Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends. A fix round whose session is gone goes to a fresh agent, with the fix message, and counts as no engine failure. Any agent may start up to 3 read-only Haiku helpers (`searcher`) to search the repo; their tokens count toward the run budget.
+Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends. Each role runs at its own effort, whatever its model: the test-writer and the implementer on tickets, and the learner, at medium; the ticket reviewer, the five lenses and the final review's fixers at xhigh; a follow-up at its session's effort. A fix round whose session is gone goes to a fresh agent, with the fix message, and counts as no engine failure. Any agent may start up to 3 read-only Haiku helpers (`searcher`), at effort low, to search the repo; their tokens count toward the run budget.
 
-Reached by: every agent turn of a real run; scripted stand-in agents run the end-to-end tests.
+A repo can set the test-writer's, the implementer's and the learner's effort under `models.effort`; a setting for any other role is refused, and a resumed run keeps the effort settings it started with.
+
+Reached by: every agent turn of a real run; the `models.effort` block in a repo's `.luca/config.json`; scripted stand-in agents run the end-to-end tests.
 
 Tests:
 
@@ -106,6 +111,7 @@ Tests:
 - `packages/engine/src/agents/role-instructions-rules-and-sandbox.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
+- `packages/engine/src/core/run-effort.e2e.test.ts`
 - `packages/engine/src/core/run-session-close.e2e.test.ts`
 - `packages/engine/src/core/run-session-close-interruptions.e2e.test.ts`
 - `packages/engine/src/core/run-session-close-ticket-ends.e2e.test.ts`

@@ -236,6 +236,99 @@ describe('the models block (#603)', () => {
     })
 })
 
+describe("the models block's effort (#660)", () => {
+    const loadEffort = async (effort: unknown) => {
+        await writeConfig({
+            text: JSON.stringify({
+                checks: { test: 'bun test' },
+                models: { effort },
+            }),
+        })
+        return loadEngineConfig({ repo_root: repoRoot })
+    }
+
+    test('effort takes the test-writer, the implementer and the learner at any of low, medium, high, xhigh or max, and a role left out is medium', async () => {
+        expect(await loadEffort({})).toMatchObject({
+            ok: true,
+            config: {
+                models: {
+                    effort: {
+                        'test-writer': 'medium',
+                        implementer: 'medium',
+                        learner: 'medium',
+                    },
+                },
+            },
+        })
+        for (const level of ['low', 'medium', 'high', 'xhigh', 'max']) {
+            expect(
+                await loadEffort({ 'test-writer': 'high', learner: level })
+            ).toMatchObject({
+                ok: true,
+                config: {
+                    models: {
+                        effort: {
+                            'test-writer': 'high',
+                            implementer: 'medium',
+                            learner: level,
+                        },
+                    },
+                },
+            })
+        }
+    })
+
+    test('the effort defaults live in the schema: a models block with no effort, parsed alone, is medium for each writer', () => {
+        const config = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: {},
+        })
+
+        expect(config.models?.effort).toEqual({
+            'test-writer': 'medium',
+            implementer: 'medium',
+            learner: 'medium',
+        })
+    })
+
+    test("an effort for the ticket reviewer, a lens or any other role is refused, saying reviewers and the final review's fixers always run at xhigh", async () => {
+        const reviewer = await loadEffort({
+            implementer: 'high',
+            'ticket-reviewer': 'low',
+        })
+
+        expect(reviewer.ok).toBe(false)
+        if (!reviewer.ok) {
+            expect(reviewer.error).toContain(
+                "models.effort can't set ticket-reviewer: reviewers and the final review's fixers always run at xhigh."
+            )
+        }
+        for (const role of ['security-lens', 'rules-lens', 'searcher']) {
+            const result = await loadEffort({ [role]: 'medium' })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain(
+                    `models.effort can't set ${role}:`
+                )
+                expect(result.error).toContain('always run at xhigh')
+            }
+        }
+    })
+
+    test('an unknown effort level, such as extreme, is an error naming the field', async () => {
+        for (const level of ['extreme', 'High', 'none', 3]) {
+            const result = await loadEffort({ implementer: level })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) {
+                expect(result.error).toContain('effort')
+                expect(result.error).toContain('implementer')
+            }
+        }
+    })
+})
+
 describe("this repo's models block (#604)", () => {
     const ROOT = join(import.meta.dir, '../../../..')
 

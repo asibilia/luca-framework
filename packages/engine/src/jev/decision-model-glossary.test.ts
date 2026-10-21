@@ -30,3 +30,28 @@ describe('the glossary on model floors (#603)', async () => {
         }
     })
 })
+
+describe("the glossary on Clef's effort picks (#661)", async () => {
+    const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
+
+    test("Decision model says it is also asked about each writer's effort, in shadow mode", () => {
+        const entry = entryOf(glossary, 'Decision model') ?? ''
+        const sentence = entry
+            .split(/(?<=\.)\s+/)
+            .find((each) => each.toLowerCase().includes('effort'))
+
+        expect(sentence).toBeDefined()
+        expect(sentence?.toLowerCase()).toContain('writer')
+        expect(sentence?.toLowerCase()).toContain('shadow mode')
+    })
+})
+
+describe('the glossary on effort (#659)', async () => {
+    const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
+
+    test('has Effort, with its levels, xhigh reviewers, and the words to avoid', () => {
+        expect(glossary).toContain(
+            '**Effort**:\nHow hard an agent thinks before it acts: low, medium, high, xhigh or max. Each role has one; reviewers always run at xhigh.\n_Avoid_: thinking budget, reasoning level\n'
+        )
+    })
+})

@@ -181,7 +181,7 @@ A trial setup for the decision model: the engine asks it every time and records 
 _Avoid_: dry run, trial mode
 
 **Decision model**:
-The model the engine asks which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Its model pick for a role with a floor below Opus takes effect when it clears the confidence bar; every other job stays in shadow mode. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
+The model the engine asks which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Its model pick for a role with a floor below Opus takes effect when it clears the confidence bar; every other job stays in shadow mode. It's also asked about each writer's effort, in shadow mode, and never acted on. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
 _Avoid_: labeling model, Jev (except for the record names)
 
 **Model floor**:
@@ -191,6 +191,10 @@ _Avoid_: minimum model, model tier
 **Confidence bar**:
 How sure the decision model must be before the engine uses its model pick, 0.8 unless the config says otherwise. Below it, or with no confidence given, the agent runs Opus.
 _Avoid_: threshold, cutoff
+
+**Effort**:
+How hard an agent thinks before it acts: low, medium, high, xhigh or max. Each role has one; reviewers always run at xhigh.
+_Avoid_: thinking budget, reasoning level
 
 ### Seeing the work
 

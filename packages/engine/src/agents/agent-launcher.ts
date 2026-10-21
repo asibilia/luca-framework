@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { AgentRole } from './role-results'
 import type { ProgressListener } from './turn-progress'
 
-import type { EngineConfig } from '../config/engine-config'
+import type { EffortLevel, EngineConfig } from '../config/engine-config'
 
 /** One model's tokens in one agent turn. */
 export const ModelTokensSchema = z.object({
@@ -174,6 +174,11 @@ export type AgentLauncher = {
          */
         model: string
         /**
+         * The effort the agent runs at (#659), whatever its model. The
+         * session's follow-ups run at it too.
+         */
+        effort: EffortLevel
+        /**
          * Hears the turn's live progress (#628) each time it changes, before
          * the turn ends, for the engine's live file. Left out, nothing hears it.
          */
@@ -183,7 +188,7 @@ export type AgentLauncher = {
      * Sends a follow-up message to an agent session that is still open, such
      * as a failed gate's output in a fix loop, and returns the session's new
      * result. The agent keeps everything it knew from its earlier turns, the
-     * guards it was launched with, and its model. A session the launcher doesn't know,
+     * guards it was launched with, its model and its effort. A session the launcher doesn't know,
      * or one that has closed, is an engine failure with `session_gone`.
      *
      * @example

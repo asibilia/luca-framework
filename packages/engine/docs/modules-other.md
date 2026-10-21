@@ -100,7 +100,9 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/models/model-score.ts` | The model score report `luca models` prints (`scoreModels`, `formatModelReport`): each routed role per model, from the first ticket review's weighted findings per 100 changed lines, fix rounds, stuck tickets and tokens, against its shadow-pick baseline. Its weights and verdict edges are named constants. Pure. |
+| `src/models/model-score.ts` | The model score report `luca models` prints (`scoreModels`, `formatModelReport`): each routed role per model and effort, from the first ticket review's weighted findings per 100 changed lines, fix rounds, stuck tickets and tokens, against its shadow-pick baseline, each compared only with tickets whose ticket review ran at the same effort, and each writer role's "Clef's effort picks (shadow mode)": the tickets where Clef's sure `agent_effort` answer wanted more effort than the agent ran at, against the rest, with its verdict. Pure. |
+| `src/models/model-score-facts.ts` | What one run's journal says for the score report: each ticket's models, efforts (an older agent's read as `high`), Clef's picks and review results, the learner's agents, and the final review's findings. Pure. |
+| `src/models/model-score-rules.ts` | The score report's constants: the finding weights, the verdict edges, the scored roles, and the effort an older journal's agent ran at. |
 
 ## `src/memory/`
 

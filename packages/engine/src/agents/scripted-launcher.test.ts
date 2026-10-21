@@ -35,6 +35,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         const second = await launcher.launch({
             role: 'test-writer',
@@ -45,6 +46,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
 
         expect(first.ok && second.ok).toBe(true)
@@ -73,6 +75,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         if (!first.ok) throw new Error(first.error)
         const next = await launcher.followUp({
@@ -127,6 +130,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'sonnet',
+            effort: 'medium',
         })
         if (!first.ok) throw new Error(first.error)
         await launcher.followUp({
@@ -176,6 +180,7 @@ describe('scripted launcher: follow-ups', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         if (!first.ok) throw new Error(first.error)
 
@@ -206,6 +211,7 @@ describe('scripted launcher: closing sessions', () => {
             config: BUILD_CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
 
     test('a launched session is counted as open until it is closed', async () => {
