@@ -40,7 +40,7 @@ Tests:
 
 ## Model routing and its score
 
-Each role has a model floor: the decision model's model pick takes effect for a role whose floor is below Opus, when it is sure enough, and every other agent, reviewers and lenses always, runs Opus. `luca models` reads this repo's run journals and scores each routed role per model from the ticket review's findings, beside fix rounds, stuck tickets and tokens, against the tickets where the decision model picked that model in shadow mode.
+Each role has a model floor: the decision model's model pick takes effect for a role whose floor is below Opus, when it is sure enough, and every other agent, reviewers and lenses always, runs Opus. `luca models` reads this repo's run journals and scores each routed role per model and effort from the ticket review's findings, beside fix rounds, stuck tickets and tokens, against the tickets where the decision model picked that model in shadow mode, comparing only tickets whose ticket review ran at the same effort (an agent with no effort journaled counts as high).
 
 Reached by: the `models` block (`floors`, `confidence_bar`) in a repo's `.luca/config.json`; each `agent_started` record names the model and why; `luca models` in a repo.
 
@@ -51,6 +51,7 @@ Tests:
 - `packages/engine/src/jev/decision-model-glossary.test.ts`
 - `packages/engine/src/models/model-score.test.ts`
 - `packages/engine/src/models/model-score-verdicts.test.ts`
+- `packages/engine/src/models/model-score-effort.test.ts`
 - `packages/engine/src/cli/luca-command.test.ts`
 
 ## Effort per role

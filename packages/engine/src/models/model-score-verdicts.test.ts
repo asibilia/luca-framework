@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { formatModelReport, scoreModels } from './model-score'
 
 import type { AgentRole } from '../agents/role-results'
+import type { Effort } from '../config/engine-config'
 import type { JournalEntry, JournalRecord } from '../journal/journal-record'
 import {
     finding,
@@ -25,22 +26,34 @@ import { recordsFrom } from '../testing/intake-fixtures'
 
 type Severity = 'blocker' | 'should_fix' | 'nit'
 
+/** An agent turn; with no `effort`, one journaled before #659. */
 const started = ({
     ticket,
     role,
     model,
     follow_up_of,
+    effort,
 }: {
     ticket: number
     role: AgentRole
     model: string
     follow_up_of?: string
+    effort?: Effort
 }): JournalEntry => ({
     kind: 'agent_started',
     ticket,
     role,
-    content: { role, prompt: 'p', follow_up_of: follow_up_of ?? null, model },
+    content: {
+        role,
+        prompt: 'p',
+        follow_up_of: follow_up_of ?? null,
+        model,
+        ...(effort === undefined ? {} : { effort }),
+    },
 })
+
+/** The effort the writers and the ticket reviewer ran at. */
+type Efforts = { writers?: Effort; review?: Effort }
 
 /** Clef picked sonnet for the test-writer in shadow mode; it ran opus. */
 const shadowPick = (ticket: number): JournalEntry[] => [
@@ -81,13 +94,21 @@ const ticketRun = ({
     ticket,
     side,
     findings,
+    efforts = {},
 }: {
     ticket: number
     side: 'sonnet' | 'baseline'
     findings: Severity[]
+    efforts?: Efforts
 }): JournalEntry[] => {
+    const { writers, review: review_effort } = efforts
     const review = (list: Severity[]): JournalEntry[] => [
-        started({ ticket, role: 'ticket-reviewer', model: 'opus' }),
+        started({
+            ticket,
+            role: 'ticket-reviewer',
+            model: 'opus',
+            effort: review_effort,
+        }),
         reviewed({
             ticket,
             findings: list.map((severity, at) =>
@@ -102,9 +123,15 @@ const ticketRun = ({
             ticket,
             role: 'test-writer',
             model: side === 'baseline' ? 'opus' : 'sonnet',
+            effort: writers,
         }),
         testsWritten({ ticket }),
-        started({ ticket, role: 'implementer', model: 'opus' }),
+        started({
+            ticket,
+            role: 'implementer',
+            model: 'opus',
+            effort: writers,
+        }),
         implemented({ ticket }),
         ...review(findings),
         ...(blocks
@@ -114,6 +141,7 @@ const ticketRun = ({
                       role: 'implementer',
                       model: 'opus',
                       follow_up_of: 'impl-1',
+                      effort: writers,
                   }),
                   implemented({ ticket }),
                   ...review([]),
@@ -131,26 +159,49 @@ const ticketRun = ({
 
 /**
  * One run: `sonnet` tickets with the test-writer on sonnet, then `baseline`
- * tickets, each list item one ticket's first-review findings.
+ * tickets, each list item one ticket's first-review findings, all at
+ * `efforts`; then the tickets `elsewhere`, at its own efforts. `score` is
+ * the test-writer on sonnet with the `sonnet` tickets.
  */
 const reportOf = ({
     sonnet,
     baseline,
+    efforts,
+    elsewhere,
 }: {
     sonnet: Severity[][]
     baseline: Severity[][]
+    efforts?: Efforts
+    elsewhere?: {
+        sonnet?: Severity[][]
+        baseline?: Severity[][]
+        efforts: Efforts
+    }
 }) => {
+    const side = (
+        list: Severity[][],
+        first: number,
+        which: 'sonnet' | 'baseline',
+        at?: Efforts
+    ) =>
+        list.flatMap((findings, index) =>
+            ticketRun({
+                ticket: first + index,
+                side: which,
+                findings,
+                efforts: at,
+            })
+        )
     const body = [
-        ...sonnet.map((findings, index) =>
-            ticketRun({ ticket: 11 + index, side: 'sonnet', findings })
-        ),
-        ...baseline.map((findings, index) =>
-            ticketRun({ ticket: 51 + index, side: 'baseline', findings })
-        ),
-    ].flat()
+        ...side(sonnet, 11, 'sonnet', efforts),
+        ...side(baseline, 51, 'baseline', efforts),
+        ...side(elsewhere?.sonnet ?? [], 111, 'sonnet', elsewhere?.efforts),
+        ...side(elsewhere?.baseline ?? [], 151, 'baseline', elsewhere?.efforts),
+    ]
     const numbers = [
-        ...Array.from({ length: sonnet.length }, (_, index) => 11 + index),
-        ...Array.from({ length: baseline.length }, (_, index) => 51 + index),
+        ...new Set(
+            body.flatMap(({ ticket }) => (ticket === null ? [] : [ticket]))
+        ),
     ]
     const entries = [
         ...intakePassed({
@@ -167,7 +218,10 @@ const reportOf = ({
     })
     const report = scoreModels({ runs: [records] })
     const score = report.scores.find(
-        ({ role, model }) => role === 'test-writer' && model === 'sonnet'
+        ({ role, model, tickets }) =>
+            role === 'test-writer' &&
+            model === 'sonnet' &&
+            tickets === sonnet.length
     )
     return { report, score }
 }
@@ -262,5 +316,106 @@ describe('the verdict per role and model', () => {
             baseline: BASELINE,
         })
         expect(more_rounds.score?.verdict).toBe('worse')
+    })
+})
+
+/** Writers at medium, reviewed at xhigh, as after #659. */
+const XHIGH_REVIEW: Efforts = { writers: 'medium', review: 'xhigh' }
+
+/** Writers at medium, reviewed at high, as before #659. */
+const HIGH_REVIEW: Efforts = { writers: 'medium', review: 'high' }
+
+describe('comparing like with like', () => {
+    test('a ticket is compared only with tickets whose ticket review ran at the same effort', () => {
+        const apart = reportOf({
+            sonnet: tickets({ count: 10 }),
+            baseline: [],
+            efforts: XHIGH_REVIEW,
+            elsewhere: { baseline: BASELINE, efforts: HIGH_REVIEW },
+        })
+        expect(apart.score).toMatchObject({
+            tickets: 10,
+            baseline: { tickets: 0 },
+            verdict: 'not enough data',
+        })
+        const alike = reportOf({
+            sonnet: tickets({ count: 10 }),
+            baseline: BASELINE,
+            efforts: XHIGH_REVIEW,
+        })
+        expect(alike.score).toMatchObject({
+            baseline: { tickets: 10 },
+            verdict: 'about the same',
+        })
+    })
+
+    test("is not enough data below 10 tickets on either side of a group's own tickets", () => {
+        const few_cheaper = reportOf({
+            sonnet: tickets({ count: 9 }),
+            baseline: tickets({ count: 10 }),
+            efforts: XHIGH_REVIEW,
+            elsewhere: { sonnet: tickets({ count: 5 }), efforts: HIGH_REVIEW },
+        })
+        expect(few_cheaper.score?.verdict).toBe('not enough data')
+        const few_baseline = reportOf({
+            sonnet: tickets({ count: 10 }),
+            baseline: tickets({ count: 9 }),
+            efforts: XHIGH_REVIEW,
+            elsewhere: {
+                baseline: tickets({ count: 5 }),
+                efforts: HIGH_REVIEW,
+            },
+        })
+        expect(few_baseline.score).toMatchObject({
+            baseline: { tickets: 9 },
+            verdict: 'not enough data',
+        })
+    })
+
+    test("is about the same at exactly 20% above the group's own baseline, and worse past it", () => {
+        // 3.0 per 100 lines and 0.6 fix rounds, against 2.5 and 0.5; the
+        // tickets reviewed at high would make it worse if they counted.
+        const same = reportOf({
+            sonnet: tickets({
+                count: 10,
+                blocking: [FIVE, FIVE, FIVE, FIVE, FIVE, FIVE],
+            }),
+            baseline: BASELINE,
+            efforts: XHIGH_REVIEW,
+            elsewhere: {
+                sonnet: tickets({
+                    count: 12,
+                    blocking: Array.from({ length: 12 }, () => FIVE),
+                }),
+                efforts: HIGH_REVIEW,
+            },
+        })
+        expect(same.score?.verdict).toBe('about the same')
+        // 3.1 per 100 lines; the tickets reviewed at high would make it
+        // about the same if they counted, on either side.
+        const worse = reportOf({
+            sonnet: tickets({
+                count: 10,
+                blocking: [
+                    FIVE,
+                    FIVE,
+                    FIVE,
+                    FIVE,
+                    FIVE,
+                    ['blocker', 'blocker'],
+                ],
+            }),
+            baseline: BASELINE,
+            efforts: XHIGH_REVIEW,
+            elsewhere: {
+                sonnet: tickets({ count: 12 }),
+                baseline: tickets({
+                    count: 10,
+                    blocking: Array.from({ length: 10 }, () => FIVE),
+                }),
+                efforts: HIGH_REVIEW,
+            },
+        })
+        expect(worse.score?.verdict).toBe('worse')
     })
 })
