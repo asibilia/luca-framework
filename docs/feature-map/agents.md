@@ -32,6 +32,7 @@ Tests:
 - `packages/engine/src/jev/jev-schemas.test.ts`
 - `packages/engine/src/jev/jev-jobs.test.ts`
 - `packages/engine/src/jev/jev-jobs-limits.test.ts`
+- `packages/engine/src/jev/jev-jobs-effort.test.ts`
 - `packages/engine/src/jev/jev-shadow.test.ts`
 - `packages/engine/src/jev/jev-shadow.e2e.test.ts`
 - `packages/engine/src/jev/jev-shadow-findings.e2e.test.ts`

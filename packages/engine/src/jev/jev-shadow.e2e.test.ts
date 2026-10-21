@@ -36,6 +36,9 @@ import {
  * the helpers both share are in `jev-shadow-helpers.ts`.
  */
 
+/** Whether a job is the effort ask (#661); read as text, since it is new. */
+const isEffortAsk = (job: string): boolean => job === 'agent_effort'
+
 describe('Jev in shadow mode on the happy run', () => {
     // The one-ticket happy run with a Jev that disagrees with everything,
     // and the same run without Jev, built once (#566).
@@ -47,8 +50,10 @@ describe('Jev in shadow mode on the happy run', () => {
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         expectSameRun({ run, without })
 
+        // The effort asks (#661) have their own test below.
         const asks = asked(run.records).filter(
-            ({ content }) => content.job !== 'ticket_order'
+            ({ content }) =>
+                content.job !== 'ticket_order' && !isEffortAsk(content.job)
         )
         expect(asks.map(({ content }) => content.job).toSorted()).toEqual([
             'agent_model',
@@ -179,7 +184,10 @@ describe('Jev in shadow mode on the happy run', () => {
     test('with one ticket, asks no ticket order, sends no one-option choice, and journals no failure', () => {
         const { run, jev } = happy()
 
-        const jobs = asked(run.records).map(({ content }) => content.job)
+        // The effort asks (#661) have their own test below.
+        const jobs = asked(run.records)
+            .map(({ content }) => content.job)
+            .filter((job) => !isEffortAsk(job))
         expect(jobs.toSorted()).toEqual([
             'agent_model',
             'agent_model',
@@ -189,18 +197,64 @@ describe('Jev in shadow mode on the happy run', () => {
         ])
         expect(jobs).not.toContain('ticket_model')
         // Shadow mode: no ask's answer can change anything.
-        expect(asked(run.records).map(({ content }) => content.acted)).toEqual([
-            false,
-            false,
-            false,
-            false,
-            false,
-        ])
-        expect(jev.signals).toHaveLength(5)
+        expect(
+            new Set(asked(run.records).map(({ content }) => content.acted))
+        ).toEqual(new Set([false]))
+        expect(jev.signals).toHaveLength(asked(run.records).length)
         expect(jev.requests.filter(hasOneOptionChoice)).toEqual([])
         expect(
             run.records.filter((record) => record.kind === 'jev_failed')
         ).toEqual([])
+    })
+
+    test("asks agent_effort once before each fresh test-writer and implementer; Clef's xhigh is journaled, and each still launches at medium", () => {
+        const { run } = happy()
+
+        const efforts = asked(run.records).filter(({ content }) =>
+            isEffortAsk(content.job)
+        )
+        // No ask for the ticket reviewer or a lens, which this run has too.
+        expect(efforts.map(({ role }) => role)).toEqual([
+            'test-writer',
+            'implementer',
+        ])
+        for (const effort of efforts) {
+            const model = asked(run.records).find(
+                ({ content, role }) =>
+                    content.job === 'agent_model' && role === effort.role
+            )
+            expect(effort.content.request.state).toEqual(
+                model?.content.request.state ?? {}
+            )
+            expect(Object.values(effort.content.fixed)).toEqual(['medium'])
+            expect(effort.content.acted).toBe(false)
+            // The fake decision model picks the last option: xhigh.
+            const reply = replyTo(run.records, effort)
+            expect(
+                reply?.kind === 'jev_answered'
+                    ? Object.values(reply.content.answers).map(
+                          ({ value }) => value
+                      )
+                    : []
+            ).toEqual(['xhigh'])
+            const started = run.records.find(
+                (record) =>
+                    record.kind === 'agent_started' && record.seq > effort.seq
+            )
+            expect(started?.role).toBe(effort.role)
+            expect(
+                started?.kind === 'agent_started' && started.content.effort
+            ).toBe('medium')
+        }
+        const writers = run.launches.filter(
+            ({ role, kind }) =>
+                kind === 'launch' &&
+                (role === 'test-writer' || role === 'implementer')
+        )
+        expect(writers.map(({ effort }) => effort)).toEqual([
+            'medium',
+            'medium',
+        ])
     })
 
     describe('with a token Cloudflare turns down', () => {
