@@ -61,7 +61,13 @@ from memory, so a resumed run hands over exactly what is still waiting.
 
 ## Guards
 
-Every agent runs on `opus` at `high` effort. The engine names models only by
+Each role runs at its own **effort** (#659, `src/agents/role-effort.ts`),
+whichever model it runs on: the test-writer and the implementer on tickets,
+and the learner, at `medium`; the ticket reviewer, the five lenses and the
+final review's fixers at `xhigh`; the `searcher` helpers at `low`. Each
+launch takes its own effort, a follow-up runs at its session's, and its
+`agent_started` records the `effort` (`null` in older journals, when every
+agent ran at `high`). The engine names models only by
 short name (`opus`, `sonnet`, `haiku`), and Claude Code turns each into its
 newest version; the exact version is journaled from the session's init. Each
 launch takes its own model, and a follow-up runs on its session's; its

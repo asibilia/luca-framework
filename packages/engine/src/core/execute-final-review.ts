@@ -15,6 +15,7 @@ import {
 } from './execute-build'
 import { closeSessions, openSessionsIn } from './session-close'
 
+import { REVIEW_EFFORT } from '../agents/role-effort'
 import { hasSlowTests } from '../config/engine-config'
 import type { EngineCommit } from '../git/git-adapter'
 import { LOCKED_PICK } from '../jev/model-pick'
@@ -152,6 +153,7 @@ export const executeFinalReviewAction = async ({
                     prompt,
                     follow_up_of: null,
                     ...LOCKED_PICK,
+                    effort: REVIEW_EFFORT,
                 },
             })
             const result = await runTurn({
@@ -171,6 +173,7 @@ export const executeFinalReviewAction = async ({
                         // Lenses are reviewers: no agent messages.
                         messaging: null,
                         model: LOCKED_PICK.model,
+                        effort: REVIEW_EFFORT,
                     }),
             })
             if (result === null || !('verdict' in result.result)) return
@@ -206,7 +209,8 @@ export const executeFinalReviewAction = async ({
             return
         case 'launch_final_fixer': {
             const { role, prompt, may_edit_tests } = action
-            // The last fixes before the PR are never routed: always Opus.
+            // The last fixes before the PR are never routed: always Opus, at
+            // the reviewers' effort (#659).
             journal.append({
                 kind: 'agent_started',
                 ticket: null,
@@ -216,6 +220,7 @@ export const executeFinalReviewAction = async ({
                     prompt,
                     follow_up_of: null,
                     ...LOCKED_PICK,
+                    effort: REVIEW_EFFORT,
                 },
             })
             await runTurn({
@@ -235,13 +240,14 @@ export const executeFinalReviewAction = async ({
                         // Every ticket is over, so nobody is left to talk to.
                         messaging: null,
                         model: LOCKED_PICK.model,
+                        effort: REVIEW_EFFORT,
                     }),
             })
             return
         }
         case 'follow_up_final_fixer': {
             const { role, session_id, message } = action
-            const { model, model_reason } = followUpModel({
+            const { model, model_reason, effort } = followUpModel({
                 records: journal.read(),
                 session_id,
             })
@@ -255,6 +261,7 @@ export const executeFinalReviewAction = async ({
                     follow_up_of: session_id,
                     model,
                     model_reason,
+                    effort,
                 },
             })
             await runTurn({

@@ -8,11 +8,7 @@ import { randomUUID } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 
-import type {
-    EffortLevel,
-    Options,
-    SDKUserMessage,
-} from '@anthropic-ai/claude-agent-sdk'
+import type { Options, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 
 import {
     AgentSessionSchema,
@@ -37,6 +33,7 @@ import {
     type AgentQuerySession,
     type OpenSession,
 } from './open-session'
+import { DEFAULT_EFFORT } from './role-effort'
 import type { SessionPool } from './session-pool'
 import { createTurnProgress } from './turn-progress'
 
@@ -54,16 +51,14 @@ export type AgentQuery = (params: {
  * and runs the session's first turn through the pool.
  *
  * @example
- * const launch = createLaunch({ effort, start_query, claude_path, turn_timeout_ms, pool })
+ * const launch = createLaunch({ start_query, claude_path, turn_timeout_ms, pool })
  */
 export const createLaunch = ({
-    effort: useEffort,
     start_query: startQuery,
     claude_path,
     turn_timeout_ms: timeoutMs,
     pool,
 }: {
-    effort: EffortLevel
     start_query: AgentQuery
     claude_path: string | undefined
     turn_timeout_ms: number
@@ -80,6 +75,7 @@ export const createLaunch = ({
         config,
         messaging,
         model,
+        effort = DEFAULT_EFFORT,
         on_progress,
     }) => {
         const refused = checkLaunchModel({ model })
@@ -115,7 +111,8 @@ export const createLaunch = ({
             may_edit_tests,
             cwd: worktree,
             model,
-            effort: useEffort,
+            // Kept in the session's options, so its follow-ups run at it too.
+            effort,
             claude_path: claudePath,
             config,
             common_git_dir: gitDir,

@@ -149,7 +149,7 @@ journal to go on from), and 2 on bad flags. `--unfinished` exits 0 once it
 printed the list.
 
 **A real run** (`--spec`) builds with real Claude agents: `runSpec` gets
-`createClaudeLauncher({})` (agents on `opus` at `high` effort, every guard on,
+`createClaudeLauncher({})` (each role at its own effort, every guard on,
 paid by your Claude plan; see Guards) and closes its open sessions with
 `closeAll()` however the run ends. It asks the decision model, Clef, in
 shadow mode, with the credentials from Luca's own env file (see "The

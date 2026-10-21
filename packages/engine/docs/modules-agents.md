@@ -8,6 +8,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/agents/agent-launcher.ts` | The agent launcher interface (`launch` a fresh session, or `followUp` in an open one), its failure kinds, and the session summary. |
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
 | `src/agents/claude-options.ts` | Pure: the model, effort, clean environment, and SDK options for one agent. |
+| `src/agents/role-effort.ts` | Pure: the effort each role runs at (#659): writers and the learner at `medium`, reviewers and the final review's fixers at `xhigh`. |
 | `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt ([its modules](#role-instructions-modules)). |
 | `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act (sending and receiving agent messages too), return a result or a failure, and record each launch and follow-up with its session and what it was handed. |
 | `src/agents/message-tool.ts` | The engine's in-process MCP server `luca` with its `send_message` tool, and the hook that hands messages over after each tool call. |

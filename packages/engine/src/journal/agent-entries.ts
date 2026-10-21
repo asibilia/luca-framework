@@ -8,6 +8,7 @@ import {
     FileModeSchema,
     RoleResultSchema,
 } from '../agents/role-results'
+import { EffortSchema } from '../config/engine-config'
 import { GateCheckSchema } from '../gates/gate-schemas'
 import { ModelReasonSchema } from '../jev/model-pick'
 
@@ -23,7 +24,9 @@ import { ModelReasonSchema } from '../jev/model-pick'
  * follow-up's is its session's); `null` in journals from before #600. The
  * exact version is in the turn's `agent_session`. `model_reason` is why it
  * launched on that model (#603; a follow-up's is its session's); `null` in
- * journals from before it.
+ * journals from before it. `effort` is the effort it ran at (#659; a
+ * follow-up's is its session's); `null` in journals from before it, when
+ * every agent ran at `PAST_EFFORT`.
  */
 export const AgentStartedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -34,6 +37,7 @@ export const AgentStartedEntrySchema = z.object({
         follow_up_of: z.string().nullable().default(null),
         model: z.string().nullable().default(null),
         model_reason: ModelReasonSchema.nullable().default(null),
+        effort: EffortSchema.nullable().default(null),
     }),
 })
 

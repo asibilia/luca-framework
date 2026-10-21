@@ -6,6 +6,8 @@ import { z } from 'zod'
 
 import { ALLOW, deny, READ_TOOLS, type ToolDecision } from './guard-roles'
 
+import type { Effort } from '../config/engine-config'
+
 /** The SDK tool that starts a helper. */
 export const HELPER_TOOL = 'Agent'
 
@@ -14,6 +16,9 @@ export const HELPER_TYPE = 'searcher'
 
 /** Helpers always run on the newest Haiku, by its short name. */
 export const HELPER_MODEL = 'haiku'
+
+/** Helpers always run at low effort (#659): a search needs little thought. */
+export const HELPER_EFFORT: Effort = 'low'
 
 /** The only tools a helper has: it reads and searches, nothing else. */
 export const HELPER_TOOLS = READ_TOOLS
@@ -26,6 +31,7 @@ export const SEARCHER = {
     description:
         'A read-only helper that searches the repo: finds files, symbols and callers, and reports what it found. It cannot edit files or run commands.',
     model: HELPER_MODEL,
+    effort: HELPER_EFFORT,
     tools: [...HELPER_TOOLS],
     prompt: 'You are a read-only searcher. You may only read and search files in the current worktree with Read, Grep and Glob. Never try to change a file or run a command. Answer with what you found: file paths, line numbers and short excerpts, as briefly as the question allows.',
 }

@@ -9,12 +9,13 @@ import { doChores } from './engine-chores'
 import { closeSessions } from './session-close'
 
 import type { AgentTurn } from '../agents/agent-launcher'
+import { PAST_EFFORT, ROLE_EFFORT } from '../agents/role-effort'
 import {
     parseRoleResult,
     type AgentRole,
     type RoleResult,
 } from '../agents/role-results'
-import { DEFAULT_MODEL } from '../config/engine-config'
+import { DEFAULT_MODEL, type Effort } from '../config/engine-config'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
@@ -239,17 +240,25 @@ const sessionOf = (record: JournalRecord): string | null => {
     }
 }
 
-/** The model a session launched on, and why (`null` before #603). */
-export type SessionModel = { model: string; model_reason: ModelReason | null }
+/**
+ * The model a session launched on, and why (`null` before #603), and its
+ * effort (`null` before #659).
+ */
+export type SessionModel = {
+    model: string
+    model_reason: ModelReason | null
+    effort: Effort | null
+}
 
 /**
- * The model a session launched on, and why, from the journal: the
- * `agent_started` of the launch the session's first record came after (same
- * ticket and role), or of an earlier follow-up to it. `null` if the journal
- * names none, as in journals from before #600; every agent ran Opus then.
+ * The model a session launched on, why, and at what effort, from the
+ * journal: the `agent_started` of the launch the session's first record came
+ * after (same ticket and role), or of an earlier follow-up to it. `null` if
+ * the journal names no model, as in journals from before #600; every agent
+ * ran Opus then.
  *
  * @example
- * sessionModel({ records: journal.read(), session_id }) // { model: 'opus', model_reason: 'locked' }
+ * sessionModel({ records: journal.read(), session_id }) // { model: 'opus', model_reason: 'locked', effort: 'xhigh' }
  */
 export const sessionModel = ({
     records,
@@ -282,22 +291,28 @@ export const sessionModel = ({
                           record.content.follow_up_of === null
                   ))
     if (started?.kind !== 'agent_started') return null
-    const { model, model_reason } = started.content
-    return model === null ? null : { model, model_reason }
+    const { model, model_reason, effort } = started.content
+    return model === null ? null : { model, model_reason, effort }
 }
 
-/** A follow-up's model: its session's, else Opus, as before #600. */
+/**
+ * A follow-up's model and effort: its session's, else Opus at
+ * `PAST_EFFORT`, as before #600 and #659.
+ */
 export const followUpModel = ({
     records,
     session_id,
 }: {
     records: JournalRecord[]
     session_id: string
-}): SessionModel =>
-    sessionModel({ records, session_id }) ?? {
-        model: DEFAULT_MODEL,
-        model_reason: null,
+}): SessionModel & { effort: Effort } => {
+    const session = sessionModel({ records, session_id })
+    return {
+        model: session?.model ?? DEFAULT_MODEL,
+        model_reason: session?.model_reason ?? null,
+        effort: session?.effort ?? PAST_EFFORT,
     }
+}
 
 export const launchAgent = async ({
     context,
@@ -318,11 +333,20 @@ export const launchAgent = async ({
         role,
         step: context.step,
     })
+    // Each role's own effort, whichever model it runs on (#659).
+    const effort = ROLE_EFFORT[role]
     context.journal.append({
         kind: 'agent_started',
         ticket,
         role,
-        content: { role, prompt, follow_up_of: null, model, model_reason },
+        content: {
+            role,
+            prompt,
+            follow_up_of: null,
+            model,
+            model_reason,
+            effort,
+        },
     })
     await runTurn({
         context,
@@ -344,6 +368,7 @@ export const launchAgent = async ({
                     role,
                 }),
                 model,
+                effort,
             }),
     })
 }
@@ -360,7 +385,7 @@ export const followUpAgent = async ({
         value: context.state.snapshot?.tickets[ticket],
         what: `snapshot of #${ticket}`,
     })
-    const { model, model_reason } = followUpModel({
+    const { model, model_reason, effort } = followUpModel({
         records: context.journal.read(),
         session_id,
     })
@@ -374,6 +399,7 @@ export const followUpAgent = async ({
             follow_up_of: session_id,
             model,
             model_reason,
+            effort,
         },
     })
     await runTurn({

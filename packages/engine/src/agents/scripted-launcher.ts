@@ -10,6 +10,8 @@ import type {
 } from './agent-launcher'
 import type { AgentRole } from './role-results'
 
+import type { Effort } from '../config/engine-config'
+
 /**
  * The engine's tools, as a scripted agent calls them. They reach the
  * messaging the session was launched with; a reviewer has none, so its
@@ -71,6 +73,12 @@ export type ScriptedCall = {
      * for a session the launcher doesn't know.
      */
     model: string | null
+    /**
+     * The effort a launch asked for (#659), `null` if it named none; a
+     * follow-up's is its session's, `null` for a session the launcher
+     * doesn't know.
+     */
+    effort: Effort | null
     /** What each of the turn's tool calls handed over, in order. */
     delivered: string[]
 }
@@ -107,10 +115,14 @@ export const createScriptedLauncher = ({
 }): ScriptedLauncher => {
     const remaining = [...turns]
     const calls: ScriptedCall[] = []
-    /** Each open session's messaging and model, kept for its follow-ups. */
+    /** Each open session's messaging, model and effort, kept for its follow-ups. */
     const sessions = new Map<
         string,
-        { messaging: AgentMessaging | null; model: string }
+        {
+            messaging: AgentMessaging | null
+            model: string
+            effort: Effort | null
+        }
     >()
 
     const toolsFor = ({
@@ -192,9 +204,14 @@ export const createScriptedLauncher = ({
             may_edit_tests,
             messaging,
             model,
+            effort,
         }) => {
             const session_id = `scripted-${role}-${ticket}-${calls.length + 1}`
-            sessions.set(session_id, { messaging, model })
+            sessions.set(session_id, {
+                messaging,
+                model,
+                effort: effort ?? null,
+            })
             const call: ScriptedCall = {
                 kind: 'launch',
                 role,
@@ -203,6 +220,7 @@ export const createScriptedLauncher = ({
                 session_id,
                 may_edit_tests,
                 model,
+                effort: effort ?? null,
                 delivered: [],
             }
             calls.push(call)
@@ -218,6 +236,7 @@ export const createScriptedLauncher = ({
                 prompt: message,
                 session_id,
                 model: open?.model ?? null,
+                effort: open?.effort ?? null,
                 delivered: [],
             }
             calls.push(call)

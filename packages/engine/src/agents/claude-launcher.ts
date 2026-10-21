@@ -1,10 +1,6 @@
-import {
-    query as sdkQuery,
-    type EffortLevel,
-} from '@anthropic-ai/claude-agent-sdk'
+import { query as sdkQuery } from '@anthropic-ai/claude-agent-sdk'
 
 import type { AgentLauncher } from './agent-launcher'
-import { AGENT_EFFORT } from './claude-options'
 import { createLaunch, type AgentQuery } from './launch-session'
 import { createSessionPool } from './session-pool'
 
@@ -26,7 +22,8 @@ export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60_000
  *
  * 1. refuses any model but `opus`, `sonnet` or `haiku` before starting
  *    anything; follow-ups stay on their session's model;
- * 2. builds the role's locked-down options (`agentOptions`) with the guard
+ * 2. builds the role's locked-down options (`agentOptions`), at the launch's
+ *    effort (#659; follow-ups stay at their session's), with the guard
  *    hook (honoring `may_edit_tests`), the sandbox, and a clean environment;
  *    with `messaging` (test-writers and implementers), the `luca` server's
  *    `send_message` tool and the hook that hands over messages after each
@@ -55,20 +52,17 @@ export const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60_000
  *
  * @example
  * const launcher = createClaudeLauncher({})
- * const turn = await launcher.launch({ role: 'implementer', ticket: 11, prompt, cwd, may_edit_tests: false, config, messaging, model: 'opus' })
+ * const turn = await launcher.launch({ role: 'implementer', ticket: 11, prompt, cwd, may_edit_tests: false, config, messaging, model: 'opus', effort: 'medium' })
  * // ... later, in a fix loop:
  * if (turn.ok) await launcher.followUp({ session_id: turn.session_id, role: 'implementer', ticket: 11, message, cwd, config })
  * await launcher.closeAll()
  */
 export const createClaudeLauncher = ({
-    effort,
     query,
     claude_path,
     turn_timeout_ms,
     idle_timeout_ms,
 }: {
-    /** Defaults to `AGENT_EFFORT`, the same for every role. */
-    effort?: EffortLevel
     query?: AgentQuery
     claude_path?: string
     /** Defaults to `DEFAULT_TURN_TIMEOUT_MS`. */
@@ -76,7 +70,6 @@ export const createClaudeLauncher = ({
     /** Defaults to `DEFAULT_IDLE_TIMEOUT_MS`. */
     idle_timeout_ms?: number
 }): AgentLauncher & { closeAll: () => Promise<void> } => {
-    const useEffort = effort ?? AGENT_EFFORT
     const startQuery: AgentQuery = query ?? sdkQuery
     const timeoutMs = turn_timeout_ms ?? DEFAULT_TURN_TIMEOUT_MS
     const idleMs = idle_timeout_ms ?? DEFAULT_IDLE_TIMEOUT_MS
@@ -86,7 +79,6 @@ export const createClaudeLauncher = ({
     })
     const { sessions, close, startTurn, runTurn, closeAll } = pool
     const launch = createLaunch({
-        effort: useEffort,
         start_query: startQuery,
         claude_path,
         turn_timeout_ms: timeoutMs,

@@ -60,6 +60,10 @@ _Avoid_: subagent, searcher agent
 The job an agent does in a run, such as test-writer, implementer, or reviewer.
 _Avoid_: mode, persona
 
+**Effort**:
+How hard an agent thinks before it acts: low, medium, high, xhigh or max. Each role has one; reviewers always run at xhigh.
+_Avoid_: thinking budget, reasoning level
+
 **Gate**:
 A check the engine runs itself, such as the tests or the type checker, that must pass before the run moves on.
 _Avoid_: hook, checks

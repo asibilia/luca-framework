@@ -30,6 +30,7 @@ export {
 export {
     DecisionModelConfigSchema,
     DEFAULT_MODEL,
+    EffortSchema,
     ENGINE_CONFIG_FILE,
     EngineConfigSchema,
     ModelNameSchema,
@@ -39,6 +40,7 @@ export {
     TestResultsSchema,
 } from './engine-config-schema'
 export type {
+    Effort,
     EngineConfig,
     ModelName,
     ModelsConfig,
