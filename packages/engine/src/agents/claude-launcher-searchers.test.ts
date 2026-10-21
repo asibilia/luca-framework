@@ -92,6 +92,30 @@ describe('helpers', () => {
         }
     })
 
+    test("the searcher helper's definition runs at effort low, whatever its agent's effort (#659)", async () => {
+        const fake = fakeQuery({ messages: [INIT, result({})] })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
+        await launcher.launch({
+            role: 'ticket-reviewer',
+            ticket: 11,
+            prompt: 'Review ticket #11.',
+            cwd: repo,
+            may_edit_tests: false,
+            config: CONFIG,
+            messaging: null,
+            model: 'opus',
+            effort: 'xhigh',
+        })
+        await launcher.closeAll()
+        const options = fake.calls[0]?.options
+
+        expect(options?.effort).toBe('xhigh')
+        expect(options?.agents?.searcher?.effort).toBe('low')
+    })
+
     test('the guard refuses a helper of another type, and a fourth searcher while 3 run, as guard denials', async () => {
         const answers: HookJSONOutput[] = []
         const fake = fakeQuery({
@@ -210,6 +234,7 @@ describe('helpers', () => {
             config: CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         await launcher.followUp({
             session_id: 'session-1',

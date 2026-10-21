@@ -153,6 +153,7 @@ const turnWithHelper = async ({ until }: { until: 'running' | 'done' }) => {
         config: CONFIG,
         messaging: null,
         model: 'opus',
+        effort: 'medium',
     })
     await launcher.closeAll()
     live.close()

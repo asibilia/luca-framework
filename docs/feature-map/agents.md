@@ -87,7 +87,7 @@ Tests:
 
 ## Agents and their launcher
 
-Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends. A fix round whose session is gone goes to a fresh agent, with the fix message, and counts as no engine failure. Any agent may start up to 3 read-only Haiku helpers (`searcher`) to search the repo; their tokens count toward the run budget.
+Each role runs as one Claude Agent SDK session with its own instructions and a structured result, and the engine closes the session when its step ends. Each role runs at its own effort, whatever its model: the test-writer and the implementer on tickets, and the learner, at medium; the ticket reviewer, the five lenses and the final review's fixers at xhigh; a follow-up at its session's effort. A fix round whose session is gone goes to a fresh agent, with the fix message, and counts as no engine failure. Any agent may start up to 3 read-only Haiku helpers (`searcher`), at effort low, to search the repo; their tokens count toward the run budget.
 
 Reached by: every agent turn of a real run; scripted stand-in agents run the end-to-end tests.
 
@@ -106,6 +106,7 @@ Tests:
 - `packages/engine/src/agents/role-instructions-rules-and-sandbox.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
+- `packages/engine/src/core/run-effort.e2e.test.ts`
 - `packages/engine/src/core/run-session-close.e2e.test.ts`
 - `packages/engine/src/core/run-session-close-interruptions.e2e.test.ts`
 - `packages/engine/src/core/run-session-close-ticket-ends.e2e.test.ts`

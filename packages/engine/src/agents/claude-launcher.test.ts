@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 
+import type { EffortLevel } from '@anthropic-ai/claude-agent-sdk'
 import { describe, expect, test } from 'bun:test'
 
 import { createClaudeLauncher } from './claude-launcher'
@@ -64,22 +65,21 @@ describe('the model', () => {
         expect(models).toHaveLength(3)
         expect(new Set(models).size).toBe(1)
         expect(models[0]).toMatch(/opus/)
-        expect(fake.calls.map(({ options }) => options.effort)).toEqual([
-            'high',
-            'high',
-            'high',
-        ])
+        const efforts = fake.calls.map(({ options }) => options.effort)
+        expect(new Set(efforts).size).toBe(1)
     })
 
-    /** One launch on `model`, on a launcher shared across launches. */
+    /** One launch on `model` at `effort`, on a launcher shared across launches. */
     const launchOn = ({
         launcher,
         role,
         model,
+        effort = 'medium',
     }: {
         launcher: ReturnType<typeof createClaudeLauncher>
         role: AgentRole
         model: string
+        effort?: EffortLevel
     }) =>
         launcher.launch({
             role,
@@ -90,6 +90,7 @@ describe('the model', () => {
             config: CONFIG,
             messaging: null,
             model,
+            effort,
         })
 
     test('before a launch, accepts opus, sonnet and haiku, and runs each launch on its own model at the same effort', async () => {
@@ -115,10 +116,49 @@ describe('the model', () => {
             'haiku',
             'opus',
         ])
+        const efforts = fake.calls.map(({ options }) => options.effort)
+        expect(efforts).toHaveLength(3)
+        expect(new Set(efforts).size).toBe(1)
+    })
+
+    test('runs each launch on its own model at the effort it was given (#659)', async () => {
+        const fake = fakeQuery({ messages: [INIT, result({})] })
+        const launcher = createClaudeLauncher({
+            query: fake.query,
+            claude_path: CLAUDE_PATH,
+        })
+        const turns = [
+            await launchOn({
+                launcher,
+                role: 'test-writer',
+                model: 'sonnet',
+                effort: 'medium',
+            }),
+            await launchOn({
+                launcher,
+                role: 'implementer',
+                model: 'haiku',
+                effort: 'high',
+            }),
+            await launchOn({
+                launcher,
+                role: 'ticket-reviewer',
+                model: 'opus',
+                effort: 'xhigh',
+            }),
+        ]
+        await launcher.closeAll()
+
+        expect(turns.map(({ ok }) => ok)).toEqual([true, true, true])
+        expect(fake.calls.map(({ options }) => options.model)).toEqual([
+            'sonnet',
+            'haiku',
+            'opus',
+        ])
         expect(fake.calls.map(({ options }) => options.effort)).toEqual([
+            'medium',
             'high',
-            'high',
-            'high',
+            'xhigh',
         ])
     })
 

@@ -357,6 +357,7 @@ describe('tokens per model', () => {
             config: CONFIG,
             messaging: null,
             model: 'opus',
+            effort: 'medium',
         })
         const second = await launcher.followUp({
             session_id: 'session-1',
