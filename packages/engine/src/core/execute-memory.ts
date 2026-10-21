@@ -417,7 +417,10 @@ export const executeMemoryAction = async ({
                 role: 'learner',
                 step,
             })
-            const effort = roleEffort({ role: 'learner' })
+            const effort = roleEffort({
+                role: 'learner',
+                config: built.config,
+            })
             journal.append({
                 kind: 'agent_started',
                 ticket: null,

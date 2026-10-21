@@ -97,6 +97,17 @@ step-up comes at the role's next fresh agent. The final review's fixers
 always launch on `opus`, reason `locked`. A role's effort (#659) applies
 whichever model it runs on.
 
+**Writers' effort (#660).** `models.effort` sets the effort the test-writer
+and the implementer run at on tickets, and the learner's: `low`, `medium`,
+`high`, `xhigh` or `max`, and a role left out is `medium`. An effort for any
+other role fails the config check, since reviewers and the final review's
+fixers always run at `xhigh`. It is fixed for a run at start, with the rest
+of the block.
+
+```json
+{ "models": { "effort": { "test-writer": "high" } } }
+```
+
 ```ts
 import { createClefClient, loadDecisionModelCredentials, runEngine } from '@luca/engine'
 

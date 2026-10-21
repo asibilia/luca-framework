@@ -331,7 +331,7 @@ export const launchAgent = async ({
         role,
         step: context.step,
     })
-    const effort = roleEffort({ role })
+    const effort = roleEffort({ role, config: context.config })
     context.journal.append({
         kind: 'agent_started',
         ticket,

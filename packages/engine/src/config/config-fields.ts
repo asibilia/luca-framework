@@ -84,8 +84,9 @@ export const decisionModelOf = ({
     config.decision_model?.model ?? DecisionModelConfigSchema.parse({}).model
 
 /**
- * The run's model floors and confidence bar: the config's `models`, else
- * the schema's defaults (every floor `opus`).
+ * The run's model floors, writers' effort and confidence bar: the config's
+ * `models`, else the schema's defaults (every floor `opus`, every effort
+ * `medium`).
  *
  * @example
  * modelsOf({ config }).floors['test-writer'] // 'opus'

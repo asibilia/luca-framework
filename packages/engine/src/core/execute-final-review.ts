@@ -138,7 +138,7 @@ export const executeFinalReviewAction = async ({
         case 'launch_lens': {
             const { lens, role, prompt } = action
             const round = state.final_review.round
-            const effort = roleEffort({ role })
+            const effort = roleEffort({ role, config })
             journal.append({
                 kind: 'lens_started',
                 ticket: null,
@@ -212,7 +212,7 @@ export const executeFinalReviewAction = async ({
             const { role, prompt, may_edit_tests } = action
             // The last fixes before the PR are never routed: always Opus,
             // and at the reviewers' effort, so the last code is the cleanest.
-            const effort = roleEffort({ role, final_fix: true })
+            const effort = roleEffort({ role, config, final_fix: true })
             journal.append({
                 kind: 'agent_started',
                 ticket: null,
