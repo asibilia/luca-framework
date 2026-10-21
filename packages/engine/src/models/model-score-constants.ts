@@ -1,3 +1,4 @@
+import { PAST_EFFORT } from '../agents/role-effort'
 import type { FindingSeverity } from '../agents/role-results'
 import type { Effort } from '../config/engine-config'
 
@@ -23,7 +24,7 @@ export const WORSE_BY = 0.2
 export const EPSILON = 1e-9
 
 /** The effort every role ran at before #659; a `null` effort reads as it. */
-export const EFFORT_BEFORE_JOURNALED: Effort = 'high'
+export const EFFORT_BEFORE_JOURNALED: Effort = PAST_EFFORT
 
 /** The roles scored by the ticket review's findings. */
 export const SCORED_ROLES = ['test-writer', 'implementer'] as const
