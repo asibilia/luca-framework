@@ -31,6 +31,21 @@ describe('the glossary on model floors (#603)', async () => {
     })
 })
 
+describe("the glossary on Clef's effort picks (#661)", async () => {
+    const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
+
+    test("Decision model says it is also asked about each writer's effort, in shadow mode", () => {
+        const entry = entryOf(glossary, 'Decision model') ?? ''
+        const sentence = entry
+            .split(/(?<=\.)\s+/)
+            .find((each) => each.toLowerCase().includes('effort'))
+
+        expect(sentence).toBeDefined()
+        expect(sentence?.toLowerCase()).toContain('writer')
+        expect(sentence?.toLowerCase()).toContain('shadow mode')
+    })
+})
+
 describe('the glossary on effort (#659)', async () => {
     const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
 

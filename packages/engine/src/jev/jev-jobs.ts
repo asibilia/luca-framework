@@ -10,8 +10,13 @@ import {
 } from './jev-schemas'
 import { offeredModels, type RoutedRole } from './model-pick'
 
+import { ROLE_EFFORT, roleEffort } from '../agents/role-effort'
 import type { Finding } from '../agents/role-results'
-import { DEFAULT_MODEL, modelsOf } from '../config/engine-config'
+import {
+    DEFAULT_MODEL,
+    modelsOf,
+    type EffortLevel,
+} from '../config/engine-config'
 import type { EngineAction } from '../core/decide'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalRecord } from '../journal/journal-record'
@@ -210,6 +215,51 @@ const agentModelAsk = ({
     }
 }
 
+/** The efforts an `agent_effort` ask offers, lowest first. */
+const OFFERED_EFFORTS: readonly EffortLevel[] = ['medium', 'high', 'xhigh']
+
+/**
+ * Which effort a fresh test-writer or implementer on a ticket should use
+ * (#661), with the same facts as its `agent_model` ask. Shadow mode only:
+ * the agent always runs at its role's effort.
+ */
+const agentEffortAsk = ({
+    state,
+    ticket,
+    role,
+    attempt,
+}: {
+    state: RunState
+    ticket: number
+    role: RoutedRole
+    attempt: number
+}): JevAsk => ({
+    job: 'agent_effort',
+    ticket,
+    role,
+    request: {
+        state: {
+            ...ticketState({ state, ticket }),
+            role,
+            try: String(attempt),
+        },
+        questions: {
+            effort: choice({
+                instructions:
+                    'Which effort should this agent use? Pick the lowest that will get it right.',
+                options: OFFERED_EFFORTS,
+            }),
+        },
+    },
+    fixed: {
+        effort:
+            state.config === null
+                ? ROLE_EFFORT[role]
+                : roleEffort({ role, config: state.config }),
+    },
+    acted: false,
+})
+
 const agentSkillsAsk = ({
     state,
     ticket,
@@ -250,8 +300,9 @@ const isRoutedTicketRole = (role: string): role is RoutedRole =>
 
 /**
  * The asks to make before the engine carries out `action`: ticket order
- * before a ticket starts, skills before each agent, and the model before
- * each fresh test-writer, implementer, and learner.
+ * before a ticket starts, skills before each agent, the model before each
+ * fresh test-writer, implementer, and learner, and the effort before each
+ * fresh test-writer and implementer.
  */
 export const jevAsksBefore = ({
     action,
@@ -265,16 +316,12 @@ export const jevAsksBefore = ({
             return createTicketWorktreeAsks({ state, ticket: action.ticket })
         case 'launch_agent': {
             const { ticket, role } = action
-            const failed = state.tickets[ticket]?.failed_tries[role] ?? 0
+            const attempt = (state.tickets[ticket]?.failed_tries[role] ?? 0) + 1
             return [
                 ...(isRoutedTicketRole(role)
                     ? [
-                          agentModelAsk({
-                              state,
-                              ticket,
-                              role,
-                              attempt: failed + 1,
-                          }),
+                          agentModelAsk({ state, ticket, role, attempt }),
+                          agentEffortAsk({ state, ticket, role, attempt }),
                       ]
                     : []),
                 agentSkillsAsk({ state, ticket, role }),

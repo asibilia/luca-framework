@@ -181,7 +181,7 @@ A trial setup for the decision model: the engine asks it every time and records 
 _Avoid_: dry run, trial mode
 
 **Decision model**:
-The model the engine asks which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Its model pick for a role with a floor below Opus takes effect when it clears the confidence bar; every other job stays in shadow mode. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
+The model the engine asks which choice it would make: which ticket next, which model, which skills, what kind of failure, how severe a finding is. Its model pick for a role with a floor below Opus takes effect when it clears the confidence bar; every other job stays in shadow mode. It's also asked about each writer's effort, in shadow mode, and never acted on. Today it is Cloudflare's Clef; before, it was TypeSafe's Jev, so the journal's records for it are still named `jev_asked`, `jev_answered`, and `jev_failed`. Its credentials live in Luca's own env file, `~/.config/luca/.env`, never in a repo's `.env`.
 _Avoid_: labeling model, Jev (except for the record names)
 
 **Model floor**:
