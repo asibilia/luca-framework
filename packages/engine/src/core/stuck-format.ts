@@ -18,5 +18,17 @@ export const fenced = (text: string): string => {
     return `${fence}\n${clipped}\n${fence}`
 }
 
-export const plural = (count: number, word: string): string =>
-    `${count} ${word}${count === 1 ? '' : 's'}`
+/**
+ * `count` and `word`, with `s` past one; a word ending in a consonant and
+ * `y` ends in `ies` instead.
+ *
+ * @example
+ * plural(2, 'fix round') // '2 fix rounds'
+ * plural(3, 'failed try') // '3 failed tries'
+ */
+export const plural = (count: number, word: string): string => {
+    if (count === 1) return `${count} ${word}`
+    return /[^aeiou]y$/.test(word)
+        ? `${count} ${word.slice(0, -1)}ies`
+        : `${count} ${word}s`
+}

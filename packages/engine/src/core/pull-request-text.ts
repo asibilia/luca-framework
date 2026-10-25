@@ -15,6 +15,7 @@ import { reasonLine } from './stuck-text'
 import type { AgentRole, MergeDanger } from '../agents/role-results'
 import {
     EMPTY_FINAL_REVIEW,
+    openFinalFindings,
     type FinalReviewState,
     type ReplayedSnapshot,
     type TicketProgress,
@@ -114,7 +115,8 @@ const outOfTurnsSection = ({
  * agents ran out of turns (#543), the reviews' nits,
  * the findings declined through "won't fix", and the memories the learner
  * added or updated (#370). A final review shipped
- * while stuck puts its open findings at the very top. Right after the
+ * while stuck puts its open findings at the very top, with those of the
+ * lenses that finished a round it never settled. Right after the
  * "Built by" line come the Summary picture and the Merge Danger (from the
  * final review's integration lens, or "Not available" without them) and
  * the Evidence that each ticket's new tests failed first and pass now
@@ -213,7 +215,8 @@ export const pullRequestText = ({
             })
         ),
     ]
-    const stillOpen = review.fix?.findings ?? []
+    // A round a stuck lens never settled keeps its finished lenses' findings.
+    const stillOpen = openFinalFindings({ review })
     const shipped =
         review.shipped && review.stuck !== null
             ? shippedFindingsSection({

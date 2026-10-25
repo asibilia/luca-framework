@@ -17,6 +17,7 @@ Tests:
 - `packages/engine/src/core/decide-stuck-owner-change.test.ts`
 - `packages/engine/src/core/decide-stuck-final-review.test.ts`
 - `packages/engine/src/core/decide-stuck-undo.test.ts`
+- `packages/engine/src/core/stuck-format.test.ts`
 - `packages/engine/src/core/run-stuck.e2e.test.ts`
 - `packages/board/server/reply-actions.test.ts`
 - `packages/board/server/reply-post.test.ts`

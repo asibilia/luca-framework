@@ -4,6 +4,7 @@
  * fixers' answers to its fix round.
  */
 import omit from 'lodash/omit'
+import uniqBy from 'lodash/uniqBy'
 
 import {
     badTestOf,
@@ -113,6 +114,42 @@ const lensResultOf = ({
 }
 
 /**
+ * The blocking findings of each due lens that finished this round, with
+ * its lens.
+ */
+const roundBlocking = ({
+    review,
+}: {
+    review: FinalReviewState
+}): FinalFinding[] =>
+    review.lenses_due.flatMap((lens) =>
+        (review.results[lens]?.findings ?? [])
+            .filter(isBlocking)
+            .map((entry) => ({ ...entry, lens }))
+    )
+
+/**
+ * The final review's blocking findings still open, one per id: the open
+ * fix round's, then those of the lenses that finished this round. A round
+ * that never settled (a lens failed on every try, and the owner replied
+ * `ship`) has not put its findings in a fix round, so they come from its
+ * finished lenses.
+ *
+ * @example
+ * openFinalFindings({ review })
+ * // [{ id: 'simplification-F1', lens: 'simplification', severity: 'should_fix', ... }]
+ */
+export const openFinalFindings = ({
+    review,
+}: {
+    review: FinalReviewState
+}): FinalFinding[] =>
+    uniqBy(
+        [...(review.fix?.findings ?? []), ...roundBlocking({ review })],
+        'id'
+    )
+
+/**
  * Every due lens finished this round, and its slow tests ran if they were
  * due (#563): the round can settle.
  */
@@ -161,9 +198,7 @@ export const settleRound = ({
             result.findings.filter((entry) => !isBlocking(entry))
         )
     )
-    const blocking = due.flatMap(({ lens, result }) =>
-        tagged(lens, result.findings.filter(isBlocking))
-    )
+    const blocking = roundBlocking({ review })
     const settled: FinalReviewState = {
         ...review,
         declined: [...review.declined, ...declined],

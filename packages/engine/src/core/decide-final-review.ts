@@ -69,7 +69,9 @@ const lensStep = ({
  * earlier findings; its blocking findings get one fix round (past the round
  * cap, too) and one re-review, and what is still open then tops the PR
  * instead of getting the review stuck.
- * Failed tries are capped per role like a ticket's. A stuck final review
+ * Failed tries are capped per role, in a row: a finished turn of the role
+ * gives its tries back, so one failed try in an early round doesn't count
+ * against it in a later one. A stuck final review
  * waits for a reply; `ship` opens the PR anyway. A final review step cut
  * off by a crash `MAX_CRASHES` times in a row is stuck too.
  *

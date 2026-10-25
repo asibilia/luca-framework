@@ -84,8 +84,10 @@ runs, even for a one-ticket spec.
   was already a full read), and none after a `ship`.
 - **Failed tries.** A lens's failed try launches a fresh lens, a fixer's gets
   a follow-up in its session (fresh with none); `MAX_FIX_ROUNDS` failed tries
-  per role over the whole final review, or `MAX_ENGINE_FAILURES` engine
-  failures of one role in a row, are stuck (`agent_failed`). So are a bad test
+  of one role in a row (a finished turn of the role gives its tries back, so
+  a lens that failed once in round 1 starts the fresh pass with all its
+  tries), or `MAX_ENGINE_FAILURES` engine failures of one role in a row, are
+  stuck (`agent_failed`). So are a bad test
   while fixing (`bad_test`), leftovers (`leftovers_found`), and the gate fix
   loop at its cap (`gates_failed`).
 - **Stuck.** `final_review_stuck`, then the tickets' worktrees are removed

@@ -4,6 +4,8 @@ import { oneSteps } from './decide-stuck-helpers'
 
 import type { JournalEntry } from '../journal/journal-record'
 import {
+    agentFailed,
+    agentStarted,
     commentRead,
     replyReceived,
     runBranchCreated,
@@ -14,6 +16,7 @@ import {
 } from '../testing/build-fixtures'
 import {
     finalReviewShipped,
+    finalReviewStarted,
     finalReviewStuck,
     lensFinding,
     lensRound,
@@ -67,6 +70,29 @@ describe('the final review (#367)', () => {
         expect(body).toContain('`stop`')
         expect(body).toContain('`ship`')
         expect(body).not.toContain('`skip')
+    })
+
+    test("a lens's failed tries are counted as tries in the stuck comment", () => {
+        const lensFailed = (): JournalEntry[] => [
+            agentStarted({ ticket: null, role: 'security-lens' }),
+            agentFailed({
+                ticket: null,
+                role: 'security-lens',
+                failure: 'agent',
+            }),
+        ]
+        const [step] = oneSteps([
+            runBranchCreated(),
+            ...ticketBuilt({ ticket: 11 }),
+            finalReviewStarted({ round: 1 }),
+            ...lensFailed(),
+            ...lensFailed(),
+            ...lensFailed(),
+            finalReviewStuck({ reason: 'agent_failed' }),
+            worktreesRemoved({ paths: [ticketPath(11)] }),
+        ])
+        const body = step?.type === 'report_final_review_stuck' ? step.body : ''
+        expect(body).toContain('Tried: 3 failed tries by the security-lens.')
     })
 
     test('once told, the run waits for a reply', () => {

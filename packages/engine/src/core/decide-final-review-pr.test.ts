@@ -4,6 +4,8 @@ import { LENS_NAMES } from '../agents/role-results'
 import type { JournalEntry } from '../journal/journal-record'
 import { replayRun } from '../journal/replay'
 import {
+    agentFailed,
+    agentStarted,
     implemented,
     intakePassed,
     pullRequestOpened,
@@ -26,6 +28,7 @@ import {
     built,
     fixesLanded,
     SECURITY,
+    securityFixRound,
     stepAfter,
     stepsAfter,
     TICKET,
@@ -77,10 +80,64 @@ describe('decision step: a stuck final review', () => {
         expect(pr.body.indexOf('## Open findings')).toBeLessThan(
             pr.body.indexOf('Built by the Luca engine')
         )
+        // Listed once, though the settled round's results hold it too.
+        expect(pr.body.split('security-S1 Sum trusts its input')).toHaveLength(
+            2
+        )
         expect(stepAfter([...shipped, pullRequestOpened()])).toEqual({
             type: 'remove_worktrees',
             paths: [RUN_BRANCH_PATH],
         })
+    })
+
+    test('a ship reply to a fresh pass stuck on a failed lens lists the findings of the lenses that finished it', () => {
+        const SIMPLE = [
+            lensFinding({ id: 'F1', file: 'src/case-schema.ts' }),
+            lensFinding({ id: 'F2', file: 'src/case-actions.ts' }),
+        ]
+        const integrationFailed = (): JournalEntry[] => [
+            agentStarted({ ticket: null, role: 'integration-lens' }),
+            agentFailed({
+                ticket: null,
+                role: 'integration-lens',
+                failure: 'agent',
+                out_of_turns: true,
+            }),
+        ]
+        const shipped = [
+            ...built(),
+            ...lensRound({ round: 1, findings: { security: [SECURITY] } }),
+            ...securityFixRound({ round: 1 }),
+            ...lensRound({
+                round: 2,
+                lenses: ['security'],
+                from_sha: 'g1',
+                head_sha: 'fix-1',
+            }),
+            finalReviewStarted({ round: 3, head_sha: 'fix-1', fresh: true }),
+            ...LENS_NAMES.filter((lens) => lens !== 'integration').flatMap(
+                (lens) =>
+                    lensReviewed({
+                        lens,
+                        round: 3,
+                        findings: lens === 'simplification' ? SIMPLE : [],
+                    })
+            ),
+            ...integrationFailed(),
+            ...integrationFailed(),
+            ...integrationFailed(),
+            finalReviewStuck({ reason: 'agent_failed' }),
+            worktreesRemoved({ paths: [ticketPath(11)] }),
+            finalReviewShipped(),
+        ]
+
+        const pr = stepAfter(shipped)
+        if (pr.type !== 'open_pull_request') throw new Error(pr.type)
+        expect(pr.body).not.toContain('No lens finding was open')
+        expect(pr.body).toContain(
+            '- simplification lens, should-fix (src/case-schema.ts): simplification-F1 Finding F1\n' +
+                '- simplification lens, should-fix (src/case-actions.ts): simplification-F2 Finding F2'
+        )
     })
 
     test('a ship reply to a final review that is not stuck changes nothing', () => {

@@ -189,15 +189,15 @@ describe('the result', () => {
         })
         expect(other).toMatchObject({ ok: false, failure: 'agent' })
         expect(other).not.toMatchObject({ out_of_turns: true })
-        expect(limited.calls[0]?.options.maxTurns).toBe(120)
+        expect(limited.calls[0]?.options.maxTurns).toBe(150)
         expect(MAX_TURNS).toEqual({
             'test-writer': 80,
-            implementer: 120,
+            implementer: 150,
             'ticket-reviewer': 60,
             'architecture-lens': 60,
             'simplification-lens': 60,
             'security-lens': 60,
-            'integration-lens': 60,
+            'integration-lens': 100,
             'rules-lens': 60,
             learner: 40,
         })
