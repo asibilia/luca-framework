@@ -27,6 +27,7 @@ import {
 import {
     built,
     fixesLanded,
+    NIT,
     SECURITY,
     securityFixRound,
     stepAfter,
@@ -120,7 +121,12 @@ describe('decision step: a stuck final review', () => {
                     lensReviewed({
                         lens,
                         round: 3,
-                        findings: lens === 'simplification' ? SIMPLE : [],
+                        findings:
+                            lens === 'simplification'
+                                ? SIMPLE
+                                : lens === 'architecture'
+                                  ? [NIT]
+                                  : [],
                     })
             ),
             ...integrationFailed(),
@@ -137,6 +143,73 @@ describe('decision step: a stuck final review', () => {
         expect(pr.body).toContain(
             '- simplification lens, should-fix (src/case-schema.ts): simplification-F1 Finding F1\n' +
                 '- simplification lens, should-fix (src/case-actions.ts): simplification-F2 Finding F2'
+        )
+        // A finished lens's nits count too.
+        expect(pr.body).toContain(
+            '- final review, architecture lens: architecture-N1 (src/sum.ts): Shorter name'
+        )
+    })
+
+    test('a ship reply to a re-review stuck on a failed lens drops what a finished lens cleared, and lists the "won\'t fix" it let go', () => {
+        const SIMPLE = lensFinding({ id: 'F1', file: 'src/case-schema.ts' })
+        const simplificationFailed = (): JournalEntry[] => [
+            agentStarted({ ticket: null, role: 'simplification-lens' }),
+            agentFailed({
+                ticket: null,
+                role: 'simplification-lens',
+                failure: 'agent',
+            }),
+        ]
+        const shipped = [
+            ...built(),
+            ...lensRound({
+                round: 1,
+                findings: { security: [SECURITY], simplification: [SIMPLE] },
+            }),
+            finalReviewFixing({ round: 1 }),
+            implemented({
+                ticket: null,
+                finding_responses: [
+                    {
+                        finding_id: 'security-S1',
+                        response: 'wont_fix',
+                        reason: 'Inputs are typed numbers.',
+                    },
+                    {
+                        finding_id: 'simplification-F1',
+                        response: 'fixed',
+                        reason: '',
+                    },
+                ],
+            }),
+            ...fixesLanded({ sha: 'fix-1' }),
+            finalReviewStarted({
+                round: 2,
+                lenses: ['security', 'simplification'],
+                from_sha: 'g1',
+                head_sha: 'fix-1',
+            }),
+            // The security lens lets its finding go: it does not list it.
+            ...lensReviewed({ lens: 'security', round: 2 }),
+            ...simplificationFailed(),
+            ...simplificationFailed(),
+            ...simplificationFailed(),
+            finalReviewStuck({ reason: 'agent_failed' }),
+            worktreesRemoved({ paths: [ticketPath(11)] }),
+            finalReviewShipped(),
+        ]
+
+        const pr = stepAfter(shipped)
+        if (pr.type !== 'open_pull_request') throw new Error(pr.type)
+        expect(pr.body).toContain(
+            'These findings are still open:\n\n' +
+                '- simplification lens, should-fix (src/case-schema.ts): simplification-F1 Finding F1\n\n'
+        )
+        expect(pr.body).not.toContain(
+            '- security lens, should-fix (src/sum.ts): security-S1'
+        )
+        expect(pr.body).toContain(
+            "- final review, security lens: security-S1 (should-fix) (src/sum.ts): Sum trusts its input\n  Won't fix: Inputs are typed numbers."
         )
     })
 

@@ -4,7 +4,6 @@
  * fixers' answers to its fix round.
  */
 import omit from 'lodash/omit'
-import uniqBy from 'lodash/uniqBy'
 
 import {
     badTestOf,
@@ -14,7 +13,11 @@ import {
     handoffRole,
     type FinishedContent,
 } from './agent-turn-replay'
-import type { FinalFinding, FinalReviewState } from './final-review-state'
+import type {
+    FinalDeclined,
+    FinalFinding,
+    FinalReviewState,
+} from './final-review-state'
 import { setupChangeOf } from './ticket-result-replay'
 
 import {
@@ -129,27 +132,6 @@ const roundBlocking = ({
     )
 
 /**
- * The final review's blocking findings still open, one per id: the open
- * fix round's, then those of the lenses that finished this round. A round
- * that never settled (a lens failed on every try, and the owner replied
- * `ship`) has not put its findings in a fix round, so they come from its
- * finished lenses.
- *
- * @example
- * openFinalFindings({ review })
- * // [{ id: 'simplification-F1', lens: 'simplification', severity: 'should_fix', ... }]
- */
-export const openFinalFindings = ({
-    review,
-}: {
-    review: FinalReviewState
-}): FinalFinding[] =>
-    uniqBy(
-        [...(review.fix?.findings ?? []), ...roundBlocking({ review })],
-        'id'
-    )
-
-/**
  * Every due lens finished this round, and its slow tests ran if they were
  * due (#563): the round can settle.
  */
@@ -231,6 +213,51 @@ export const settleRound = ({
         leftovers: null,
         commit: null,
         pushed: null,
+    }
+}
+
+/** The final review's findings as its PR lists them. */
+export type PullRequestFindings = {
+    /** The blocking findings still open. */
+    open: FinalFinding[]
+    nits: FinalFinding[]
+    declined: FinalDeclined[]
+}
+
+/**
+ * The final review's findings as its PR lists them: the blocking ones still
+ * open, the nits, and the "won't fix" answers a lens let go. A round that
+ * never settled (a lens failed on every try, or a step crashed, and the
+ * owner replied `ship`) is settled over the lenses that finished it, as
+ * `settleRound` would: their blocking findings, nits, and rulings count,
+ * and a finding one of them cleared is no longer open. The open fix round's
+ * findings stay open only for the lenses that never finished. A settled
+ * round's findings are as they stand.
+ *
+ * @example
+ * finalPullRequestFindings({ review }).open
+ * // [{ id: 'simplification-F1', lens: 'simplification', severity: 'should_fix', ... }]
+ */
+export const finalPullRequestFindings = ({
+    review,
+}: {
+    review: FinalReviewState
+}): PullRequestFindings => {
+    const earlier = review.fix?.findings ?? []
+    const finished = review.lenses_due.filter(
+        (lens) => review.results[lens] !== undefined
+    )
+    if (roundDone({ review }) || finished.length === 0) {
+        return { open: earlier, nits: review.nits, declined: review.declined }
+    }
+    const settled = settleRound({ review: { ...review, lenses_due: finished } })
+    return {
+        open: [
+            ...earlier.filter(({ lens }) => !finished.includes(lens)),
+            ...(settled.fix?.findings ?? []),
+        ],
+        nits: settled.nits,
+        declined: settled.declined,
     }
 }
 

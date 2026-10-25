@@ -104,6 +104,11 @@ runs, even for a one-ticket spec.
   (`changeset_dropped`), as at any engine commit. The PR then opens with an "Open findings" section at the very
   top (each with its lens, severity, and file, then the edits' files as
   "Uncommitted fixer edits, not reviewed"), and the worktrees are removed.
+  A round that never settled is settled for the PR over the lenses that
+  finished it (`finalPullRequestFindings`): their blocking findings are
+  open, their nits and the "won't fix" answers they let go are listed, and
+  a finding they cleared is gone; the open fix round's findings stay open
+  for the lenses that never finished.
   The changeset commit, made after, holds only the changeset (#509). `retry`
   journals `final_review_retried`: fresh fixers (no session kept) and fresh
   counts, keeping the owner's edits in the run branch's worktree. The open
