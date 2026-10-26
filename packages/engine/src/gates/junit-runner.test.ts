@@ -3,9 +3,10 @@ import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 
 import { runJunitTests } from './junit-runner'
+import * as swiftIndex from './swift-test-index'
 import { TEST_TIMEOUT_HINT } from './test-runner'
 
 import { timedOutLine } from '../shell/run-command'
@@ -344,6 +345,35 @@ describe('runJunitTests: the junit_path files around a run (#668)', () => {
         )
         expect(kept).toContain(CORE_XML)
         expect(kept).toContain(CORE_SWIFT_TESTING_XML)
+    })
+
+    test('a folder or a broken link at a junit_path counts as not written, in this run and the next', async () => {
+        await writeFixturePackage()
+        const command = `mkdir -p ${XCTEST_PATH} && ln -s nowhere.xml ${SWIFT_TESTING_PATH}`
+
+        const runs = [await junitRun({ command }), await junitRun({ command })]
+
+        for (const run of runs) {
+            expect(run.ok).toBe(false)
+            expect(run.cases).toEqual([])
+            expect(run.output).toStartWith(
+                `\`${command}\` passed but wrote none of its JUnit files`
+            )
+        }
+    })
+
+    test('the .swift test files are read only once a JUnit file was written', async () => {
+        await writeFixturePackage()
+        const index = spyOn(swiftIndex, 'swiftTestIndex')
+        try {
+            await junitRun({ command: 'exit 1' })
+            expect(index).not.toHaveBeenCalled()
+
+            await junitRun({ command: WRITES_BOTH })
+            expect(index).toHaveBeenCalledTimes(1)
+        } finally {
+            index.mockRestore()
+        }
     })
 })
 

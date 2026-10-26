@@ -5,7 +5,7 @@
  */
 import type { AgentRole } from './role-results'
 
-import type { EngineConfig } from '../config/engine-config'
+import { givesPerTestResults, type EngineConfig } from '../config/engine-config'
 import {
     HELPER_MODEL,
     HELPER_TOOLS,
@@ -30,12 +30,12 @@ export const shellRules = ({
     const guard = guardRoleOf({ role })
     const { tests, others } = checkCommands({ role: guard, config })
     const commands = [
+        // The guard lets args follow a test command just when it gives
+        // per-test results; only `bun test` takes test files among them.
         ...tests.map(({ run, results }) =>
-            results === 'bun'
-                ? `\`${run}\` (you may add test files or options after it)`
-                : results === 'junit'
-                  ? `\`${run}\` (you may add options after it)`
-                  : `\`${run}\``
+            givesPerTestResults(results)
+                ? `\`${run}\` (you may add ${results === 'bun' ? 'test files or options' : 'options'} after it)`
+                : `\`${run}\``
         ),
         ...others.map((command) => `\`${command}\``),
         ...(isWriter(guard)

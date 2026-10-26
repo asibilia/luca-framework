@@ -2,9 +2,10 @@
  * A `junit` test command (#668): the engine runs it as written and reads the
  * JUnit files it names in `junit_path` into test cases.
  */
-import { existsSync } from 'node:fs'
-import { copyFile, mkdir, rm } from 'node:fs/promises'
+import { copyFile, lstat, mkdir, rm, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
+
+import once from 'lodash/once'
 
 import type { TestCase, TestRun } from './gate-schemas'
 import { swiftTestIndex } from './swift-test-index'
@@ -62,11 +63,14 @@ export const runJunitTests = ({
 /**
  * Runs a `junit` command for a caller that already holds a test slot.
  *
- * - Before: each `junit_path` file is deleted, and its folder made.
+ * - Before: each `junit_path` file is deleted and its parent folder made. A
+ *   folder at the path itself is left alone.
  * - The command runs as written, with `timeout_ms` and no flags added.
  * - After: each file it wrote is read, in `junit_path` order (a SwiftPM case
- *   tied to its file by `swiftTestIndex`), copied beside `report_file`, and
- *   deleted from the worktree.
+ *   tied to its file by `swiftTestIndex`, built at the first file read),
+ *   copied beside `report_file`, and deleted from the worktree. Anything
+ *   there that isn't a file, such as a folder or a broken link, counts as
+ *   not written.
  *
  * With files read, the run has their cases and no `files_without_results`.
  * With none, a failed command's run has no cases, `junit_missing`, and every
@@ -88,21 +92,27 @@ export const runJunitTestsInHeldSlot = async ({
     timeout_ms: number
 }): Promise<TestRun> => {
     for (const path of junit_path) {
-        await rm(join(cwd, path), { force: true })
-        await mkdir(dirname(join(cwd, path)), { recursive: true })
+        const full = join(cwd, path)
+        const found = await lstat(full).catch(() => null)
+        if (found?.isDirectory() !== true) await rm(full, { force: true })
+        await mkdir(dirname(full), { recursive: true })
     }
     const shell = await runShell({ command, cwd, timeout_ms })
     const output = `${shell.timed_out ? timedOutLine({ timeout_ms, hint: TEST_TIMEOUT_HINT, survivors: shell.survivors }) : ''}${clipOutput({ text: `${shell.stdout}\n${shell.stderr}` })}`
-    const read_swift_case = await swiftTestIndex({ cwd, test_files })
+    const swiftIndex = once(() => swiftTestIndex({ cwd, test_files }))
     const kept = report_file.replace(/\.xml$/, '')
     const cases: TestCase[] = []
     let read = 0
     for (const [index, path] of junit_path.entries()) {
         const file = join(cwd, path)
-        if (!existsSync(file)) continue
+        const found = await stat(file).catch(() => null)
+        if (found?.isFile() !== true) continue
         read += 1
         cases.push(
-            ...parseJunit({ xml: await Bun.file(file).text(), read_swift_case })
+            ...parseJunit({
+                xml: await Bun.file(file).text(),
+                read_swift_case: await swiftIndex(),
+            })
         )
         await copyFile(file, `${kept}-junit-${index + 1}-${basename(path)}`)
         await rm(file, { force: true })

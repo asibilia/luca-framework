@@ -3,8 +3,8 @@ import { describe, expect, test } from 'bun:test'
 import { roleInstructions } from './role-instructions'
 import { AgentRoleSchema } from './role-results'
 
-import { EngineConfigSchema } from '../config/engine-config'
-import { guardRoleOf, isWriter } from '../guards/role-rules'
+import { EngineConfigSchema, TestResultsSchema } from '../config/engine-config'
+import { checkToolCall, guardRoleOf, isWriter } from '../guards/role-rules'
 import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
 
 describe('instructions with several test commands', () => {
@@ -302,6 +302,37 @@ describe('a junit test command (#672)', () => {
             expect(text).toContain(
                 '- `bun run ios:test:core` (you may add options after it)\n'
             )
+        }
+    })
+
+    test('for each results kind, the shell rules say options may follow a test command just when the guard lets them', () => {
+        const run = 'bun run ios:test:core'
+        for (const results of TestResultsSchema.options) {
+            const config = EngineConfigSchema.parse({
+                ...PRACTICE_ENGINE_CONFIG,
+                checks: {
+                    ...PRACTICE_ENGINE_CONFIG.checks,
+                    test: [
+                        results === 'junit'
+                            ? { run, results, junit_path: ['core.xml'] }
+                            : { run, results },
+                    ],
+                },
+            })
+            const said = roleInstructions({
+                role: 'implementer',
+                may_edit_tests: false,
+                config,
+            }).includes(`- \`${run}\` (you may add `)
+            const allowed = checkToolCall({
+                role: 'implementer',
+                may_edit_tests: false,
+                tool_name: 'Bash',
+                tool_input: { command: `${run} --filter AddingTests` },
+                worktree: '/tmp/worktree',
+                config,
+            }).allow
+            expect({ results, said }).toEqual({ results, said: allowed })
         }
     })
 

@@ -224,6 +224,23 @@ describe("doctor's junit check (#668)", () => {
         })
     }, 60_000)
 
+    test('a script outside the repo is never read, by a path with ".." or an absolute one', async () => {
+        const outside = join(repo, '..', 'swift-test.sh')
+        await junitRepo({
+            test: [
+                junitCommand(),
+                junitCommand({ run: 'bun run ios:test:stores' }),
+            ],
+            scripts: {
+                'ios:test:core': 'bash ../swift-test.sh',
+                'ios:test:stores': `bash ${outside}`,
+            },
+        })
+        await Bun.write(outside, `${SWIFT_TEST_SERIAL}\n`)
+
+        expect(await junitCheck()).toMatchObject({ status: 'ok' })
+    }, 60_000)
+
     test('a junit_path with only core.xml warns about core-swift-testing.xml', async () => {
         await junitRepo({
             test: [junitCommand({ junit_path: [CORE_XML] })],

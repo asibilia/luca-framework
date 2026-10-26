@@ -90,14 +90,14 @@ as a health check.
 - **junit commands (#668):** with a junit test command in the config, the
   repo group has a `junit` check. It reads each junit command, the root
   `package.json` script a `bun run <script>` command names, and the repo
-  file that script starts (directly, or after `bash`, `sh` or `zsh`). A
-  command whose texts have `swift test` but no `--parallel` is a warning
-  (XCTest writes no JUnit file without it), and so is a `junit_path` that
-  lists only one of SwiftPM's pair, `<name>.xml` and
-  `<name>-swift-testing.xml` in the same folder. Several warnings make one.
-  Like every warning, it doesn't fail doctor. A junit command's `.swift`
-  test files must also match `test_file_patterns`, such as
-  `"packages/ios/**/Tests/**/*.swift"`: neither setup nor the check adds
+  file that script starts (directly, or after `bash`, `sh` or `zsh`; a path
+  that leaves the repo isn't read). A command whose texts have `swift test`
+  but no `--parallel` is a warning (XCTest writes no JUnit file without it),
+  and so is a `junit_path` that lists only one of SwiftPM's pair,
+  `<name>.xml` and `<name>-swift-testing.xml` in the same folder. Several
+  warnings make one. Like every warning, it doesn't fail doctor. A junit
+  command's `.swift` test files must also match `test_file_patterns`, such
+  as `"packages/ios/**/Tests/**/*.swift"`: neither setup nor the check adds
   them, and the engine reads and lets the test-writer write Swift tests only
   among those files.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have

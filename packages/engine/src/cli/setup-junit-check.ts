@@ -16,13 +16,17 @@ import {
     junitCommands,
     type EngineConfig,
 } from '../config/engine-config'
+import { insideWorktree } from '../guards/write-rules'
 
 /** The shells a script may start its file with. */
 const SHELLS = new Set(['bash', 'sh', 'zsh'])
 
 const SWIFT_TESTING_SUFFIX = '-swift-testing.xml'
 
-/** The text of the repo file at `path`, or `null` when there is no such file. */
+/**
+ * The text of the repo file at `path`, or `null` when there is no such file
+ * or `path` leaves the repo (with `..`, or an absolute path outside it).
+ */
 const fileText = async ({
     repo,
     path,
@@ -30,7 +34,9 @@ const fileText = async ({
     repo: string
     path: string
 }): Promise<string | null> => {
-    const full = join(repo, path)
+    const inner = insideWorktree({ worktree: repo, path })
+    if (inner === null) return null
+    const full = join(repo, inner)
     try {
         return (await stat(full)).isFile() ? await Bun.file(full).text() : null
     } catch {
