@@ -120,6 +120,23 @@ describe("a ticket's own slow test files (#564)", () => {
         )
     })
 
+    test('joinRuns keeps junit_missing when any of its runs has it (#668)', () => {
+        const bun = run({ cases: [], files_without_results: [] })
+        const junit = run({
+            command: 'bun run ios:test:core',
+            ok: false,
+            exit_code: 1,
+            junit_missing: true,
+        })
+
+        expect(
+            joinRuns({ runs: [bun, junit], test_files: [] }).junit_missing
+        ).toBe(true)
+        expect(
+            joinRuns({ runs: [bun, bun], test_files: [] })
+        ).not.toHaveProperty('junit_missing')
+    })
+
     test('withOwnRun joins an own run that gave results, and leaves the fast run as it is when it gave none', () => {
         const fast = run({
             command: "bun test --path-ignore-patterns='**/*.e2e.test.ts'",
