@@ -57,7 +57,7 @@ describe('engine config: several test commands', () => {
             },
         })
 
-        expect(commands).toEqual([
+        expect(commands).toMatchObject([
             { run: 'bun test', results: 'bun' },
             { run: 'bun run test:workers', results: 'pass_fail' },
             { run: 'bun test packages/api', results: 'bun' },
@@ -109,7 +109,7 @@ describe('engine config: several test commands', () => {
             },
         })
 
-        expect(commands).toEqual([
+        expect(commands).toMatchObject([
             { run: 'bun test', results: 'bun' },
             { run: 'bun test packages', results: 'bun' },
             { run: 'bun test --timeout 20000 src', results: 'bun' },
@@ -127,7 +127,7 @@ describe('engine config: several test commands', () => {
             },
         })
 
-        expect(commands).toEqual([
+        expect(commands).toMatchObject([
             { run: 'bun run test:workers', results: 'pass_fail' },
             { run: 'bunx vitest run', results: 'pass_fail' },
             { run: 'npm test', results: 'pass_fail' },
@@ -144,7 +144,7 @@ describe('engine config: several test commands', () => {
             },
         })
 
-        expect(commands).toEqual([
+        expect(commands).toMatchObject([
             { run: 'bun test e2e', results: 'pass_fail' },
             { run: 'bun run test', results: 'bun' },
         ])
@@ -156,7 +156,7 @@ describe('engine config: several test commands', () => {
         if (!result.ok) throw new Error(result.error)
 
         expect(result.config.checks).toEqual({ test: 'bun test packages' })
-        expect(testCommands({ config: result.config })).toEqual([
+        expect(testCommands({ config: result.config })).toMatchObject([
             { run: 'bun test packages', results: 'bun' },
         ])
     })
@@ -175,7 +175,7 @@ describe('the slow test command (#563)', () => {
         const one = EngineConfigSchema.parse({
             checks: { test: 'bun test src', slow_test: 'bun test .e2e.test' },
         })
-        expect(slowTestCommands({ config: one })).toEqual([
+        expect(slowTestCommands({ config: one })).toMatchObject([
             { run: 'bun test .e2e.test', results: 'bun' },
         ])
         const many = EngineConfigSchema.parse({
@@ -184,7 +184,7 @@ describe('the slow test command (#563)', () => {
                 slow_test: ['bun test e2e', { run: 'bun run e2e:workers' }],
             },
         })
-        expect(slowTestCommands({ config: many })).toEqual([
+        expect(slowTestCommands({ config: many })).toMatchObject([
             { run: 'bun test e2e', results: 'bun' },
             { run: 'bun run e2e:workers', results: 'pass_fail' },
         ])
@@ -209,7 +209,155 @@ describe('the slow test command (#563)', () => {
     })
 })
 
+/** Loads a config with these checks and returns its error, or throws. */
+const loadError = async ({ checks }: { checks: object }) => {
+    await writeConfig({ config: { checks } })
+    const result = await loadEngineConfig({ repo_root: repoRoot })
+    if (result.ok) throw new Error('The config loaded')
+    return result.error
+}
+
+const CORE_JUNIT = [
+    'packages/ios/.derived/junit/core.xml',
+    'packages/ios/.derived/junit/core-swift-testing.xml',
+]
+
+const JUNIT_ENTRY = {
+    run: 'bun run ios:test:core',
+    results: 'junit',
+    junit_path: CORE_JUNIT,
+}
+
+describe('junit test commands (#668)', () => {
+    test('checks.test and checks.slow_test load a junit entry with its junit_path', async () => {
+        await writeConfig({
+            config: {
+                checks: { test: [JUNIT_ENTRY], slow_test: [JUNIT_ENTRY] },
+            },
+        })
+        const result = await loadEngineConfig({ repo_root: repoRoot })
+        if (!result.ok) throw new Error(result.error)
+
+        for (const commands of [
+            testCommands({ config: result.config }),
+            slowTestCommands({ config: result.config }),
+        ]) {
+            expect(commands).toEqual([
+                {
+                    run: 'bun run ios:test:core',
+                    results: 'junit',
+                    junit_path: CORE_JUNIT,
+                },
+            ])
+        }
+    })
+
+    test('a junit_path of one string loads as a list of that path', async () => {
+        const commands = await loadTestCommands({
+            checks: {
+                test: [
+                    {
+                        run: 'bun run ios:test:core',
+                        results: 'junit',
+                        junit_path: 'packages/ios/.derived/junit/core.xml',
+                    },
+                ],
+            },
+        })
+
+        expect(commands).toEqual([
+            {
+                run: 'bun run ios:test:core',
+                results: 'junit',
+                junit_path: ['packages/ios/.derived/junit/core.xml'],
+            },
+        ])
+    })
+
+    test('a bun or pass_fail command has an empty junit_path', async () => {
+        const commands = await loadTestCommands({
+            checks: {
+                test: [
+                    'bun test',
+                    'bun run test:workers',
+                    { run: 'bun test e2e', results: 'pass_fail' },
+                ],
+            },
+        })
+
+        expect(commands).toEqual([
+            { run: 'bun test', results: 'bun', junit_path: [] },
+            {
+                run: 'bun run test:workers',
+                results: 'pass_fail',
+                junit_path: [],
+            },
+            { run: 'bun test e2e', results: 'pass_fail', junit_path: [] },
+        ])
+    })
+
+    test('a junit entry without junit_path is refused, naming checks.test', async () => {
+        const error = await loadError({
+            checks: {
+                test: [{ run: 'bun run ios:test:core', results: 'junit' }],
+            },
+        })
+
+        expect(error).toContain('checks.test')
+        expect(error).toContain(
+            'a "junit" test command needs junit_path: the JUnit files it writes, relative to the repo root'
+        )
+    })
+
+    test('a junit_path on a bun entry is refused', async () => {
+        const error = await loadError({
+            checks: {
+                test: [
+                    {
+                        run: 'bun test',
+                        results: 'bun',
+                        junit_path: ['junit/core.xml'],
+                    },
+                ],
+            },
+        })
+
+        expect(error).toContain(
+            'junit_path is only for a test command with "results": "junit"'
+        )
+    })
+
+    test('a junit_path that is absolute, leaves the repo or ends in / is refused', async () => {
+        for (const path of ['/tmp/core.xml', '../core.xml', 'junit/']) {
+            const error = await loadError({
+                checks: {
+                    test: [
+                        {
+                            run: 'bun run ios:test:core',
+                            results: 'junit',
+                            junit_path: [path],
+                        },
+                    ],
+                },
+            })
+
+            expect(error).toContain(
+                'must be a file inside the repo, relative to its root'
+            )
+        }
+    })
+})
+
 describe('the engine README', () => {
+    test('documents the junit results kind and its junit_path', async () => {
+        const text = await Bun.file(
+            join(import.meta.dir, '..', '..', 'docs', 'choices-made.md')
+        ).text()
+
+        expect(text).toContain('junit')
+        expect(text).toContain('junit_path')
+    })
+
     test('documents test command lists and their results kinds', async () => {
         const text = await Bun.file(
             join(import.meta.dir, '..', '..', 'docs', 'choices-made.md')

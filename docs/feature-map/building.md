@@ -119,6 +119,7 @@ Tests:
 - `packages/engine/src/shell/run-command.test.ts`
 - `packages/engine/src/config/test-commands.test.ts`
 - `packages/engine/src/core/decide-test-commands.test.ts`
+- `packages/engine/src/core/read-intake-junit.test.ts`
 - `packages/engine/src/core/run-test-commands.e2e.test.ts`
 
 ## Slow tests and the speed limit
