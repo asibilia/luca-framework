@@ -95,7 +95,11 @@ as a health check.
   (XCTest writes no JUnit file without it), and so is a `junit_path` that
   lists only one of SwiftPM's pair, `<name>.xml` and
   `<name>-swift-testing.xml` in the same folder. Several warnings make one.
-  Like every warning, it doesn't fail doctor.
+  Like every warning, it doesn't fail doctor. A junit command's `.swift`
+  test files must also match `test_file_patterns`, such as
+  `"packages/ios/**/Tests/**/*.swift"`: neither setup nor the check adds
+  them, and the engine reads and lets the test-writer write Swift tests only
+  among those files.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
   sub-issues and issue dependencies, the base branch (default `main`) is on
   `origin`, and MuninnDB can search the config's vault (found as `luca-run`

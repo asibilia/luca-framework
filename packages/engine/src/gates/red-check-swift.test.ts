@@ -190,4 +190,49 @@ final class RankingXCTests: XCTestCase {
             `old test "RankingTests > sortsByScore()" in ${FILE} is missing`
         )
     })
+
+    test("a bun file that doesn't load, in the same run, keeps the bun rules and hint", () => {
+        const BUN_FILE = 'src/sum.test.ts'
+        const bunSource = `describe('sum', () => {\n  test('adds', () => {})\n  test('extra', () => {})\n})`
+        const swiftSource = suite(['sortsByScore', 'addsMovie', 'extraCheck'])
+        const result = checkRed({
+            criteria_ids: ['AC1', 'AC2'],
+            mapping: [
+                {
+                    criterion_id: 'AC1',
+                    tests: [{ file: FILE, name: 'RankingTests > addsMovie()' }],
+                },
+                {
+                    criterion_id: 'AC2',
+                    tests: [{ file: BUN_FILE, name: 'sum > adds' }],
+                },
+            ],
+            baseline: EMPTY_BASELINE,
+            current: {
+                ...NOT_BUILT,
+                files_without_results: [FILE, BUN_FILE],
+            },
+            test_files: [FILE, BUN_FILE],
+            sources: { [FILE]: swiftSource, [BUN_FILE]: bunSource },
+            changed_test_sources: [
+                {
+                    file: FILE,
+                    base: suite(['sortsByScore']),
+                    current: swiftSource,
+                },
+                { file: BUN_FILE, base: null, current: bunSource },
+            ],
+        })
+
+        expect(result.notes).toContain(
+            `"sum > adds" in ${BUN_FILE}: fails (its file does not load yet)`
+        )
+        expect(result.notes).toContain(
+            `"RankingTests > addsMovie()" in ${FILE}: fails (the tests do not build yet)`
+        )
+        expect(sortBy(result.problems)).toEqual([
+            `"extra" in ${BUN_FILE}${UNMAPPED}. The file does not load yet, so every test( in its text counts, even one inside a string or a comment`,
+            `"extraCheck()" in ${FILE}${UNMAPPED}. The tests do not build yet, so every @Test func and XCTest test func in its text counts, even one inside a comment`,
+        ])
+    })
 })

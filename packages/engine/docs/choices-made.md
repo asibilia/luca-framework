@@ -77,6 +77,13 @@
   }
   ```
 
+  List the `.swift` test files in `test_file_patterns` too, such as
+  `"packages/ios/**/Tests/**/*.swift"` (the tests only, not `Sources/`). The
+  engine ties Swift cases to files and counts their `assertions`, the red
+  check and the speed limit find tests, and the test-writer may write tests,
+  only among the files those patterns match. The default, `**/*.test.ts`,
+  matches no `.swift` file.
+
   Intake counts a `junit` command like a `bun` one, and refuses each
   `junit_path` entry git doesn't ignore (read into `intake_read` as
   `junit_paths_not_ignored`), so a test run can't get it committed.

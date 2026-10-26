@@ -172,4 +172,9 @@ its results. In the gates, a `junit` command's failed run fails its `test`
 check with its output, and its cases join the gates' `cases` and
 `failed_cases`, so the empty-test check, lone reruns and shared failures read
 them like bun's. With a `junit` command in the config, the own-files run
-(#564) takes only files bun can run.
+(#564) takes only files bun can run. All of this reads only the `.swift`
+files `test_file_patterns` matches, so a Swift repo lists its tests there,
+such as `"packages/ios/**/Tests/**/*.swift"`: with the default,
+`**/*.test.ts`, each Swift case's `file` is its classname with no
+`assertions`, the speed limit never measures it, and the test-writer may not
+write a `.swift` test.
