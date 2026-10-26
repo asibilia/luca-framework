@@ -29,12 +29,12 @@ import { closeSessions, openSessionsIn } from './session-close'
 import { watchPrepare } from './worktree-changes'
 
 import {
-    bunTestCommands,
+    caseTestCommands,
     hasJunitCommand,
     testTimeoutOf,
 } from '../config/engine-config'
+import { runCaseTests } from '../gates/case-test-runner'
 import { prepareCheck } from '../gates/gate-runner'
-import { runBunTests } from '../gates/test-runner'
 import type { Journal } from '../journal/journal'
 import type { CommentStep } from '../tracker/post-comment-once'
 import type { Tracker } from '../tracker/tracker'
@@ -180,9 +180,9 @@ export const executeBuildAction = async ({
                 // tests unrun and the ticket stuck on its output.
                 if (!prepare.ok) return
             }
-            const run = await runBunTests({
+            const run = await runCaseTests({
                 cwd: path,
-                commands: bunTestCommands(context),
+                commands: caseTestCommands(context),
                 test_files: await testFilesIn({ context, cwd: path }),
                 timeout_ms: testTimeoutOf({ config: context.config }),
                 test_concurrency: context.config.test_concurrency,

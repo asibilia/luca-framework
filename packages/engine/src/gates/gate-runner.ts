@@ -24,7 +24,8 @@ export { FAST_TEST_HINT } from './test-checks'
  * then (the final review's gates only) each slow test command, types, lint.
  * All must pass. Unset gates are left out; intake refuses a
  * config with no test command. A `bun` test command runs with bun's JUnit
- * reporter; a `pass_fail` one runs as written and is judged by its exit code.
+ * reporter; a `junit` one (#668) runs as written and is read from its JUnit
+ * files; a `pass_fail` one runs as written and is judged by its exit code.
  * Each test command gets the config's time limit (see `testTimeoutOf`);
  * types and lint get the engine's default. With `test_concurrency` (#544),
  * each test command (the own-files run too) waits for a test slot first,
@@ -41,7 +42,7 @@ export { FAST_TEST_HINT } from './test-checks'
  * gives no results (its files don't load) adds no check after a failed fast
  * run, which already fails the gate.
  *
- * Also returns `cases`, the test cases of the fast `bun` runs and the
+ * Also returns `cases`, the test cases of the fast `bun` and `junit` runs and the
  * own-files run, each with its `expect()` count, so the engine can find a
  * mapped test that checks nothing (#581). A `pass_fail` command has none.
  *

@@ -1,7 +1,7 @@
 /**
  * The config's test commands: every one the engine runs (`testCommands`,
  * `slowTestCommands`) and how it reads their results, and the fast test speed
- * limit (#580) added to a `bun` command (`bunTestCommands`).
+ * limit (#580) added to a `bun` command (`caseTestCommands`).
  */
 import type { EngineConfig, TestResults } from './engine-config-schema'
 
@@ -121,15 +121,37 @@ export const fastBunCommand = ({
 }
 
 /**
- * The test commands whose per-test results the engine reads, each with the
- * fast test speed limit (#580) when the config has one. Used by the baseline,
- * the red check and the already-done check; `testCommands` stays as written.
+ * The test commands whose per-test results the engine reads (#668), in
+ * order: `bun` ones with the fast test speed limit (#580) when the config
+ * has one, and `junit` ones as written. Used by the baseline, the red check
+ * and the already-done check; `testCommands` stays as written.
+ *
+ * @example
+ * caseTestCommands({ config: { ...config, checks: { test: ['bun test', { run: 'bun run ios:test', results: 'junit', junit_path: 'out/core.xml' }] } } })
+ * // [{ run: 'bun test', results: 'bun', junit_path: [] }, { run: 'bun run ios:test', results: 'junit', junit_path: ['out/core.xml'] }]
  */
+export const caseTestCommands = ({
+    config,
+}: {
+    config: EngineConfig
+}): TestCommand[] =>
+    testCommands({ config })
+        .filter(({ results }) => givesPerTestResults(results))
+        .map((command) =>
+            command.results === 'bun'
+                ? {
+                      ...command,
+                      run: fastBunCommand({ run: command.run, config }),
+                  }
+                : command
+        )
+
+/** The `bun` commands of `caseTestCommands`, each as the command it runs. */
 export const bunTestCommands = ({
     config,
 }: {
     config: EngineConfig
 }): string[] =>
-    testCommands({ config })
+    caseTestCommands({ config })
         .filter(({ results }) => results === 'bun')
-        .map(({ run }) => fastBunCommand({ run, config }))
+        .map(({ run }) => run)

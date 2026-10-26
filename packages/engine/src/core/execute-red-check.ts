@@ -18,12 +18,13 @@ import type { BuildAction } from './decide-build'
 import { leaveOutIn, ticketChanges, watchPrepare } from './worktree-changes'
 
 import {
-    bunTestCommands,
+    caseTestCommands,
     featureMapPath,
     hasJunitCommand,
     hasSlowTests,
     testTimeoutOf,
 } from '../config/engine-config'
+import { runCaseTests } from '../gates/case-test-runner'
 import { readFeatureMap } from '../gates/feature-map'
 import { prepareCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
@@ -31,7 +32,6 @@ import { checkRed, type ChangedTestSource } from '../gates/red-check'
 import {
     fileTestsCommand,
     isBunTestFile,
-    runBunTests,
     runTests,
     testFilesAmong,
     withOwnRun,
@@ -116,9 +116,9 @@ export const runRedCheck = async ({
     const exclusive = action.exclusive === true
     // With a junit command (#668), only files bun can run lack bun results.
     const bun_files_only = hasJunitCommand({ config: context.config })
-    const fast = await runBunTests({
+    const fast = await runCaseTests({
         cwd: path,
-        commands: bunTestCommands(context),
+        commands: caseTestCommands(context),
         test_files,
         timeout_ms: testTimeoutOf({ config: context.config }),
         test_concurrency: context.config.test_concurrency,
@@ -169,8 +169,15 @@ export const runRedCheck = async ({
                   }),
                   test_files,
               })
+    // A `.swift` file with an old test is read too: when its tests don't
+    // build yet, its text says which old tests are still there (#668).
     const sources: Record<string, string | null> = {}
-    for (const file of files) {
+    const old_swift = current.junit_missing
+        ? baseline.cases
+              .map(({ file }) => file)
+              .filter((file) => file.endsWith('.swift'))
+        : []
+    for (const file of uniq([...files, ...old_swift])) {
         sources[file] = await pathText({ path: join(path, file) })
     }
     // Each of those test files as it was at the ticket's base and as it is

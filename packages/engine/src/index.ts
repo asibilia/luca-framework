@@ -62,6 +62,7 @@ export {
 } from './board/paseo-board-link'
 export {
     bunTestCommands,
+    caseTestCommands,
     DecisionModelConfigSchema,
     decisionModelOf,
     ENGINE_CONFIG_FILE,

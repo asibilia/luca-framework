@@ -1,9 +1,11 @@
 /**
  * The test commands as gate checks (`testChecks`): `pass_fail` commands judged
- * by their exit code, `bun` commands run with bun's JUnit reporter, each
+ * by their exit code, `bun` commands run with bun's JUnit reporter, `junit`
+ * commands (#668) run as written and read from their JUnit files, each
  * waiting for a test slot first. Also the fast test speed limit (#580).
  */
 import type { GateCheck, TestRun } from './gate-schemas'
+import { runJunitTestsInHeldSlot } from './junit-runner'
 import { msSince, shellCheck } from './shell-check'
 import {
     reportFileFor,
@@ -75,7 +77,8 @@ const bunCheck = ({
  * With a `limit` (#580, the fast call only), each `bun` command gets
  * `--timeout=<limit_ms>`, and a passing test in one of `measured_files` that
  * took longer than that fails the check: a test's own timeout option
- * overrides `--timeout`, so only its measured time tells.
+ * overrides `--timeout`, so only its measured time tells. A `junit` command
+ * (#668) never gets `--timeout`: its measured times are all that hold it.
  *
  * With `test_concurrency` (#544), each command first waits for a test slot
  * (see `inTestSlot`); its check records the wait as `wait_ms`, and its time
@@ -117,7 +120,10 @@ export const testChecks = async ({
 }): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
     const checks: GateCheck[] = []
     const runs: TestRun[] = []
-    for (const [offset, { run: command, results }] of commands.entries()) {
+    for (const [
+        offset,
+        { run: command, results, junit_path },
+    ] of commands.entries()) {
         if (results === 'pass_fail') {
             checks.push(
                 await inTestSlot({
@@ -141,20 +147,31 @@ export const testChecks = async ({
                 exclusive,
                 work: async () => {
                     const started = performance.now()
-                    const run = await runTestsInHeldSlot({
-                        cwd,
-                        command:
-                            limit === null
-                                ? command
-                                : `${command} --timeout=${limit.limit_ms}`,
-                        test_files,
-                        report_file: reportFileFor({
-                            report_file,
-                            index: first_index + offset,
-                        }),
-                        timeout_ms,
-                        bun_files_only,
+                    const run_report = reportFileFor({
+                        report_file,
+                        index: first_index + offset,
                     })
+                    const run =
+                        results === 'junit'
+                            ? await runJunitTestsInHeldSlot({
+                                  cwd,
+                                  command,
+                                  junit_path,
+                                  test_files,
+                                  report_file: run_report,
+                                  timeout_ms,
+                              })
+                            : await runTestsInHeldSlot({
+                                  cwd,
+                                  command:
+                                      limit === null
+                                          ? command
+                                          : `${command} --timeout=${limit.limit_ms}`,
+                                  test_files,
+                                  report_file: run_report,
+                                  timeout_ms,
+                                  bun_files_only,
+                              })
                     runs.push(run)
                     return bunCheck({ name, run, limit, started })
                 },
