@@ -1,5 +1,9 @@
 # @luca/board
 
+## 14.0.0-alpha.24
+
+No changes in this release.
+
 ## 14.0.0-alpha.23
 
 No changes in this release.

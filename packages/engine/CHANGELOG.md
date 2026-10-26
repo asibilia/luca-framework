@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.24
+
+### Minor Changes
+
+- c0fb80a: Spec: per-test results from JUnit files (Swift test support) ([#668](https://github.com/asibilia/luca-framework/issues/668))
+
 ## 14.0.0-alpha.23
 
 ### Patch Changes
