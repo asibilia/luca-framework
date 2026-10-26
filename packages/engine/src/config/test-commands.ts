@@ -5,12 +5,27 @@
  */
 import type { EngineConfig, TestResults } from './engine-config-schema'
 
-/** One test command the engine runs, and how it reads the results. */
-export type TestCommand = { run: string; results: TestResults }
+/**
+ * One test command the engine runs, how it reads the results, and the JUnit
+ * files a `junit` command writes (#668), relative to the repo root: `[]`
+ * for every other kind.
+ */
+export type TestCommand = {
+    run: string
+    results: TestResults
+    junit_path: string[]
+}
 
 /** Whether `run` is a `bun test` command, which gives bun's per-test results. */
 export const isBunTestCommand = (run: string): boolean =>
     /^bun\s+test(\s|$)/.test(run.trim())
+
+/**
+ * Whether a results kind gives per-test results (#668): `bun` and `junit`
+ * do, `pass_fail` gives only pass or fail.
+ */
+export const givesPerTestResults = (results: TestResults): boolean =>
+    results === 'bun' || results === 'junit'
 
 /** A command starting with `bun test` gives bun's per-test results. */
 const defaultResults = (run: string): TestResults =>
@@ -21,22 +36,26 @@ const commandsOf = (value: EngineConfig['checks']['test']): TestCommand[] => {
     if (value === undefined) return []
     return (typeof value === 'string' ? [value] : value).map((entry) =>
         typeof entry === 'string'
-            ? { run: entry, results: defaultResults(entry) }
+            ? { run: entry, results: defaultResults(entry), junit_path: [] }
             : {
                   run: entry.run,
                   results: entry.results ?? defaultResults(entry.run),
+                  junit_path:
+                      typeof entry.junit_path === 'string'
+                          ? [entry.junit_path]
+                          : (entry.junit_path ?? []),
               }
     )
 }
 
 /**
- * Every test command in the config, in order, each with its results kind.
- * A missing `results` is `bun` for a `bun test` command, else `pass_fail`.
- * Empty when there is no test command.
+ * Every test command in the config, in order, each with its results kind
+ * and `junit_path`. A missing `results` is `bun` for a `bun test` command,
+ * else `pass_fail`. Empty when there is no test command.
  *
  * @example
  * testCommands({ config: { ...config, checks: { test: ['bun test', 'bun run test:workers'] } } })
- * // [{ run: 'bun test', results: 'bun' }, { run: 'bun run test:workers', results: 'pass_fail' }]
+ * // [{ run: 'bun test', results: 'bun', junit_path: [] }, { run: 'bun run test:workers', results: 'pass_fail', junit_path: [] }]
  */
 export const testCommands = ({
     config,

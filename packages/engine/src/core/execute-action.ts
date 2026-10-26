@@ -188,6 +188,7 @@ export const executeAction = async ({
                 spec_number: action.spec_number,
                 journal,
                 tracker,
+                git: build?.git,
             })
         case 'refuse_intake':
             return refuseIntake({

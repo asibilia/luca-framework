@@ -13,6 +13,7 @@ import type {
 
 import {
     ENGINE_CONFIG_FILE,
+    givesPerTestResults,
     testCommands,
     type EngineConfig,
 } from '../config/engine-config'
@@ -229,9 +230,9 @@ const groupFindings = ({
 
 /**
  * Intake's checks on the engine config, as messages for a person: a test
- * command, and one with bun's per-test results unless every ticket in
- * `tickets` is a refactor ticket (the red check reads per-test results,
- * which only bun's give today). Pure. Empty when the config is fine.
+ * command, and one with per-test results (`bun` or `junit`, #668) unless
+ * every ticket in `tickets` is a refactor ticket (the red check reads
+ * per-test results). Pure. Empty when the config is fine.
  *
  * Intake runs it on the open tickets agents build; a resume runs it on the
  * repo's config file before taking its new build fields (#516).
@@ -254,11 +255,11 @@ export const configProblems = ({
         ]
     }
     if (
-        !tests.some(({ results }) => results === 'bun') &&
+        !tests.some(({ results }) => givesPerTestResults(results)) &&
         tickets.some((ticket) => !ticket.labels.includes(REFACTOR_LABEL))
     ) {
         return [
-            `The engine config (${ENGINE_CONFIG_FILE}) has no test command with bun results at checks.test, so the red check can't prove new tests fail first. Add a \`bun test\` command, or label every open ticket \`${REFACTOR_LABEL}\`.`,
+            `The engine config (${ENGINE_CONFIG_FILE}) has no test command with per-test results at checks.test, so the red check can't prove new tests fail first. Add a \`bun test\` command or one with \`"results": "junit"\`, or label every open ticket \`${REFACTOR_LABEL}\`.`,
         ]
     }
     return []
@@ -305,6 +306,12 @@ export const checkIntake = ({
 
     for (const message of configProblems({ config, tickets: forAgents })) {
         findings.push({ ticket: null, message })
+    }
+    for (const path of intake_read.junit_paths_not_ignored ?? []) {
+        findings.push({
+            ticket: null,
+            message: `The engine config (${ENGINE_CONFIG_FILE}) names ${path} in junit_path, but git doesn't ignore it, so a test run could get it committed. Add it to .gitignore.`,
+        })
     }
     if (spec.state !== 'open') onSpec('The spec is closed.')
     if (section({ body: spec.body, heading: 'Testing Decisions' }) === '') {

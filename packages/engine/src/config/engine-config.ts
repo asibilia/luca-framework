@@ -50,6 +50,7 @@ export {
     bunTestCommands,
     caseLimitOf,
     fastBunCommand,
+    givesPerTestResults,
     hasSlowTests,
     isBunTestCommand,
     slowTestCommands,

@@ -37,6 +37,7 @@ export const readOps: Pick<
     | 'untracked'
     | 'listFiles'
     | 'filesMentioning'
+    | 'ignoredPaths'
     | 'head'
     | 'commitOnBase'
 > = {
@@ -103,6 +104,20 @@ export const readOps: Pick<
             args: ['grep', '-l', '-F', '-e', text, '--', '.'],
         })
         return result.exit_code === 0 ? lines(result.stdout) : []
+    },
+    ignoredPaths: async ({ cwd, paths }) => {
+        if (paths.length === 0) return []
+        // git check-ignore exits 1 when it ignores none of them.
+        const result = await gitRun({
+            cwd,
+            args: ['check-ignore', '--', ...paths],
+        })
+        if (result.exit_code !== 0 && result.exit_code !== 1) {
+            throw new Error(
+                `git check-ignore failed in ${cwd}:\n${result.stderr || result.stdout}`
+            )
+        }
+        return lines(result.stdout)
     },
     head,
     commitOnBase: async ({ cwd, sha, base }) => {

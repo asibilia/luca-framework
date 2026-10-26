@@ -68,6 +68,10 @@ _Avoid_: hook, checks
 End-to-end tests a repo names in `checks.slow_test`. Luca leaves them out of every ticket's runs, apart from the slow test files that ticket names or changes, and runs them all at the final review.
 _Avoid_: e2e gate, long tests
 
+**Per-test results**:
+What a test command tells the engine about each test: its file, full name, outcome, time and `expect()` count. `bun` and `junit` commands give them; a `pass_fail` command gives only pass or fail.
+_Avoid_: test report, JUnit output
+
 **Test slots**:
 The cap a repo sets with `test_concurrency` on how many test runs go at once across a run, so tests that share ports, files, or a database don't collide. A test run waits for a free slot, and the wait never counts toward its time limit.
 _Avoid_: test queue, test lock
