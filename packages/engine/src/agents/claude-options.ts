@@ -33,15 +33,19 @@ export const MODEL_NAMES = ModelNameSchema.options
 /** The model reviewers run on, and every agent the decision model doesn't route (#603). */
 export const CLAUDE_MODEL = DEFAULT_MODEL
 
-/** How many model turns one agent gets before its try ends. */
+/**
+ * How many model turns one agent gets before its try ends. The integration
+ * lens reads how every ticket fits together on the whole branch, so it gets
+ * more than the other lenses.
+ */
 export const MAX_TURNS: Record<AgentRole, number> = {
     'test-writer': 80,
-    implementer: 120,
+    implementer: 150,
     'ticket-reviewer': 60,
     'architecture-lens': 60,
     'simplification-lens': 60,
     'security-lens': 60,
-    'integration-lens': 60,
+    'integration-lens': 100,
     'rules-lens': 60,
     learner: 40,
 }

@@ -29,10 +29,11 @@ import type { AgentRole } from '../agents/role-results'
 import { handoffRole, type ReplayedAgentFailure } from '../journal/replay'
 
 /**
- * A fresh fixer of this role, told its findings (or the failed gates). With
- * `follow_up`, it stands in for a follow-up whose session is gone, and its
- * prompt carries the message. A fixer taking a turn a crash cut off is told
- * of the crash.
+ * A fresh fixer of this role, told its findings (or the failed gates). The
+ * implementer that starts a round whose slow tests failed is told of them
+ * too (#563). With `follow_up`, it stands in for a follow-up whose session
+ * is gone, and its prompt carries the message. A fixer taking a turn a
+ * crash cut off is told of the crash.
  */
 const launchFixer = ({
     role,
@@ -49,6 +50,11 @@ const launchFixer = ({
     // An implementer with no code findings left is here for failed gates.
     const gates =
         role === 'implementer' && fix.code_answered ? review.gates : null
+    // The implementer with code findings also fixes the round's slow tests.
+    const slow_tests =
+        role === 'implementer' && !fix.code_answered && review.slow_due
+            ? review.slow_tests
+            : null
     const sections = [
         ...(follow_up === undefined
             ? []
@@ -63,6 +69,7 @@ const launchFixer = ({
             snapshot,
             fix,
             gates,
+            slow_tests,
             run_notes,
             sections,
         }),

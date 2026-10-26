@@ -71,7 +71,7 @@ export { EMPTY_FINAL_REVIEW } from './final-review-state'
 export type { PlanState } from './plan-replay'
 export type { LearnerState, MemoryState } from './memory-replay'
 export { EMPTY_MEMORY } from './memory-replay'
-export { namespacedId } from './final-review-round'
+export { finalPullRequestFindings, namespacedId } from './final-review-round'
 export { isFinalKey } from './final-review-replay'
 export { handoffRole } from './agent-turn-replay'
 

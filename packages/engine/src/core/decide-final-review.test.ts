@@ -474,6 +474,39 @@ describe('decision step: failed lens and fixer turns', () => {
         })
     })
 
+    test("a lens's finished turn gives it its tries back: the cap is on failed tries in a row", () => {
+        const reReview = [
+            ...built(),
+            finalReviewStarted({ round: 1 }),
+            ...securityFailed('result'),
+            ...LENS_NAMES.flatMap((lens) =>
+                lensReviewed({
+                    lens,
+                    round: 1,
+                    findings: lens === 'security' ? [SECURITY] : [],
+                })
+            ),
+            ...securityFixRound({ round: 1 }),
+            finalReviewStarted({
+                round: 2,
+                lenses: ['security'],
+                from_sha: 'g1',
+                head_sha: 'fix-1',
+            }),
+            ...securityFailed('result'),
+            ...securityFailed('result'),
+        ]
+        expect(stepAfter(reReview)).toMatchObject({ type: 'launch_lens' })
+        expect(
+            stepAfter([...reReview, ...securityFailed('result')])
+        ).toMatchObject({
+            type: 'mark_final_review_stuck',
+            detail: expect.stringContaining(
+                `failed ${MAX_FIX_ROUNDS} tries in a row`
+            ),
+        })
+    })
+
     test(`${MAX_ENGINE_FAILURES} engine failures of a lens in a row are stuck`, () => {
         const twice = [
             ...fourClean(),

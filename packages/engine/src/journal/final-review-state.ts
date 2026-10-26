@@ -72,7 +72,10 @@ export type FinalReviewState = {
     sessions: Partial<Record<AgentRole, string>>
     /** Each role's failed turn, if no agent of that role finished after it. */
     agent_failures: Partial<Record<AgentRole, ReplayedAgentFailure>>
-    /** Failed tries (agent, result, guard) per role, over the whole final review. */
+    /**
+     * Failed tries (agent, result, guard) per role, in a row: a finished
+     * turn of the role starts its count again.
+     */
     failed_tries: Partial<Record<AgentRole, number>>
     /** Engine failures in a row, per role. */
     engine_failures: Partial<Record<AgentRole, number>>

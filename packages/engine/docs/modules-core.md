@@ -74,7 +74,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | Module | What it does |
 | --- | --- |
 | `src/core/final-review-action.ts` | The final review's actions (`FinalReviewAction`, `isFinalReviewAction`), where it stands (`FinalReviewDecision`), what its decision reads, and the stuck step. |
-| `src/core/final-failure-cap.ts` | The cap on a role's failed tries in the final review: the stuck step once its tries, or its engine failures in a row, are used up. |
+| `src/core/final-failure-cap.ts` | The cap on a role's failed tries in the final review: the stuck step once its tries in a row, or its engine failures in a row, are used up. |
 | `src/core/decide-final-fix.ts` | The final review's fix round: the fixers, the gates and their fix loop, the fix commit, and the push. |
 
 ## stuck-text modules

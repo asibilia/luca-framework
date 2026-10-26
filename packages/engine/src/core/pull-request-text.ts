@@ -15,6 +15,7 @@ import { reasonLine } from './stuck-text'
 import type { AgentRole, MergeDanger } from '../agents/role-results'
 import {
     EMPTY_FINAL_REVIEW,
+    finalPullRequestFindings,
     type FinalReviewState,
     type ReplayedSnapshot,
     type TicketProgress,
@@ -114,7 +115,9 @@ const outOfTurnsSection = ({
  * agents ran out of turns (#543), the reviews' nits,
  * the findings declined through "won't fix", and the memories the learner
  * added or updated (#370). A final review shipped
- * while stuck puts its open findings at the very top. Right after the
+ * while stuck puts its open findings at the very top; a round it never
+ * settled counts the findings, nits, and rulings of the lenses that
+ * finished it (see `finalPullRequestFindings`). Right after the
  * "Built by" line come the Summary picture and the Merge Danger (from the
  * final review's integration lens, or "Not available" without them) and
  * the Evidence that each ticket's new tests failed first and pass now
@@ -137,6 +140,8 @@ export const pullRequestText = ({
     memory_saves?: MemorySave[]
 }): { title: string; body: string } => {
     const review = final_review ?? EMPTY_FINAL_REVIEW
+    // A round a stuck lens never settled keeps its finished lenses' findings.
+    const findings = finalPullRequestFindings({ review })
     const { spec } = snapshot
     const title = (number: number) => snapshot.tickets[number]?.title ?? ''
     const isSkipped = (number: number) =>
@@ -175,7 +180,7 @@ export const pullRequestText = ({
                     `- #${number} ${id}${fileText(file)}: ${title}`
             )
         ),
-        ...review.nits.map(
+        ...findings.nits.map(
             ({ lens, id, title, file }) =>
                 `- final review, ${lens} lens: ${id}${fileText(file)}: ${title}`
         ),
@@ -206,23 +211,22 @@ export const pullRequestText = ({
                 declinedLine({ where: `#${number} `, ...entry })
             )
         ),
-        ...review.declined.map((entry) =>
+        ...findings.declined.map((entry) =>
             declinedLine({
                 where: `final review, ${entry.lens} lens: `,
                 ...entry,
             })
         ),
     ]
-    const stillOpen = review.fix?.findings ?? []
     const shipped =
         review.shipped && review.stuck !== null
             ? shippedFindingsSection({
-                  findings: stillOpen,
+                  findings: findings.open,
                   stuck: review.stuck,
                   edits: review.shipped_edits,
               })
-            : review.fresh_started && stillOpen.length > 0
-              ? freshFindingsSection({ findings: stillOpen })
+            : review.fresh_started && findings.open.length > 0
+              ? freshFindingsSection({ findings: findings.open })
               : ''
     const body = [
         shipped,
