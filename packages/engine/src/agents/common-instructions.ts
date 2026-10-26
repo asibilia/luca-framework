@@ -33,7 +33,9 @@ export const shellRules = ({
         ...tests.map(({ run, results }) =>
             results === 'bun'
                 ? `\`${run}\` (you may add test files or options after it)`
-                : `\`${run}\``
+                : results === 'junit'
+                  ? `\`${run}\` (you may add options after it)`
+                  : `\`${run}\``
         ),
         ...others.map((command) => `\`${command}\``),
         ...(isWriter(guard)

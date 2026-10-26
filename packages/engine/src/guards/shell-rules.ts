@@ -13,6 +13,7 @@ import {
 import { insideWorktree, mayWrite } from './write-rules'
 
 import {
+    givesPerTestResults,
     slowTestCommands,
     testCommands,
     type EngineConfig,
@@ -282,7 +283,7 @@ const shellHelp = ({
     const { tests, others } = checkCommands({ role, config })
     const checks = [
         ...tests.map(({ run, results }) =>
-            results === 'bun' ? `${run} [args]` : run
+            givesPerTestResults(results) ? `${run} [args]` : run
         ),
         ...others,
         ...(isWriter(role) ? ['rm [-f] <files you may write>'] : []),
@@ -322,7 +323,7 @@ export const checkBash = ({
     }
     if (isInstallCommand(words)) return deny(INSTALL_DENIED)
     for (const { run, results } of tests) {
-        const testWords = results === 'bun' ? wordsOf(run) : null
+        const testWords = givesPerTestResults(results) ? wordsOf(run) : null
         if (testWords !== null && startsWith({ words, prefix: testWords })) {
             return ALLOW
         }
