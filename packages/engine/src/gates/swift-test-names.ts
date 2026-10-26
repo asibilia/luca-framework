@@ -7,8 +7,9 @@
  */
 
 /**
- * How the character at `at` changes the bracket depth: `(`, `[`, `{` and
- * `<` open, their pairs close (not the `>` of `->`).
+ * How the character at `at` changes a parameter list's depth: `(`, `[`, `{`
+ * and `<` open, their pairs close (not the `>` of `->`). The `<>` pair keeps
+ * a generic type's commas from splitting a parameter.
  */
 const depthStep = ({ text, at }: { text: string; at: number }): number => {
     const char = text[at] ?? ''
@@ -18,14 +19,25 @@ const depthStep = ({ text, at }: { text: string; at: number }): number => {
 }
 
 /**
- * The index just past the bracket that closes the one at `open`. The text's
- * end if none.
+ * The index just past the bracket that closes the one at `open`, counting
+ * only `()`, `[]` and `{}` and skipping string literals, so a `0..<3` or a
+ * `"a > b"` inside doesn't move it. The text's end if none.
  */
 const closeOf = ({ text, open }: { text: string; open: number }): number => {
     let depth = 0
     for (let at = open; at < text.length; at += 1) {
-        depth += depthStep({ text, at })
-        if (depth === 0) return at + 1
+        const char = text[at] ?? ''
+        if (char === '"') {
+            at += 1
+            while (at < text.length && text[at] !== '"') {
+                at += text[at] === '\\' ? 2 : 1
+            }
+        } else if ('([{'.includes(char)) {
+            depth += 1
+        } else if (')]}'.includes(char)) {
+            depth -= 1
+            if (depth === 0) return at + 1
+        }
     }
     return text.length
 }

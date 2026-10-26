@@ -97,6 +97,12 @@ struct RankingTests {
         #expect(a > 0)
     }
 
+    @Test(arguments: 0..<3)
+    func ranks(score: Int) { #expect(score >= 0) }
+
+    @Test("score > 0 ranks first")
+    func ranksFirst() { #expect(true) }
+
     func helper() {}
 }
 
@@ -114,6 +120,8 @@ final class RankingXCTests: XCTestCase {
         expect(sortBy(unmapped)).toEqual([
             'adds(_:)',
             'addsZero(n:)',
+            'ranks(score:)',
+            'ranksFirst()',
             'testAddsMovie',
         ])
     })
