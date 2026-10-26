@@ -204,6 +204,16 @@ describe('a junit test command (#672)', () => {
         ).toBe(false)
     })
 
+    test('it gets its permission rule, with a wildcard for extra options', () => {
+        const { allowed } = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(allowed).toContain('Bash(bun run ios:test:core)')
+        expect(allowed).toContain('Bash(bun run ios:test:core *)')
+    })
+
     test("the guard's shell help lists it with [args]", () => {
         const decision = decide('implementer', 'curl https://example.com')
         expect(decision.allow).toBe(false)
