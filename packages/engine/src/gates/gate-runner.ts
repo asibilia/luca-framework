@@ -3,9 +3,11 @@ import { ownFilesCheck } from './own-files-check'
 import { prepareCheck } from './prepare-check'
 import { shellCheck } from './shell-check'
 import { testChecks } from './test-checks'
+import { isBunTestFile } from './test-runner'
 
 import {
     caseLimitOf,
+    hasJunitCommand,
     slowTestCommands,
     testCommands,
     testTimeoutOf,
@@ -116,6 +118,9 @@ export const runGates = async ({
     const { test_concurrency } = config
     const limit_ms = caseLimitOf({ config })
     const fast = testCommands({ config })
+    // With a junit command (#668), only files bun can run lack bun results,
+    // and only they go to the own-files run.
+    const bun_files_only = hasJunitCommand({ config })
     const fastChecks = await testChecks({
         commands: fast,
         name: 'test',
@@ -130,12 +135,15 @@ export const runGates = async ({
                 : { limit_ms, measured_files: measured_files ?? [] },
         test_concurrency,
         exclusive,
+        bun_files_only,
     })
     checks.push(...fastChecks.checks)
     // The test cases the gates saw, for the empty-test check (#581).
     const cases = fastChecks.runs.flatMap((run) => run.cases)
     const own = await ownFilesCheck({
-        own_test_files: own_test_files ?? [],
+        own_test_files: (own_test_files ?? []).filter(
+            (file) => !bun_files_only || isBunTestFile(file)
+        ),
         fast_checks: fastChecks.checks,
         fast_runs: fastChecks.runs,
         cwd,
@@ -159,6 +167,7 @@ export const runGates = async ({
             limit: null,
             test_concurrency,
             exclusive,
+            bun_files_only,
         })
         checks.push(...slow.checks)
     }

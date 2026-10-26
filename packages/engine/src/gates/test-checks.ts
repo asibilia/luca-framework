@@ -94,6 +94,7 @@ export const testChecks = async ({
     limit,
     test_concurrency,
     exclusive,
+    bun_files_only,
 }: {
     commands: TestCommand[]
     name: 'test' | 'slow_test'
@@ -111,6 +112,8 @@ export const testChecks = async ({
     /** The config's `test_concurrency`; left out, no cap. */
     test_concurrency: number | undefined
     exclusive: boolean
+    /** A config with a `junit` command (#668): see `runTests`. */
+    bun_files_only: boolean
 }): Promise<{ checks: GateCheck[]; runs: TestRun[] }> => {
     const checks: GateCheck[] = []
     const runs: TestRun[] = []
@@ -150,6 +153,7 @@ export const testChecks = async ({
                             index: first_index + offset,
                         }),
                         timeout_ms,
+                        bun_files_only,
                     })
                     runs.push(run)
                     return bunCheck({ name, run, limit, started })

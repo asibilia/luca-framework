@@ -51,6 +51,7 @@ export {
     caseLimitOf,
     fastBunCommand,
     givesPerTestResults,
+    hasJunitCommand,
     hasSlowTests,
     isBunTestCommand,
     slowTestCommands,

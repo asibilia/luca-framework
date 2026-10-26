@@ -7,6 +7,7 @@ import { prepareCheck } from './prepare-check'
 import { testChecks } from './test-checks'
 
 import {
+    hasJunitCommand,
     slowTestCommands,
     testTimeoutOf,
     type EngineConfig,
@@ -53,6 +54,7 @@ export const runSlowTests = async ({
         limit: null,
         test_concurrency: config.test_concurrency,
         exclusive: false,
+        bun_files_only: hasJunitCommand({ config }),
     })
     const all = prepared === null ? checks : [prepared, ...checks]
     return { ok: all.every(({ ok }) => ok), checks: all }

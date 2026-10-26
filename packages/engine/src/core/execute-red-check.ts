@@ -20,6 +20,7 @@ import { leaveOutIn, ticketChanges, watchPrepare } from './worktree-changes'
 import {
     bunTestCommands,
     featureMapPath,
+    hasJunitCommand,
     hasSlowTests,
     testTimeoutOf,
 } from '../config/engine-config'
@@ -29,6 +30,7 @@ import { endedText } from '../gates/gate-schemas'
 import { checkRed, type ChangedTestSource } from '../gates/red-check'
 import {
     fileTestsCommand,
+    isBunTestFile,
     runBunTests,
     runTests,
     testFilesAmong,
@@ -112,6 +114,8 @@ export const runRedCheck = async ({
     )
     // A lone rerun (#544) runs each test command alone.
     const exclusive = action.exclusive === true
+    // With a junit command (#668), only files bun can run lack bun results.
+    const bun_files_only = hasJunitCommand({ config: context.config })
     const fast = await runBunTests({
         cwd: path,
         commands: bunTestCommands(context),
@@ -119,6 +123,7 @@ export const runRedCheck = async ({
         timeout_ms: testTimeoutOf({ config: context.config }),
         test_concurrency: context.config.test_concurrency,
         exclusive,
+        bun_files_only,
         report_file: await reportFile({
             context,
             ticket: action.ticket,
@@ -137,7 +142,11 @@ export const runRedCheck = async ({
                   files: changed.map((change) => change.path),
                   test_file_patterns: context.config.test_file_patterns,
               }),
-          ]).filter((file) => fast.files_without_results.includes(file))
+          ]).filter(
+              (file) =>
+                  fast.files_without_results.includes(file) &&
+                  (!bun_files_only || isBunTestFile(file))
+          )
         : []
     const current =
         own.length === 0
@@ -156,6 +165,7 @@ export const runRedCheck = async ({
                       timeout_ms: testTimeoutOf({ config: context.config }),
                       test_concurrency: context.config.test_concurrency,
                       exclusive,
+                      bun_files_only,
                   }),
                   test_files,
               })

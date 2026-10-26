@@ -28,7 +28,11 @@ import { retryTicket } from './execute-stuck'
 import { closeSessions, openSessionsIn } from './session-close'
 import { watchPrepare } from './worktree-changes'
 
-import { bunTestCommands, testTimeoutOf } from '../config/engine-config'
+import {
+    bunTestCommands,
+    hasJunitCommand,
+    testTimeoutOf,
+} from '../config/engine-config'
 import { prepareCheck } from '../gates/gate-runner'
 import { runBunTests } from '../gates/test-runner'
 import type { Journal } from '../journal/journal'
@@ -182,6 +186,7 @@ export const executeBuildAction = async ({
                 test_files: await testFilesIn({ context, cwd: path }),
                 timeout_ms: testTimeoutOf({ config: context.config }),
                 test_concurrency: context.config.test_concurrency,
+                bun_files_only: hasJunitCommand({ config: context.config }),
                 report_file: await reportFile({
                     context,
                     ticket: action.ticket,
