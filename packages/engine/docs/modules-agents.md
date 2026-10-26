@@ -44,6 +44,6 @@ The modules split out of `src/agents/claude-launcher.ts`. It keeps `createClaude
 | `src/agents/claude-messages.ts` | What the launcher reads from an SDK session: the Zod schemas of its messages, the outcome of a turn, and the safety checks on the account and the init message. Pure. |
 | `src/agents/open-session.ts` | One session the launcher keeps open between turns (`OpenSession`), and how it is read: each SDK message goes into the session's summary, and each outcome to the turn waiting for it. |
 | `src/agents/input-channel.ts` | The queue the SDK reads an agent's prompt from (streaming-input mode). |
-| `src/agents/launch-paths.ts` | Where the launcher finds things on disk: the real path of the `claude` binary, and the repo's common git dir. |
+| `src/agents/launch-paths.ts` | Where the launcher finds things on disk: the real path of the `claude` binary, the repo's common git dir, and macOS's per-user temp folder (`darwinUserTempDir`), which writers' sandboxes may write. |
 | `src/agents/session-pool.ts` | The agent sessions the launcher keeps open between turns: a turn on one (`runTurn`), keeping it open until it sits idle, and closing one or all. |
 | `src/agents/launch-session.ts` | How the launcher starts one agent session (`createLaunch`): the model check, the role's locked-down options, the account check before the prompt, then the first turn. Holds the `AgentQuery` type. |

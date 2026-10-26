@@ -105,6 +105,12 @@ the network or local ports, or gets Paseo or any MCP tool but the engine's own
    may not edit tests can't write test files; reviewers can't write the
    worktree. No network, no local ports, no unsandboxed commands.
    `~/.claude*`, `~/.paseo`, `~/.ssh`, and `~/.config/gh` can't be read.
+   On macOS, test-writers and implementers may also write the per-user temp
+   folder, the real path of `getconf DARWIN_USER_TEMP_DIR`
+   (`/private/var/folders/…/T`): Foundation stages atomic writes there, not
+   in `$TMPDIR`, so without it `swift test` and `xcodebuild` can't rebuild
+   ("unable to write manifest … Operation not permitted"). Reviewers and the
+   learner don't get it, and off macOS, or when `getconf` fails, no role does.
 3. **After the turn.** The engine, not the launcher, compares the worktree
    and its git state with a snapshot from right before the turn (content
    hashes, never mtimes), ignored files that matter included. Any path the
