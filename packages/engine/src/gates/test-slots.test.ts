@@ -4,16 +4,16 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { runCaseTests } from './case-test-runner'
 import { runGates, runSlowTests } from './gate-runner'
 import { createSlots } from './prepare-slots'
-import { runBunTests } from './test-runner'
 
-import { EngineConfigSchema } from '../config/engine-config'
+import { EngineConfigSchema, type TestCommand } from '../config/engine-config'
 
 /**
  * The test slots (#544): with `test_concurrency` in the config, at most
  * that many test runs go at once across the engine, whichever step runs
- * them (the baseline and red check through `runBunTests`, the gates and the
+ * them (the baseline and red check through `runCaseTests`, the gates and the
  * final review's slow tests through `runGates` and `runSlowTests`). Waiting
  * for a slot is journaled as `wait_ms` and never counts toward the time
  * limit. Left out, nothing waits.
@@ -35,6 +35,13 @@ const logged = ({ seconds }: { seconds: number }): string => {
     return `echo start >> '${log}'; sleep ${seconds}; echo end >> '${log}'`
 }
 
+/** A `bun` test command that runs `run`. */
+const bunCommand = ({ run }: { run: string }): TestCommand => ({
+    run,
+    results: 'bun',
+    junit_path: [],
+})
+
 const logLines = async (): Promise<string[]> =>
     (await Bun.file(join(folder, 'log')).text()).trim().split('\n')
 
@@ -52,9 +59,9 @@ describe('test slots: test_concurrency (#544)', () => {
         const command = logged({ seconds: 0.4 })
 
         const [bun, gate, slow] = await Promise.all([
-            runBunTests({
+            runCaseTests({
                 cwd: folder,
-                commands: [`${command}; true`],
+                commands: [bunCommand({ run: `${command}; true` })],
                 test_files: [],
                 report_file: join(folder, 'red.xml'),
                 timeout_ms: 10_000,
@@ -118,9 +125,9 @@ describe('test slots: test_concurrency (#544)', () => {
 
     test('the bun test run that waited records wait_ms, and its time limit starts after the wait', async () => {
         const run = (name: string) =>
-            runBunTests({
+            runCaseTests({
                 cwd: folder,
-                commands: ['sleep 0.6; true'],
+                commands: [bunCommand({ run: 'sleep 0.6; true' })],
                 test_files: [],
                 report_file: join(folder, `${name}.xml`),
                 timeout_ms: 1_000,
@@ -143,9 +150,9 @@ describe('test slots: test_concurrency (#544)', () => {
 
         const [gate, bun] = await Promise.all([
             gates({ config: { checks } }),
-            runBunTests({
+            runCaseTests({
                 cwd: folder,
-                commands: [`${command}; true`],
+                commands: [bunCommand({ run: `${command}; true` })],
                 test_files: [],
                 report_file: join(folder, 'red.xml'),
                 timeout_ms: 10_000,

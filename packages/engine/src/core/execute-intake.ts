@@ -4,7 +4,7 @@
  */
 import uniq from 'lodash/uniq'
 
-import { slowTestCommands, testCommands } from '../config/engine-config'
+import { junitCommands } from '../config/engine-config'
 import type { GitAdapter } from '../git/git-adapter'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
@@ -47,9 +47,7 @@ const junitPathsNotIgnored = async ({
     const { config, repo } = start.content
     if (git === undefined || repo === null) return []
     const paths = uniq(
-        [...testCommands({ config }), ...slowTestCommands({ config })].flatMap(
-            ({ junit_path }) => junit_path
-        )
+        junitCommands({ config }).flatMap(({ junit_path }) => junit_path)
     )
     const ignored = new Set(await git.ignoredPaths({ cwd: repo, paths }))
     return paths.filter((path) => !ignored.has(path))

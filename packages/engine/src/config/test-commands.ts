@@ -81,6 +81,16 @@ export const slowTestCommands = ({
 export const hasSlowTests = ({ config }: { config: EngineConfig }): boolean =>
     slowTestCommands({ config }).length > 0
 
+/** The config's `junit` test commands (#668), `checks.test` first. */
+export const junitCommands = ({
+    config,
+}: {
+    config: EngineConfig
+}): TestCommand[] =>
+    [...testCommands({ config }), ...slowTestCommands({ config })].filter(
+        ({ results }) => results === 'junit'
+    )
+
 /**
  * Whether the config has a `junit` command (#668), in `checks.test` or
  * `checks.slow_test`: then a bun run counts only files bun can run as
@@ -90,10 +100,7 @@ export const hasJunitCommand = ({
     config,
 }: {
     config: EngineConfig
-}): boolean =>
-    [...testCommands({ config }), ...slowTestCommands({ config })].some(
-        ({ results }) => results === 'junit'
-    )
+}): boolean => junitCommands({ config }).length > 0
 
 /** The fast test speed limit (#580), or `null` with none. */
 export const caseLimitOf = ({
@@ -145,13 +152,3 @@ export const caseTestCommands = ({
                   }
                 : command
         )
-
-/** The `bun` commands of `caseTestCommands`, each as the command it runs. */
-export const bunTestCommands = ({
-    config,
-}: {
-    config: EngineConfig
-}): string[] =>
-    caseTestCommands({ config })
-        .filter(({ results }) => results === 'bun')
-        .map(({ run }) => run)

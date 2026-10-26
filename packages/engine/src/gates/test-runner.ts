@@ -278,58 +278,6 @@ export const reportFileFor = ({
         : report_file.replace(/(\.xml)?$/, `-${index + 1}$1`)
 
 /**
- * Runs each of the engine config's bun test commands (see `runTests`) and
- * joins them into one run, for the baseline and the red check: every case,
- * `ok` only when all pass, and a test file without results only when no
- * command gave it any. One command gives exactly its own run. No command
- * (a run of refactor tickets only, which the red check skips) gives an
- * empty passing run.
- *
- * @example
- * const run = await runBunTests({ cwd, commands: ['bun test'], test_files, report_file, timeout_ms: testTimeoutOf({ config }) })
- */
-export const runBunTests = async ({
-    cwd,
-    commands,
-    test_files,
-    report_file,
-    timeout_ms,
-    test_concurrency,
-    exclusive,
-    bun_files_only,
-}: {
-    cwd: string
-    commands: string[]
-    test_files: string[]
-    report_file: string
-    /** Each command's time limit (see `runTests`). */
-    timeout_ms: number
-    /** The config's `test_concurrency`: each command takes a test slot. */
-    test_concurrency?: number
-    /** Each command runs alone, holding every test slot (#544). */
-    exclusive?: boolean
-    /** See `runTests`. */
-    bun_files_only?: boolean
-}): Promise<TestRun> => {
-    const runs: TestRun[] = []
-    for (const [index, command] of commands.entries()) {
-        runs.push(
-            await runTests({
-                cwd,
-                command,
-                test_files,
-                report_file: reportFileFor({ report_file, index }),
-                timeout_ms,
-                test_concurrency,
-                exclusive,
-                bun_files_only,
-            })
-        )
-    }
-    return joinRuns({ runs, test_files })
-}
-
-/**
  * A command that runs just these test files with plain `bun test` (#564):
  * never the config's command plus the files, because Bun's
  * `--path-ignore-patterns` leaves out even files named on the command line.
@@ -368,9 +316,10 @@ export const withOwnRun = ({
  * file only a `junit` command covers, #668, can be left out of every list),
  * with `junit_missing` when any run has it. One run is itself. No
  * run (a run of refactor tickets only, which the red check skips) gives an
- * empty passing run. Used for the baseline and the red check
- * (`runBunTests`) and for a ticket's own slow test files (#564). Their
- * waits for a test slot add up to the joined run's `wait_ms` (#544).
+ * empty passing run. Used for the baseline, the red check and the
+ * already-done check (`runCaseTests`), for the gates' own-files run, and
+ * for a ticket's own slow test files (#564). Their waits for a test slot
+ * add up to the joined run's `wait_ms` (#544).
  *
  * @example
  * const run = joinRuns({ runs: [fast, own], test_files })

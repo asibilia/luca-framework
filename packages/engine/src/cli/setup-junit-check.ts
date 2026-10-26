@@ -13,26 +13,14 @@ import { readScripts } from './setup-config'
 
 import {
     ENGINE_CONFIG_FILE,
-    slowTestCommands,
-    testCommands,
+    junitCommands,
     type EngineConfig,
-    type TestCommand,
 } from '../config/engine-config'
 
 /** The shells a script may start its file with. */
 const SHELLS = new Set(['bash', 'sh', 'zsh'])
 
 const SWIFT_TESTING_SUFFIX = '-swift-testing.xml'
-
-/** The config's junit test commands, `checks.test` first. */
-export const junitCommands = ({
-    config,
-}: {
-    config: EngineConfig
-}): TestCommand[] =>
-    [...testCommands({ config }), ...slowTestCommands({ config })].filter(
-        ({ results }) => results === 'junit'
-    )
 
 /** The text of the repo file at `path`, or `null` when there is no such file. */
 const fileText = async ({

@@ -13,10 +13,11 @@ import {
     type Found,
 } from './doctor-checks'
 import { errorText, findConfig } from './setup-config'
-import { checkJunit, junitCommands } from './setup-junit-check'
+import { checkJunit } from './setup-junit-check'
 
 import {
     ENGINE_CONFIG_FILE,
+    hasJunitCommand,
     loadEngineConfig,
     testCommands,
 } from '../config/engine-config'
@@ -244,7 +245,7 @@ export const repoChecks = async ({
     )
     const vault = loaded.ok ? (loaded.config.muninn?.vault ?? null) : null
     const junit: [string, () => Promise<Found>][] =
-        loaded.ok && junitCommands({ config: loaded.config }).length > 0
+        loaded.ok && hasJunitCommand({ config: loaded.config })
             ? [['junit', () => checkJunit({ repo, config: loaded.config })]]
             : []
     return checksFor({

@@ -5,8 +5,8 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import {
-    bunTestCommands,
     caseLimitOf,
+    caseTestCommands,
     EngineConfigSchema,
     fastBunCommand,
     loadEngineConfig,
@@ -91,8 +91,12 @@ describe('the fast test speed limit (#580)', () => {
         expect(fastBunCommand({ run: 'bun test src', config })).toBe(
             'bun test src --timeout=2000'
         )
-        expect(bunTestCommands({ config })).toEqual([
-            'bun test src --timeout=2000',
+        expect(caseTestCommands({ config })).toEqual([
+            {
+                run: 'bun test src --timeout=2000',
+                results: 'bun',
+                junit_path: [],
+            },
         ])
     })
 
@@ -105,7 +109,9 @@ describe('the fast test speed limit (#580)', () => {
         expect(fastBunCommand({ run: 'bun test src', config })).toBe(
             'bun test src'
         )
-        expect(bunTestCommands({ config })).toEqual(['bun test src'])
+        expect(caseTestCommands({ config })).toEqual([
+            { run: 'bun test src', results: 'bun', junit_path: [] },
+        ])
     })
 
     test.each([0, -1, 1.5, '2000', null])(

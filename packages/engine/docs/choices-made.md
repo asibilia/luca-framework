@@ -84,11 +84,13 @@
   Every test command runs as a gate, in order, after each ticket and in the
   final review; a failing one goes into the gate fix loop with its output.
   The engine adds bun's JUnit reporter flags to the end of each `bun`
-  command to learn each test's outcome, and runs a `pass_fail` one as
-  written. The baseline and the red check run only the `bun` commands.
-  Intake refuses a run with no `bun` or `junit` command unless every open
-  ticket is a refactor ticket. Agents may run each test command exactly; `bun` ones may
-  also take extra arguments. A repo with no test files passes the baseline.
+  command to learn each test's outcome, runs a `junit` one as written and
+  reads its JUnit files, and runs a `pass_fail` one as written. The
+  baseline, the red check and the already-done check run every `bun` and
+  `junit` command, in config order. Intake refuses a run with no `bun` or
+  `junit` command unless every open ticket is a refactor ticket. Agents may
+  run each test command exactly; `bun` and `junit` ones may also take extra
+  arguments. A repo with no test files passes the baseline.
 - **Slow test commands (#563):** `checks.slow_test` is a test command setting
   of the same shape as `checks.test`, for the tests `checks.test` leaves out.
   See "Slow tests (#563)" above. It is frozen for a run, like `checks.test`.

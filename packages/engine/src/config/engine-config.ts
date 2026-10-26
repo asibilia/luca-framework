@@ -47,7 +47,6 @@ export type {
     TestResults,
 } from './engine-config-schema'
 export {
-    bunTestCommands,
     caseLimitOf,
     caseTestCommands,
     fastBunCommand,
@@ -55,6 +54,7 @@ export {
     hasJunitCommand,
     hasSlowTests,
     isBunTestCommand,
+    junitCommands,
     slowTestCommands,
     testCommands,
     type TestCommand,

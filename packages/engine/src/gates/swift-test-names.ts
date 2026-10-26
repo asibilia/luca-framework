@@ -3,7 +3,9 @@
  * prints them: a Swift Testing `@Test func` as its base name and argument
  * labels (`addsZero(n:)`), and an XCTest `func test…()` with no parameters
  * as its bare name (`testAddsMovie`). It's a text scan, not a parse, so a
- * test inside a comment counts too.
+ * test inside a comment counts too. The Swift test index (see
+ * `swiftTestIndex`) reads function bodies and `@Test` funcs with the same
+ * scan (`closeOf`, `testedFuncs`).
  */
 
 /**
@@ -23,7 +25,13 @@ const depthStep = ({ text, at }: { text: string; at: number }): number => {
  * only `()`, `[]` and `{}` and skipping string literals, so a `0..<3` or a
  * `"a > b"` inside doesn't move it. The text's end if none.
  */
-const closeOf = ({ text, open }: { text: string; open: number }): number => {
+export const closeOf = ({
+    text,
+    open,
+}: {
+    text: string
+    open: number
+}): number => {
     let depth = 0
     for (let at = open; at < text.length; at += 1) {
         const char = text[at] ?? ''
@@ -63,7 +71,7 @@ const labelOf = (param: string): string =>
     (param.split(':')[0] ?? '').trim().split(/\s+/)[0] ?? ''
 
 /** Where each `func` an `@Test` attribute applies to starts. */
-const testedFuncs = (text: string): Set<number> => {
+export const testedFuncs = (text: string): Set<number> => {
     const tested = new Set<number>()
     for (const match of text.matchAll(/@Test\b/g)) {
         let at = match.index + match[0].length

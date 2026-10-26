@@ -227,6 +227,52 @@ describe("a ticket's own slow test files in the gates (#564)", () => {
         }
     }, 20_000)
 
+    test('with a junit command beside the bun one, a changed slow test file the bun run left out still runs on its own (#668)', async () => {
+        const folder = await mkdtemp(join(tmpdir(), 'luca-own-slow-'))
+        try {
+            await Bun.write(join(folder, 'fast.test.ts'), PASSING)
+            await Bun.write(join(folder, 'own.e2e.test.ts'), FAILING)
+            // A stand-in for swift test: it writes a JUnit file with no cases.
+            await Bun.write(
+                join(folder, 'junit.sh'),
+                "mkdir -p out\nprintf '<testsuites></testsuites>' > out/core.xml\n"
+            )
+            const bun = "bun test --path-ignore-patterns='**/*.e2e.test.ts'"
+            const ran = await runGates({
+                cwd: folder,
+                config: EngineConfigSchema.parse({
+                    checks: {
+                        test: [
+                            bun,
+                            {
+                                run: 'sh junit.sh',
+                                results: 'junit',
+                                junit_path: 'out/core.xml',
+                            },
+                        ],
+                        slow_test: 'bun test .e2e.test',
+                    },
+                }),
+                install: null,
+                test_files: ['fast.test.ts', 'own.e2e.test.ts'],
+                report_file: join(folder, 'report.xml'),
+                own_test_files: ['own.e2e.test.ts'],
+            })
+
+            expect(ran.ok).toBe(false)
+            expect(
+                ran.checks.map(({ name, command, ok }) => [name, command, ok])
+            ).toEqual([
+                ['test', bun, true],
+                ['test', 'sh junit.sh', true],
+                ['test', "bun test './own.e2e.test.ts'", false],
+            ])
+            expect(ran.checks[2]?.output).toContain('own')
+        } finally {
+            await rm(folder, { recursive: true, force: true })
+        }
+    }, 20_000)
+
     test('a pass_fail command, and gates that stop at a failed install, give no cases', async () => {
         const folder = await mkdtemp(join(tmpdir(), 'luca-own-slow-'))
         try {

@@ -7,6 +7,7 @@ import { engineChores, REVIEW_FIXER, setupFiles } from './common-instructions'
 import {
     caseLimitOf,
     featureMapPath,
+    hasJunitCommand,
     isFeatureMapFolder,
     slowTestCommands,
     testCommands,
@@ -58,21 +59,15 @@ const testHelperClause = ({ config }: { config: EngineConfig }): string => {
         : `, test helpers only tests use, such as fakes and fixtures (${patterns.join(', ')})`
 }
 
-/** Whether the config has a junit test command (#672), fast or slow. */
-const hasJunit = ({ config }: { config: EngineConfig }): boolean =>
-    [...testCommands({ config }), ...slowTestCommands({ config })].some(
-        ({ results }) => results === 'junit'
-    )
-
 /** How to write a Swift test the engine can count (#672), or nothing without a junit command. */
 const swiftTestLine = ({ config }: { config: EngineConfig }): string =>
-    hasJunit({ config })
+    hasJunitCommand({ config })
         ? "- In a .swift test file, write each test as a Swift Testing `@Test func` or an XCTest `func testSomething()`, and call `#expect`, `#require` or an `XCTAssert` function directly in its body: the engine counts them in the test's source, not as it runs.\n"
         : ''
 
 /** A Swift test's full name (#672), or nothing without a junit command. */
 const swiftNameLine = ({ config }: { config: EngineConfig }): string =>
-    hasJunit({ config })
+    hasJunitCommand({ config })
         ? '\n- For a .swift test, "name" is its type names and its function, joined by " > ": `RankingTests > addsMovie()` for a Swift Testing test (keeping argument labels, such as `ranks(score:)`), and `RankingXCTests > testAddsMovie` for an XCTest one. A @Test\'s display name is not part of it.'
         : ''
 

@@ -6,6 +6,10 @@
  */
 import { join } from 'node:path'
 
+import escapeRegExp from 'lodash/escapeRegExp'
+
+import { closeOf, testedFuncs } from './swift-test-names'
+
 import { pathText } from '../git/path-text'
 
 /** A `.swift` test file and its text. */
@@ -14,21 +18,21 @@ type SwiftSource = { file: string; text: string }
 /** A Swift case as the JUnit reader takes it. */
 export type SwiftCase = { file: string; full_name: string; assertions?: number }
 
-const escape = (text: string): string =>
-    text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
 const declares = (name: string): RegExp =>
-    new RegExp(`\\b(?:struct|class|enum|actor|extension)\\s+${escape(name)}\\b`)
+    new RegExp(
+        `\\b(?:struct|class|enum|actor|extension)\\s+${escapeRegExp(name)}\\b`
+    )
 
 const funcOf = (base: string): RegExp =>
-    new RegExp(`\\bfunc\\s+${escape(base)}(?![\\w])`)
+    new RegExp(`\\bfunc\\s+${escapeRegExp(base)}(?![\\w])`)
 
-/** Where a free `@Test` function's `func` starts, after an `@Test`. */
+/** Where a free `@Test` function's `func` ends: the first one an `@Test` applies to. */
 const freeFuncAt = ({ text, base }: { text: string; base: string }) => {
-    const match = new RegExp(
-        `@Test\\b[\\s\\S]*?(\\bfunc\\s+${escape(base)}(?![\\w]))`
-    ).exec(text)
-    return match === null ? -1 : match.index + match[0].length
+    const tested = testedFuncs(text)
+    const func = [...text.matchAll(new RegExp(funcOf(base), 'g'))].find(
+        ({ index }) => tested.has(index)
+    )
+    return func === undefined ? -1 : func.index + func[0].length
 }
 
 /** Where the type's function `func` ends, after the type's declaration. */
@@ -51,16 +55,7 @@ const typeFuncAt = ({
 /** The body of the function whose `func` ends at `from`: its first `{` to its matching `}`. */
 const bodyFrom = ({ text, from }: { text: string; from: number }) => {
     const open = text.indexOf('{', from)
-    if (open < 0) return ''
-    let depth = 0
-    for (let at = open; at < text.length; at += 1) {
-        if (text[at] === '{') depth += 1
-        else if (text[at] === '}') {
-            depth -= 1
-            if (depth === 0) return text.slice(open + 1, at)
-        }
-    }
-    return text.slice(open + 1)
+    return open < 0 ? '' : text.slice(open + 1, closeOf({ text, open }) - 1)
 }
 
 const ASSERTION_CALLS =
@@ -73,7 +68,7 @@ const ASSERTION_CALLS =
  * - `full_name` is its type path (the classname after its module) and its
  *   name, joined by " > ".
  * - `file` is the one file that declares its innermost type and has a `func`
- *   of its base name (for a free function, a `func` after an `@Test`), or,
+ *   of its base name (for a free function, a `func` an `@Test` applies to), or,
  *   of several, the one under a folder named exactly after its module.
  *   Failing that, its classname, with no `assertions`.
  * - `assertions` counts the `#expect`, `#require`, `XCTAssert…`, `XCTUnwrap`,
