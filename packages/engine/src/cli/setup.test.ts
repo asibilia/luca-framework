@@ -218,7 +218,7 @@ describe('luca-setup writes a starting config when there is none', () => {
 
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
-        expect(testCommands({ config: loaded.config })).toEqual([
+        expect(testCommands({ config: loaded.config })).toMatchObject([
             { run: 'bun test', results: 'bun' },
             { run: 'bun run test:workers', results: 'pass_fail' },
         ])
@@ -251,7 +251,7 @@ describe('luca-setup writes a starting config when there is none', () => {
 
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
-        expect(testCommands({ config: loaded.config })).toEqual([
+        expect(testCommands({ config: loaded.config })).toMatchObject([
             { run: 'bun test', results: 'bun' },
         ])
         expect(loaded.config.checks.types).toBe('bun run typecheck')
@@ -294,7 +294,7 @@ describe('luca-setup converts an old-Luca config', () => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
         expect(loaded.config.muninn).toEqual({ vault: 'tmnb' })
-        expect(testCommands({ config: loaded.config })).toEqual([
+        expect(testCommands({ config: loaded.config })).toMatchObject([
             { run: 'bun test', results: 'bun' },
             { run: 'bun run test:workers', results: 'pass_fail' },
         ])

@@ -12,7 +12,7 @@ milliseconds) in `.luca/config.json`:
 { "checks": { "test": "bun test" }, "test_timeout_ms": 900000 }
 ```
 
-It holds for both kinds of test command (`bun` and `pass_fail`). Types and
+It holds for every kind of test command (`bun`, `junit` and `pass_fail`). Types and
 lint keep 5 minutes. A test command that runs out of time fails, and its
 output starts with "Timed out after 5 minutes" and says to raise
 `test_timeout_ms`.
@@ -44,7 +44,7 @@ repo caps how many test runs go at once across the run with
   take), and no run or check has `wait_ms`.
 
 **Shared failures and lone reruns (#544).** Ticket and join `gates_run`
-records journal the test cases that failed in any bun run, as
+records journal the test cases that failed in any bun or junit run, as
 `failed_cases: [{ file, full_name }]` (failures only; left out with none, and
 in old journals). Red checks already journal their whole run. Replay keeps a
 run-wide list of old-test failures: a failed test that passed at that
@@ -130,7 +130,7 @@ milliseconds) in `.luca/config.json`; this repo's is 2000:
 
 - It goes to every `bun` command of `checks.test` as `--timeout=<n>`, in every
   run of it: the baseline, the red check, the already-done check, and the
-  gates (`bunTestCommands` and the gates' fast test call). The one exception
+  gates (`caseTestCommands` and the gates' fast test call). The one exception
   is the already-done check when `checks.slow_test` is set: it runs the named
   files with plain `bun test` (so a named slow test really runs), which gets no
   `--timeout`. `scripts/run-checks.ts` does the same, so the PR check and the
@@ -156,3 +156,25 @@ milliseconds) in `.luca/config.json`; this repo's is 2000:
 - `checks.slow_test`, a ticket's own slow files (#564), and `pass_fail`
   commands never get the flag: they are not fast tests. Left out, every
   command runs exactly as written.
+- A `junit` command (#668) never gets the flag either: `swift test` doesn't
+  take it, and Swift Testing's `.timeLimit` and XCTest's
+  `executionTimeAllowance` only work in whole minutes. Its tests in the files
+  a ticket changed are held to the limit by their measured time alone (from
+  their JUnit `time`), with the same lines.
+
+**junit commands everywhere (#668).** The baseline, the red check and the
+already-done check run `caseTestCommands`: every `bun` and `junit` command of
+`checks.test`, in config order, joined into one run (`runCaseTests`, see
+`joinRuns`), so `baseline_tests` and `red_check` hold the Swift cases too.
+The already-done check runs each `junit` command whole, with no files after
+it (when a named file is one bun can't run), and finds the named cases among
+its results. In the gates, a `junit` command's failed run fails its `test`
+check with its output, and its cases join the gates' `cases` and
+`failed_cases`, so the empty-test check, lone reruns and shared failures read
+them like bun's. With a `junit` command in the config, the own-files run
+(#564) takes only files bun can run. All of this reads only the `.swift`
+files `test_file_patterns` matches, so a Swift repo lists its tests there,
+such as `"packages/ios/**/Tests/**/*.swift"`: with the default,
+`**/*.test.ts`, each Swift case's `file` is its classname with no
+`assertions`, the speed limit never measures it, and the test-writer may not
+write a `.swift` test.

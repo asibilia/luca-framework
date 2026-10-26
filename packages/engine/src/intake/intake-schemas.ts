@@ -12,9 +12,18 @@ export const IntakeReadSchema = z.object({
     sub_tickets: z.array(TrackerIssueSchema),
     /** Issues outside the spec that an open ticket names as a blocker. */
     outside_blockers: z.array(TrackerIssueSchema).default([]),
+    /**
+     * The `junit_path` entries of `checks.test` and `checks.slow_test` that
+     * git, asked in the repo when intake read, doesn't ignore (#668).
+     */
+    junit_paths_not_ignored: z.array(z.string()).default([]),
 })
 
-export type IntakeRead = z.infer<typeof IntakeReadSchema>
+type ParsedIntakeRead = z.infer<typeof IntakeReadSchema>
+
+/** An `intake_read` record; `junit_paths_not_ignored` may be left out (#668). */
+export type IntakeRead = Omit<ParsedIntakeRead, 'junit_paths_not_ignored'> &
+    Partial<Pick<ParsedIntakeRead, 'junit_paths_not_ignored'>>
 
 /**
  * What is missing on one issue. `ticket` is `null` for problems with the run

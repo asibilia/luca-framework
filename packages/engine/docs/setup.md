@@ -83,7 +83,23 @@ as a health check.
   older top-level `vault`) and writes the rest fresh from `package.json`, as
   above.
 - **A new-style config:** it leaves the file alone and only reports on it.
-  With no vault, the vault is a to-do.
+  With no vault, the vault is a to-do. Each test command is listed as
+  bun-readable, junit-readable (`"results": "junit"`, #668) or pass or
+  fail; with no bun or junit command, only refactor tickets can run, and
+  that is a to-do.
+- **junit commands (#668):** with a junit test command in the config, the
+  repo group has a `junit` check. It reads each junit command, the root
+  `package.json` script a `bun run <script>` command names, and the repo
+  file that script starts (directly, or after `bash`, `sh` or `zsh`; a path
+  that leaves the repo isn't read). A command whose texts have `swift test`
+  but no `--parallel` is a warning (XCTest writes no JUnit file without it),
+  and so is a `junit_path` that lists only one of SwiftPM's pair,
+  `<name>.xml` and `<name>-swift-testing.xml` in the same folder. Several
+  warnings make one. Like every warning, it doesn't fail doctor. A junit
+  command's `.swift` test files must also match `test_file_patterns`, such
+  as `"packages/ios/**/Tests/**/*.swift"`: neither setup nor the check adds
+  them, and the engine reads and lets the test-writer write Swift tests only
+  among those files.
 - **Checks.** `gh` is logged in, the repo has a GitHub remote, its issues have
   sub-issues and issue dependencies, the base branch (default `main`) is on
   `origin`, and MuninnDB can search the config's vault (found as `luca-run`
@@ -97,10 +113,14 @@ skills know it. A written config waits
 in the working tree: check it, then merge it through a normal PR. It exits 0
 when nothing is left to do and 1 otherwise.
 
-`runSetup` is handed its GitHub adapter (`SetupGitHub`) and memory client, so
-the tests (`src/cli/setup.test.ts`) run it end to end with real git in
+`runSetup` (`src/cli/setup.ts`) is handed its GitHub adapter
+(`SetupGitHub`) and memory client, so the tests (`src/cli/setup.test.ts`,
+`src/cli/setup-junit.test.ts`) run it end to end with real git in
 throwaway repos with a local bare `origin`, a fake GitHub, and a fake
-MuninnDB.
+MuninnDB. Its config side (guessing checks, the config report) is in
+`src/cli/setup-config.ts`, doctor's repo group in
+`src/cli/setup-repo-checks.ts`, and the `junit` check in
+`src/cli/setup-junit-check.ts`.
 
 ## Checking a setup: `luca doctor`
 

@@ -18,18 +18,20 @@ import type { BuildAction } from './decide-build'
 import { leaveOutIn, ticketChanges, watchPrepare } from './worktree-changes'
 
 import {
-    bunTestCommands,
+    caseTestCommands,
     featureMapPath,
+    hasJunitCommand,
     hasSlowTests,
     testTimeoutOf,
 } from '../config/engine-config'
+import { runCaseTests } from '../gates/case-test-runner'
 import { readFeatureMap } from '../gates/feature-map'
 import { prepareCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
 import { checkRed, type ChangedTestSource } from '../gates/red-check'
 import {
     fileTestsCommand,
-    runBunTests,
+    isBunTestFile,
     runTests,
     testFilesAmong,
     withOwnRun,
@@ -112,13 +114,16 @@ export const runRedCheck = async ({
     )
     // A lone rerun (#544) runs each test command alone.
     const exclusive = action.exclusive === true
-    const fast = await runBunTests({
+    // With a junit command (#668), only files bun can run lack bun results.
+    const bun_files_only = hasJunitCommand({ config: context.config })
+    const fast = await runCaseTests({
         cwd: path,
-        commands: bunTestCommands(context),
+        commands: caseTestCommands(context),
         test_files,
         timeout_ms: testTimeoutOf({ config: context.config }),
         test_concurrency: context.config.test_concurrency,
         exclusive,
+        bun_files_only,
         report_file: await reportFile({
             context,
             ticket: action.ticket,
@@ -137,7 +142,11 @@ export const runRedCheck = async ({
                   files: changed.map((change) => change.path),
                   test_file_patterns: context.config.test_file_patterns,
               }),
-          ]).filter((file) => fast.files_without_results.includes(file))
+          ]).filter(
+              (file) =>
+                  fast.files_without_results.includes(file) &&
+                  (!bun_files_only || isBunTestFile(file))
+          )
         : []
     const current =
         own.length === 0
@@ -156,11 +165,19 @@ export const runRedCheck = async ({
                       timeout_ms: testTimeoutOf({ config: context.config }),
                       test_concurrency: context.config.test_concurrency,
                       exclusive,
+                      bun_files_only,
                   }),
                   test_files,
               })
+    // A `.swift` file with an old test is read too: when its tests don't
+    // build yet, its text says which old tests are still there (#668).
     const sources: Record<string, string | null> = {}
-    for (const file of files) {
+    const old_swift = current.junit_missing
+        ? baseline.cases
+              .map(({ file }) => file)
+              .filter((file) => file.endsWith('.swift'))
+        : []
+    for (const file of uniq([...files, ...old_swift])) {
         sources[file] = await pathText({ path: join(path, file) })
     }
     // Each of those test files as it was at the ticket's base and as it is

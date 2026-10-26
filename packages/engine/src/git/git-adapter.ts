@@ -79,6 +79,8 @@ export type GitAdapter = {
     listFiles: (args: { cwd: string }) => Promise<string[]>
     /** Tracked files whose text contains `text`. */
     filesMentioning: (args: { cwd: string; text: string }) => Promise<string[]>
+    /** Which of `paths` git ignores at `cwd`, as it prints them (#668). */
+    ignoredPaths: (args: { cwd: string; paths: string[] }) => Promise<string[]>
     /**
      * Stages everything and commits it, skipping hooks (the engine ran the
      * gates). Paths in `leave_out` (what the prepare command made) are
@@ -242,6 +244,7 @@ export const createGitAdapter = ({
         untracked: serial(raw.untracked),
         listFiles: serial(raw.listFiles),
         filesMentioning: serial(raw.filesMentioning),
+        ignoredPaths: serial(raw.ignoredPaths),
         commitAll: serial(raw.commitAll),
         commitPaths: serial(raw.commitPaths),
         discardChanges: serial(raw.discardChanges),

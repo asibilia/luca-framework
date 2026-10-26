@@ -25,12 +25,24 @@ const attribute = ({
 }
 
 /**
- * Reads bun's JUnit report: one `<testsuite file=..>` per file, a nested
- * `<testsuite>` per describe, and a `<testcase>` per test. Each case keeps
- * its `time`, in whole milliseconds, and its `assertions` count when the
- * report has them (#518, #581).
+ * Reads a JUnit file. In bun's report there is one `<testsuite file=..>` per
+ * file, a nested `<testsuite>` per describe, and a `<testcase>` per test.
+ * Each case keeps its `time`, in whole milliseconds, and its `assertions`
+ * count when the report has them (#518, #581).
+ *
+ * A `<testcase>` with no `file` but a `classname` (SwiftPM's shape, #668) is
+ * read by `read_swift_case`, when given (see `swiftTestIndex`).
  */
-export const parseJunit = ({ xml }: { xml: string }): TestCase[] => {
+export const parseJunit = ({
+    xml,
+    read_swift_case,
+}: {
+    xml: string
+    read_swift_case?: (testcase: {
+        classname: string
+        name: string
+    }) => Pick<TestCase, 'file' | 'full_name' | 'assertions'>
+}): TestCase[] => {
     const cases: TestCase[] = []
     const suites: string[] = []
     /** The index in `cases` of the `<testcase>` still open, if any. */
@@ -51,15 +63,25 @@ export const parseJunit = ({ xml }: { xml: string }): TestCase[] => {
             const name = attribute({ attrs, name: 'name' }) ?? ''
             const seconds = Number(attribute({ attrs, name: 'time' }))
             const assertions = Number(attribute({ attrs, name: 'assertions' }))
+            const file = attribute({ attrs, name: 'file' })
+            const classname = attribute({ attrs, name: 'classname' })
+            const named =
+                file === undefined &&
+                classname !== undefined &&
+                read_swift_case !== undefined
+                    ? read_swift_case({ classname, name })
+                    : {
+                          file: file ?? suites[0] ?? '',
+                          full_name: [...suites.slice(1), name].join(' > '),
+                          ...(Number.isInteger(assertions) && assertions >= 0
+                              ? { assertions }
+                              : {}),
+                      }
             cases.push({
-                file: attribute({ attrs, name: 'file' }) ?? suites[0] ?? '',
-                full_name: [...suites.slice(1), name].join(' > '),
+                ...named,
                 status: 'passed',
                 ...(Number.isFinite(seconds)
                     ? { duration_ms: Math.round(seconds * 1000) }
-                    : {}),
-                ...(Number.isInteger(assertions) && assertions >= 0
-                    ? { assertions }
                     : {}),
             })
             open = selfClosing ? -1 : cases.length - 1
@@ -92,6 +114,17 @@ export const testFilesAmong = ({
     )
 }
 
+/**
+ * Whether bun can run a test file (#668): its name ends in `.test`, `_test`,
+ * `.spec` or `_spec`, then `.js`, `.jsx`, `.ts` or `.tsx`.
+ *
+ * @example
+ * isBunTestFile('src/sum.test.ts') // true
+ * isBunTestFile('Tests/CalcTests/AddingTests.swift') // false
+ */
+export const isBunTestFile = (file: string): boolean =>
+    /[._](?:test|spec)\.(?:js|jsx|ts|tsx)$/.test(file)
+
 const NO_TEST_FILES = /0 test files matching|No tests found!/
 
 /**
@@ -117,6 +150,9 @@ export const TEST_TIMEOUT_HINT =
  * `inTestSlot`): the run records that wait as `wait_ms`, and its time limit
  * starts after it. An `exclusive` run (a lone rerun, #544) waits until no
  * other test run is going, and holds every slot while it runs.
+ *
+ * With `bun_files_only` (a config with a `junit` command, #668), its
+ * `files_without_results` lists only files bun can run (see `isBunTestFile`).
  */
 export const runTests = async ({
     cwd,
@@ -126,6 +162,7 @@ export const runTests = async ({
     timeout_ms,
     test_concurrency,
     exclusive,
+    bun_files_only,
 }: {
     cwd: string
     command: string
@@ -137,6 +174,8 @@ export const runTests = async ({
     test_concurrency?: number
     /** Run alone, holding every test slot (#544). Left out, it doesn't. */
     exclusive?: boolean
+    /** Only bun's files can lack results (#668). Left out, every file can. */
+    bun_files_only?: boolean
 }): Promise<TestRun> =>
     inTestSlot({
         test_concurrency,
@@ -148,6 +187,7 @@ export const runTests = async ({
                 test_files,
                 report_file,
                 timeout_ms,
+                bun_files_only,
             }),
     })
 
@@ -161,12 +201,14 @@ export const runTestsInHeldSlot = async ({
     test_files,
     report_file,
     timeout_ms,
+    bun_files_only = false,
 }: {
     cwd: string
     command: string
     test_files: string[]
     report_file: string
     timeout_ms: number
+    bun_files_only?: boolean
 }): Promise<TestRun> => {
     const shell = await runShell({
         command: `${command} --reporter=junit --reporter-outfile='${report_file}'`,
@@ -188,7 +230,9 @@ export const runTestsInHeldSlot = async ({
         no_test_files: noTestFiles,
         cases,
         files_without_results: test_files.filter(
-            (file) => !withResults.has(file)
+            (file) =>
+                !withResults.has(file) &&
+                (!bun_files_only || isBunTestFile(file))
         ),
         output: `${shell.timed_out ? timedOutLine({ timeout_ms, hint: TEST_TIMEOUT_HINT, survivors: shell.survivors }) : ''}${clipOutput({ text: output })}`,
     }
@@ -234,54 +278,6 @@ export const reportFileFor = ({
         : report_file.replace(/(\.xml)?$/, `-${index + 1}$1`)
 
 /**
- * Runs each of the engine config's bun test commands (see `runTests`) and
- * joins them into one run, for the baseline and the red check: every case,
- * `ok` only when all pass, and a test file without results only when no
- * command gave it any. One command gives exactly its own run. No command
- * (a run of refactor tickets only, which the red check skips) gives an
- * empty passing run.
- *
- * @example
- * const run = await runBunTests({ cwd, commands: ['bun test'], test_files, report_file, timeout_ms: testTimeoutOf({ config }) })
- */
-export const runBunTests = async ({
-    cwd,
-    commands,
-    test_files,
-    report_file,
-    timeout_ms,
-    test_concurrency,
-    exclusive,
-}: {
-    cwd: string
-    commands: string[]
-    test_files: string[]
-    report_file: string
-    /** Each command's time limit (see `runTests`). */
-    timeout_ms: number
-    /** The config's `test_concurrency`: each command takes a test slot. */
-    test_concurrency?: number
-    /** Each command runs alone, holding every test slot (#544). */
-    exclusive?: boolean
-}): Promise<TestRun> => {
-    const runs: TestRun[] = []
-    for (const [index, command] of commands.entries()) {
-        runs.push(
-            await runTests({
-                cwd,
-                command,
-                test_files,
-                report_file: reportFileFor({ report_file, index }),
-                timeout_ms,
-                test_concurrency,
-                exclusive,
-            })
-        )
-    }
-    return joinRuns({ runs, test_files })
-}
-
-/**
  * A command that runs just these test files with plain `bun test` (#564):
  * never the config's command plus the files, because Bun's
  * `--path-ignore-patterns` leaves out even files named on the command line.
@@ -316,11 +312,14 @@ export const withOwnRun = ({
 
 /**
  * Several test runs as one: every case, `ok` only when all passed, and a test
- * file without results only when no run gave it any. One run is itself. No
+ * file without results when some run listed it and no run gave it any (so a
+ * file only a `junit` command covers, #668, can be left out of every list),
+ * with `junit_missing` when any run has it. One run is itself. No
  * run (a run of refactor tickets only, which the red check skips) gives an
- * empty passing run. Used for the baseline and the red check
- * (`runBunTests`) and for a ticket's own slow test files (#564). Their
- * waits for a test slot add up to the joined run's `wait_ms` (#544).
+ * empty passing run. Used for the baseline, the red check and the
+ * already-done check (`runCaseTests`), for the gates' own-files run, and
+ * for a ticket's own slow test files (#564). Their waits for a test slot
+ * add up to the joined run's `wait_ms` (#544).
  *
  * @example
  * const run = joinRuns({ runs: [fast, own], test_files })
@@ -347,6 +346,9 @@ export const joinRuns = ({
     if (runs.length === 1) return first
     const cases = runs.flatMap((run) => run.cases)
     const withResults = new Set(cases.map(({ file }) => file))
+    const listed = new Set(
+        runs.flatMap(({ files_without_results }) => files_without_results)
+    )
     const waits = runs.flatMap(({ wait_ms }) =>
         wait_ms === undefined ? [] : [wait_ms]
     )
@@ -357,8 +359,11 @@ export const joinRuns = ({
         no_test_files: runs.every(({ no_test_files }) => no_test_files),
         cases,
         files_without_results: test_files.filter(
-            (file) => !withResults.has(file)
+            (file) => listed.has(file) && !withResults.has(file)
         ),
+        ...(runs.some(({ junit_missing }) => junit_missing === true)
+            ? { junit_missing: true }
+            : {}),
         output: clipOutput({
             text: runs
                 .map(({ command, output }) => `$ ${command}\n${output}`)

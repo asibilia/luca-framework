@@ -73,6 +73,7 @@ Tests:
 - `packages/engine/src/gates/red-check.test.ts`
 - `packages/engine/src/gates/new-tests.test.ts`
 - `packages/engine/src/gates/red-check-moved-tests.test.ts`
+- `packages/engine/src/gates/red-check-swift.test.ts`
 - `packages/engine/src/core/run-moved-tests.e2e.test.ts`
 
 ## The feature map
@@ -116,10 +117,14 @@ Tests:
 - `packages/engine/src/gates/gate-runner-own-slow-tests.test.ts`
 - `packages/engine/src/gates/gate-runner-speed-limit.test.ts`
 - `packages/engine/src/gates/test-runner.test.ts`
+- `packages/engine/src/gates/junit-runner.test.ts`
+- `packages/engine/src/gates/gate-runner-junit.test.ts`
 - `packages/engine/src/shell/run-command.test.ts`
 - `packages/engine/src/config/test-commands.test.ts`
 - `packages/engine/src/core/decide-test-commands.test.ts`
+- `packages/engine/src/core/read-intake-junit.test.ts`
 - `packages/engine/src/core/run-test-commands.e2e.test.ts`
+- `packages/engine/src/core/run-junit-tests.e2e.test.ts`
 
 ## Slow tests and the speed limit
 
@@ -134,6 +139,7 @@ Tests:
 - `packages/engine/src/core/decide-slow-tests.test.ts`
 - `packages/engine/src/core/run-slow-tests.e2e.test.ts`
 - `packages/engine/src/core/run-own-slow-tests.e2e.test.ts`
+- `packages/engine/src/core/run-junit-own-files.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
 
 ## Test slots

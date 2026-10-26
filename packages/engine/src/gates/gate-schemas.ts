@@ -39,6 +39,11 @@ export const TestRunSchema = z.object({
      * `test_concurrency` set.
      */
     wait_ms: z.number().int().nonnegative().optional(),
+    /**
+     * A `junit` command failed and wrote none of its JUnit files (#668): its
+     * tests don't build yet. Left out otherwise, and in old journals.
+     */
+    junit_missing: z.literal(true).optional(),
 })
 
 export type TestRun = z.infer<typeof TestRunSchema>

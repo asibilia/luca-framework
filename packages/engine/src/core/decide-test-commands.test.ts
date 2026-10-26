@@ -4,7 +4,7 @@ import { decide } from './decide'
 
 import { EngineConfigSchema } from '../config/engine-config'
 import type { EngineConfig } from '../config/engine-config'
-import type { IntakeRead } from '../intake/intake-schemas'
+import { IntakeReadSchema, type IntakeRead } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
 import {
     agentStarted,
@@ -160,6 +160,74 @@ describe('decision step: intake with several test commands', () => {
         expect(refusals(action)).toContain(
             'The engine config (.luca/config.json) has no test command at checks.test.'
         )
+    })
+})
+
+const CORE_XML = 'packages/ios/.derived/junit/core.xml'
+
+/** movie-rankings' core command: Swift tests, read from their JUnit files. */
+const JUNIT_CORE = {
+    run: 'bun run ios:test:core',
+    results: 'junit',
+    junit_path: [
+        CORE_XML,
+        'packages/ios/.derived/junit/core-swift-testing.xml',
+    ],
+}
+
+describe('decision step: intake with junit test commands (#668)', () => {
+    test('a junit command alone passes intake for a ticket that is not a refactor ticket', () => {
+        const action = decideAfterIntake({
+            config: withTests([JUNIT_CORE]),
+            intake: IntakeReadSchema.parse({
+                spec: specIssue({ number: 10 }),
+                sub_tickets: [ticketIssue({ number: 11 })],
+                outside_blockers: [],
+            }),
+        })
+
+        expect(action).toMatchObject({ type: 'snapshot_intake' })
+    })
+
+    test('with neither a bun nor a junit command, the refusal names both', () => {
+        const action = decideAfterIntake({
+            config: withTests(['bun run test:workers']),
+            intake: IntakeReadSchema.parse({
+                spec: specIssue({ number: 10 }),
+                sub_tickets: [ticketIssue({ number: 11 })],
+                outside_blockers: [],
+            }),
+        })
+
+        expect(refusals(action)).toEqual([
+            'The engine config (.luca/config.json) has no test command with per-test results at checks.test, so the red check can\'t prove new tests fail first. Add a `bun test` command or one with `"results": "junit"`, or label every open ticket `refactor`.',
+        ])
+    })
+
+    test('a junit_path git does not ignore refuses the run', () => {
+        const action = decideAfterIntake({
+            config: withTests(['bun test', JUNIT_CORE]),
+            intake: IntakeReadSchema.parse({
+                spec: specIssue({ number: 10 }),
+                sub_tickets: [ticketIssue({ number: 11 })],
+                outside_blockers: [],
+                junit_paths_not_ignored: [CORE_XML],
+            }),
+        })
+
+        expect(action).toMatchObject({ type: 'refuse_intake' })
+        expect(refusals(action)).toEqual([
+            `The engine config (.luca/config.json) names ${CORE_XML} in junit_path, but git doesn't ignore it, so a test run could get it committed. Add it to .gitignore.`,
+        ])
+    })
+
+    test('an intake_read record without junit_paths_not_ignored reads as an empty list', () => {
+        const read = IntakeReadSchema.parse({
+            spec: specIssue({ number: 10 }),
+            sub_tickets: [],
+        })
+
+        expect(read.junit_paths_not_ignored).toEqual([])
     })
 })
 

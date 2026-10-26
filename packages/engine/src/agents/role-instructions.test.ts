@@ -3,7 +3,8 @@ import { describe, expect, test } from 'bun:test'
 import { roleInstructions } from './role-instructions'
 import { AgentRoleSchema } from './role-results'
 
-import { EngineConfigSchema } from '../config/engine-config'
+import { EngineConfigSchema, TestResultsSchema } from '../config/engine-config'
+import { checkToolCall, guardRoleOf, isWriter } from '../guards/role-rules'
 import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
 
 describe('instructions with several test commands', () => {
@@ -263,6 +264,90 @@ describe('the test-writer and a feature map folder (#597)', () => {
         expect(text).not.toContain('docs/feature-map.md')
         expect(text).toMatch(/pages[^\n]*first/)
         expect(text).toContain("area's page")
+    })
+})
+
+describe('a junit test command (#672)', () => {
+    const withJunit = EngineConfigSchema.parse({
+        ...PRACTICE_ENGINE_CONFIG,
+        checks: {
+            ...PRACTICE_ENGINE_CONFIG.checks,
+            test: [
+                {
+                    run: 'bun run ios:test:core',
+                    results: 'junit',
+                    junit_path: [
+                        'packages/ios/.derived/junit/core.xml',
+                        'packages/ios/.derived/junit/core-swift-testing.xml',
+                    ],
+                },
+            ],
+        },
+    })
+    const testWriter = (config: typeof withJunit) =>
+        roleInstructions({ role: 'test-writer', may_edit_tests: true, config })
+
+    test("every role's shell rules say options may follow it", () => {
+        const writers = AgentRoleSchema.options.filter((role) =>
+            isWriter(guardRoleOf({ role }))
+        )
+        expect(writers).toContain('test-writer')
+        expect(writers).toContain('implementer')
+        for (const role of writers) {
+            const text = roleInstructions({
+                role,
+                may_edit_tests: role === 'test-writer',
+                config: withJunit,
+            })
+            expect(text).toContain(
+                '- `bun run ios:test:core` (you may add options after it)\n'
+            )
+        }
+    })
+
+    test('for each results kind, the shell rules say options may follow a test command just when the guard lets them', () => {
+        const run = 'bun run ios:test:core'
+        for (const results of TestResultsSchema.options) {
+            const config = EngineConfigSchema.parse({
+                ...PRACTICE_ENGINE_CONFIG,
+                checks: {
+                    ...PRACTICE_ENGINE_CONFIG.checks,
+                    test: [
+                        results === 'junit'
+                            ? { run, results, junit_path: ['core.xml'] }
+                            : { run, results },
+                    ],
+                },
+            })
+            const said = roleInstructions({
+                role: 'implementer',
+                may_edit_tests: false,
+                config,
+            }).includes(`- \`${run}\` (you may add `)
+            const allowed = checkToolCall({
+                role: 'implementer',
+                may_edit_tests: false,
+                tool_name: 'Bash',
+                tool_input: { command: `${run} --filter AddingTests` },
+                worktree: '/tmp/worktree',
+                config,
+            }).allow
+            expect({ results, said }).toEqual({ results, said: allowed })
+        }
+    })
+
+    test('the test-writer is told to call #expect, #require or XCTAssert directly in a Swift test, and only with a junit command', () => {
+        const line =
+            "- In a .swift test file, write each test as a Swift Testing `@Test func` or an XCTest `func testSomething()`, and call `#expect`, `#require` or an `XCTAssert` function directly in its body: the engine counts them in the test's source, not as it runs."
+        expect(testWriter(withJunit)).toContain(line)
+        expect(testWriter(PRACTICE_ENGINE_CONFIG)).not.toContain('.swift')
+    })
+
+    test("the test-writer is told a Swift test's name format, and only with a junit command", () => {
+        const line =
+            '- For a .swift test, "name" is its type names and its function, joined by " > ": `RankingTests > addsMovie()` for a Swift Testing test (keeping argument labels, such as `ranks(score:)`), and `RankingXCTests > testAddsMovie` for an XCTest one. A @Test\'s display name is not part of it.'
+        expect(testWriter(withJunit)).toContain(line)
+        expect(testWriter(PRACTICE_ENGINE_CONFIG)).not.toContain('RankingTests')
     })
 })
 

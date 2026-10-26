@@ -4,8 +4,8 @@ import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
 
+import { runCaseTests } from './case-test-runner'
 import { prepareCheck, runGates, shellCheck } from './gate-runner'
-import { runBunTests } from './test-runner'
 
 import { EngineConfigSchema } from '../config/engine-config'
 
@@ -220,15 +220,21 @@ describe('runGates: the test time limit (#542)', () => {
     })
 })
 
-describe('runBunTests: the test time limit (#542)', () => {
+describe('runCaseTests: the test time limit (#542)', () => {
     test('stops each command at the limit given and says how to raise it', async () => {
         const folder = await mkdtemp(join(tmpdir(), 'luca-test-timeout-'))
         try {
             const started = Date.now()
 
-            const run = await runBunTests({
+            const run = await runCaseTests({
                 cwd: folder,
-                commands: ['sleep 5; bun test'],
+                commands: [
+                    {
+                        run: 'sleep 5; bun test',
+                        results: 'bun',
+                        junit_path: [],
+                    },
+                ],
                 test_files: [],
                 report_file: join(folder, 'report.xml'),
                 timeout_ms: 300,

@@ -161,3 +161,64 @@ describe('the slow test command (#563)', () => {
         expect(allowed).toContain('Bash(bun test .e2e.test *)')
     })
 })
+
+describe('a junit test command (#672)', () => {
+    // movie-rankings' shape (#668): swift test behind a package script.
+    const config = EngineConfigSchema.parse({
+        ...CONFIG,
+        checks: {
+            ...CONFIG.checks,
+            test: [
+                {
+                    run: 'bun run ios:test:core',
+                    results: 'junit',
+                    junit_path: [
+                        'packages/ios/.derived/junit/core.xml',
+                        'packages/ios/.derived/junit/core-swift-testing.xml',
+                    ],
+                },
+            ],
+        },
+    })
+    const decide = (role: GuardRole, command: string) =>
+        checkToolCall({
+            role,
+            may_edit_tests: usual(role),
+            tool_name: 'Bash',
+            tool_input: { command },
+            worktree: WORKTREE,
+            config,
+        })
+
+    test('a writer may run it with extra options, such as --filter', () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            expect(decide(role, 'bun run ios:test:core').allow).toBe(true)
+            expect(
+                decide(role, 'bun run ios:test:core --filter RankingTests')
+                    .allow
+            ).toBe(true)
+        }
+        expect(
+            decide('reviewer', 'bun run ios:test:core --filter RankingTests')
+                .allow
+        ).toBe(false)
+    })
+
+    test('it gets its permission rule, with a wildcard for extra options', () => {
+        const { allowed } = permissionRules({
+            role: 'implementer',
+            may_edit_tests: false,
+            config,
+        })
+        expect(allowed).toContain('Bash(bun run ios:test:core)')
+        expect(allowed).toContain('Bash(bun run ios:test:core *)')
+    })
+
+    test("the guard's shell help lists it with [args]", () => {
+        const decision = decide('implementer', 'curl https://example.com')
+        expect(decision.allow).toBe(false)
+        expect(decision.allow ? '' : decision.reason).toContain(
+            'bun run ios:test:core [args]'
+        )
+    })
+})

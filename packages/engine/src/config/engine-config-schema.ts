@@ -21,20 +21,69 @@ export const ENGINE_CONFIG_FILE = '.luca/config.json'
 
 /**
  * How the engine reads a test command's results: `bun` for bun's per-test
- * results (the red check and baseline use these), `pass_fail` for just its
- * exit code.
+ * results (the red check and baseline use these), `junit` for per-test
+ * results from the JUnit files the command writes (#668), `pass_fail` for
+ * just its exit code.
  */
-export const TestResultsSchema = z.enum(['bun', 'pass_fail'])
+export const TestResultsSchema = z.enum(['bun', 'junit', 'pass_fail'])
 
 export type TestResults = z.infer<typeof TestResultsSchema>
 
-/** One entry of a `checks.test` list: a command, or a command and its kind. */
+/**
+ * Whether a config path names a file inside the repo (#583): not absolute,
+ * not ending in `/` (a folder), and, once cleaned (`normalize`), neither the
+ * repo root nor a path that climbs out of it with `..`.
+ */
+const isFileInsideRepo = (path: string): boolean => {
+    const clean = normalize(path)
+    return (
+        !isAbsolute(path) &&
+        !path.endsWith('/') &&
+        clean !== '.' &&
+        clean !== '..' &&
+        !clean.startsWith('../')
+    )
+}
+
+/** One JUnit file a junit test command writes, relative to the repo root. */
+const JunitPathSchema = z.string().min(1).refine(isFileInsideRepo, {
+    message:
+        'must be a file inside the repo, relative to its root: not an absolute path, not one that leaves the repo with "..", and not ending in "/"',
+})
+
+/**
+ * One entry of a `checks.test` list: a command, or a command and its kind.
+ * A `junit` command names the JUnit files it writes in `junit_path` (#668),
+ * one path or a list; no other kind may have one.
+ */
 const TestCommandEntrySchema = z.union([
     z.string().min(1),
-    z.object({
-        run: z.string().min(1),
-        results: TestResultsSchema.optional(),
-    }),
+    z
+        .object({
+            run: z.string().min(1),
+            results: TestResultsSchema.optional(),
+            junit_path: z
+                .union([JunitPathSchema, z.array(JunitPathSchema).min(1)])
+                .optional(),
+        })
+        .refine(
+            ({ results, junit_path }) =>
+                results !== 'junit' || junit_path !== undefined,
+            {
+                message:
+                    'a "junit" test command needs junit_path: the JUnit files it writes, relative to the repo root',
+                path: ['junit_path'],
+            }
+        )
+        .refine(
+            ({ results, junit_path }) =>
+                results === 'junit' || junit_path === undefined,
+            {
+                message:
+                    'junit_path is only for a test command with "results": "junit"',
+                path: ['junit_path'],
+            }
+        ),
 ])
 
 /** A test command setting: one command, or a list of them (see `testCommands`). */
@@ -138,22 +187,6 @@ export const ModelsConfigSchema = z.object({
 })
 
 export type ModelsConfig = z.infer<typeof ModelsConfigSchema>
-
-/**
- * Whether a config path names a file inside the repo (#583): not absolute,
- * not ending in `/` (a folder), and, once cleaned (`normalize`), neither the
- * repo root nor a path that climbs out of it with `..`.
- */
-const isFileInsideRepo = (path: string): boolean => {
-    const clean = normalize(path)
-    return (
-        !isAbsolute(path) &&
-        !path.endsWith('/') &&
-        clean !== '.' &&
-        clean !== '..' &&
-        !clean.startsWith('../')
-    )
-}
 
 /**
  * The per-repo engine config: the gate commands, where tests live, the rule

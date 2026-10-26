@@ -4,8 +4,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { runCaseTests } from './case-test-runner'
 import { runGates } from './gate-runner'
-import { runBunTests } from './test-runner'
 
 import { EngineConfigSchema } from '../config/engine-config'
 
@@ -48,9 +48,11 @@ const gates = ({ name, exclusive }: { name: string; exclusive?: boolean }) =>
     })
 
 const bunRun = ({ name, exclusive }: { name: string; exclusive?: boolean }) =>
-    runBunTests({
+    runCaseTests({
         cwd: folder,
-        commands: [`${logged(name)}; true`],
+        commands: [
+            { run: `${logged(name)}; true`, results: 'bun', junit_path: [] },
+        ],
         test_files: [],
         report_file: join(folder, `${name}.xml`),
         timeout_ms: 10_000,

@@ -18,6 +18,7 @@ import { LOCKFILES } from './write-rules'
 
 import {
     featureMapPath,
+    givesPerTestResults,
     isFeatureMapFolder,
     type EngineConfig,
 } from '../config/engine-config'
@@ -98,10 +99,11 @@ export const permissionRules = ({
 }): { tools: string[]; allowed: string[]; disallowed: string[] } => {
     const commands = checkCommands({ role, config })
     const shell = role === 'learner' ? [] : readOnlyRules()
-    // A bun test command takes extra args (a file, `-t`) only when it is one
-    // plain command; one with shell syntax runs as its exact copy.
+    // A bun or junit test command takes extra args (a file, `-t`, `--filter`)
+    // only when it is one plain command; one with shell syntax runs as its
+    // exact copy.
     const testRules = commands.tests.flatMap(({ run, results }) =>
-        results !== 'bun' || wordsOf(run) === null
+        !givesPerTestResults(results) || wordsOf(run) === null
             ? [`Bash(${run})`]
             : [`Bash(${run})`, `Bash(${run} *)`]
     )

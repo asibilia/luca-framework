@@ -2,6 +2,10 @@
  * Carries out intake's steps on the tracker: reading the spec and its
  * tickets, and refusing the run (comments, and moving to needs-info).
  */
+import uniq from 'lodash/uniq'
+
+import { junitCommands } from '../config/engine-config'
+import type { GitAdapter } from '../git/git-adapter'
 import { outsideBlockerNumbers } from '../intake/intake-checks'
 import type { IntakeProblem } from '../intake/intake-schemas'
 import type { Journal } from '../journal/journal'
@@ -26,14 +30,40 @@ export const refusalComment = ({
     `${missing.map((line) => `- ${line}`).join('\n')}\n\n` +
     `Fix these, move the issue back to \`${READY_LABEL}\`, and start the run again.`
 
+/**
+ * The `junit_path` entries of the run's test and slow test commands that
+ * git, asked in the run's repo, doesn't ignore (#668). Empty without a git
+ * adapter or a repo on record.
+ */
+const junitPathsNotIgnored = async ({
+    journal,
+    git,
+}: {
+    journal: Journal
+    git?: GitAdapter
+}): Promise<string[]> => {
+    const start = journal.read().find(({ kind }) => kind === 'run_started')
+    if (start?.kind !== 'run_started') return []
+    const { config, repo } = start.content
+    if (git === undefined || repo === null) return []
+    const paths = uniq(
+        junitCommands({ config }).flatMap(({ junit_path }) => junit_path)
+    )
+    const ignored = new Set(await git.ignoredPaths({ cwd: repo, paths }))
+    return paths.filter((path) => !ignored.has(path))
+}
+
 export const readIntake = async ({
     spec_number,
     journal,
     tracker,
+    git,
 }: {
     spec_number: number
     journal: Journal
     tracker: Tracker
+    /** Asks which `junit_path` entries git ignores; left out, none are checked. */
+    git?: GitAdapter
 }) => {
     const spec = await tracker.readSpec({ spec_number })
     const subTickets = await tracker.listSubTickets({ spec_number })
@@ -42,6 +72,7 @@ export const readIntake = async ({
             tracker.readIssue({ number })
         )
     )
+    const notIgnored = await junitPathsNotIgnored({ journal, git })
     journal.append({
         kind: 'intake_read',
         ticket: null,
@@ -52,6 +83,10 @@ export const readIntake = async ({
             outside_blockers: outside.filter(
                 (issue): issue is TrackerIssue => issue !== null
             ),
+            // Left out when empty, so a run with none reads as before.
+            ...(notIgnored.length > 0 && {
+                junit_paths_not_ignored: notIgnored,
+            }),
         },
     })
 }

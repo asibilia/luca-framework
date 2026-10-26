@@ -28,6 +28,18 @@ const loose = (text: string): string => text.replace(/[\\'"`]/g, '')
 const NOT_LOADED_HINT =
     '. The file does not load yet, so every test( in its text counts, even one inside a string or a comment'
 
+/** `NOT_LOADED_HINT` for a `.swift` file whose tests don't build yet (#668). */
+const NOT_BUILT_HINT =
+    '. The tests do not build yet, so every @Test func and XCTest test func in its text counts, even one inside a comment'
+
+/**
+ * Whether `file` is a `.swift` test file in a run whose `junit` command
+ * wrote no JUnit file (#668): its tests don't build yet, so its test names
+ * are read from its text (see `swiftTestNamesIn`).
+ */
+const notBuilt = ({ run, file }: { run: TestRun; file: string }): boolean =>
+    run.junit_missing === true && file.endsWith('.swift')
+
 /**
  * Whether a test name written in a file's text (`own`) is the test bun prints
  * as `full_name`: equal to it, at its end after " > " (not split on the last
@@ -102,6 +114,19 @@ const checkNewTest = ({
     }
     if (found?.status === 'skipped') return { problem: `${label}: is skipped` }
     if (found) return { note: `${label}: fails, as it should` }
+    if (notBuilt({ run: current, file: test.file })) {
+        // A Swift test that uses code not written yet doesn't build, so its
+        // command wrote no results (#668). It counts as failing if one of
+        // the file's test names is its name.
+        const own = testNamesIn({ source, file: test.file })
+        return own.some((name) =>
+            namesTest({ full_name: test.name, own: name })
+        )
+            ? { note: `${label}: fails (the tests do not build yet)` }
+            : {
+                  problem: `${label}: not found in the file (map a @Test func, or an XCTest func whose name starts with test, by its type names and function, such as "RankingTests > addsMovie()")`,
+              }
+    }
     if (current.files_without_results.includes(test.file)) {
         // A test file that imports code not written yet fails to load, so
         // bun reports none of its tests. The test counts as failing if its
@@ -116,18 +141,51 @@ const checkNewTest = ({
 }
 
 /**
+ * Whether an old test is in a `.swift` file whose tests don't build yet
+ * (#668), that the run has no results for, and whose text still names it.
+ */
+const notRun = ({
+    old,
+    current,
+    texts,
+}: {
+    old: TestCase
+    current: TestRun
+    texts: Record<string, string | null>
+}): boolean => {
+    const text = texts[old.file]
+    if (
+        !notBuilt({ run: current, file: old.file }) ||
+        current.cases.some(({ file }) => file === old.file) ||
+        text === null ||
+        text === undefined
+    ) {
+        return false
+    }
+    return testNamesIn({ source: text, file: old.file }).some((own) =>
+        namesTest({ full_name: old.full_name, own })
+    )
+}
+
+/**
  * Every old test (passed at the baseline) still passes, in its file or
  * moved (#609): one missing from its file but now in another test file
  * under the same full name, a case the baseline didn't have there. Each
  * such case stands for one old test only, so a name several old tests had
  * counts as moved once.
+ *
+ * One in a `.swift` file whose tests don't build yet (#668), with no results
+ * for that file, is not run: noted, not missing, while its name is still in
+ * the file's text (`texts`).
  */
 const checkOldTests = ({
     baseline,
     current,
+    texts,
 }: {
     baseline: TestRun
     current: TestRun
+    texts: Record<string, string | null>
 }): { problems: string[]; notes: string[] } => {
     const problems: string[] = []
     const notes: string[] = []
@@ -151,7 +209,11 @@ const checkOldTests = ({
             (found) => !claimed.has(found) && found.full_name === old.full_name
         )
         if (moved === undefined) {
-            problems.push(`${label} is missing`)
+            if (notRun({ old, current, texts })) {
+                notes.push(
+                    `${label}: not run (the tests do not build yet); the gates run it`
+                )
+            } else problems.push(`${label} is missing`)
             continue
         }
         claimed.add(moved)
@@ -174,7 +236,9 @@ const checkOldTests = ({
  * @param baseline - The test run before the test-writer started.
  * @param current - The test run after the test-writer finished.
  * @param test_files - The worktree's test files, per the engine config.
- * @param sources - The text of each mapped test file, `null` if missing.
+ * @param sources - The text of each mapped test file, `null` if missing,
+ *   and of each `.swift` file with an old test, whose name in it keeps it
+ *   from counting as missing when its tests don't build yet (#668).
  * @param changed_test_sources - Each test file the ticket changed, as it was
  *   at the ticket's base and as it is now: a new test is a name in the
  *   second the first doesn't have (#581), and no changed or deleted test
@@ -233,8 +297,8 @@ export const checkRed = ({
     // A name some changed (or deleted) test file had at the base is a moved
     // test, not a new one, whichever file it is in now (#609).
     const old_names = new Set(
-        changed_test_sources.flatMap(({ base }) =>
-            base === null ? [] : testNamesIn({ source: base })
+        changed_test_sources.flatMap(({ file, base }) =>
+            base === null ? [] : testNamesIn({ source: base, file })
         )
     )
     for (const { file, base, current: text } of changed_test_sources) {
@@ -248,7 +312,10 @@ export const checkRed = ({
         // load yet) is read from its text alone.
         const loaded = !current.files_without_results.includes(file)
         const ran = current.cases.filter((found) => found.file === file)
-        for (const name of addedTestNames({ base, current: text })) {
+        const hint = notBuilt({ run: current, file })
+            ? NOT_BUILT_HINT
+            : NOT_LOADED_HINT
+        for (const name of addedTestNames({ base, current: text, file })) {
             if (old_names.has(name)) continue
             const own = name.trim()
             if (
@@ -259,7 +326,7 @@ export const checkRed = ({
             }
             if (!mapped.some((full) => namesTest({ full_name: full, own }))) {
                 problems.push(
-                    `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)${loaded ? '' : NOT_LOADED_HINT}`
+                    `"${name}" in ${file}: a new test the map doesn't name (map it to a criterion, or remove it)${loaded ? '' : hint}`
                 )
             }
         }
@@ -295,7 +362,19 @@ export const checkRed = ({
         if ('problem' in outcome) problems.push(outcome.problem)
         else notes.push(outcome.note)
     }
-    const old = checkOldTests({ baseline, current })
+    const old = checkOldTests({
+        baseline,
+        current,
+        texts: {
+            ...Object.fromEntries(
+                changed_test_sources.map(({ file, current: text }) => [
+                    file,
+                    text,
+                ])
+            ),
+            ...sources,
+        },
+    })
     problems.push(...old.problems)
     notes.push(...old.notes)
     return { ok: problems.length === 0, problems, notes }

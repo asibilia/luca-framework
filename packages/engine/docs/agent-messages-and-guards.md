@@ -91,7 +91,14 @@ the network or local ports, or gets Paseo or any MCP tool but the engine's own
    closed: unknown tools, paths outside the worktree, and shell commands off
    the list are denied. A shell call is one plain command: no chains, pipes,
    redirects, or subshells. Under `dontAsk`, only the role's pre-approved
-   calls (`permissionRules`) run at all.
+   calls (`permissionRules`) run at all. A test command with per-test
+   results, `bun` or `junit` (#672), may take extra words after it, such as
+   `--filter RankingTests` for one Swift test; the shell help shows it as
+   `bun run ios:test:core [args]`, and every prompt's shell rules say options
+   may follow it. With a junit command in the config, the test-writer's
+   prompt also says how to write a `.swift` test the engine can count
+   (`#expect`, `#require` or `XCTAssert` directly in its body) and how its
+   name reads (`RankingTests > addsMovie()`).
 2. **The sandbox.** Absolute paths only: git's shared folder, the worktree's
    `.git`, `node_modules`, lockfiles, and the test setup files are never
    writable; an implementer that

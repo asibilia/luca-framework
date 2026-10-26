@@ -141,6 +141,29 @@ inside a string or a comment; the problem then adds "The file does not load
 yet, so every test( in its text counts, even one inside a string or a
 comment".
 
+**Swift tests that don't build yet (#668).** A `.swift` test file's names
+come from `swiftTestNamesIn` (`gates/swift-test-names.ts`): each `@Test func`
+with its argument labels (`addsZero(n:)`, `adds(_:)`), and each XCTest
+`func test…()` with no parameters (`testAddsMovie`). A Swift test that uses
+code not written yet doesn't compile, so its `junit` command fails and writes
+no JUnit file, and the red run has `junit_missing`. Then, for a `.swift`
+file:
+
+- A mapped test whose name is among the file's test names counts as failing:
+  `"RankingTests > addsMovie()" in Tests/CoreTests/RankingTests.swift: fails
+  (the tests do not build yet)`. One that isn't is the problem `…: not found
+  in the file (map a @Test func, or an XCTest func whose name starts with
+  test, by its type names and function, such as "RankingTests >
+  addsMovie()")`.
+- An unmapped new test's problem ends ". The tests do not build yet, so every
+  @Test func and XCTest test func in its text counts, even one inside a
+  comment".
+- An old test still named in the file's current text is noted `old test "…"
+  in …: not run (the tests do not build yet); the gates run it`, not missing.
+  One whose name is gone is still `is missing`.
+
+Bun test files in the same run keep the rules above.
+
 **Moved tests (#609).** A test-writer may split a too-big test file inside
 the ticket that needs it. A name that any test file the ticket changed or
 deleted had at its base is not new, whichever file it is in now, so it needs
@@ -153,8 +176,10 @@ moved once; the rest are missing.
 **Timings (#518).** The journal records how long things took. A gate check
 has `duration_ms`, how long its command ran, and the `prepare` check also
 `wait_ms`, how long it waited for a prepare slot. A test case in a test run
-has `duration_ms` (from bun's JUnit `time`) and `assertions` (its `expect()`
-count, #581). All of them are optional: a journal written before they existed
+has `duration_ms` (from its JUnit `time`: bun's, or a `junit` command's
+files, #668) and `assertions` (its `expect()` count, #581; for a Swift case,
+the `#expect`, `#require` and `XCTAssert` calls in its function's body, and
+none for one the engine can't tie to a single `.swift` file). All of them are optional: a journal written before they existed
 has none, and nothing that reads them needs them.
 
 **A test that checks nothing** (#581). A ticket's gates journal `cases` in

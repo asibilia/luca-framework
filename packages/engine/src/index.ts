@@ -61,7 +61,7 @@ export {
     ENGINE_EVENT_METHOD,
 } from './board/paseo-board-link'
 export {
-    bunTestCommands,
+    caseTestCommands,
     DecisionModelConfigSchema,
     decisionModelOf,
     ENGINE_CONFIG_FILE,
@@ -143,16 +143,12 @@ export {
     runEngine,
     startRun,
 } from './core/execute'
+export { runCaseTests } from './gates/case-test-runner'
 export { runGates } from './gates/gate-runner'
 export * from './gates/gate-schemas'
 export { scanLeftovers } from './gates/leftover-scan'
 export { checkRed } from './gates/red-check'
-export {
-    parseJunit,
-    runBunTests,
-    runTests,
-    testFilesAmong,
-} from './gates/test-runner'
+export { parseJunit, runTests, testFilesAmong } from './gates/test-runner'
 export {
     createGitAdapter,
     type EngineCommit,

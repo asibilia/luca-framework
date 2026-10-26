@@ -106,6 +106,7 @@ Tests:
 - `packages/engine/src/cli/luca-command.test.ts`
 - `packages/engine/src/cli/setup.test.ts`
 - `packages/engine/src/cli/setup-checks.test.ts`
+- `packages/engine/src/cli/setup-junit.test.ts`
 - `packages/engine/src/cli/init.test.ts`
 - `packages/engine/src/cli/doctor.test.ts`
 - `packages/engine/src/doctor/v13-manifest.test.ts`

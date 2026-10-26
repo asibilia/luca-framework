@@ -18,17 +18,66 @@ import type { BuildAction } from './decide-build'
 import { leaveOutIn, ticketChanges, watchPrepare } from './worktree-changes'
 
 import {
-    bunTestCommands,
+    caseTestCommands,
+    hasJunitCommand,
     hasSlowTests,
     testTimeoutOf,
+    type TestCommand,
 } from '../config/engine-config'
 import { checkAlreadyDone } from '../gates/already-done-check'
+import { runCaseTests } from '../gates/case-test-runner'
 import { prepareCheck } from '../gates/gate-runner'
 import {
     fileTestsCommand,
+    isBunTestFile,
     onlyTestFiles,
-    runBunTests,
 } from '../gates/test-runner'
+
+/**
+ * The commands that run the named test files: each `bun` command with the
+ * files after it, or, with a slow command, plain `bun test` with them (the
+ * fast command would leave out the slow files named, #564). With a `junit`
+ * command (#668), only files bun can run go to bun, and each `junit`
+ * command runs whole when a named file is one bun can't run.
+ */
+const namedFileCommands = ({
+    context,
+    runnable,
+}: {
+    context: BuildContext
+    runnable: string[]
+}): TestCommand[] => {
+    const junit = hasJunitCommand({ config: context.config })
+    const bun_files = junit ? runnable.filter(isBunTestFile) : runnable
+    const run_junit = bun_files.length < runnable.length
+    if (hasSlowTests({ config: context.config })) {
+        const plain: TestCommand = {
+            run: fileTestsCommand({ files: bun_files }),
+            results: 'bun',
+            junit_path: [],
+        }
+        return [
+            ...(bun_files.length === 0 ? [] : [plain]),
+            ...caseTestCommands(context).filter(
+                ({ results }) => run_junit && results === 'junit'
+            ),
+        ]
+    }
+    return caseTestCommands(context).flatMap((command) => {
+        if (command.results === 'junit') return run_junit ? [command] : []
+        return bun_files.length === 0
+            ? []
+            : [
+                  {
+                      ...command,
+                      run: onlyTestFiles({
+                          command: command.run,
+                          files: bun_files,
+                      }),
+                  },
+              ]
+    })
+}
 
 /**
  * Checks a test-writer's `already_done` evidence (#495) in the ticket's
@@ -36,8 +85,7 @@ import {
  * finds each named commit, next to the commit the worktree started from,
  * and a run of just the named test files that exist, are test files, and
  * are as they are on the base, after the prepare command if the config has
- * one. With a slow command (#564), the named files, slow ones included, run
- * with plain `bun test`. What the check means is `checkAlreadyDone`'s; replay
+ * one (see `namedFileCommands`). What the check means is `checkAlreadyDone`'s; replay
  * makes a failed one a failed try for the test-writer.
  */
 export const checkAlreadyDoneIn = async ({
@@ -95,18 +143,13 @@ export const checkAlreadyDoneIn = async ({
     const run =
         runnable.length === 0 || (prepare !== null && !prepare.ok)
             ? null
-            : await runBunTests({
+            : await runCaseTests({
                   cwd: path,
-                  // With a slow command, the fast command would leave out
-                  // the slow files named (#564): plain `bun test` runs all.
-                  commands: hasSlowTests({ config: context.config })
-                      ? [fileTestsCommand({ files: runnable })]
-                      : bunTestCommands(context).map((command) =>
-                            onlyTestFiles({ command, files: runnable })
-                        ),
+                  commands: namedFileCommands({ context, runnable }),
                   test_files: runnable,
                   timeout_ms: testTimeoutOf({ config: context.config }),
                   test_concurrency: context.config.test_concurrency,
+                  bun_files_only: hasJunitCommand({ config: context.config }),
                   report_file: await reportFile({
                       context,
                       ticket: action.ticket,
