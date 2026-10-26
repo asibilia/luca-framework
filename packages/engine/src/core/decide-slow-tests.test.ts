@@ -235,6 +235,32 @@ describe('slow tests at the final review (#563)', () => {
         ])
     })
 
+    test('slow tests failing beside a code finding: the implementer that starts the fix round gets the finding and the failed slow tests', () => {
+        const round = (ok: boolean) => [
+            ...built(),
+            ...lensRound({
+                round: 1,
+                slow_due: true,
+                findings: { security: [SECURITY] },
+            }),
+            slowTestsRun({ ok }),
+            finalReviewFixing({ round: 1 }),
+        ]
+        const fixer = stepAfter(round(false))
+        expect(fixer).toMatchObject({
+            type: 'launch_final_fixer',
+            role: 'implementer',
+        })
+        if (fixer.type !== 'launch_final_fixer') throw new Error(fixer.type)
+        expect(fixer.prompt).toContain('security-S1')
+        expect(fixer.prompt).toContain('## The slow tests failed too')
+        expect(fixer.prompt).toContain('slow_test failed:\n1 fail')
+
+        const clean = stepAfter(round(true))
+        if (clean.type !== 'launch_final_fixer') throw new Error(clean.type)
+        expect(clean.prompt).not.toContain('## The slow tests failed too')
+    })
+
     test('a fix round opened only by slow tests ends at its push, with no new lens round', () => {
         const failedGates = [
             ...slowFailed(),

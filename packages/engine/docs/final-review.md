@@ -84,8 +84,10 @@ runs, even for a one-ticket spec.
   was already a full read), and none after a `ship`.
 - **Failed tries.** A lens's failed try launches a fresh lens, a fixer's gets
   a follow-up in its session (fresh with none); `MAX_FIX_ROUNDS` failed tries
-  per role over the whole final review, or `MAX_ENGINE_FAILURES` engine
-  failures of one role in a row, are stuck (`agent_failed`). So are a bad test
+  of one role in a row (a finished turn of the role gives its tries back, so
+  a lens that failed once in round 1 starts the fresh pass with all its
+  tries), or `MAX_ENGINE_FAILURES` engine failures of one role in a row, are
+  stuck (`agent_failed`). So are a bad test
   while fixing (`bad_test`), leftovers (`leftovers_found`), and the gate fix
   loop at its cap (`gates_failed`).
 - **Stuck.** `final_review_stuck`, then the tickets' worktrees are removed
@@ -102,6 +104,11 @@ runs, even for a one-ticket spec.
   (`changeset_dropped`), as at any engine commit. The PR then opens with an "Open findings" section at the very
   top (each with its lens, severity, and file, then the edits' files as
   "Uncommitted fixer edits, not reviewed"), and the worktrees are removed.
+  A round that never settled is settled for the PR over the lenses that
+  finished it (`finalPullRequestFindings`): their blocking findings are
+  open, their nits and the "won't fix" answers they let go are listed, and
+  a finding they cleared is gone; the open fix round's findings stay open
+  for the lenses that never finished.
   The changeset commit, made after, holds only the changeset (#509). `retry`
   journals `final_review_retried`: fresh fixers (no session kept) and fresh
   counts, keeping the owner's edits in the run branch's worktree. The open

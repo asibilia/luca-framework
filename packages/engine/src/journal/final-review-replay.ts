@@ -143,7 +143,10 @@ export const finalReviewAfter = ({
             return finalResultChange({
                 review: {
                     ...review,
+                    // A finished turn gives the role its tries back: the
+                    // cap is on failed tries in a row.
                     agent_failures: omit(review.agent_failures, role),
+                    failed_tries: omit(review.failed_tries, role),
                     engine_failures: omit(review.engine_failures, role),
                     sessions: sessionsAfter({
                         sessions: review.sessions,

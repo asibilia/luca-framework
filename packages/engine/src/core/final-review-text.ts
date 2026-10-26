@@ -190,13 +190,27 @@ const findingsSection = ({
         FIX_RULES,
     ].join('\n\n')
 
+/** The round's failed slow tests, beside the implementer's code findings (#563). */
+const slowTestsSection = ({
+    slow_tests,
+}: {
+    slow_tests: ReplayedGates
+}): string =>
+    [
+        '## The slow tests failed too',
+        'Once every lens finished, the engine ran the slow tests on the run branch, and these failed. Fix the code so they pass too: the gates run them again after you answer.',
+        failedChecks({ gates: slow_tests }),
+    ].join('\n\n')
+
 /**
  * The prompt a fresh final review fixer starts with: its task, the spec,
  * every ticket, and its findings (the test findings for the test-writer,
  * the code findings for the implementer, or the findings the other fixer
- * answered `other_role`, #616). An implementer launched only to
- * fix failed gates (the round had only test findings) gets the gates'
- * output instead. The engine journals it word for word.
+ * answered `other_role`, #616). The implementer that starts a round whose
+ * slow tests failed (#563) gets their output beside its code findings. An
+ * implementer launched only to fix failed gates (the round had only test
+ * findings) gets the gates' output instead. The engine journals it word
+ * for word.
  *
  * @example
  * const prompt = finalFixerPrompt({ role: 'implementer', snapshot, fix, gates: null })
@@ -206,6 +220,7 @@ export const finalFixerPrompt = ({
     snapshot,
     fix,
     gates,
+    slow_tests,
     run_notes,
     sections,
 }: {
@@ -214,6 +229,8 @@ export const finalFixerPrompt = ({
     fix: FinalReviewFix
     /** Failed gates to fix, for an implementer with no findings left. */
     gates: ReplayedGates | null
+    /** The round's failed slow tests, for the implementer that starts it. */
+    slow_tests?: ReplayedGates | null
     /** Notes earlier agents in the run left, oldest first. */
     run_notes?: PromptRunNote[]
     /** More sections after the task, such as a follow-up's message. */
@@ -239,6 +256,7 @@ export const finalFixerPrompt = ({
         FIXER_TASKS[role],
         ...workSections({ snapshot }),
         task,
+        ...(slow_tests?.ok === false ? [slowTestsSection({ slow_tests })] : []),
         ...(sections ?? []),
         ...runNotesSection({ run_notes: run_notes ?? [] }),
     ].join('\n\n')
