@@ -173,7 +173,7 @@ export const resultJsonSchema = ({
  * hooks.
  *
  * @example
- * const options = agentOptions({ role, may_edit_tests, cwd, model: CLAUDE_MODEL, effort: 'xhigh', claude_path, config, common_git_dir, home, env, guard_hook, luca_server: null, delivery_hook: null })
+ * const options = agentOptions({ role, may_edit_tests, cwd, model: CLAUDE_MODEL, effort: 'xhigh', claude_path, config, common_git_dir, home, user_temp_dir, env, guard_hook, luca_server: null, delivery_hook: null })
  */
 export const agentOptions = ({
     role,
@@ -185,6 +185,7 @@ export const agentOptions = ({
     config,
     common_git_dir,
     home,
+    user_temp_dir,
     env,
     guard_hook,
     luca_server,
@@ -203,6 +204,8 @@ export const agentOptions = ({
     config: EngineConfig
     common_git_dir: string
     home: string
+    /** macOS's per-user temp folder (`darwinUserTempDir`), or `null`. */
+    user_temp_dir: string | null
     env: Record<string, string>
     guard_hook: HookCallback
     /** The engine's `luca` server (`createLucaServer`), or `null` for none. */
@@ -253,6 +256,7 @@ export const agentOptions = ({
             worktree: cwd,
             common_git_dir,
             home,
+            user_temp_dir,
             config,
         }),
         env,

@@ -9,7 +9,7 @@ turn. A module in another folder is on its folder's page; the
 | `src/guards/role-rules.ts` | Pure: what each role may write and run, checked per tool call (`checkToolCall`) ([its modules](#role-rules-modules)). |
 | `src/guards/guard-hook.ts` | The guard as the SDK's `PreToolUse` hook; it counts each agent's running helpers. |
 | `src/guards/helper-rules.ts` | Pure: the read-only `searcher` helper's definition, and what a helper call and a helper's own calls may do (#627). |
-| `src/guards/sandbox-settings.ts` | Pure: each role's OS sandbox, in absolute paths. |
+| `src/guards/sandbox-settings.ts` | Pure: each role's OS sandbox, in absolute paths, with macOS's per-user temp folder writable for writers. |
 | `src/guards/after-turn-check.ts` | Pure: compares a worktree before and after an agent's turn. |
 | `src/guards/worktree-state.ts` | The after-turn check: finds a turn's violations and undoes them ([its modules](#worktree-state-modules)). The engine's own refs (the run branch, other tickets' branches) don't count, and a new ref counts only at a commit the turn made. |
 

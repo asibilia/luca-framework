@@ -80,6 +80,7 @@ Tests:
 - `packages/engine/src/guards/role-rules-check-commands.test.ts`
 - `packages/engine/src/guards/role-rules-permissions.test.ts`
 - `packages/engine/src/guards/sandbox-settings.test.ts`
+- `packages/engine/src/agents/launch-paths.test.ts`
 - `packages/engine/src/guards/worktree-state.test.ts`
 - `packages/engine/src/guards/shared-git-filters.test.ts`
 - `packages/engine/src/core/agent-guards.e2e.test.ts`

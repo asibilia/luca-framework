@@ -17,6 +17,7 @@ const PATHS = {
     worktree: '/private/var/runs/run-1/tickets/11',
     common_git_dir: '/Users/me/code/app/.git',
     home: '/Users/me',
+    user_temp_dir: '/private/var/folders/ab/cd1234/T',
 }
 
 const DENY_READ = [
@@ -150,6 +151,43 @@ describe('sandboxSettings', () => {
         }
     })
 
+    test("test-writers and implementers may also write macOS's per-user temp folder, where Foundation stages atomic writes", () => {
+        for (const role of ['test-writer', 'implementer'] as const) {
+            for (const may_edit_tests of [true, false]) {
+                expect(
+                    sandboxSettings({
+                        role,
+                        may_edit_tests,
+                        config: CONFIG,
+                        ...PATHS,
+                    }).filesystem?.allowWrite
+                ).toEqual(['/private/var/folders/ab/cd1234/T'])
+            }
+        }
+    })
+
+    test('reviewers and the learner get no extra write path, and no role does without a per-user temp folder', () => {
+        for (const role of ['reviewer', 'learner'] as const) {
+            expect(
+                sandboxSettings({
+                    role,
+                    may_edit_tests: false,
+                    config: CONFIG,
+                    ...PATHS,
+                }).filesystem?.allowWrite
+            ).toBeUndefined()
+        }
+        expect(
+            sandboxSettings({
+                role: 'implementer',
+                may_edit_tests: false,
+                config: CONFIG,
+                ...PATHS,
+                user_temp_dir: null,
+            }).filesystem
+        ).not.toHaveProperty('allowWrite')
+    })
+
     test('refuses relative paths, which the sandbox does not hold on macOS', () => {
         expect(() =>
             sandboxSettings({
@@ -160,5 +198,14 @@ describe('sandboxSettings', () => {
                 worktree: 'tickets/11',
             })
         ).toThrow('absolute')
+        expect(() =>
+            sandboxSettings({
+                role: 'implementer',
+                may_edit_tests: false,
+                config: CONFIG,
+                ...PATHS,
+                user_temp_dir: 'folders/T',
+            })
+        ).toThrow('absolute user_temp_dir')
     })
 })

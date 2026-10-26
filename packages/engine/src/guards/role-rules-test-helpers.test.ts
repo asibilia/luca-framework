@@ -29,6 +29,7 @@ const SANDBOX_PATHS = {
     worktree: '/runs/run-1/tickets/11',
     common_git_dir: '/repo/.git',
     home: '/home/owner',
+    user_temp_dir: null,
 }
 
 describe('the guard and test_helper_patterns (#619)', () => {

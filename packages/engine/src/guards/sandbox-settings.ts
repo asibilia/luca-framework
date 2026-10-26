@@ -2,6 +2,7 @@ import { isAbsolute, join } from 'node:path'
 
 import type { SandboxSettings } from '@anthropic-ai/claude-agent-sdk'
 
+import { isWriter } from './guard-roles'
 import { LOCKFILES, type GuardRole } from './role-rules'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -37,8 +38,13 @@ const mustBeAbsolute = (paths: Record<string, string>): void => {
  * learner, and a test-writer that may not edit tests may not write the
  * worktree at all.
  *
+ * Test-writers and implementers, who run the test commands, may also write
+ * macOS's per-user temp folder (`user_temp_dir`), where Foundation stages
+ * atomic writes: without it, `swift test` and `xcodebuild` can't rebuild.
+ * Nothing else is opened, and nothing at all without that folder.
+ *
  * @example
- * const sandbox = sandboxSettings({ role: 'implementer', may_edit_tests: false, worktree, common_git_dir, home, config })
+ * const sandbox = sandboxSettings({ role: 'implementer', may_edit_tests: false, worktree, common_git_dir, home, user_temp_dir, config })
  */
 export const sandboxSettings = ({
     role,
@@ -46,6 +52,7 @@ export const sandboxSettings = ({
     worktree,
     common_git_dir,
     home,
+    user_temp_dir,
     config,
 }: {
     role: GuardRole
@@ -56,9 +63,19 @@ export const sandboxSettings = ({
     /** The repo's shared `.git` folder (`git rev-parse --git-common-dir`). */
     common_git_dir: string
     home: string
+    /**
+     * macOS's per-user temp folder (`darwinUserTempDir`), real and
+     * absolute, or `null` off macOS or when it can't be found.
+     */
+    user_temp_dir: string | null
     config: EngineConfig
 }): SandboxSettings => {
-    mustBeAbsolute({ worktree, common_git_dir, home })
+    mustBeAbsolute({
+        worktree,
+        common_git_dir,
+        home,
+        ...(user_temp_dir === null ? {} : { user_temp_dir }),
+    })
     const git = [common_git_dir, join(worktree, '.git')]
     const inWorktree = (patterns: string[]) =>
         patterns.map((pattern) => join(worktree, pattern))
@@ -87,6 +104,9 @@ export const sandboxSettings = ({
             allowLocalBinding: false,
         },
         filesystem: {
+            ...(user_temp_dir !== null && isWriter(role)
+                ? { allowWrite: [user_temp_dir] }
+                : {}),
             denyWrite: [...git, ...byRole[role]],
             denyRead: SECRET_PATHS.map((path) => join(home, path)),
         },

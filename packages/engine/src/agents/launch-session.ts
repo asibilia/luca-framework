@@ -25,7 +25,12 @@ import {
 } from './claude-messages'
 import { agentEnv, agentOptions, checkLaunchModel } from './claude-options'
 import { createInputChannel } from './input-channel'
-import { commonGitDir, realClaudePath } from './launch-paths'
+import {
+    commonGitDir,
+    darwinUserTempDir,
+    GETCONF_USER_TEMP_DIR,
+    realClaudePath,
+} from './launch-paths'
 import { createDeliveryHook, createLucaServer } from './message-tool'
 import {
     nextOutcome,
@@ -116,6 +121,10 @@ export const createLaunch = ({
             config,
             common_git_dir: gitDir,
             home: realpathSync(homedir()),
+            user_temp_dir: await darwinUserTempDir({
+                platform: process.platform,
+                getconf: GETCONF_USER_TEMP_DIR,
+            }),
             env: agentEnv({ source: process.env }),
             guard_hook: createGuardHook({
                 role: guardRoleOf({ role }),

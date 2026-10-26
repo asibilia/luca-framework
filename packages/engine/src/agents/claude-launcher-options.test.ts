@@ -127,6 +127,24 @@ describe('the options', () => {
         expect(options?.disallowedTools).toContain('Edit(src/**/*.test.ts)')
     })
 
+    test("a writer may also write macOS's per-user temp folder, at its real path", async () => {
+        const fake = fakeQuery({ messages: [INIT, result({})] })
+        await launch({ query: fake.query, role: 'implementer' })
+        const allowWrite =
+            fake.calls[0]?.options?.sandbox?.filesystem?.allowWrite
+        if (process.platform !== 'darwin') {
+            expect(allowWrite).toBeUndefined()
+            return
+        }
+        // Foundation stages atomic writes here, not in $TMPDIR, so a Swift
+        // rebuild inside the sandbox needs it.
+        const asked = Bun.spawnSync(['getconf', 'DARWIN_USER_TEMP_DIR'])
+            .stdout.toString()
+            .trim()
+        expect(allowWrite).toEqual([realpathSync(asked)])
+        expect(allowWrite?.[0]?.startsWith('/private/var/folders/')).toBe(true)
+    })
+
     test('the guard hook denies what the role may not do, and counts it', async () => {
         const fake = fakeQuery({ messages: [INIT], hang: true })
         const running = launch({
