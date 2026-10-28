@@ -1,9 +1,11 @@
 /**
  * The ticket's own slow test files through a slow command's `run_files`
  * (#683): each command with `run_files` runs the ticket's changed test
- * files it owns, as one `pass_fail` check named `own_slow_test`.
+ * files it owns, as one `pass_fail` check named `own_slow_test`. The red
+ * check runs those of them that hold a mapped test the same way.
  */
 import type { GateCheck } from './gate-schemas'
+import type { SlowRedRun } from './red-check'
 import { shellCheck } from './shell-check'
 import { testFilesAmong, TEST_TIMEOUT_HINT } from './test-runner'
 import { inTestSlot } from './test-slots'
@@ -12,6 +14,7 @@ import {
     RUN_FILES_PLACEHOLDER,
     type OwnSlowCommand,
 } from '../config/engine-config'
+import { runShell } from '../shell/run-command'
 
 /** One slow command's `run_files` and the ticket's files it owns. */
 export type OwnSlowRun = { run_files: string; files: string[] }
@@ -53,6 +56,56 @@ const quoted = (file: string): string => `'${file.replaceAll("'", "'\\''")}'`
  */
 export const filledRunFiles = ({ run_files, files }: OwnSlowRun): string =>
     run_files.replaceAll(RUN_FILES_PLACEHOLDER, files.map(quoted).join(' '))
+
+/**
+ * The red check's own slow runs (#683): each run, in order, with only its
+ * files that hold a mapped test (`mapped_files`), each in a test slot (#544)
+ * with the test commands' time limit. A run left with no file is not run.
+ *
+ * @example
+ * const slow_runs = await slowRedRuns({ runs, mapped_files: ['ui/menu.test.ts'], cwd, timeout_ms, test_concurrency, exclusive })
+ */
+export const slowRedRuns = async ({
+    runs,
+    mapped_files,
+    cwd,
+    timeout_ms,
+    test_concurrency,
+    exclusive,
+}: {
+    runs: OwnSlowRun[]
+    mapped_files: string[]
+    cwd: string
+    timeout_ms: number
+    /** The config's `test_concurrency`; left out, no cap. */
+    test_concurrency: number | undefined
+    exclusive: boolean
+}): Promise<SlowRedRun[]> => {
+    const ended: SlowRedRun[] = []
+    for (const { run_files, files: owned } of runs) {
+        const files = owned.filter((file) => mapped_files.includes(file))
+        if (files.length === 0) continue
+        const result = await inTestSlot({
+            test_concurrency,
+            exclusive,
+            work: () =>
+                runShell({
+                    command: filledRunFiles({ run_files, files }),
+                    cwd,
+                    timeout_ms,
+                }),
+        })
+        ended.push({
+            files,
+            ended: result.timed_out
+                ? 'timed_out'
+                : result.exit_code === 0
+                  ? 'passed'
+                  : 'failed',
+        })
+    }
+    return ended
+}
 
 /**
  * Runs each own slow run as an `own_slow_test` check, in order, judged by

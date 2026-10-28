@@ -14,6 +14,17 @@ export type ChangedTestSource = {
     current: string | null
 }
 
+/**
+ * One slow command's `run_files` run in the red check (#683): the files it
+ * got (those of the ticket's own slow files that hold a mapped test), and
+ * how it ended. A `pass_fail` run gives no per-test results, so its exit
+ * code judges every mapped test in its files.
+ */
+export type SlowRedRun = {
+    files: string[]
+    ended: 'failed' | 'passed' | 'timed_out'
+}
+
 const lastPart = (name: string): string =>
     (name.split(' > ').at(-1) ?? name).trim()
 
@@ -92,11 +103,13 @@ const checkNewTest = ({
     current,
     test_files,
     sources,
+    slow_runs,
 }: {
     test: TestRef
     current: TestRun
     test_files: Set<string>
     sources: Record<string, string | null>
+    slow_runs: SlowRedRun[]
 }): { problem: string } | { note: string } => {
     const label = `"${test.name}" in ${test.file}`
     if (!test_files.has(test.file)) {
@@ -105,6 +118,20 @@ const checkNewTest = ({
     const source = sources[test.file]
     if (source === null || source === undefined) {
         return { problem: `${label}: the file does not exist` }
+    }
+    const slow = slow_runs.filter(({ files }) => files.includes(test.file))
+    if (slow.length > 0) {
+        // A slow file's run gives no per-test results (#683): the test
+        // counts if its name is in the file, and its run's exit code judges
+        // it. A run that didn't fail is one problem for its files, below.
+        if (!loose(source).includes(loose(lastPart(test.name)))) {
+            return {
+                problem: `${label}: not found in the file (use a plain string test name)`,
+            }
+        }
+        return slow.every(({ ended }) => ended === 'failed')
+            ? { note: `${label}: fails (its slow command exited non-zero)` }
+            : { note: `${label}: its slow command did not fail` }
     }
     const found = findCase({ cases: current.cases, test })
     if (found?.status === 'passed') {
@@ -250,6 +277,9 @@ const checkOldTests = ({
  *   (#583): its `path`, and `files`, the test files it lists (from
  *   `featureMapFiles`), `null` when the map file is missing. A test file the
  *   ticket created must be among them. Left out or `null`, nothing is checked.
+ * @param slow_runs - The ticket's own slow files run through `run_files`
+ *   (#683): a mapped test in one is judged by its run's exit code, and a run
+ *   that passed or timed out is one problem naming its files.
  *
  * @example
  * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources, changed_test_sources })
@@ -264,6 +294,7 @@ export const checkRed = ({
     sources,
     changed_test_sources,
     feature_map,
+    slow_runs = [],
 }: {
     criteria_ids: string[]
     mapping: CriterionTests[]
@@ -273,6 +304,7 @@ export const checkRed = ({
     sources: Record<string, string | null>
     changed_test_sources: ChangedTestSource[]
     feature_map?: { path: string; files: string[] | null } | null
+    slow_runs?: SlowRedRun[]
 }): RedCheckResult => {
     const problems: string[] = []
     const notes: string[] = []
@@ -358,9 +390,21 @@ export const checkRed = ({
             current,
             test_files: testFiles,
             sources,
+            slow_runs,
         })
         if ('problem' in outcome) problems.push(outcome.problem)
         else notes.push(outcome.note)
+    }
+    for (const { files, ended } of slow_runs) {
+        if (ended === 'passed') {
+            problems.push(
+                `These slow tests passed before any code was written: ${files.join(', ')}`
+            )
+        } else if (ended === 'timed_out') {
+            problems.push(
+                `These slow tests timed out in the red check: ${files.join(', ')}`
+            )
+        }
     }
     const old = checkOldTests({
         baseline,
