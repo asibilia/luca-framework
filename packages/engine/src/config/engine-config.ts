@@ -37,6 +37,7 @@ export {
     ModelsConfigSchema,
     MuninnConfigSchema,
     ROUTED_ROLES,
+    RUN_FILES_PLACEHOLDER,
     TestResultsSchema,
 } from './engine-config-schema'
 export type {
@@ -55,8 +56,10 @@ export {
     hasSlowTests,
     isBunTestCommand,
     junitCommands,
+    ownSlowCommands,
     slowTestCommands,
     testCommands,
+    type OwnSlowCommand,
     type TestCommand,
 } from './test-commands'
 

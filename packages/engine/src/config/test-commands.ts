@@ -77,6 +77,41 @@ export const slowTestCommands = ({
     config: EngineConfig
 }): TestCommand[] => commandsOf(config.checks.slow_test)
 
+/**
+ * A slow test command that runs some of its files (#683): the test files it
+ * owns, and the command with `{files}` where they go.
+ */
+export type OwnSlowCommand = { file_patterns: string[]; run_files: string }
+
+/**
+ * The slow test commands with `run_files` (#683), in config order: a
+ * ticket's gates run its own files that match `file_patterns` through them.
+ *
+ * @example
+ * ownSlowCommands({ config: { ...config, checks: { test: 'bun test src', slow_test: [{ run: 'bun run ui', file_patterns: ['ui/**'], run_files: 'bun run ui-files {files}' }] } } })
+ * // [{ file_patterns: ['ui/**'], run_files: 'bun run ui-files {files}' }]
+ */
+export const ownSlowCommands = ({
+    config,
+}: {
+    config: EngineConfig
+}): OwnSlowCommand[] => {
+    const value = config.checks.slow_test
+    if (value === undefined || typeof value === 'string') return []
+    return value.flatMap((entry) =>
+        typeof entry === 'string' ||
+        entry.file_patterns === undefined ||
+        entry.run_files === undefined
+            ? []
+            : [
+                  {
+                      file_patterns: entry.file_patterns,
+                      run_files: entry.run_files,
+                  },
+              ]
+    )
+}
+
 /** Whether the config has a slow test command (#563). */
 export const hasSlowTests = ({ config }: { config: EngineConfig }): boolean =>
     slowTestCommands({ config }).length > 0

@@ -120,6 +120,43 @@ file as a quoted `./` path (never the fast command plus the files: Bun's
 Each of these runs gets `test_timeout_ms`. A repo with no `checks.slow_test`
 runs the same commands as before.
 
+**A ticket's own slow tests through `run_files` (#683).** A `pass_fail` slow
+command, such as an XCUITest suite, can't be given files the way `bun test`
+can. A `checks.slow_test` entry can say how to run some of its files with two
+fields that come together: `file_patterns`, the globs of the test files it
+owns (a file must match `test_file_patterns` too), and `run_files`, the
+command that runs some of them, with the literal text `{files}`:
+
+```json
+{
+    "test_file_patterns": ["src/**/*.test.ts", "ui/**/*.test.ts"],
+    "checks": {
+        "test": "bun test src",
+        "slow_test": [
+            {
+                "run": "bun run test:ui",
+                "results": "pass_fail",
+                "file_patterns": ["ui/**/*.test.ts"],
+                "run_files": "bun run test:ui:files {files}"
+            }
+        ]
+    }
+}
+```
+
+A ticket's gates (`target: ticket`) run the test files the ticket changed
+since its base, still in the worktree, that match an entry's `file_patterns`,
+once through each such entry, in config order, after the test checks and
+before types and lint. Every `{files}` becomes the files: repo-relative
+paths, each in single quotes, separated by one space. Each run is a
+`pass_fail` check named `own_slow_test`, in a test slot, with
+`test_timeout_ms`, and its recorded `command` is the filled-in one. Those
+files leave the own-files `bun test` run above. An entry that owns none of
+the ticket's files adds no check. A join's gates, the already-done check,
+and the final review's whole slow suite don't change. The config is refused
+when it loads if `run_files` has no `{files}`, if an entry has only one of
+the two fields, or if a `checks.test` entry has either.
+
 **The fast test speed limit (#580).** A fast test should be fast. A repo says
 how fast with `test_case_timeout_ms` (a positive whole number of
 milliseconds) in `.luca/config.json`; this repo's is 2000:
