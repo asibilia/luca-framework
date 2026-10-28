@@ -36,6 +36,17 @@ Tests:
 - `packages/engine/skills/luca-retro/skill-text.test.ts`
 - `packages/engine/skills/luca-retro/scripts/retro-summary.test.ts`
 
+## A cold read of a spec
+
+The `/luca-spec-check` skill gathers a spec and its tickets and hands them to three fresh, read-only readers before the owner adds `ready-for-agent`, shows one report, and posts it on the spec issue only after a yes.
+
+Reached by: `/luca-spec-check [spec issue number]` in Claude Code.
+
+Tests:
+
+- `packages/engine/skills/luca-spec-check/skill-text.test.ts`
+- `packages/engine/skills/luca-spec-check/scripts/spec-bundle.test.ts`
+
 ## Crash recovery and resume
 
 The journal records every step, so a run that crashed picks each ticket up from its last checkpoint, redoes a half-done step without repeating what it already did, and gives up after three crashes in a row.
