@@ -269,7 +269,11 @@ describe('the result', () => {
     test("a turn past its time is interrupted and fails the agent's try", async () => {
         const fake = fakeQuery({ messages: [INIT], hang: true })
         const turn = await launch({ query: fake.query, turn_timeout_ms: 50 })
-        expect(turn).toMatchObject({ ok: false, failure: 'agent' })
+        expect(turn).toMatchObject({
+            ok: false,
+            failure: 'agent',
+            session_closed: true,
+        })
         expect(fake.calls[0]?.interrupted).toBe(true)
         expect(fake.calls[0]?.closed).toBe(true)
     })
