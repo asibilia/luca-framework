@@ -105,6 +105,8 @@ export type Failed = {
     error: string
     /** The turn reached its role's turn limit (#543). */
     out_of_turns?: boolean
+    /** The turn ran past its time limit, and its session was closed (#685). */
+    session_closed?: boolean
 }
 
 export type Outcome = { ok: true; structured_output: unknown } | Failed

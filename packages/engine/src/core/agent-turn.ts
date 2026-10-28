@@ -66,7 +66,9 @@ const failTurn = ({
  * every launcher alike; what others changed in the shared `.git` meanwhile
  * is journaled as `shared_git_changed`. Then the result is judged by its
  * structured output. Each failed turn is journaled once as `agent_failed`
- * with how it failed; the decision step picks what happens next. A writer's
+ * with how it failed; the decision step picks what happens next. A turn the
+ * launcher interrupted for its time limit then journals its session closed
+ * (#685), since the launcher closed it. A writer's
  * result then gets its chores done (`doChores`, #618); one the engine could
  * not do fails the turn as a `chore` failure. A launcher stop journals
  * `run_stopped` and ends the run. A turn the plan cut off (a rejected limit,
@@ -177,6 +179,16 @@ export const runTurn = async ({
             session_gone,
             out_of_turns,
         })
+        // A timed-out turn's session was closed by the launcher (#685):
+        // journal the close, so the next try is a fresh agent.
+        if (!turn.ok && turn.session_closed === true && session_id !== null) {
+            context.journal.append({
+                kind: 'agent_session_closed',
+                ticket,
+                role,
+                content: { role, session_id },
+            })
+        }
         return null
     }
     if (violations.length > 0) {
