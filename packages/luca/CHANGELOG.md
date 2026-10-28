@@ -1,5 +1,11 @@
 # @alecsibilia/luca
 
+## 14.0.0-alpha.26
+
+### Patch Changes
+
+- 075d3a4: Spec: /luca-spec-check, a cold read of a spec by three fresh readers before ready-for-agent ([#678](https://github.com/asibilia/luca-framework/issues/678))
+
 ## 14.0.0-alpha.25
 
 No changes in this release.
