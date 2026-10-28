@@ -136,7 +136,7 @@ export const executeFinalReviewAction = async ({
             return
         }
         case 'launch_lens': {
-            const { lens, role, prompt } = action
+            const { lens, role, prompt, max_turns } = action
             const round = state.final_review.round
             const effort = roleEffort({ role, config })
             journal.append({
@@ -175,6 +175,7 @@ export const executeFinalReviewAction = async ({
                         messaging: null,
                         model: LOCKED_PICK.model,
                         effort,
+                        ...(max_turns === undefined ? {} : { max_turns }),
                     }),
             })
             if (result === null || !('verdict' in result.result)) return

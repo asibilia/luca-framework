@@ -179,6 +179,12 @@ export type AgentLauncher = {
          */
         effort: EffortLevel
         /**
+         * The turn limit for this launch (#684), in place of its role's: a
+         * lens whose last try ran out of turns gets twice its role's. Left
+         * out, the role's limit.
+         */
+        max_turns?: number
+        /**
          * Hears the turn's live progress (#628) each time it changes, before
          * the turn ends, for the engine's live file. Left out, nothing hears it.
          */

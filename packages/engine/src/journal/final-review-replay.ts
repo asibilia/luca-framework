@@ -108,6 +108,8 @@ export const finalReviewAfter = ({
                 slow_tests: null,
                 fresh,
                 fresh_started: review.fresh_started || fresh,
+                // A doubled turn limit holds only within one round (#684).
+                last_out_of_turns: {},
                 // The fresh pass sees no earlier findings or answers (#548).
                 ...(fresh ? { fix: null } : {}),
             }
@@ -148,6 +150,7 @@ export const finalReviewAfter = ({
                     agent_failures: omit(review.agent_failures, role),
                     failed_tries: omit(review.failed_tries, role),
                     engine_failures: omit(review.engine_failures, role),
+                    last_out_of_turns: omit(review.last_out_of_turns, role),
                     sessions: sessionsAfter({
                         sessions: review.sessions,
                         role,
@@ -165,19 +168,31 @@ export const finalReviewAfter = ({
         }
         case 'agent_failed': {
             const { role, error, failure, session_id } = record.content
+            const ran_out = record.content.out_of_turns
             const agent_failures = {
                 ...review.agent_failures,
-                [role]: { role, error, failure, session_id },
+                [role]: {
+                    role,
+                    error,
+                    failure,
+                    session_id,
+                    out_of_turns: ran_out,
+                },
             }
             const out_of_turns = outOfTurnsAfter({
                 counts: review.out_of_turns,
                 failed: record.content,
             })
+            const last_out_of_turns = {
+                ...review.last_out_of_turns,
+                [role]: ran_out,
+            }
             if (failure === 'engine') {
                 return {
                     ...review,
                     agent_failures,
                     out_of_turns,
+                    last_out_of_turns,
                     engine_failures: {
                         ...review.engine_failures,
                         [role]: (review.engine_failures[role] ?? 0) + 1,
@@ -188,6 +203,7 @@ export const finalReviewAfter = ({
                 ...review,
                 agent_failures,
                 out_of_turns,
+                last_out_of_turns,
                 engine_failures: omit(review.engine_failures, role),
                 failed_tries: {
                     ...review.failed_tries,

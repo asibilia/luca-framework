@@ -80,6 +80,7 @@ export const createLaunch = ({
         messaging,
         model,
         effort,
+        max_turns,
         on_progress,
     }) => {
         const refused = checkLaunchModel({ model })
@@ -117,6 +118,7 @@ export const createLaunch = ({
             model,
             // Kept in the session's options, so its follow-ups run at it too.
             effort,
+            max_turns,
             claude_path: claudePath,
             config,
             common_git_dir: gitDir,

@@ -31,8 +31,17 @@ export type FinalReviewAction =
           lenses: LensName[]
           fresh?: boolean
       }
-    /** Start a fresh, read-only lens reviewer on the run branch. */
-    | { type: 'launch_lens'; lens: LensName; role: LensRole; prompt: string }
+    /**
+     * Start a fresh, read-only lens reviewer on the run branch. `max_turns`:
+     * its turn limit, when its last try ran out of turns (#684).
+     */
+    | {
+          type: 'launch_lens'
+          lens: LensName
+          role: LensRole
+          prompt: string
+          max_turns?: number
+      }
     /** Run the config's slow tests on the run branch (#563), once round 1's lenses are in. */
     | { type: 'run_final_slow_tests' }
     /** Every lens due this round approved. */

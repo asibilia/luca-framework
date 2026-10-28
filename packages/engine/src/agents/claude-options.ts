@@ -35,8 +35,9 @@ export const CLAUDE_MODEL = DEFAULT_MODEL
 
 /**
  * How many model turns one agent gets before its try ends. The integration
- * lens reads how every ticket fits together on the whole branch, so it gets
- * more than the other lenses.
+ * lens reads how every ticket fits together on the whole branch, and the
+ * rules lens reads every rule file against it (#684), so they get more than
+ * the other lenses.
  */
 export const MAX_TURNS: Record<AgentRole, number> = {
     'test-writer': 80,
@@ -46,7 +47,7 @@ export const MAX_TURNS: Record<AgentRole, number> = {
     'simplification-lens': 60,
     'security-lens': 60,
     'integration-lens': 100,
-    'rules-lens': 60,
+    'rules-lens': 100,
     learner: 40,
 }
 
@@ -181,6 +182,7 @@ export const agentOptions = ({
     cwd,
     model,
     effort,
+    max_turns,
     claude_path,
     config,
     common_git_dir,
@@ -199,6 +201,8 @@ export const agentOptions = ({
     cwd: string
     model: string
     effort: EffortLevel
+    /** The launch's own turn limit (#684), in place of the role's; left out, the role's. */
+    max_turns?: number
     /** The real path of the installed `claude` binary. */
     claude_path: string
     config: EngineConfig
@@ -264,7 +268,7 @@ export const agentOptions = ({
         // Streamed chunks only feed the live file's heartbeat (#631); the
         // launcher keeps nothing of them.
         includePartialMessages: true,
-        maxTurns: MAX_TURNS[role],
+        maxTurns: max_turns ?? MAX_TURNS[role],
         hooks: {
             PreToolUse: [{ hooks: [guard_hook] }],
             ...(delivery_hook === null
