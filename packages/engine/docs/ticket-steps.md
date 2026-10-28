@@ -49,6 +49,9 @@ so the implementer's own earlier test edits don't count. Another changed
 test file is stuck (`bad_test`), and so is any answer but `tests_written`.
 Otherwise the implementer's session (a fresh one if it is gone) hears the
 test was fixed and carries on; the fix goes into the ticket's one commit.
+Its answer closes the update; the fixed file and reason stay in the
+progress (`refactor_fixed`), so the ticket-reviewer is told that test
+changed on purpose, and the PR's Evidence line names it.
 A `bad_test` that names no file, or a second one, is stuck. It is not the
 rejoin's test update: it doesn't count toward `MAX_TEST_UPDATES`, and a
 refactor ticket's bad test after a rebase is still stuck at once.

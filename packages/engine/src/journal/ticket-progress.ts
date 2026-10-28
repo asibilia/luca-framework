@@ -285,6 +285,12 @@ export type TicketProgress = {
     /** The open refactor test update, `null` when none is open. */
     refactor_update: RefactorUpdate | null
     /**
+     * The test files closed refactor test updates fixed, with the
+     * implementer's reasons, oldest first: the ticket-reviewer and the PR are
+     * told those tests changed on purpose. A retry keeps them.
+     */
+    refactor_fixed: Pick<RefactorUpdate, 'file' | 'reason'>[]
+    /**
      * The latest failed agent turn, if no agent finished after it: its role,
      * error, how it failed, and the session it ran in (for a follow-up).
      */
@@ -392,6 +398,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     test_update: null,
     refactor_updates: 0,
     refactor_update: null,
+    refactor_fixed: [],
     agent_failure: null,
     failed_tries: {},
     launched_on: {},

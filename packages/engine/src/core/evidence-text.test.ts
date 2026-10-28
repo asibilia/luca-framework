@@ -110,6 +110,27 @@ describe('the Evidence section', () => {
         )
     })
 
+    test('a refactor ticket whose test a refactor test update fixed names that test file (#686)', () => {
+        expect(
+            evidenceSection({
+                snapshot: snapshot({ order: [11], refactor: [11] }),
+                tickets: {
+                    11: {
+                        ...passing([]),
+                        refactor_fixed: [
+                            {
+                                file: 'src/rows.test.ts',
+                                reason: 'It pins the old order.',
+                            },
+                        ],
+                    },
+                },
+            })
+        ).toBe(
+            `${HEADING}\n\n- #11: a refactor, so no new tests; the old tests still pass. A test-writer changed src/rows.test.ts to check what the ticket's criteria say, as its implementer asked.`
+        )
+    })
+
     test('an already-done ticket has no new tests', () => {
         expect(
             evidenceSection({

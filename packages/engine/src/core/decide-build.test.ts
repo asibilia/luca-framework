@@ -23,6 +23,7 @@ import {
     RUN_BRANCH_PATH,
     runBranchCreated,
     SESSIONS,
+    testsWritten,
     ticketPath,
     ticketWorktreeCreated,
     withInstalls,
@@ -374,6 +375,38 @@ const NO_FILE_BAD_TEST: JournalEntry = {
     },
 }
 
+const PINS_OLD_SUM = 'It pins the old sum, but the criteria say it rounds.'
+
+/**
+ * A refactor ticket's implementer sent `src/sum.test.ts` back as bad, a
+ * test-writer fixed only that file, and the implementer finished: up to the
+ * one commit, before the ticket review.
+ */
+const fixedByUpdate = (): JournalEntry[] => [
+    implemented({ ticket: 11, outcome: 'bad_test', reason: PINS_OLD_SUM }),
+    {
+        kind: 'refactor_test_update',
+        ticket: 11,
+        role: null,
+        content: {
+            file: 'src/sum.test.ts',
+            reason: PINS_OLD_SUM,
+            test_files: [{ path: 'src/sum.test.ts', hash: 'a1b2c3' }],
+        },
+    },
+    testsWritten({ ticket: 11, session_id: 'tw-2', criteria: [] }),
+    {
+        kind: 'refactor_test_update_checked',
+        ticket: 11,
+        role: null,
+        content: { changed: ['src/sum.test.ts'] },
+    },
+    implemented({ ticket: 11 }),
+    gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+    leftoverScan({ ticket: 11, stage: 'green' }),
+    commitMade({ ticket: 11, stage: 'green' }),
+]
+
 describe('decision step: a refactor ticket', () => {
     test('skips the test-writer: its implementer may follow renames into tests', () => {
         const action = decideRefactorAfter([])
@@ -447,8 +480,7 @@ describe('decision step: a refactor ticket', () => {
         )
     })
 
-    test('a bad test makes it stuck at once: there is no test-writer to send it to', () => {
-        // Since #686 only a bad test that names no file is stuck at once.
+    test('a bad test that names no file is stuck at once, with the reason (#686)', () => {
         const action = decideRefactorAfter([NO_FILE_BAD_TEST])
 
         expect(action).toMatchObject({
@@ -457,18 +489,35 @@ describe('decision step: a refactor ticket', () => {
             reason: 'bad_test',
         })
         if (action.type !== 'mark_stuck') throw new Error(action.type)
-        expect(action.detail).toContain('Wrong sum.')
-    })
-
-    test('a bad test that names no file is stuck at once, with the reason (#686)', () => {
-        const action = decideRefactorAfter([NO_FILE_BAD_TEST])
-
-        if (action.type !== 'mark_stuck') throw new Error(action.type)
         expect(
             action.detail.startsWith(
                 'The implementer of a refactor ticket sent a test back as bad without naming its file: '
             )
         ).toBe(true)
         expect(action.detail).toContain('Wrong sum.')
+    })
+
+    test('after a refactor test update, its reviewer is told the test-writer changed that file on purpose, and why (#686)', () => {
+        const section = '## Tests a test-writer changed on purpose'
+        const plain = decideRefactorAfter([
+            implemented({ ticket: 11 }),
+            gatesRun({ ticket: 11, target: 'ticket', ok: true }),
+            leftoverScan({ ticket: 11, stage: 'green' }),
+            commitMade({ ticket: 11, stage: 'green' }),
+        ])
+        const action = decideRefactorAfter(fixedByUpdate())
+
+        if (plain.type !== 'launch_agent') throw new Error(plain.type)
+        expect(plain.prompt).not.toContain(section)
+        expect(action).toMatchObject({
+            type: 'launch_agent',
+            role: 'ticket-reviewer',
+        })
+        if (action.type !== 'launch_agent') throw new Error(action.type)
+        const told = action.prompt.slice(action.prompt.indexOf(section))
+        expect(told.startsWith(section)).toBe(true)
+        expect(told).toContain('src/sum.test.ts')
+        expect(told).toContain(PINS_OLD_SUM)
+        expect(told).toContain('expected')
     })
 })

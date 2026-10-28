@@ -154,11 +154,17 @@ export const resultChange = ({
             const { result } = finished
             const bad_test = badTestOf(result)
             // Its answer after a refactor test update closes the update
-            // (#686); a second bad test is kept for the stuck text.
+            // (#686), keeping the fixed file for the reviewer and the PR; a
+            // second bad test is kept for the stuck text.
             if (refactor_update !== null && refactor_update.result !== null) {
+                const { file, reason } = refactor_update
                 return {
                     implementer: result,
                     refactor_update: null,
+                    refactor_fixed: [
+                        ...progress.refactor_fixed,
+                        { file, reason },
+                    ],
                     ...(bad_test === null
                         ? {}
                         : {

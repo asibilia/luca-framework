@@ -256,6 +256,22 @@ describe("a refactor ticket's first bad test, end to end (#686)", () => {
         expect(kept['src/rows.test.ts']).not.toBe(kept['src/other.test.ts'])
     })
 
+    test('its reviewer is told the rows test changed on purpose, and the PR Evidence names it', () => {
+        const reviewer = run.launches.find(
+            ({ ticket, role }) => ticket === 11 && role === 'ticket-reviewer'
+        )
+        const [pull] = run.tracker.pullRequests()
+
+        expect(reviewer?.prompt).toContain(
+            '## Tests a test-writer changed on purpose'
+        )
+        expect(reviewer?.prompt).toContain('src/rows.test.ts')
+        expect(reviewer?.prompt).toContain(REASON)
+        expect(pull?.body).toContain(
+            "A test-writer changed src/rows.test.ts to check what the ticket's criteria say"
+        )
+    })
+
     test("the ticket's one commit holds the test-writer's fix and the implementer's code", async () => {
         const made = run.records.filter(
             (record) => record.kind === 'commit_made' && record.ticket === 11

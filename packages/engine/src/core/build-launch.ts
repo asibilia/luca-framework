@@ -16,7 +16,10 @@ import {
 import { handoffSection, reviewFixSection, reviewSections } from './review-text'
 import { retrySection } from './stuck-text'
 
-import { refactorUpdateSection } from '../agents/refactor-update-prompts'
+import {
+    refactorFixedReviewSection,
+    refactorUpdateSection,
+} from '../agents/refactor-update-prompts'
 import {
     CHANGESETS_LENS_SECTION,
     CHANGESETS_SECTION,
@@ -158,8 +161,9 @@ const testUpdateSections = ({
 
 /**
  * The sections a launch adds for the ticket review: the reviewer's diff and
- * gate results (a re-review's new changes and earlier findings), or a
- * review fixer's findings while a review fix round is open.
+ * gate results (a re-review's new changes and earlier findings), and the
+ * tests a refactor test update changed on purpose (#686); or a review
+ * fixer's findings while a review fix round is open.
  */
 const reviewPromptSections = ({
     role,
@@ -170,10 +174,16 @@ const reviewPromptSections = ({
 }): string[] => {
     const fix = progress.review_fix
     if (role === 'ticket-reviewer') {
-        return reviewSections({
-            progress,
-            base_sha: progress.worktree?.base_sha ?? 'HEAD',
-        })
+        const { refactor_fixed } = progress
+        return [
+            ...reviewSections({
+                progress,
+                base_sha: progress.worktree?.base_sha ?? 'HEAD',
+            }),
+            ...(refactor_fixed.length === 0
+                ? []
+                : [refactorFixedReviewSection({ fixed: refactor_fixed })]),
+        ]
     }
     if (fix === null || progress.commits.green === null) return []
     if (role === 'test-writer' && !fix.tests_answered) {
