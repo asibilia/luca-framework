@@ -106,21 +106,30 @@ const ruleFiles = (repo_dir: string): string[] => {
     }
 }
 
-const main = () => {
-    const argv = Bun.argv.slice(2)
+/** The spec number and the optional `--repo` value, or null when either is missing. Pure. */
+export const parseArgs = (
+    argv: string[]
+): { number: number; repo: string | null } | null => {
     const repoAt = argv.indexOf('--repo')
-    const repo = repoAt >= 0 ? argv[repoAt + 1] : undefined
+    const repo = repoAt >= 0 ? argv[repoAt + 1] : null
+    if (repo === undefined) return null
     const number = argv.find(
-        (arg, index) => /^\d+$/.test(arg) && index !== repoAt + 1
+        (arg, index) =>
+            /^\d+$/.test(arg) && (repoAt < 0 || index !== repoAt + 1)
     )
-    if (number === undefined || (repoAt >= 0 && repo === undefined)) {
+    return number === undefined ? null : { number: Number(number), repo }
+}
+
+const main = () => {
+    const args = parseArgs(Bun.argv.slice(2))
+    if (args === null) {
         console.error(
             'Usage: bun spec-bundle.ts <spec number> [--repo <owner/repo>]'
         )
         process.exit(1)
     }
     // `gh` fills in `{owner}/{repo}` from the repo of the current folder.
-    const base = `repos/${repo ?? '{owner}/{repo}'}/issues/${number}`
+    const base = `repos/${args.repo ?? '{owner}/{repo}'}/issues/${args.number}`
     const raw = ghApi(base) as LooseIssue
     const subs = ghApi(`${base}/sub_issues?per_page=100`) as LooseIssue[]
     const repo_dir = process.cwd()

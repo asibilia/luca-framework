@@ -2,7 +2,7 @@ import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
 
-import { formatSpecBundle } from './spec-bundle'
+import { formatSpecBundle, parseArgs } from './spec-bundle'
 
 /**
  * The `/luca-spec-check` gather script's bundle, from fixture issues: the
@@ -120,5 +120,23 @@ describe('the gather script', () => {
                 (name) => !name.startsWith('node:') && !name.startsWith('bun')
             )
         ).toEqual([])
+    })
+
+    test('the arguments: a spec number, and an optional --repo', () => {
+        expect(parseArgs(['678'])).toEqual({ number: 678, repo: null })
+        expect(parseArgs(['678', '--repo', 'o/r'])).toEqual({
+            number: 678,
+            repo: 'o/r',
+        })
+        expect(parseArgs(['--repo', 'o/r', '678'])).toEqual({
+            number: 678,
+            repo: 'o/r',
+        })
+    })
+
+    test('the arguments: no spec number, or a --repo with no value, is null', () => {
+        expect(parseArgs([])).toBeNull()
+        expect(parseArgs(['--repo', 'o/r'])).toBeNull()
+        expect(parseArgs(['678', '--repo'])).toBeNull()
     })
 })
