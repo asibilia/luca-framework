@@ -16,6 +16,7 @@ import {
     TicketReviewResultSchema,
     type AgentRole,
 } from './role-results'
+import { MAX_TURNS } from './role-turns'
 
 import {
     DEFAULT_MODEL,
@@ -27,29 +28,13 @@ import { HELPER_TYPE, SEARCHER } from '../guards/helper-rules'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
 
+export { MAX_TURNS } from './role-turns'
+
 /** The models an agent may launch on, by short name (`ModelNameSchema`). */
 export const MODEL_NAMES = ModelNameSchema.options
 
 /** The model reviewers run on, and every agent the decision model doesn't route (#603). */
 export const CLAUDE_MODEL = DEFAULT_MODEL
-
-/**
- * How many model turns one agent gets before its try ends. The integration
- * lens reads how every ticket fits together on the whole branch, and the
- * rules lens reads every rule file against it (#684), so they get more than
- * the other lenses.
- */
-export const MAX_TURNS: Record<AgentRole, number> = {
-    'test-writer': 80,
-    implementer: 150,
-    'ticket-reviewer': 60,
-    'architecture-lens': 60,
-    'simplification-lens': 60,
-    'security-lens': 60,
-    'integration-lens': 100,
-    'rules-lens': 100,
-    learner: 40,
-}
 
 /**
  * Why a model may not launch an agent, or `null` if it may: exactly one of

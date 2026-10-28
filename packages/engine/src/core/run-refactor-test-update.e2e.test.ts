@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
 import { commits, ticketBranch } from './agent-guards-helpers'
+import { closeOf } from './run-session-close-helpers'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
@@ -203,6 +204,23 @@ describe("a refactor ticket's first bad test, end to end (#686)", () => {
         expect(implementer?.kind).toBe('follow_up')
         expect(implementer?.prompt).toContain(CARRY_ON)
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+    })
+
+    test("the test-writer's session is closed before the implementer's follow-up", () => {
+        const writer = run.launches.find(
+            ({ ticket, role }) => ticket === 11 && role === 'test-writer'
+        )
+        const closed = closeOf(run.records, writer?.session_id ?? '')
+        const followUp = run.records.find(
+            (record) =>
+                record.kind === 'agent_started' &&
+                record.ticket === 11 &&
+                record.role === 'implementer' &&
+                record.content.follow_up_of !== null
+        )
+
+        expect(closed?.role).toBe('test-writer')
+        expect(closed?.seq ?? Infinity).toBeLessThan(followUp?.seq ?? 0)
     })
 
     test('no red check runs for the ticket, though a test-writer had a turn', () => {

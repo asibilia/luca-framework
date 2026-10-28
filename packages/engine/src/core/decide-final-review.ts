@@ -9,8 +9,8 @@ import {
 } from './final-review-action'
 import { lensPrompt } from './final-review-text'
 
-import { MAX_TURNS } from '../agents/claude-options'
 import { LENS_NAMES, lensRole, type LensName } from '../agents/role-results'
+import { MAX_TURNS } from '../agents/role-turns'
 import { isFinalKey } from '../journal/replay'
 
 export {

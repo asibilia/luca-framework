@@ -21,7 +21,6 @@ export {
     CLAUDE_MODEL,
     checkLaunchModel,
     checkModel,
-    MAX_TURNS,
     MODEL_NAMES,
     resultJsonSchema,
 } from './agents/claude-options'
@@ -39,6 +38,7 @@ export {
     type RejoinContext,
 } from './agents/role-prompts'
 export * from './agents/role-results'
+export { MAX_TURNS } from './agents/role-turns'
 export {
     createScriptedLauncher,
     type ScriptedCall,
