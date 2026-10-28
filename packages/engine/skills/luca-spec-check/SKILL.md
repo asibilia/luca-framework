@@ -20,7 +20,7 @@ Run the helper from the repo's folder. It only reads.
 bun ~/.claude/skills/luca-spec-check/scripts/spec-bundle.ts <spec number> [--repo <owner/repo>]
 ```
 
-It prints one plain-text bundle: the spec's number, title, labels and body; each of its tickets (its sub-issues), in order, with number, title and body, or `No tickets yet.`; and the repo's rule files from `.luca/config.json`, and whether `GLOSSARY.md` and `docs/adr/` exist. Read it whole. Pass it to the readers unchanged.
+It prints one plain-text bundle: the spec's number, title, labels and body; each of its tickets (its sub-issues), in order, with number, title and body, or `No tickets yet.`; and, from the same GitHub repo's default branch, its rule files from `.luca/config.json`, and whether `GLOSSARY.md` and `docs/adr/` exist. Read it whole. Pass it to the readers unchanged.
 
 ## 2. Start three fresh readers
 
@@ -68,7 +68,15 @@ This check only advises. Fix the spec, then run /luca-spec-check again.
 
 ## 5. Ask before posting
 
-Then stop and ask exactly `Post this on #678?`, with the spec's number. Post it only after a yes: `gh issue comment <spec number> [--repo <owner/repo>] --body "<report>"`. On a no, the report stays in this chat.
+Then stop and ask exactly `Post this on #678?`, with the spec's number. Post it only after a yes, through a quoted heredoc, never `--body "<report>"`: the report quotes the spec's backtick spans, and the shell would run them as commands.
+
+```bash
+gh issue comment <spec number> [--repo <owner/repo>] --body-file - <<'SPEC_CHECK_REPORT'
+<report>
+SPEC_CHECK_REPORT
+```
+
+On a no, the report stays in this chat.
 
 ## What not to do
 

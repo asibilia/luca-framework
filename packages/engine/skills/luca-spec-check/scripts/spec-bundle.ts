@@ -5,18 +5,21 @@
  *
  *   bun spec-bundle.ts <spec number> [--repo <owner/repo>]
  *
- * It fetches, with `gh`, the spec issue (number, title, body, labels) and
- * its sub-issues in order (number, title, body). From the repo it is run
- * in, it reads `.luca/config.json`'s `rule_files` and checks whether
- * `GLOSSARY.md` and `docs/adr/` exist. It only reads. It changes nothing.
+ * It fetches it all with `gh`, from one GitHub repo (`--repo`, else the repo
+ * of the current folder, from any folder in it): the spec issue (number,
+ * title, body, labels), its sub-issues in order (number, title, body), and,
+ * from the repo's default branch, `.luca/config.json`'s `rule_files` and
+ * whether `GLOSSARY.md` and `docs/adr/` exist. So the issues and the repo's
+ * facts can't come from two different repos. It only reads. It changes
+ * nothing.
  *
  * It imports nothing but Bun's and Node's own modules: it runs from
- * `~/.claude/skills/luca-spec-check/`, where no packages are installed.
+ * `~/.claude/skills/luca-spec-check/`, where no packages are installed. So it
+ * reads `gh`'s JSON loosely, with small readers, not with Zod.
  * `formatSpecBundle` makes no `gh` calls, so `spec-bundle.test.ts` tests it
  * without the network.
  */
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { Buffer } from 'node:buffer'
 
 export type BundleIssue = { number: number; title: string; body: string }
 
@@ -69,38 +72,80 @@ export const formatSpecBundle = ({
         `docs/adr/: ${adr ? 'yes' : 'no'}`,
     ].join('\n')
 
-/** Runs `gh api` and reads its JSON, or exits with what `gh` said. */
+// NOTE: these small readers are copies of the ones in
+// `../../luca-retro/scripts/retro-summary.ts`: each skill's script must
+// stand alone. Keep them in step.
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const text = (value: unknown): string =>
+    typeof value === 'string' ? value : ''
+
+const numberOr = (value: unknown): number | null =>
+    typeof value === 'number' ? value : null
+
+const listOf = (value: unknown): unknown[] =>
+    Array.isArray(value) ? value : []
+
+const objectOf = (value: unknown): Record<string, unknown> =>
+    isObject(value) ? value : {}
+
+/** Says why, and exits. */
+const fail = (why: string): never => {
+    console.error(why)
+    return process.exit(1)
+}
+
+/**
+ * Runs `gh api` on `path`: its JSON, or `null` when GitHub says Not Found.
+ * Any other failure exits with what `gh` said, so a lost connection never
+ * reads as a missing file.
+ */
 const ghApi = (path: string): unknown => {
     const out = Bun.spawnSync(['gh', 'api', path])
-    if (out.exitCode !== 0) {
-        console.error(`gh api ${path} failed: ${out.stderr.toString().trim()}`)
-        process.exit(1)
+    if (out.exitCode === 0) return JSON.parse(out.stdout.toString())
+    const said = out.stderr.toString().trim()
+    return said.includes('HTTP 404')
+        ? null
+        : fail(`gh api ${path} failed: ${said}`)
+}
+
+/** `ghApi`, where Not Found exits too. */
+const ghFound = (path: string): unknown =>
+    ghApi(path) ?? fail(`gh api ${path} failed: Not Found (HTTP 404)`)
+
+/** An issue, from `gh api`'s JSON. */
+const toIssue = (raw: unknown): BundleIssue => {
+    const issue = objectOf(raw)
+    return {
+        number: numberOr(issue.number) ?? 0,
+        title: text(issue.title),
+        body: text(issue.body),
     }
-    return JSON.parse(out.stdout.toString())
 }
 
-type LooseIssue = {
-    number?: number
-    title?: string
-    body?: string | null
-    labels?: ({ name?: string } | string)[]
+/** An issue's label names, from `gh api`'s JSON. */
+const labelsOf = (raw: unknown): string[] =>
+    listOf(objectOf(raw).labels).map((label) =>
+        typeof label === 'string' ? label : text(objectOf(label).name)
+    )
+
+/** A file's text, from `gh api`'s contents JSON, or `null` when it has none. */
+const fileText = (raw: unknown): string | null => {
+    const file = objectOf(raw)
+    return file.encoding === 'base64'
+        ? Buffer.from(text(file.content), 'base64').toString('utf8')
+        : null
 }
 
-const toIssue = (raw: LooseIssue): BundleIssue => ({
-    number: raw.number ?? 0,
-    title: raw.title ?? '',
-    body: raw.body ?? '',
-})
-
-/** The `rule_files` of `.luca/config.json` in `repo_dir`, or none. */
-const ruleFiles = (repo_dir: string): string[] => {
+/** The `rule_files` in a `.luca/config.json`'s text, or none. */
+const ruleFiles = (config: string | null): string[] => {
+    if (config === null) return []
     try {
-        const config = JSON.parse(
-            readFileSync(join(repo_dir, '.luca', 'config.json'), 'utf8')
-        ) as { rule_files?: unknown }
-        return Array.isArray(config.rule_files)
-            ? config.rule_files.filter((file) => typeof file === 'string')
-            : []
+        return listOf(objectOf(JSON.parse(config)).rule_files).filter(
+            (file): file is string => typeof file === 'string'
+        )
     } catch {
         return []
     }
@@ -129,22 +174,19 @@ const main = () => {
         process.exit(1)
     }
     // `gh` fills in `{owner}/{repo}` from the repo of the current folder.
-    const base = `repos/${args.repo ?? '{owner}/{repo}'}/issues/${args.number}`
-    const raw = ghApi(base) as LooseIssue
-    const subs = ghApi(`${base}/sub_issues?per_page=100`) as LooseIssue[]
-    const repo_dir = process.cwd()
+    const repo = `repos/${args.repo ?? '{owner}/{repo}'}`
+    const issue = `${repo}/issues/${args.number}`
+    const raw = ghFound(issue)
+    const subs = ghFound(`${issue}/sub_issues?per_page=100`)
     console.log(
         formatSpecBundle({
-            spec: {
-                ...toIssue(raw),
-                labels: (raw.labels ?? []).map((label) =>
-                    typeof label === 'string' ? label : (label.name ?? '')
-                ),
-            },
-            tickets: subs.map(toIssue),
-            rule_files: ruleFiles(repo_dir),
-            glossary: existsSync(join(repo_dir, 'GLOSSARY.md')),
-            adr: existsSync(join(repo_dir, 'docs', 'adr')),
+            spec: { ...toIssue(raw), labels: labelsOf(raw) },
+            tickets: listOf(subs).map(toIssue),
+            rule_files: ruleFiles(
+                fileText(ghApi(`${repo}/contents/.luca/config.json`))
+            ),
+            glossary: ghApi(`${repo}/contents/GLOSSARY.md`) !== null,
+            adr: ghApi(`${repo}/contents/docs/adr`) !== null,
         })
     )
 }
