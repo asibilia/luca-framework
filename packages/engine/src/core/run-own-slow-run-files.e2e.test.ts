@@ -52,7 +52,8 @@ const config = {
 /**
  * The stand-in for a UI test runner: it logs the files it got, each in
  * single quotes, one line per call, and exits with `codes[call]` (the last
- * code once they run out).
+ * code once they run out). Called before any code is written (by the red
+ * check, #692), it exits 1 and logs nothing.
  */
 const standIn = ({
     log,
@@ -60,8 +61,12 @@ const standIn = ({
 }: {
     log: string
     codes: number[]
-}) => `import { appendFileSync, readFileSync } from 'node:fs'
+}) => `import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 
+if (!existsSync('src/sum.ts')) {
+    console.log('ui stand-in: no code yet, exits 1')
+    process.exit(1)
+}
 const log = ${JSON.stringify(log)}
 const given = process.argv.slice(2).map((file) => "'" + file + "'").join(' ')
 appendFileSync(log, given + '\\n')
