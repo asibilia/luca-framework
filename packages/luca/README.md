@@ -92,7 +92,7 @@ This is the one package that goes to npm. It's TypeScript source with no build a
 | ------ | ---------- |
 | `engine/` | The engine's source, from [`packages/engine/src`](../engine/src). Both bins point into it. |
 | `board/` | The board plugin's folder, from [`packages/board`](../board): `paseo-plugin.json`, its entry points, its client, server, and shared code, and its own `package.json`, so Paseo can install it as a folder source. |
-| `skills/` | Luca's own Claude Code skills, `luca-unstick` and `luca-retro`, from [`packages/engine/skills`](../engine/skills). `luca init` and `luca upgrade` copy every folder in it with a `SKILL.md` to `~/.claude/skills`. |
+| `skills/` | Luca's own Claude Code skills, `luca-unstick`, `luca-retro` and `luca-spec-check`, from [`packages/engine/skills`](../engine/skills). `luca init` and `luca upgrade` copy every folder in it with a `SKILL.md` to `~/.claude/skills`. |
 | `LICENSE` | The repo's license. |
 
 Test files and test helpers stay out. The engine and the board stay private workspace packages, and this package lists every package they import at runtime as its own dependency.

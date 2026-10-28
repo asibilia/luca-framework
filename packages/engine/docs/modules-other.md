@@ -127,3 +127,4 @@ with a page of its own is listed in the [README](../README.md).
 | --- | --- |
 | `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply. See "Getting a stuck run moving". |
 | `skills/luca-retro/` | The `/luca-retro` skill (#514): its `SKILL.md`, and `scripts/retro-summary.ts`, which sums up what went wrong in finished runs, from their journals, and the patterns that repeat across them. See "Looking back at a run". |
+| `skills/luca-spec-check/` | The `/luca-spec-check` skill (#678): its `SKILL.md`, and `scripts/spec-bundle.ts`, which prints a spec, its tickets in order, and the repo's rule files, glossary and ADRs as one bundle for the skill's fresh readers. |

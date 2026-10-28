@@ -133,7 +133,7 @@ Claude Code 2.1.280+; `gh` signed in; Paseo 0.9.1+ with plugins on; the
 board installed from Luca's own folder, loaded at the installed version, with
 its engine and Bun paths; MuninnDB 0.11.0+ answering its health check, and
 Claude Code's user-scope `muninn` entry with its token; the planning skills
-still writing what intake needs; Luca's own skills, `/luca-unstick` and `/luca-retro`,
+still writing what intake needs; Luca's own skills, `/luca-unstick`, `/luca-retro` and `/luca-spec-check`,
 in `~/.claude/skills` as the installed Luca ships them), then, inside a repo, `luca setup`'s checks
 without changing anything. Each line prints OK, or the problem and its exact
 fix. It exits 1 on any problem. MuninnDB not installed (memory off) and
