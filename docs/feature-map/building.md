@@ -128,7 +128,7 @@ Tests:
 
 ## Slow tests and the speed limit
 
-Slow tests stay out of every ticket's runs except the slow test files the ticket names or changes, and all run at the final review; the fast tests have a per-test time limit.
+Slow tests stay out of every ticket's runs except the slow test files the ticket names or changes (through a slow entry's `run_files` for the files its `file_patterns` own), and all run at the final review; the fast tests have a per-test time limit.
 
 Reached by: `checks.slow_test` and `test_case_timeout_ms` in a repo's `.luca/config.json`.
 
@@ -139,6 +139,7 @@ Tests:
 - `packages/engine/src/core/decide-slow-tests.test.ts`
 - `packages/engine/src/core/run-slow-tests.e2e.test.ts`
 - `packages/engine/src/core/run-own-slow-tests.e2e.test.ts`
+- `packages/engine/src/core/run-own-slow-run-files.e2e.test.ts`
 - `packages/engine/src/core/run-junit-own-files.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
 

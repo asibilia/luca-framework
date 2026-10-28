@@ -348,6 +348,74 @@ describe('junit test commands (#668)', () => {
     })
 })
 
+const UI_PATTERNS = ['packages/ios/UITests/**/*.swift']
+
+describe("a slow test command's file_patterns and run_files (#683)", () => {
+    test('a run_files without {files} is refused; with it, the entry loads', async () => {
+        const entry = {
+            run: 'bun run ios:test:ui',
+            results: 'pass_fail',
+            file_patterns: UI_PATTERNS,
+        }
+        const error = await loadError({
+            checks: {
+                test: 'bun test',
+                slow_test: [{ ...entry, run_files: 'bun run ui-files' }],
+            },
+        })
+        expect(error).toContain('is not a valid engine config')
+        expect(error).toContain(
+            'checks.slow_test: run_files must contain {files}.'
+        )
+
+        await writeConfig({
+            config: {
+                checks: {
+                    test: 'bun test',
+                    slow_test: [
+                        { ...entry, run_files: 'bun run ui-files {files}' },
+                    ],
+                },
+            },
+        })
+        expect((await loadEngineConfig({ repo_root: repoRoot })).ok).toBe(true)
+    })
+
+    test('file_patterns without run_files, or run_files without file_patterns, is refused', async () => {
+        for (const entry of [
+            { run: 'bun run ios:test:ui', file_patterns: UI_PATTERNS },
+            {
+                run: 'bun run ios:test:ui',
+                run_files: 'bun run ui-files {files}',
+            },
+        ]) {
+            const error = await loadError({
+                checks: { test: 'bun test', slow_test: [entry] },
+            })
+            expect(error).toContain(
+                'checks.slow_test: file_patterns and run_files come together; this entry has only one of them.'
+            )
+        }
+    })
+
+    test('file_patterns and run_files on a checks.test entry are refused', async () => {
+        const error = await loadError({
+            checks: {
+                test: [
+                    {
+                        run: 'bun run ios:test:ui',
+                        file_patterns: UI_PATTERNS,
+                        run_files: 'bun run ui-files {files}',
+                    },
+                ],
+            },
+        })
+        expect(error).toContain(
+            'checks.test: file_patterns and run_files belong only on checks.slow_test entries.'
+        )
+    })
+})
+
 describe('the engine README', () => {
     test('documents the junit results kind and its junit_path', async () => {
         const text = await Bun.file(
