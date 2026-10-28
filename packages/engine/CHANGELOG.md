@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.27
+
+### Patch Changes
+
+- 0ab41ff: Spec: retro fixes from the SwiftUI runs: own UI tests at the ticket, rules lens turns, timed-out sessions, refactor bad tests ([#687](https://github.com/asibilia/luca-framework/issues/687))
+
 ## 14.0.0-alpha.26
 
 ### Patch Changes
