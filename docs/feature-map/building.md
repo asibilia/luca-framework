@@ -49,6 +49,7 @@ Tests:
 - `packages/engine/src/core/run-one-ticket-fix-loops.e2e.test.ts`
 - `packages/engine/src/core/run-one-ticket-install.e2e.test.ts`
 - `packages/engine/src/core/run-one-ticket-messages.e2e.test.ts`
+- `packages/engine/src/core/run-refactor-test-update.e2e.test.ts`
 
 ## Environment failures
 

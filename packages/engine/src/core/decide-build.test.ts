@@ -8,6 +8,7 @@ import {
     TICKET,
 } from './decide-build-helpers'
 
+import type { JournalEntry } from '../journal/journal-record'
 import {
     commitMade,
     dependenciesInstalled,
@@ -354,6 +355,25 @@ describe('decision step: building a ticket', () => {
     })
 })
 
+/** A refactor implementer's bad test that names no file. */
+const NO_FILE_BAD_TEST: JournalEntry = {
+    kind: 'agent_finished',
+    ticket: 11,
+    role: 'implementer',
+    content: {
+        role: 'implementer',
+        session_id: SESSIONS.implementer,
+        result: {
+            outcome: 'bad_test',
+            bad_test: { file: '', name: '', reason: 'Wrong sum.' },
+            summary: 'Split sum.',
+            assumptions: [],
+            run_notes: [],
+            finding_responses: [],
+        },
+    },
+}
+
 describe('decision step: a refactor ticket', () => {
     test('skips the test-writer: its implementer may follow renames into tests', () => {
         const action = decideRefactorAfter([])
@@ -416,10 +436,20 @@ describe('decision step: a refactor ticket', () => {
         ).toMatchObject({ type: 'launch_agent', role: 'ticket-reviewer' })
     })
 
-    test('a bad test makes it stuck at once: there is no test-writer to send it to', () => {
+    test('its first bad test is not stuck: it goes to a refactor test update (#686)', () => {
         const action = decideRefactorAfter([
             implemented({ ticket: 11, outcome: 'bad_test' }),
         ])
+
+        expect(action.type).not.toBe('mark_stuck')
+        expect(JSON.stringify(action)).not.toContain(
+            'there is no test-writer to fix it'
+        )
+    })
+
+    test('a bad test makes it stuck at once: there is no test-writer to send it to', () => {
+        // Since #686 only a bad test that names no file is stuck at once.
+        const action = decideRefactorAfter([NO_FILE_BAD_TEST])
 
         expect(action).toMatchObject({
             type: 'mark_stuck',
@@ -427,6 +457,18 @@ describe('decision step: a refactor ticket', () => {
             reason: 'bad_test',
         })
         if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(action.detail).toContain('Wrong sum.')
+    })
+
+    test('a bad test that names no file is stuck at once, with the reason (#686)', () => {
+        const action = decideRefactorAfter([NO_FILE_BAD_TEST])
+
+        if (action.type !== 'mark_stuck') throw new Error(action.type)
+        expect(
+            action.detail.startsWith(
+                'The implementer of a refactor ticket sent a test back as bad without naming its file: '
+            )
+        ).toBe(true)
         expect(action.detail).toContain('Wrong sum.')
     })
 })
