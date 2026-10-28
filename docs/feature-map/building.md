@@ -49,6 +49,7 @@ Tests:
 - `packages/engine/src/core/run-one-ticket-fix-loops.e2e.test.ts`
 - `packages/engine/src/core/run-one-ticket-install.e2e.test.ts`
 - `packages/engine/src/core/run-one-ticket-messages.e2e.test.ts`
+- `packages/engine/src/core/run-refactor-test-update.e2e.test.ts`
 
 ## Environment failures
 
@@ -64,7 +65,7 @@ Tests:
 
 ## The red check and honest new tests
 
-The red check proves a ticket's new tests fail before any code is written and every old test still passes, and sends back a new test that checks nothing. A test the ticket only moved to another test file is an old test, so a test-writer can split a too-big test file.
+The red check proves a ticket's new tests fail before any code is written and every old test still passes, and sends back a new test that checks nothing. A mapped test in a slow file a slow entry's `file_patterns` own is judged by the exit code of that entry's `run_files`. A test the ticket only moved to another test file is an old test, so a test-writer can split a too-big test file.
 
 Reached by: every ticket that is not a refactor ticket.
 
@@ -75,6 +76,7 @@ Tests:
 - `packages/engine/src/gates/red-check-moved-tests.test.ts`
 - `packages/engine/src/gates/red-check-swift.test.ts`
 - `packages/engine/src/core/run-moved-tests.e2e.test.ts`
+- `packages/engine/src/core/run-red-own-slow-run-files.e2e.test.ts`
 
 ## The feature map
 
@@ -128,7 +130,7 @@ Tests:
 
 ## Slow tests and the speed limit
 
-Slow tests stay out of every ticket's runs except the slow test files the ticket names or changes, and all run at the final review; the fast tests have a per-test time limit.
+Slow tests stay out of every ticket's runs except the slow test files the ticket names or changes (through a slow entry's `run_files` for the files its `file_patterns` own), and all run at the final review; the fast tests have a per-test time limit.
 
 Reached by: `checks.slow_test` and `test_case_timeout_ms` in a repo's `.luca/config.json`.
 
@@ -139,6 +141,7 @@ Tests:
 - `packages/engine/src/core/decide-slow-tests.test.ts`
 - `packages/engine/src/core/run-slow-tests.e2e.test.ts`
 - `packages/engine/src/core/run-own-slow-tests.e2e.test.ts`
+- `packages/engine/src/core/run-own-slow-run-files.e2e.test.ts`
 - `packages/engine/src/core/run-junit-own-files.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
 

@@ -30,6 +30,7 @@ Tests:
 - `packages/engine/src/core/decide-final-review-fresh.test.ts`
 - `packages/engine/src/core/final-review.test.ts`
 - `packages/engine/src/core/final-review.e2e.test.ts`
+- `packages/engine/src/core/lens-turn-limit.e2e.test.ts`
 - `packages/engine/src/core/run-ship-uncommitted.test.ts`
 - `packages/engine/src/core/run-ship-uncommitted.e2e.test.ts`
 - `packages/board/server/final-review-panel.test.ts`

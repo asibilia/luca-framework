@@ -17,6 +17,10 @@ import { handoffSection, reviewFixSection, reviewSections } from './review-text'
 import { retrySection } from './stuck-text'
 
 import {
+    refactorFixedReviewSection,
+    refactorUpdateSection,
+} from '../agents/refactor-update-prompts'
+import {
     CHANGESETS_LENS_SECTION,
     CHANGESETS_SECTION,
     rejoinSection,
@@ -95,9 +99,14 @@ const promptSections = ({
     progress: TicketProgress
 }): string[] => {
     const sections = buildPromptSections({ role, progress })
-    const { retried, crashed_turn } = progress
+    const { retried, crashed_turn, refactor_update } = progress
     return [
         ...sections,
+        ...(role === 'test-writer' &&
+        refactor_update !== null &&
+        refactor_update.result === null
+            ? [refactorUpdateSection(refactor_update)]
+            : []),
         ...(retried === null ? [] : [retrySection({ retried })]),
         ...(crashed_turn === role ? [CRASH_SECTION] : []),
     ]
@@ -152,8 +161,9 @@ const testUpdateSections = ({
 
 /**
  * The sections a launch adds for the ticket review: the reviewer's diff and
- * gate results (a re-review's new changes and earlier findings), or a
- * review fixer's findings while a review fix round is open.
+ * gate results (a re-review's new changes and earlier findings), and the
+ * tests a refactor test update changed on purpose (#686); or a review
+ * fixer's findings while a review fix round is open.
  */
 const reviewPromptSections = ({
     role,
@@ -164,10 +174,16 @@ const reviewPromptSections = ({
 }): string[] => {
     const fix = progress.review_fix
     if (role === 'ticket-reviewer') {
-        return reviewSections({
-            progress,
-            base_sha: progress.worktree?.base_sha ?? 'HEAD',
-        })
+        const { refactor_fixed } = progress
+        return [
+            ...reviewSections({
+                progress,
+                base_sha: progress.worktree?.base_sha ?? 'HEAD',
+            }),
+            ...(refactor_fixed.length === 0
+                ? []
+                : [refactorFixedReviewSection({ fixed: refactor_fixed })]),
+        ]
     }
     if (fix === null || progress.commits.green === null) return []
     if (role === 'test-writer' && !fix.tests_answered) {
@@ -209,8 +225,12 @@ export const launch = ({
         spec: snapshot.spec,
         ticket,
         refactor: isRefactorTicket({ ticket }),
-        // A test update names the bad test in its own section.
-        bad_test: progress.test_update === null ? progress.bad_test : null,
+        // A test update, or a refactor one, names the bad test in its own
+        // section.
+        bad_test:
+            progress.test_update === null && progress.refactor_update === null
+                ? progress.bad_test
+                : null,
         bad_test_by: progress.bad_test_source ?? undefined,
         sections: [
             ...promptSections({ role, progress }),

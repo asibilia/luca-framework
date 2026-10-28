@@ -10,6 +10,7 @@ import {
 import { lensPrompt } from './final-review-text'
 
 import { LENS_NAMES, lensRole, type LensName } from '../agents/role-results'
+import { MAX_TURNS } from '../agents/role-turns'
 import { isFinalKey } from '../journal/replay'
 
 export {
@@ -18,7 +19,15 @@ export {
     type FinalReviewDecision,
 } from './final-review-action'
 
-/** A fresh lens, or the step after its failed try. */
+/** The line a lens's prompt starts with when its last try ran out of turns (#684). */
+const outOfTurnsLine = (turns: number): string =>
+    `The last try at this review ran out of turns before it finished. This time you have ${turns} turns. Read only what you need, and don't read a file twice.`
+
+/**
+ * A fresh lens, or the step after its failed try. A lens whose latest
+ * failed try ran out of turns gets twice its role's limit, and a line
+ * saying so (#684).
+ */
 const lensStep = ({
     lens,
     review,
@@ -28,18 +37,27 @@ const lensStep = ({
 }: DecideArgs & { lens: LensName }): FinalReviewAction => {
     const role = lensRole({ lens })
     const failed = review.agent_failures[role]
-    const launch: FinalReviewAction = {
-        type: 'launch_lens',
+    const prompt = lensPrompt({
         lens,
-        role,
-        prompt: lensPrompt({
-            lens,
-            snapshot,
-            review,
-            gates: run_branch_gates,
-            run_notes,
-        }),
-    }
+        snapshot,
+        review,
+        gates: run_branch_gates,
+        run_notes,
+    })
+    const max_turns =
+        review.last_out_of_turns[role] === true
+            ? MAX_TURNS[role] * 2
+            : undefined
+    const launch: FinalReviewAction =
+        max_turns === undefined
+            ? { type: 'launch_lens', lens, role, prompt }
+            : {
+                  type: 'launch_lens',
+                  lens,
+                  role,
+                  prompt: `${outOfTurnsLine(max_turns)}\n\n${prompt}`,
+                  max_turns,
+              }
     if (failed === undefined) return launch
     return failureCap({ review, failed }) ?? launch
 }

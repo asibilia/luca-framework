@@ -11,6 +11,10 @@ import {
     type StepArgs,
 } from './build-action'
 import { launch } from './build-launch'
+import {
+    refactorBadTestStep,
+    refactorUpdateStep,
+} from './decide-refactor-update'
 import { environmentFailedDetail } from './environment-rerun'
 import { failedChecks, gateFixMessage, redFixMessage } from './fix-loop-text'
 import { MAX_BAD_TEST_BOUNCES, MAX_FIX_ROUNDS } from './loop-caps'
@@ -240,6 +244,8 @@ export const codeStep = ({
 }: StepArgs): BuildAction | null => {
     const number = ticket.number
     const { implementer } = progress
+    const update = refactorUpdateStep({ snapshot, ticket, progress, run_notes })
+    if (update !== null) return update
     if (implementer === null) {
         return launch({
             role: 'implementer',
@@ -251,11 +257,7 @@ export const codeStep = ({
     }
     if (implementer.outcome === 'bad_test') {
         if (isRefactorTicket({ ticket })) {
-            return stuck({
-                ticket: number,
-                reason: 'bad_test',
-                detail: `The implementer of a refactor ticket sent a test back as bad; there is no test-writer to fix it: ${badTestText({ progress })}`,
-            })
+            return refactorBadTestStep({ ticket, progress })
         }
         if (progress.bad_test_bounces > MAX_BAD_TEST_BOUNCES) {
             return stuck({

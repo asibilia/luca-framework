@@ -55,7 +55,9 @@ type FailedTurn = { role: AgentRole; session_id: string | null }
 /**
  * The sessions the decision step may still send a follow-up, each only
  * while its fix loop can reopen it:
- * - a ticket's test-writer until the red commit (the red check's loop);
+ * - a ticket's test-writer until the red commit (the red check's loop), or
+ *   on a refactor ticket, which makes none, until its refactor test
+ *   update's test-writer answered (#686);
  * - a ticket's implementer until the green commit, or a review fix round's
  *   until its fix commit (the gates' loop);
  * - the final review's fixers until the round's fix commit;
@@ -95,7 +97,13 @@ const reachableSessions = ({ state }: { state: RunState }): Set<string> => {
         }
         const { sessions, commits, review_fix } = progress
         keepFailed(progress.agent_failure)
-        if (commits.red === null) keep(sessions['test-writer'])
+        // A refactor ticket makes no red commit: its refactor test update's
+        // test-writer is kept only until it answered (#686).
+        const testWriterOpen =
+            commits.red === null &&
+            (progress.refactor_updates === 0 ||
+                progress.refactor_update?.result === null)
+        if (testWriterOpen) keep(sessions['test-writer'])
         const fixing = review_fix !== null && commits.fix === null
         if (commits.green === null || fixing) keep(sessions.implementer)
     }

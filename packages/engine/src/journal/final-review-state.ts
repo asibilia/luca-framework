@@ -35,6 +35,8 @@ export type ReplayedAgentFailure = {
     error: string
     failure: AgentFailure
     session_id: string | null
+    /** The turn reached its role's turn limit (#684). */
+    out_of_turns?: boolean
 }
 
 /**
@@ -114,6 +116,13 @@ export type FinalReviewState = {
      * order each first did, for the PR.
      */
     out_of_turns: Partial<Record<AgentRole, number>>
+    /**
+     * Whether each role's latest failed try ran out of turns (#684): a
+     * failed turn sets it, a finished turn clears it, a `retry` keeps it,
+     * and a new round starts it again. A lens whose latest try did gets
+     * twice its role's turn limit on its next launch.
+     */
+    last_out_of_turns: Partial<Record<AgentRole, boolean>>
     passed: boolean
     stuck: { reason: StuckReason; detail: string } | null
     shipped: boolean
@@ -172,6 +181,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     declined: [],
     assumptions: [],
     out_of_turns: {},
+    last_out_of_turns: {},
     passed: false,
     stuck: null,
     shipped: false,

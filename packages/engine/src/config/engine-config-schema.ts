@@ -51,46 +51,84 @@ const JunitPathSchema = z.string().min(1).refine(isFileInsideRepo, {
         'must be a file inside the repo, relative to its root: not an absolute path, not one that leaves the repo with "..", and not ending in "/"',
 })
 
-/**
- * One entry of a `checks.test` list: a command, or a command and its kind.
- * A `junit` command names the JUnit files it writes in `junit_path` (#668),
- * one path or a list; no other kind may have one.
- */
-const TestCommandEntrySchema = z.union([
-    z.string().min(1),
-    z
-        .object({
-            run: z.string().min(1),
-            results: TestResultsSchema.optional(),
-            junit_path: z
-                .union([JunitPathSchema, z.array(JunitPathSchema).min(1)])
-                .optional(),
-        })
-        .refine(
-            ({ results, junit_path }) =>
-                results !== 'junit' || junit_path !== undefined,
-            {
-                message:
-                    'a "junit" test command needs junit_path: the JUnit files it writes, relative to the repo root',
-                path: ['junit_path'],
-            }
-        )
-        .refine(
-            ({ results, junit_path }) =>
-                results === 'junit' || junit_path === undefined,
-            {
-                message:
-                    'junit_path is only for a test command with "results": "junit"',
-                path: ['junit_path'],
-            }
-        ),
-])
+/** The text a slow command's `run_files` must hold, where the files go (#683). */
+export const RUN_FILES_PLACEHOLDER = '{files}'
 
-/** A test command setting: one command, or a list of them (see `testCommands`). */
-const TestCommandsSchema = z.union([
-    z.string().min(1),
-    z.array(TestCommandEntrySchema),
-])
+/**
+ * One entry of a `checks.test` or `checks.slow_test` list: a command, or a
+ * command and its kind. A `junit` command names the JUnit files it writes in
+ * `junit_path` (#668), one path or a list; no other kind may have one. A slow
+ * entry may also name the test files it owns (`file_patterns`) and how to run
+ * some of them (`run_files`, #683); they come together, and a `checks.test`
+ * entry may have neither.
+ */
+const testCommandEntrySchema = ({ slow }: { slow: boolean }) =>
+    z.union([
+        z.string().min(1),
+        z
+            .object({
+                run: z.string().min(1),
+                results: TestResultsSchema.optional(),
+                junit_path: z
+                    .union([JunitPathSchema, z.array(JunitPathSchema).min(1)])
+                    .optional(),
+                file_patterns: z.array(z.string().min(1)).min(1).optional(),
+                run_files: z.string().min(1).optional(),
+            })
+            .refine(
+                ({ file_patterns, run_files }) =>
+                    slow ||
+                    (file_patterns === undefined && run_files === undefined),
+                {
+                    message:
+                        'checks.test: file_patterns and run_files belong only on checks.slow_test entries.',
+                }
+            )
+            .refine(
+                ({ file_patterns, run_files }) =>
+                    !slow ||
+                    (file_patterns === undefined) === (run_files === undefined),
+                {
+                    message:
+                        'checks.slow_test: file_patterns and run_files come together; this entry has only one of them.',
+                }
+            )
+            .refine(
+                ({ run_files }) =>
+                    !slow ||
+                    run_files === undefined ||
+                    run_files.includes(RUN_FILES_PLACEHOLDER),
+                {
+                    message: `checks.slow_test: run_files must contain ${RUN_FILES_PLACEHOLDER}.`,
+                    path: ['run_files'],
+                }
+            )
+            .refine(
+                ({ results, junit_path }) =>
+                    results !== 'junit' || junit_path !== undefined,
+                {
+                    message:
+                        'a "junit" test command needs junit_path: the JUnit files it writes, relative to the repo root',
+                    path: ['junit_path'],
+                }
+            )
+            .refine(
+                ({ results, junit_path }) =>
+                    results === 'junit' || junit_path === undefined,
+                {
+                    message:
+                        'junit_path is only for a test command with "results": "junit"',
+                    path: ['junit_path'],
+                }
+            ),
+    ])
+
+/**
+ * A test command setting: one command, or a list of them (see
+ * `testCommands`). Only a slow one's entries may own files (#683).
+ */
+const testCommandsSchema = ({ slow }: { slow: boolean }) =>
+    z.union([z.string().min(1), z.array(testCommandEntrySchema({ slow }))])
 
 /** The config's `muninn` block. */
 export const MuninnConfigSchema = z.object({
@@ -204,13 +242,15 @@ export type ModelsConfig = z.infer<typeof ModelsConfigSchema>
 export const EngineConfigSchema = z.object({
     checks: z
         .object({
-            test: TestCommandsSchema.optional(),
+            test: testCommandsSchema({ slow: false }).optional(),
             /**
              * The slow tests (#563): the tests `test` leaves out, run only at
-             * the final review. Same shape as `test`. Left out, nothing
+             * the final review. Same shape as `test`, and an entry may also
+             * own some test files and run them in a ticket's gates
+             * (`file_patterns`, `run_files`, #683). Left out, nothing
              * changes.
              */
-            slow_test: TestCommandsSchema.optional(),
+            slow_test: testCommandsSchema({ slow: true }).optional(),
             types: z.string().min(1).optional(),
             lint: z.string().min(1).optional(),
         })

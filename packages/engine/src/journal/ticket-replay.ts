@@ -274,6 +274,24 @@ const progressChange = ({
                 test_updates: progress.test_updates + 1,
                 test_update: { ...record.content, result: null },
             }
+        case 'refactor_test_update':
+            return {
+                refactor_updates: progress.refactor_updates + 1,
+                refactor_update: {
+                    ...record.content,
+                    result: null,
+                    changed: null,
+                },
+            }
+        case 'refactor_test_update_checked':
+            return progress.refactor_update === null
+                ? {}
+                : {
+                      refactor_update: {
+                          ...progress.refactor_update,
+                          changed: record.content.changed,
+                      },
+                  }
         case 'run_branch_pushed':
             return { pushed: record.content.sha }
         case 'ticket_stuck':

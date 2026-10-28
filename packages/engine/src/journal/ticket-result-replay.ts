@@ -73,9 +73,19 @@ export const resultChange = ({
     seq: number
 }): Partial<TicketProgress> => {
     const fix = progress.review_fix
-    const { rejoin, test_update } = progress
+    const { rejoin, test_update, refactor_update } = progress
     switch (finished.role) {
         case 'test-writer':
+            // The test-writer's answer to a refactor test update (#686): no
+            // red check, and its mapping is not checked.
+            if (refactor_update !== null && refactor_update.result === null) {
+                return {
+                    refactor_update: {
+                        ...refactor_update,
+                        result: finished.result,
+                    },
+                }
+            }
             // The test-writer's answer to a test update after a rebase: the
             // red check stands, as for clashed tests (#489).
             if (test_update !== null && test_update.result === null) {
@@ -143,6 +153,31 @@ export const resultChange = ({
         case 'implementer': {
             const { result } = finished
             const bad_test = badTestOf(result)
+            // Its answer after a refactor test update closes the update
+            // (#686), keeping the fixed file for the reviewer and the PR; a
+            // second bad test is kept for the stuck text.
+            if (refactor_update !== null && refactor_update.result !== null) {
+                const { file, reason } = refactor_update
+                return {
+                    implementer: result,
+                    refactor_update: null,
+                    refactor_fixed: [
+                        ...progress.refactor_fixed,
+                        { file, reason },
+                    ],
+                    ...(bad_test === null
+                        ? {}
+                        : {
+                              bad_test,
+                              bad_test_source: 'implementer',
+                              bad_test_sources: bouncedBy({
+                                  progress,
+                                  by: 'implementer',
+                              }),
+                              bad_test_bounces: progress.bad_test_bounces + 1,
+                          }),
+                }
+            }
             // Its answer after the test-writer updated the tests closes the
             // update; a done answer settles the bad test (#489).
             if (test_update !== null && test_update.result !== null) {

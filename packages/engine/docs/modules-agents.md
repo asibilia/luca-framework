@@ -9,6 +9,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/agents/claude-launcher.ts` | The real launcher: one Claude Agent SDK session per agent, with every guard on, kept open for follow-ups. |
 | `src/agents/claude-options.ts` | Pure: the model, effort, clean environment, and SDK options for one agent. |
 | `src/agents/role-effort.ts` | Pure: the effort each role runs at, whatever its model (#659). |
+| `src/agents/role-turns.ts` | Pure: how many model turns each role gets, whatever launcher runs it; a launch's own `max_turns` replaces it (#684). |
 | `src/agents/role-instructions.ts` | Each role's instructions, appended to Claude Code's system prompt ([its modules](#role-instructions-modules)). |
 | `src/agents/scripted-launcher.ts` | Scripted stand-in agents: write files, act (sending and receiving agent messages too), return a result or a failure, and record each launch and follow-up with its session and what it was handed. |
 | `src/agents/message-tool.ts` | The engine's in-process MCP server `luca` with its `send_message` tool, and the hook that hands messages over after each tool call. |
@@ -21,6 +22,7 @@ The modules split out of `src/agents/role-prompts.ts`. It re-exports them.
 
 | Module | What it does |
 | --- | --- |
+| `src/agents/refactor-update-prompts.ts` | A refactor test update's texts (#686): the test-writer's section, and the implementer's follow-up. |
 | `src/agents/rejoin-prompts.ts` | The sections for a ticket sent back onto the run branch: after a clash or failed gates (`rejoinSection`), and after a rebase made its tests wrong (`testUpdateSection`). |
 | `src/agents/prompt-sections.ts` | The sections the decision step adds to a prompt: the run notes, the prepare command, the feature map, and the changesets. |
 

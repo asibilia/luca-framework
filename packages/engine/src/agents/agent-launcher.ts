@@ -103,7 +103,9 @@ export type LauncherFailure = z.infer<typeof LauncherFailureSchema>
  * of the model session, for the journal. `session_gone` marks a follow-up
  * that found its session closed or unknown (#521): no agent ran, and the
  * engine hands the follow-up's message to a fresh agent. `out_of_turns`
- * marks a turn that reached its role's turn limit (#543).
+ * marks a turn that reached its role's turn limit (#543). `session_closed`
+ * marks a turn interrupted for running past its time limit (#685): the
+ * launcher closed its session, so no follow-up can reach it.
  */
 export type AgentTurn =
     | {
@@ -120,6 +122,7 @@ export type AgentTurn =
           session?: AgentSession
           session_gone?: boolean
           out_of_turns?: boolean
+          session_closed?: boolean
       }
 
 /**
@@ -178,6 +181,12 @@ export type AgentLauncher = {
          * session's follow-ups run at it too.
          */
         effort: EffortLevel
+        /**
+         * The turn limit for this launch (#684), in place of its role's: a
+         * lens whose last try ran out of turns gets twice its role's. Left
+         * out, the role's limit.
+         */
+        max_turns?: number
         /**
          * Hears the turn's live progress (#628) each time it changes, before
          * the turn ends, for the engine's live file. Left out, nothing hears it.

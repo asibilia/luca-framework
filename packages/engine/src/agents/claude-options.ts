@@ -16,6 +16,7 @@ import {
     TicketReviewResultSchema,
     type AgentRole,
 } from './role-results'
+import { MAX_TURNS } from './role-turns'
 
 import {
     DEFAULT_MODEL,
@@ -27,28 +28,13 @@ import { HELPER_TYPE, SEARCHER } from '../guards/helper-rules'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
 
+export { MAX_TURNS } from './role-turns'
+
 /** The models an agent may launch on, by short name (`ModelNameSchema`). */
 export const MODEL_NAMES = ModelNameSchema.options
 
 /** The model reviewers run on, and every agent the decision model doesn't route (#603). */
 export const CLAUDE_MODEL = DEFAULT_MODEL
-
-/**
- * How many model turns one agent gets before its try ends. The integration
- * lens reads how every ticket fits together on the whole branch, so it gets
- * more than the other lenses.
- */
-export const MAX_TURNS: Record<AgentRole, number> = {
-    'test-writer': 80,
-    implementer: 150,
-    'ticket-reviewer': 60,
-    'architecture-lens': 60,
-    'simplification-lens': 60,
-    'security-lens': 60,
-    'integration-lens': 100,
-    'rules-lens': 60,
-    learner: 40,
-}
 
 /**
  * Why a model may not launch an agent, or `null` if it may: exactly one of
@@ -181,6 +167,7 @@ export const agentOptions = ({
     cwd,
     model,
     effort,
+    max_turns,
     claude_path,
     config,
     common_git_dir,
@@ -199,6 +186,8 @@ export const agentOptions = ({
     cwd: string
     model: string
     effort: EffortLevel
+    /** The launch's own turn limit (#684), in place of the role's; left out, the role's. */
+    max_turns?: number
     /** The real path of the installed `claude` binary. */
     claude_path: string
     config: EngineConfig
@@ -264,7 +253,7 @@ export const agentOptions = ({
         // Streamed chunks only feed the live file's heartbeat (#631); the
         // launcher keeps nothing of them.
         includePartialMessages: true,
-        maxTurns: MAX_TURNS[role],
+        maxTurns: max_turns ?? MAX_TURNS[role],
         hooks: {
             PreToolUse: [{ hooks: [guard_hook] }],
             ...(delivery_hook === null

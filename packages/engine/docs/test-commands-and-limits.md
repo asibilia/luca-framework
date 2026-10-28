@@ -106,7 +106,8 @@ file as a quoted `./` path (never the fast command plus the files: Bun's
   load, as a new fast test file usually doesn't before its code exists), the
   fast run stands as it is: its command and output are what they were before
   #564, and a slow file that doesn't load still counts its named tests as
-  failing. The comparison with the baseline's old tests is unchanged.
+  failing. The comparison with the baseline's old tests is unchanged. A file
+  a `run_files` entry owns (see below) isn't in this run.
 - A **ticket's gates** run the test files it changed since its base, after
   `checks.test`, as one more `test` check. A failure is a failed test gate
   with its output, and goes into the gate fix loop. A run that gives no
@@ -119,6 +120,57 @@ file as a quoted `./` path (never the fast command plus the files: Bun's
 
 Each of these runs gets `test_timeout_ms`. A repo with no `checks.slow_test`
 runs the same commands as before.
+
+**A ticket's own slow tests through `run_files` (#683).** A `pass_fail` slow
+command, such as an XCUITest suite, can't be given files the way `bun test`
+can. A `checks.slow_test` entry can say how to run some of its files with two
+fields that come together: `file_patterns`, the globs of the test files it
+owns (a file must match `test_file_patterns` too), and `run_files`, the
+command that runs some of them, with the literal text `{files}`:
+
+```json
+{
+    "test_file_patterns": ["src/**/*.test.ts", "ui/**/*.test.ts"],
+    "checks": {
+        "test": "bun test src",
+        "slow_test": [
+            {
+                "run": "bun run test:ui",
+                "results": "pass_fail",
+                "file_patterns": ["ui/**/*.test.ts"],
+                "run_files": "bun run test:ui:files {files}"
+            }
+        ]
+    }
+}
+```
+
+A ticket's gates (`target: ticket`) run the test files the ticket changed
+since its base, still in the worktree, that match an entry's `file_patterns`,
+once through each such entry, in config order, after the test checks and
+before types and lint. Every `{files}` becomes the files: repo-relative
+paths, each in single quotes, separated by one space. Each run is a
+`pass_fail` check named `own_slow_test`, in a test slot, with
+`test_timeout_ms`, and its recorded `command` is the filled-in one. Those
+files leave the own-files `bun test` run above. An entry that owns none of
+the ticket's files adds no check. A join's gates, the already-done check,
+and the final review's whole slow suite don't change. The config is refused
+when it loads if `run_files` has no `{files}`, if an entry has only one of
+the two fields, or if a `checks.test` entry has either.
+
+The **red check** runs those files too, before any code exists. Of the
+ticket's changed files an entry owns, the ones that hold a test the test map
+names run once through that entry's `run_files`, with `test_timeout_ms`; a
+file with no mapped test isn't run. A `pass_fail` run gives no per-test
+results, so each mapped test there is judged by the run's exit code, after
+the usual check that its name is in its file's text (a name that isn't is the
+"not found in the file" problem). A non-zero exit means those tests are red,
+as they should be. An exit of 0 fails the red check with one problem per
+entry, `These slow tests passed before any code was written: ` and the files,
+comma-separated. A run stopped by `test_timeout_ms` fails it with
+`These slow tests timed out in the red check: ` and the files. So a repo's
+`run_files` script must exit non-zero when the tests fail, and finish within
+`test_timeout_ms`.
 
 **The fast test speed limit (#580).** A fast test should be fast. A repo says
 how fast with `test_case_timeout_ms` (a positive whole number of

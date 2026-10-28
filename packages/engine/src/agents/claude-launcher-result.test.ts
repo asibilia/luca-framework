@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import type { AgentLauncher } from './agent-launcher'
 import { createClaudeLauncher } from './claude-launcher'
 import {
     APPROVE,
@@ -13,7 +14,8 @@ import {
     repoPerTest,
     result,
 } from './claude-launcher-helpers'
-import { MAX_TURNS } from './claude-options'
+import { CLAUDE_MODEL, MAX_TURNS } from './claude-options'
+import { REVIEW_EFFORT } from './role-effort'
 
 /**
  * The launcher seam, the result of a turn: what a success, a failure, and a
@@ -190,7 +192,8 @@ describe('the result', () => {
         expect(other).toMatchObject({ ok: false, failure: 'agent' })
         expect(other).not.toMatchObject({ out_of_turns: true })
         expect(limited.calls[0]?.options.maxTurns).toBe(150)
-        expect(MAX_TURNS).toEqual({
+        // The rules lens's limit is checked in its own test below.
+        expect(MAX_TURNS).toMatchObject({
             'test-writer': 80,
             implementer: 150,
             'ticket-reviewer': 60,
@@ -198,9 +201,45 @@ describe('the result', () => {
             'simplification-lens': 60,
             'security-lens': 60,
             'integration-lens': 100,
-            'rules-lens': 60,
             learner: 40,
         })
+    })
+
+    test('the rules lens gets 100 turns, as many as the integration lens', () => {
+        expect(MAX_TURNS['rules-lens']).toBe(100)
+        expect(MAX_TURNS['rules-lens']).toBe(MAX_TURNS['integration-lens'])
+    })
+
+    test("a launch's max_turns replaces its role's turn limit, and a launch without one gets the role's", async () => {
+        const doubled = fakeQuery({
+            messages: [INIT, result({ structured_output: APPROVE })],
+        })
+        const plain = fakeQuery({
+            messages: [INIT, result({ structured_output: APPROVE })],
+        })
+        const args: Parameters<AgentLauncher['launch']>[0] = {
+            role: 'rules-lens',
+            ticket: 10,
+            prompt: 'Review the run branch.',
+            cwd: repo,
+            may_edit_tests: false,
+            config: CONFIG,
+            messaging: null,
+            model: CLAUDE_MODEL,
+            effort: REVIEW_EFFORT,
+        }
+
+        await createClaudeLauncher({
+            query: doubled.query,
+            claude_path: CLAUDE_PATH,
+        }).launch({ ...args, max_turns: 200 })
+        await createClaudeLauncher({
+            query: plain.query,
+            claude_path: CLAUDE_PATH,
+        }).launch(args)
+
+        expect(doubled.calls[0]?.options.maxTurns).toBe(200)
+        expect(plain.calls[0]?.options.maxTurns).toBe(MAX_TURNS['rules-lens'])
     })
 
     test('an SDK that throws is an engine failure', async () => {
@@ -230,7 +269,11 @@ describe('the result', () => {
     test("a turn past its time is interrupted and fails the agent's try", async () => {
         const fake = fakeQuery({ messages: [INIT], hang: true })
         const turn = await launch({ query: fake.query, turn_timeout_ms: 50 })
-        expect(turn).toMatchObject({ ok: false, failure: 'agent' })
+        expect(turn).toMatchObject({
+            ok: false,
+            failure: 'agent',
+            session_closed: true,
+        })
         expect(fake.calls[0]?.interrupted).toBe(true)
         expect(fake.calls[0]?.closed).toBe(true)
     })

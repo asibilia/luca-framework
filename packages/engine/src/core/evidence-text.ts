@@ -1,3 +1,5 @@
+import uniq from 'lodash/uniq'
+
 import type { TicketProgress, ReplayedSnapshot } from '../journal/replay'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
@@ -36,7 +38,14 @@ const evidenceLine = ({
         return `- #${number}: already done on the base branch, so no new tests.`
     }
     if (refactor) {
-        return `- #${number}: a refactor, so no new tests; the old tests still pass.`
+        const fixed = uniq(
+            (progress?.refactor_fixed ?? []).map(({ file }) => file)
+        )
+        const changed =
+            fixed.length === 0
+                ? ''
+                : ` A test-writer changed ${fixed.join(', ')} to check what the ticket's criteria say, as its implementer asked.`
+        return `- #${number}: a refactor, so no new tests; the old tests still pass.${changed}`
     }
     const red_tests = progress?.red_tests ?? []
     if (red_tests.length === 0) return `- #${number}: no red check recorded.`
@@ -54,8 +63,9 @@ const evidenceLine = ({
  * The PR's Evidence section (#513), from the journal alone: for each ticket
  * in the run (not the skipped ones), the new tests its red check proved
  * fail first, and whether the gates pass them now. An already-done ticket
- * and a refactor ticket say why they have no new tests. Each line names at
- * most `MAX_EVIDENCE_TESTS` tests. With no ticket in the run, `''`.
+ * and a refactor ticket say why they have no new tests; a refactor ticket
+ * also names the tests a refactor test update changed (#686). Each line
+ * names at most `MAX_EVIDENCE_TESTS` tests. With no ticket in the run, `''`.
  *
  * @example
  * evidenceSection({ snapshot, tickets })

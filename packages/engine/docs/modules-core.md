@@ -44,6 +44,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/commit-in.ts` | The leftover scan, then an engine commit (`commitIn`). |
 | `src/core/execute-gates.ts` | Gates, the final slow tests, and the install in a worktree. |
 | `src/core/execute-join.ts` | Undoing a join, rebasing a ticket, and sending its tests back. |
+| `src/core/execute-refactor-update.ts` | A refactor test update's steps (#686): opening it with the test files' hashes, and finding the test files its test-writer changed. |
 | `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
 | `src/core/decide-memory.ts` | Memory's half of the decision step: the recall points (a search before the step that needs it, then its memories in the prompt), and the learner, its saves, and the spec comment at the end of a run. |
 | `src/core/execute-memory.ts` | Carries out memory's steps: searches, the learner's turn, saves (update a similar memory or add one), feedback, and the spec comment. |
@@ -62,6 +63,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/decide-red-green.ts` | Tests, red check, code, gates, and their commits. |
 | `src/core/decide-ticket-review.ts` | The ticket review and its fix rounds. |
 | `src/core/decide-rejoin.ts` | Joining the run branch, and rebases with test updates. |
+| `src/core/decide-refactor-update.ts` | A refactor ticket's bad test: one refactor test update, then stuck (#686). |
 | `src/core/decide-build-view.ts` | What the build half reads about a run's tickets (`buildViewOf`): the tickets in order, each one's progress, and whether it is skipped, pushed, already done, finished, or stuck. |
 | `src/core/decide-build-early.ts` | The steps that settle the run before any ticket moves: a `stop` reply or an open PR winds it down, and the run branch's install, which a failure holds every ticket back on. |
 | `src/core/decide-build-tickets.ts` | Each ticket's next step, with the join queue picking which approved ticket joins the run branch. |

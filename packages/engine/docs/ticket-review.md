@@ -24,7 +24,9 @@ the red check or the gates.
 **The ticket review.** After the green commit, a fresh, read-only
 reviewer gets the ticket's committed diff (`git diff <base>..<green>` and the
 files it changes), the engine's gate results, and the acceptance criteria.
-On a refactor ticket it also checks that behavior didn't change. Each
+On a refactor ticket it also checks that behavior didn't change; a test a
+refactor test update fixed (#686) is named, with the implementer's reason,
+as the one expected change to what a test checks. Each
 **finding** is a `blocker`, a `should_fix`, or a `nit`, and a `code` or a
 `test` finding. The verdict must match the findings (`changes_requested`
 exactly when one is a blocker or should-fix); one that doesn't is a failed

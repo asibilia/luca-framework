@@ -93,6 +93,7 @@ export const createSessionPool = ({
                       ok: false,
                       failure: 'agent',
                       error: `No result within ${timeoutMs} ms; the agent was interrupted.`,
+                      session_closed: true,
                   }
                 : raced
         if (raced === 'timeout') {

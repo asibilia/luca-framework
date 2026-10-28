@@ -22,12 +22,14 @@ import {
     featureMapPath,
     hasJunitCommand,
     hasSlowTests,
+    ownSlowCommands,
     testTimeoutOf,
 } from '../config/engine-config'
 import { runCaseTests } from '../gates/case-test-runner'
 import { readFeatureMap } from '../gates/feature-map'
 import { prepareCheck } from '../gates/gate-runner'
 import { endedText } from '../gates/gate-schemas'
+import { ownSlowRuns, slowRedRuns } from '../gates/own-slow-check'
 import { checkRed, type ChangedTestSource } from '../gates/red-check'
 import {
     fileTestsCommand,
@@ -130,6 +132,16 @@ export const runRedCheck = async ({
             label: 'red',
         }),
     })
+    // The ticket's changed test files a slow command with `run_files` owns
+    // (#683) run through it, once per command, if they hold a mapped test;
+    // its exit code judges them (see `checkRed`).
+    const slow_runs = ownSlowRuns({
+        commands: ownSlowCommands({ config: context.config }),
+        own_test_files: base_changed.filter((file) =>
+            test_files.includes(file)
+        ),
+    })
+    const slow_files = new Set(slow_runs.flatMap((run) => run.files))
     // With a slow command, the fast tests leave out every slow test file
     // (#564): the files the test map names or the ticket changed, that the
     // fast run gave no results for, run on their own, with plain `bun test`.
@@ -144,6 +156,7 @@ export const runRedCheck = async ({
               }),
           ]).filter(
               (file) =>
+                  !slow_files.has(file) &&
                   fast.files_without_results.includes(file) &&
                   (!bun_files_only || isBunTestFile(file))
           )
@@ -203,6 +216,14 @@ export const runRedCheck = async ({
         sources,
         changed_test_sources,
         feature_map: await featureMapIn({ context, cwd: path }),
+        slow_runs: await slowRedRuns({
+            runs: slow_runs,
+            mapped_files: files,
+            cwd: path,
+            timeout_ms: testTimeoutOf({ config: context.config }),
+            test_concurrency: context.config.test_concurrency,
+            exclusive,
+        }),
     })
     // A failed prepare after the test-writer's turn is one more problem,
     // for the test-writer's fix loop; so is a turn that changed no file,

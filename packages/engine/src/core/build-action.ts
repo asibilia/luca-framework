@@ -137,6 +137,23 @@ export type BuildAction =
           from_sha: string
           base_sha: string
       }
+    /**
+     * A refactor ticket's first bad test (#686): keep the implementer's work,
+     * hash the worktree's test files, and journal it all as
+     * `refactor_test_update`, so a fresh test-writer fixes `file`.
+     */
+    | {
+          type: 'open_refactor_update'
+          ticket: number
+          file: string
+          reason: string
+      }
+    /**
+     * After the refactor test update's test-writer answered: find the test
+     * files it changed since the update, journaled as
+     * `refactor_test_update_checked`.
+     */
+    | { type: 'check_refactor_update'; ticket: number }
     /** Remove these git worktrees at the end of the run; branches stay. */
     | { type: 'remove_worktrees'; paths: string[] }
     /** No ticket can move, and not every ticket has joined. */

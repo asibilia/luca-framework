@@ -78,6 +78,8 @@ export type ScriptedCall = {
      * `null` for a session the launcher doesn't know.
      */
     effort: EffortLevel | null
+    /** The turn limit a launch asked for (#684); left out when it asked for none. */
+    max_turns?: number
     /** What each of the turn's tool calls handed over, in order. */
     delivered: string[]
 }
@@ -204,6 +206,7 @@ export const createScriptedLauncher = ({
             messaging,
             model,
             effort,
+            max_turns,
         }) => {
             const session_id = `scripted-${role}-${ticket}-${calls.length + 1}`
             sessions.set(session_id, { messaging, model, effort })
@@ -216,6 +219,7 @@ export const createScriptedLauncher = ({
                 may_edit_tests,
                 model,
                 effort,
+                ...(max_turns === undefined ? {} : { max_turns }),
                 delivered: [],
             }
             calls.push(call)

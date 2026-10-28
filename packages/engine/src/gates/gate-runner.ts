@@ -1,5 +1,6 @@
 import type { GateCheck, GateName, TestCase } from './gate-schemas'
 import { ownFilesCheck } from './own-files-check'
+import { ownSlowChecks, ownSlowRuns } from './own-slow-check'
 import { prepareCheck } from './prepare-check'
 import { shellCheck } from './shell-check'
 import { testChecks } from './test-checks'
@@ -8,6 +9,7 @@ import { isBunTestFile } from './test-runner'
 import {
     caseLimitOf,
     hasJunitCommand,
+    ownSlowCommands,
     slowTestCommands,
     testCommands,
     testTimeoutOf,
@@ -40,7 +42,10 @@ export { FAST_TEST_HINT } from './test-checks'
  * ones the fast runs gave no results for run next on their own with plain
  * `bun test`, as one more `test` check, with the same time limit. A run that
  * gives no results (its files don't load) adds no check after a failed fast
- * run, which already fails the gate.
+ * run, which already fails the gate. The ones a slow command with
+ * `run_files` owns (#683) leave that run: they run next, once through each
+ * such command, in config order, as `pass_fail` `own_slow_test` checks with
+ * the same time limit.
  *
  * Also returns `cases`, the test cases of the fast `bun` and `junit` runs and the
  * own-files run, each with its `expect()` count, so the engine can find a
@@ -86,8 +91,10 @@ export const runGates = async ({
      */
     with_slow_tests?: boolean
     /**
-     * A ticket's changed test files (#564): those no fast run gave results
-     * for are run on their own, as one more `test` check. Left out, none.
+     * A ticket's changed test files (#564): those a slow command's
+     * `run_files` owns run through it (#683), and of the rest, those no fast
+     * run gave results for are run on their own, as one more `test` check.
+     * Left out, none.
      */
     own_test_files?: string[]
     /**
@@ -141,9 +148,18 @@ export const runGates = async ({
     checks.push(...fastChecks.checks)
     // The test cases the gates saw, for the empty-test check (#581).
     const cases = fastChecks.runs.flatMap((run) => run.cases)
+    // The own files a slow command's run_files owns (#683) run through it,
+    // not through the own-files bun run.
+    const own_slow_runs = ownSlowRuns({
+        commands: ownSlowCommands({ config }),
+        own_test_files: own_test_files ?? [],
+    })
+    const own_slow_files = new Set(own_slow_runs.flatMap(({ files }) => files))
     const own = await ownFilesCheck({
         own_test_files: (own_test_files ?? []).filter(
-            (file) => !bun_files_only || isBunTestFile(file)
+            (file) =>
+                !own_slow_files.has(file) &&
+                (!bun_files_only || isBunTestFile(file))
         ),
         fast_checks: fastChecks.checks,
         fast_runs: fastChecks.runs,
@@ -156,6 +172,15 @@ export const runGates = async ({
     })
     cases.push(...own.cases)
     if (own.check !== null) checks.push(own.check)
+    checks.push(
+        ...(await ownSlowChecks({
+            runs: own_slow_runs,
+            cwd,
+            timeout_ms,
+            test_concurrency,
+            exclusive,
+        }))
+    )
     if (with_slow_tests === true) {
         const slow = await testChecks({
             commands: slowTestCommands({ config }),
