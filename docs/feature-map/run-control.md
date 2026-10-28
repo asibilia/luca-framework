@@ -38,7 +38,7 @@ Tests:
 
 ## A cold read of a spec
 
-The `/luca-spec-check` skill gathers a spec and its tickets and hands them to three fresh, read-only readers before the owner adds `ready-for-agent`.
+The `/luca-spec-check` skill gathers a spec and its tickets and hands them to three fresh, read-only readers before the owner adds `ready-for-agent`, shows one report, and posts it on the spec issue only after a yes.
 
 Reached by: `/luca-spec-check [spec issue number]` in Claude Code.
 
