@@ -85,6 +85,10 @@ import {
     PullRequestOpenedEntrySchema,
 } from './pull-request-entries'
 import {
+    RefactorTestUpdateCheckedEntrySchema,
+    RefactorTestUpdateEntrySchema,
+} from './refactor-update-entries'
+import {
     RepoWaitEndedEntrySchema,
     RepoWaitPsFailedEntrySchema,
     RepoWaitSkippedEntrySchema,
@@ -156,6 +160,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     TicketJoinedEntrySchema,
     TicketRebasedEntrySchema,
     TestsSentBackEntrySchema,
+    RefactorTestUpdateEntrySchema,
+    RefactorTestUpdateCheckedEntrySchema,
     RunBranchPushedEntrySchema,
     TicketStuckEntrySchema,
     RunStuckEntrySchema,

@@ -36,6 +36,23 @@ A refactor ticket (labelled `refactor`) skips the test-writer, the red check,
 and the red commit: its implementer may follow renames into test files, but
 must not change what a test checks.
 
+**A refactor ticket's bad test (#686).** The first time its implementer
+answers `bad_test` naming a file, the engine keeps the implementer's
+uncommitted work and journals `refactor_test_update { file, reason,
+test_files }`: `test_files` hashes the contents of each test file (and test
+helper) in the worktree then. A fresh test-writer gets the reason and may
+change only that file, so it checks what the ticket's criteria say. Its
+mapping isn't checked, and there is no red check. Then
+`check_refactor_update` compares the test files with the hashes, added and
+deleted files too, and journals `refactor_test_update_checked { changed }`;
+so the implementer's own earlier test edits don't count. Another changed
+test file is stuck (`bad_test`), and so is any answer but `tests_written`.
+Otherwise the implementer's session (a fresh one if it is gone) hears the
+test was fixed and carries on; the fix goes into the ticket's one commit.
+A `bad_test` that names no file, or a second one, is stuck. It is not the
+rejoin's test update: it doesn't count toward `MAX_TEST_UPDATES`, and a
+refactor ticket's bad test after a rebase is still stuck at once.
+
 **Already done (#484).** A test-writer that finds the ticket's work already
 on the base branch answers `already_done`, with its evidence: in `done_by`,
 the commits that did the work (`{ sha, title }`), and in `criteria`, the
@@ -114,8 +131,8 @@ implementer's uncommitted work (`git reset --hard` and `git clean -fd`,
 ignored files kept) and sends the ticket to a fresh test-writer, told which
 test was bad and why. Its tests get their own red check and their own red
 commit (`test: replace a bad test for ...`), then a fresh implementer builds.
-The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck, and so is any bad
-test on a refactor ticket. A bad-test stuck detail, and so the spec comment,
+The second bad test (`MAX_BAD_TEST_BOUNCES` is 1) is stuck. A refactor
+ticket's bad test gets a refactor test update instead (below). A bad-test stuck detail, and so the spec comment,
 names the test's file and name and, for a test the implementer sent back,
 quotes its reason, clipped like other outputs (#490). It says "no reason
 given" only when the implementer gave none. A test the engine sent back (see

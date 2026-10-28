@@ -16,6 +16,7 @@ import {
 import { handoffSection, reviewFixSection, reviewSections } from './review-text'
 import { retrySection } from './stuck-text'
 
+import { refactorUpdateSection } from '../agents/refactor-update-prompts'
 import {
     CHANGESETS_LENS_SECTION,
     CHANGESETS_SECTION,
@@ -95,9 +96,14 @@ const promptSections = ({
     progress: TicketProgress
 }): string[] => {
     const sections = buildPromptSections({ role, progress })
-    const { retried, crashed_turn } = progress
+    const { retried, crashed_turn, refactor_update } = progress
     return [
         ...sections,
+        ...(role === 'test-writer' &&
+        refactor_update !== null &&
+        refactor_update.result === null
+            ? [refactorUpdateSection(refactor_update)]
+            : []),
         ...(retried === null ? [] : [retrySection({ retried })]),
         ...(crashed_turn === role ? [CRASH_SECTION] : []),
     ]
@@ -209,8 +215,12 @@ export const launch = ({
         spec: snapshot.spec,
         ticket,
         refactor: isRefactorTicket({ ticket }),
-        // A test update names the bad test in its own section.
-        bad_test: progress.test_update === null ? progress.bad_test : null,
+        // A test update, or a refactor one, names the bad test in its own
+        // section.
+        bad_test:
+            progress.test_update === null && progress.refactor_update === null
+                ? progress.bad_test
+                : null,
         bad_test_by: progress.bad_test_source ?? undefined,
         sections: [
             ...promptSections({ role, progress }),

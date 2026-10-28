@@ -24,6 +24,10 @@ import {
     undoJoin,
 } from './execute-join'
 import { runRedCheck } from './execute-red-check'
+import {
+    checkRefactorUpdate,
+    openRefactorUpdate,
+} from './execute-refactor-update'
 import { retryTicket } from './execute-stuck'
 import { closeSessions, openSessionsIn } from './session-close'
 import { watchPrepare } from './worktree-changes'
@@ -234,6 +238,10 @@ export const executeBuildAction = async ({
         }
         case 'send_tests_back':
             return sendTestsBack({ context, action })
+        case 'open_refactor_update':
+            return openRefactorUpdate({ context, action })
+        case 'check_refactor_update':
+            return checkRefactorUpdate({ context, action })
         case 'run_red_check':
             return runRedCheck({ context, action })
         case 'check_already_done':

@@ -34,6 +34,8 @@ export const JournalKindSchema = z.enum([
     'ticket_joined',
     'ticket_rebased',
     'tests_sent_back',
+    'refactor_test_update',
+    'refactor_test_update_checked',
     'run_branch_pushed',
     'ticket_stuck',
     'run_stuck',

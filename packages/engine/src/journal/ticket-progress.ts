@@ -67,6 +67,25 @@ type TestsSentBackContent = Extract<
 >['content']
 
 /**
+ * The open refactor test update (`refactor_test_update`, #686): the test
+ * file the refactor ticket's implementer named, its reason, and the test
+ * files as they were then. Then the test-writer's answer, and the test
+ * files the engine found it changed. It closes when the implementer answers
+ * after it.
+ */
+export type RefactorUpdate = RefactorTestUpdateContent & {
+    /** The test-writer's answer, `null` until it gave one. */
+    result: TestWriterResult | null
+    /** The test files changed since the update, `null` until checked. */
+    changed: string[] | null
+}
+
+type RefactorTestUpdateContent = Extract<
+    JournalRecord,
+    { kind: 'refactor_test_update' }
+>['content']
+
+/**
  * One gate run, as journaled. A ticket's gates also carry the test cases of
  * its red test files, with their `expect()` counts (#581); none in an older
  * journal, or in a join's or the final review's gates.
@@ -261,6 +280,10 @@ export type TicketProgress = {
     test_updates: number
     /** The open test update, `null` when none is open. */
     test_update: TestUpdate | null
+    /** Refactor test updates the ticket had (#686); it gets one. */
+    refactor_updates: number
+    /** The open refactor test update, `null` when none is open. */
+    refactor_update: RefactorUpdate | null
     /**
      * The latest failed agent turn, if no agent finished after it: its role,
      * error, how it failed, and the session it ran in (for a follow-up).
@@ -367,6 +390,8 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     rejoin: null,
     test_updates: 0,
     test_update: null,
+    refactor_updates: 0,
+    refactor_update: null,
     agent_failure: null,
     failed_tries: {},
     launched_on: {},

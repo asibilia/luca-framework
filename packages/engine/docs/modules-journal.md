@@ -51,6 +51,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/gate-entries.ts` | Red check, install, and gates entries. |
 | `src/journal/commit-entries.ts` | Leftover scan and commit entries. |
 | `src/journal/join-entries.ts` | Join, rebase, and push entries. |
+| `src/journal/refactor-update-entries.ts` | A refactor ticket's test update entries (#686). |
 | `src/journal/stuck-entries.ts` | Stuck work and the owner's reply entries. |
 | `src/journal/already-done-entries.ts` | Already-done ticket entries. |
 | `src/journal/final-review-entries.ts` | Final review entries. |

@@ -34,6 +34,9 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
   launch_agent implementer                                               ──> agent_started, agent_finished
     bad_test: reset_ticket_worktree, then a fresh test-writer, red check,
               second red commit, fresh implementer (once)               ──> worktree_reset
+    bad_test on a refactor ticket (once, naming its file): open_refactor_update,
+              a fresh test-writer fixes only that file, check_refactor_update,
+              then the implementer (same session) carries on            ──> refactor_test_update, refactor_test_update_checked
   run_gates ticket        install if a manifest changed, then tests, types, lint ──> gates_run
     failed: follow_up_agent implementer (same session), gates again, ≤ 3 rounds
     a mapped test passed with no expect(): reset_ticket_worktree, then as for

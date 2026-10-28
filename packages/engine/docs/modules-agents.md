@@ -21,6 +21,7 @@ The modules split out of `src/agents/role-prompts.ts`. It re-exports them.
 
 | Module | What it does |
 | --- | --- |
+| `src/agents/refactor-update-prompts.ts` | A refactor test update's texts (#686): the test-writer's section, and the implementer's follow-up. |
 | `src/agents/rejoin-prompts.ts` | The sections for a ticket sent back onto the run branch: after a clash or failed gates (`rejoinSection`), and after a rebase made its tests wrong (`testUpdateSection`). |
 | `src/agents/prompt-sections.ts` | The sections the decision step adds to a prompt: the run notes, the prepare command, the feature map, and the changesets. |
 
