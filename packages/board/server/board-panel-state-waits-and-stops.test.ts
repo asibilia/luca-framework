@@ -199,6 +199,29 @@ describe('network waits', () => {
 
         expect((await harness.state()).run.status).not.toBe('network_wait')
     })
+
+    test('a resumed engine is not in the old engine’s network wait', async () => {
+        const { run_id, token, next } = await runWith({
+            entries: [networkWait({ step: 'run_intake' }).started],
+        })
+        expect((await harness.state()).run.status).toBe('network_wait')
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [
+                {
+                    kind: 'engine_resumed',
+                    ticket: null,
+                    role: null,
+                    content: { luca_version: '14.0.0' },
+                },
+            ],
+        })
+
+        expect((await harness.state()).run.status).not.toBe('network_wait')
+    })
 })
 
 describe('a stopped run', () => {

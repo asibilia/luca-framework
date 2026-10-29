@@ -58,6 +58,30 @@ describe('findLiveEngine: one engine per run', () => {
 
         expect(found).toBeNull()
     })
+
+    test('a grandparent shell whose command line names the run is one of the check’s own processes, not a live engine', () => {
+        const own_pids = liveRuns.ancestorPids({
+            pid: 80000,
+            process_lines: [
+                `75023 1 bun /x/luca-run.ts --resume ${RUN_ID}`,
+                `80000 80500 bun /x/luca-run.ts --resume ${RUN_ID}`,
+                `80500 81000 caffeinate -i luca-run --resume ${RUN_ID}`,
+                `81000 1 zsh -c luca-run --resume ${RUN_ID}`,
+            ],
+        })
+        expect(own_pids.toSorted()).toEqual([1, 80000, 80500, 81000])
+
+        const found = liveRuns.findLiveEngine({
+            run_id: RUN_ID,
+            process_lines: [
+                `80000 bun /x/luca-run.ts --resume ${RUN_ID}`,
+                `80500 caffeinate -i luca-run --resume ${RUN_ID}`,
+                `81000 zsh -c luca-run --resume ${RUN_ID}`,
+            ],
+            own_pids,
+        })
+        expect(found).toBeNull()
+    })
 })
 
 describe('listProcesses', () => {

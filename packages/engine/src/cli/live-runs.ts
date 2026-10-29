@@ -74,9 +74,42 @@ export const findLiveEngine = ({
 }
 
 /**
+ * `pid` and every parent above it, from `ps` lines of a pid, its parent's
+ * pid, then a command line. A shell or wrapper (`zsh -c`, `timeout`,
+ * `caffeinate`) that started this engine names the run too, at any depth.
+ * Pure.
+ *
+ * @example
+ * ancestorPids({ pid: 3, process_lines: ['3 2 bun luca-run.ts', '2 1 zsh -c luca-run', '1 0 launchd'] }) // [3, 2, 1]
+ */
+export const ancestorPids = ({
+    pid,
+    process_lines,
+}: {
+    pid: number
+    process_lines: string[]
+}): number[] => {
+    const parents = new Map<number, number>()
+    for (const line of process_lines) {
+        const match = /^\s*(\d+)\s+(\d+)/.exec(line)
+        if (match?.[1] && match[2]) {
+            parents.set(Number(match[1]), Number(match[2]))
+        }
+    }
+    const pids = [pid]
+    let parent = parents.get(pid)
+    while (parent !== undefined && parent > 0 && !pids.includes(parent)) {
+        pids.push(parent)
+        parent = parents.get(parent)
+    }
+    return pids
+}
+
+/**
  * Why `luca-run --resume <run_id>` must not start (#701): another live engine
  * on the run, or a process list it can't read; `null` when it may start.
- * Leaves out this process and its parent.
+ * Leaves out this process and all its parents. `list_processes` gives lines
+ * of a pid, its parent's pid, then a command line.
  */
 export const resumeRefusal = async ({
     run_id,
@@ -85,14 +118,19 @@ export const resumeRefusal = async ({
     run_id: string
     list_processes?: ListProcesses
 }): Promise<string | null> => {
-    const process_lines = await list_processes().catch(() => null)
-    if (process_lines === null) {
+    const lines = await list_processes().catch(() => null)
+    if (lines === null) {
         return `[luca-run] Couldn't check for a live engine on run ${run_id}. Not starting.`
     }
+    const own_pids = ancestorPids({ pid: process.pid, process_lines: lines })
+    if (!own_pids.includes(process.ppid)) own_pids.push(process.ppid)
     const found = findLiveEngine({
         run_id,
-        process_lines,
-        own_pids: [process.pid, process.ppid],
+        // Drop the parent's pid: findLiveEngine reads a pid then a command.
+        process_lines: lines.map((line) =>
+            line.replace(/^\s*(\d+)\s+\d+\s+/, '$1 ')
+        ),
+        own_pids,
     })
     return found === null
         ? null
@@ -101,8 +139,9 @@ export const resumeRefusal = async ({
 
 /**
  * Every running process's full command line, from `ps -axww -o command=`
- * (`-ww` never cuts a line), each after its pid with `with_pids`. Rejects
- * when `ps` fails, so a caller can take the safe side rather than guess.
+ * (`-ww` never cuts a line), each after its pid and its parent's pid with
+ * `with_pids`. Rejects when `ps` fails, so a caller can take the safe side
+ * rather than guess.
  *
  * @example
  * const live = liveRunIds({ command_lines: await listProcesses() })
@@ -110,7 +149,7 @@ export const resumeRefusal = async ({
 export const listProcesses = async ({
     with_pids = false,
 }: { with_pids?: boolean } = {}): Promise<string[]> => {
-    const format = with_pids ? 'pid=,command=' : 'command='
+    const format = with_pids ? 'pid=,ppid=,command=' : 'command='
     const child = Bun.spawn(['ps', '-axww', '-o', format], {
         stdout: 'pipe',
         stderr: 'pipe',

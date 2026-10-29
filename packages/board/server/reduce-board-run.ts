@@ -162,9 +162,12 @@ export const applyRunKind = ({
                     (step) => step !== record.content.step
                 ),
             }
+        // A resumed engine isn't in the old engine's network wait, which may
+        // never have journaled its end.
         case 'engine_resumed':
             return {
                 ...state,
+                network_waits: [],
                 run: {
                     ...state.run,
                     version_note: versionNote({
