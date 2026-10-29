@@ -12,6 +12,7 @@ import {
 import { recordsFrom } from './intake-fixtures'
 
 import type { AgentRole } from '../agents/role-results'
+import type { ModelReason } from '../jev/model-pick'
 import type { JournalEntry, JournalRecord } from '../journal/journal-record'
 import type { ModelScore } from '../models/model-score'
 
@@ -29,6 +30,8 @@ export type Built = 'test-writer' | 'implementer'
 /**
  * An agent turn started on `model`; `null` writes one from before #600. It
  * ran at `effort`; left out writes one from before #659, with no effort.
+ * `model_reason` is why it got its model; left out writes one from before
+ * #603, with no reason.
  */
 export const started = ({
     ticket,
@@ -36,12 +39,14 @@ export const started = ({
     model,
     follow_up_of,
     effort,
+    model_reason,
 }: {
     ticket: number | null
     role: AgentRole
     model: Model | null
     follow_up_of?: string
     effort?: Effort
+    model_reason?: ModelReason | null
 }): JournalEntry => ({
     kind: 'agent_started',
     ticket,
@@ -52,6 +57,7 @@ export const started = ({
         follow_up_of: follow_up_of ?? null,
         ...(model === null ? {} : { model }),
         ...(effort === undefined ? {} : { effort }),
+        ...(model_reason === undefined ? {} : { model_reason }),
     },
 })
 
@@ -122,7 +128,8 @@ export type Ask = Omit<Parameters<typeof modelAsk>[0], 'ticket'>
  * (opus unless told), the first review's `findings`, then `rounds` fix
  * rounds (one when the findings block), each fix's review finding a
  * should-fix until the last approves, and a join of `lines` lines. Each
- * role's agents run at its effort, left out as before #659.
+ * role's agents run at its effort, left out as before #659, and with its
+ * model reason, left out as before #603.
  */
 export const ticketRun = ({
     ticket,
@@ -130,6 +137,8 @@ export const ticketRun = ({
     impl = 'opus',
     tw_effort,
     impl_effort,
+    tw_reason,
+    impl_reason,
     review_effort,
     asks = [],
     findings = [],
@@ -143,6 +152,8 @@ export const ticketRun = ({
     impl?: Model | null
     tw_effort?: Effort
     impl_effort?: Effort
+    tw_reason?: ModelReason | null
+    impl_reason?: ModelReason | null
     review_effort?: Effort
     asks?: Ask[]
     findings?: Severity[]
@@ -184,6 +195,7 @@ export const ticketRun = ({
                       role: 'test-writer',
                       model: tw,
                       effort: tw_effort,
+                      model_reason: tw_reason,
                   }),
                   agentFailed({
                       ticket,
@@ -197,6 +209,7 @@ export const ticketRun = ({
             role: 'test-writer',
             model: tw_failed_first ? 'opus' : tw,
             effort: tw_effort,
+            model_reason: tw_failed_first ? 'after_failure' : tw_reason,
         }),
         testsWritten({ ticket }),
         agentSession({
@@ -210,6 +223,7 @@ export const ticketRun = ({
             role: 'implementer',
             model: impl,
             effort: impl_effort,
+            model_reason: impl_reason,
         }),
         implemented({ ticket }),
         ...review(findings, 0),
@@ -220,6 +234,7 @@ export const ticketRun = ({
                 model: impl,
                 follow_up_of: 'impl-1',
                 effort: impl_effort,
+                model_reason: impl_reason,
             }),
             implemented({ ticket }),
             ...review(index + 1 < fixes ? ['should_fix'] : [], index + 1),
@@ -290,6 +305,20 @@ export const groups = (scores: ModelScore[]): string[] =>
         .filter(({ tickets }) => tickets > 0)
         .map(({ role, model }) => `${role}/${model}`)
         .sort()
+
+/**
+ * The lines of `role`'s part of the printed report: the lines after its
+ * heading, up to the next line that isn't indented.
+ */
+export const roleSection = (text: string, role: Built): string[] => {
+    const lines = text.split('\n')
+    const start = lines.indexOf(role)
+    if (start < 0) return []
+    const end = lines.findIndex(
+        (line, at) => at > start && line !== '' && !line.startsWith(' ')
+    )
+    return lines.slice(start + 1, end < 0 ? undefined : end)
+}
 
 /** Clef picked `pick` for the test-writer, sure enough to act on it. */
 export const sure = (pick: Model, confidence = 0.9): Ask => ({

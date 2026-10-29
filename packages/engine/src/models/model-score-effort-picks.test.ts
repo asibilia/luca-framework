@@ -7,10 +7,12 @@ import {
     effortPicksOf,
     pickedTicket,
     pickSection,
+    PICKS_HEADING,
     runWithBar,
     type EffortPick,
 } from '../testing/effort-pick-fixtures'
 import {
+    roleSection,
     runOf,
     type Effort,
     type Severity,
@@ -18,11 +20,11 @@ import {
 
 /**
  * The score report's "Clef's effort picks (shadow mode)" section (#663):
- * per writer role, the tickets where Clef's `agent_effort` answer, at or
- * above the confidence bar, wanted more effort than the agent ran at,
- * against the rest. Every ticket changes 100 lines, so a ticket's weighted
- * findings are its rate, and a ticket whose first review blocks has one
- * fix round.
+ * per writer role, the tickets where Clef's `agent_effort` answer, at any
+ * confidence (#697), wanted more effort than the agent ran at, against the
+ * rest, then the same by Clef's confidence. Every ticket changes 100 lines,
+ * so a ticket's weighted findings are its rate, and a ticket whose first
+ * review blocks has one fix round.
  */
 
 /** Weighs 5: one fix round, and 5 per 100 lines. */
@@ -58,9 +60,12 @@ const groupLine = (label: 'wanted more' | 'rest', side: string): string =>
 const reportOf = ({
     wanted,
     rest,
+    confidence = 0.9,
 }: {
     wanted: Severity[][]
     rest: Severity[][]
+    /** Clef's confidence in every answer. */
+    confidence?: number
 }) => {
     const side = (
         list: Severity[][],
@@ -68,7 +73,11 @@ const reportOf = ({
         pick: Effort
     ): JournalEntry[] =>
         list.flatMap((findings, index) =>
-            pickedTicket({ ticket: first + index, findings, picks: [tw(pick)] })
+            pickedTicket({
+                ticket: first + index,
+                findings,
+                picks: [tw(pick, confidence)],
+            })
         )
     const report = scoreModels({
         runs: [
@@ -199,6 +208,31 @@ describe("Clef's effort picks (shadow mode)", () => {
     })
 
     test("a ticket with no answer at or above the run's confidence bar is in neither group", () => {
+        // Only tickets with no answer, or no confidence, are left out now
+        // (#697); the ones counted are at or above any bar.
+        const at_default_bar = runOf([
+            ...pickedTicket({ ticket: 31, picks: [tw('high', 0.8)] }),
+            ...pickedTicket({ ticket: 33, findings: FIVE }),
+            ...pickedTicket({
+                ticket: 34,
+                findings: FIVE,
+                picks: [tw('xhigh', null)],
+            }),
+            ...pickedTicket({ ticket: 35, picks: [tw('medium')] }),
+        ])
+        const at_higher_bar = runWithBar(
+            pickedTicket({ ticket: 42, picks: [tw('medium', 0.95)] }),
+            0.95
+        )
+        const report = scoreModels({ runs: [at_default_bar, at_higher_bar] })
+        // #31 wanted more; #35 and #42 are the rest.
+        expect(effortPicksOf(report, 'test-writer')).toMatchObject({
+            wanted_more: { tickets: 1, findings_per_100_lines: 0 },
+            rest: { tickets: 2, findings_per_100_lines: 0 },
+        })
+    })
+
+    test("a ticket counts whatever its answer's confidence, below the run's confidence bar too, and one with no confidence is in neither group", () => {
         const at_default_bar = runOf([
             ...pickedTicket({ ticket: 31, picks: [tw('high', 0.8)] }),
             ...pickedTicket({
@@ -226,11 +260,106 @@ describe("Clef's effort picks (shadow mode)", () => {
             0.95
         )
         const report = scoreModels({ runs: [at_default_bar, at_higher_bar] })
-        // #31 wanted more; #35 and #42 are the rest.
-        expect(effortPicksOf(report, 'test-writer')).toMatchObject({
-            wanted_more: { tickets: 1, findings_per_100_lines: 0 },
+        // #31, #32 and #41 wanted more; #35 and #42 are the rest; #33 has
+        // no answer and #34 no confidence.
+        const picks = effortPicksOf(report, 'test-writer')
+        expect(picks).toMatchObject({
+            wanted_more: { tickets: 3, fix_rounds_per_ticket: 2 / 3 },
             rest: { tickets: 2, findings_per_100_lines: 0 },
         })
+        expect(picks?.wanted_more.findings_per_100_lines).toBeCloseTo(10 / 3)
+    })
+})
+
+/** Clef wanted `pick` for the test-writer at `confidence`, on `ticket`. */
+const answered = (
+    ticket: number,
+    pick: Effort,
+    confidence: number | null,
+    findings: Severity[] = []
+): JournalEntry[] =>
+    pickedTicket({ ticket, findings, picks: [tw(pick, confidence)] })
+
+/** The printed test-writer report of one run of `body`. */
+const writerText = (body: JournalEntry[]): string[] =>
+    roleSection(
+        formatModelReport({ report: scoreModels({ runs: [runOf(body)] }) }),
+        'test-writer'
+    )
+
+/** A band line's two sides: `[tickets, findings, fix rounds]` each. */
+const bandLine = (
+    band: string,
+    wanted: [string, string, string],
+    rest: [string, string, string]
+): string => {
+    const side = ([count, findings, rounds]: [string, string, string]) =>
+        `${count}, ${findings} findings per 100 lines, ${rounds} fix rounds per ticket`
+    return `      ${band}: wanted more ${side(wanted)}; the rest ${side(rest)}`
+}
+
+const NONE: [string, string, string] = ['0 tickets', '-', '-']
+const ONE_CLEAN: [string, string, string] = ['1 ticket', '0.00', '0.00']
+
+describe("Clef's effort picks by Clef's confidence", () => {
+    test('every answer is counted, and each ticket is in the band of its confidence, after the verdict', () => {
+        // #11 at 0.1 and #13 at 0.9 wanted more; #12 at 0.35 is the rest.
+        const writer = writerText([
+            ...answered(11, 'high', 0.1),
+            ...answered(12, 'medium', 0.35),
+            ...answered(13, 'high', 0.9),
+        ])
+        const heading = writer.indexOf(PICKS_HEADING)
+        expect(heading).toBeGreaterThanOrEqual(0)
+        expect(writer.slice(heading, heading + 8)).toEqual([
+            "  Clef's effort picks (shadow mode), every answer",
+            '    wanted more effort than it ran at: 2 tickets, 0.00 findings per 100 lines, 0.00 fix rounds per ticket',
+            '    the rest: 1 ticket, 0.00 findings per 100 lines, 0.00 fix rounds per ticket',
+            '    verdict: not enough data',
+            "    by Clef's confidence:",
+            bandLine('below 0.3', ONE_CLEAN, NONE),
+            bandLine('0.3 to 0.5', NONE, ONE_CLEAN),
+            bandLine('0.5 and up', ONE_CLEAN, NONE),
+        ])
+    })
+
+    test('a band line reads its two sides joined by a semicolon', () => {
+        const writer = writerText(answered(11, 'high', 0.1))
+        expect(writer).toContain(
+            '      below 0.3: wanted more 1 ticket, 0.00 findings per 100 lines, 0.00 fix rounds per ticket; the rest 0 tickets, - findings per 100 lines, - fix rounds per ticket'
+        )
+    })
+
+    test('a band edge goes to the higher band: 0.3 is in 0.3 to 0.5, and 0.5 in 0.5 and up', () => {
+        // #11 at 0.3 wanted more; #12 at 0.5 is the rest.
+        const writer = writerText([
+            ...answered(11, 'high', 0.3),
+            ...answered(12, 'medium', 0.5),
+        ])
+        expect(writer).toContain(bandLine('below 0.3', NONE, NONE))
+        expect(writer).toContain(bandLine('0.3 to 0.5', ONE_CLEAN, NONE))
+        expect(writer).toContain(bandLine('0.5 and up', NONE, ONE_CLEAN))
+    })
+
+    test('the first answer with a confidence counts and sets the band, and a ticket with none is left out', () => {
+        const writer = writerText([
+            // No confidence on medium, then high at 0.4: wanted more.
+            ...pickedTicket({
+                ticket: 11,
+                picks: [tw('medium', null), tw('high', 0.4)],
+            }),
+            // Only an answer with no confidence, weighing 5: left out.
+            ...answered(12, 'high', null, FIVE),
+        ])
+        expect(writer).toContain(
+            '    wanted more effort than it ran at: 1 ticket, 0.00 findings per 100 lines, 0.00 fix rounds per ticket'
+        )
+        expect(writer).toContain(
+            '    the rest: 0 tickets, - findings per 100 lines, - fix rounds per ticket'
+        )
+        expect(writer).toContain(bandLine('below 0.3', NONE, NONE))
+        expect(writer).toContain(bandLine('0.3 to 0.5', ONE_CLEAN, NONE))
+        expect(writer).toContain(bandLine('0.5 and up', NONE, NONE))
     })
 })
 
@@ -302,5 +431,19 @@ describe("the verdict on Clef's effort picks", () => {
             rest: REST,
         })
         expect(more_rounds.picks?.verdict).toBe('Clef spots hard tickets')
+    })
+
+    test('uses every answer, those below the old 0.8 confidence bar too', () => {
+        // 3.1 per 100 lines against the rest's 2.5, every answer at 0.4.
+        const { section } = reportOf({
+            wanted: tickets({
+                count: 10,
+                blocking: [...allFive(5), ['blocker', 'blocker']],
+            }),
+            rest: REST,
+            confidence: 0.4,
+        })
+        expect(hasLine(section, 'verdict: not enough data')).toBe(false)
+        expect(hasLine(section, 'verdict: Clef spots hard tickets')).toBe(true)
     })
 })
