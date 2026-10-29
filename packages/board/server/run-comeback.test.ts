@@ -135,7 +135,7 @@ const RESUMED_CLI = `luca-run --resume ${RUN}`
 
 describe('a run the board marked ended comes back with a live engine', () => {
     test('a live engine and new records clear ended and ended_at_seq, and the run is no longer ended', async () => {
-        const { registry_dir, runOf } = await crashedThenGrown({
+        const { registry_dir, board, seen, runOf } = await crashedThenGrown({
             processes: [RESUMED_CLI],
         })
 
@@ -145,7 +145,15 @@ describe('a run the board marked ended comes back with a live engine', () => {
         expect(entry?.restarts).toBe(1)
         const state = await runOf()
         expect(state.run.engine_ended).toBeNull()
+        expect(state.run.status).not.toBe('ended_with_error')
         expect(state.event_count).toBe(45)
+        const header = board.rows
+            .slice(seen)
+            .flatMap(({ row }) => (row.kind === ROW_KIND.run ? [row.data] : []))
+            .at(-1)
+        if (!header) throw new Error('no header row after the check')
+        expect(header.engine_ended ?? null).toBeNull()
+        expect(header.status).not.toBe('ended_with_error')
     })
 
     test('its chat gets the row "Resumed from the command line." with the id resumed-cli-45', async () => {

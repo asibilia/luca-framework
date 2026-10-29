@@ -7,6 +7,7 @@
 import type { RunStore } from './board-server-store'
 import type { BoardServerConfig, RunMemory } from './board-server-types'
 import { RESUMED_CLI_TEXT, resumedCliRow } from './engine-watch'
+import { settle } from './reduce-board-settle'
 import type { JournalFile } from './run-journals'
 
 export const createJournalFollow = ({
@@ -91,12 +92,14 @@ export const createJournalFollow = ({
                 const time = now().toISOString()
                 memory.rows_stopped = false
                 memory.append_failures = 0
-                memory.state = {
-                    ...memory.state,
-                    run: { ...memory.state.run, engine_ended: null },
-                    latest: RESUMED_CLI_TEXT,
-                    latest_at: time,
-                }
+                memory.state = settle({
+                    state: {
+                        ...memory.state,
+                        run: { ...memory.state.run, engine_ended: null },
+                        latest: RESUMED_CLI_TEXT,
+                        latest_at: time,
+                    },
+                })
                 log(
                     `[${run_id}] came back: its journal grew to seq ${seq} and a live engine runs it.`
                 )
