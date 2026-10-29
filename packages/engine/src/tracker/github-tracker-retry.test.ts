@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
+import * as ghRetry from './gh-retry'
+import { createGhCalls } from './gh-retry'
 import { createGitHubTracker, type GhRunner } from './github-tracker'
 
 /**
@@ -333,5 +335,50 @@ describe('GitHub tracker retries: writes', () => {
         })
 
         expect(calls).toHaveLength(1)
+    })
+})
+
+describe('GitHub tracker retries: network errors', () => {
+    test('a call that fails once on each network text, then works, is retried and reads', async () => {
+        const texts = [
+            'error connecting to api.github.com',
+            'Could not resolve host: api.github.com',
+            'dial tcp: lookup api.github.com: no such host',
+            'connect: Network is unreachable',
+        ]
+        for (const text of texts) {
+            const answers = inTurn([
+                { exit_code: 1, stderr: `${text}\n` },
+                { exit_code: 0, stdout: 'done' },
+            ])
+            const { gh, calls } = fakeGh(answers)
+            const ghCalls = createGhCalls({ run: gh, ...fakeWaits() })
+
+            expect(await ghCalls.ok({ args: ['api', 'user'] })).toBe('done')
+            expect(calls).toHaveLength(2)
+        }
+    })
+
+    test('a call that fails 3 times on a network error throws a network error; a 404 does not', async () => {
+        const offline = fakeGh(() => ({
+            exit_code: 1,
+            stderr: 'error connecting to api.github.com\n',
+        }))
+        const notFound = fakeGh(() => ({
+            exit_code: 1,
+            stderr: 'gh: Not Found (HTTP 404)\n',
+        }))
+
+        const network = await createGhCalls({ run: offline.gh, ...fakeWaits() })
+            .ok({ args: ['api', 'user'] })
+            .catch((error: unknown) => error)
+        const other = await createGhCalls({ run: notFound.gh, ...fakeWaits() })
+            .ok({ args: ['api', 'user'] })
+            .catch((error: unknown) => error)
+
+        expect(offline.calls).toHaveLength(3)
+        expect(network).toBeInstanceOf(ghRetry.NetworkGhError)
+        expect(other).toBeInstanceOf(Error)
+        expect(other).not.toBeInstanceOf(ghRetry.NetworkGhError)
     })
 })

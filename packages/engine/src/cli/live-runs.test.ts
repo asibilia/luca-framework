@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
+import * as liveRuns from './live-runs'
 import { listProcesses, liveRunIds } from './live-runs'
+
+const RUN_ID = 'luca-20261028-234324-26rc'
 
 describe('liveRunIds', () => {
     test('a run is live when a command line names it with --run-id or --resume', () => {
@@ -26,6 +29,34 @@ describe('liveRunIds', () => {
 
         expect(live.has('r1')).toBe(false)
         expect([...live]).toEqual(['r1-old'])
+    })
+})
+
+describe('findLiveEngine: one engine per run', () => {
+    test("another engine resuming the run is found by its pid; the check's own process is left out", () => {
+        const found = liveRuns.findLiveEngine({
+            run_id: RUN_ID,
+            process_lines: [
+                `75023 bun /x/luca-run.ts --resume ${RUN_ID}`,
+                `80000 bun /x/luca-run.ts --resume ${RUN_ID}`,
+            ],
+            own_pids: [80000],
+        })
+
+        expect(found).toEqual({ pid: 75023 })
+    })
+
+    test("only the check's own process and its parent find no live engine", () => {
+        const found = liveRuns.findLiveEngine({
+            run_id: RUN_ID,
+            process_lines: [
+                `80000 bun /x/luca-run.ts --resume ${RUN_ID}`,
+                `81000 zsh -c luca-run --resume ${RUN_ID}`,
+            ],
+            own_pids: [80000, 81000],
+        })
+
+        expect(found).toBeNull()
     })
 })
 
