@@ -78,17 +78,33 @@ export type EffortPicksVerdict =
     | 'Clef spots hard tickets'
     | 'no sign yet'
 
+/** Clef's confidence bands its effort picks are broken down by (#697). */
+const CONFIDENCE_BANDS = [
+    { band: 'below 0.3', from: -Infinity, below: 0.3 },
+    { band: '0.3 to 0.5', from: 0.3, below: 0.5 },
+    { band: '0.5 and up', from: 0.5, below: Infinity },
+] as const
+
+/** The two sides of Clef's effort picks within one confidence band. */
+export type EffortPicksBand = {
+    band: (typeof CONFIDENCE_BANDS)[number]['band']
+    wanted_more: ScoreSide
+    rest: ScoreSide
+}
+
 /**
  * Clef's shadow-mode effort picks for one writer role (#663): the tickets
- * where its `agent_effort` answer, at or above the run's confidence bar,
- * was higher than the effort the role's first agent ran at, against the
- * tickets where it was the same or lower.
+ * where its first `agent_effort` answer with a confidence, at any
+ * confidence (#697), was higher than the effort the role's first agent ran
+ * at, against the tickets where it was the same or lower, then the same by
+ * Clef's confidence.
  */
 export type EffortPicks = {
     role: ScoredRole
     wanted_more: ScoreSide
     rest: ScoreSide
     verdict: EffortPicksVerdict
+    by_confidence: EffortPicksBand[]
 }
 
 /** The final review's findings over a set of runs. */
@@ -102,6 +118,11 @@ export type ModelReport = {
     scores: ModelScore[]
     /** One per scored role. */
     effort_picks: EffortPicks[]
+    /**
+     * The roles whose every counted ticket with a model reason ran Opus for
+     * its floor (#697): no cheaper model was ever tried.
+     */
+    floor_only: ScoredRole[]
     /** Fresh learner agents per model and effort; the learner isn't scored. */
     learner: { model: ModelName; effort: EffortLevel; agents: number }[]
     /** Runs with any agent on a cheaper model, and runs without. */
@@ -172,7 +193,8 @@ export const verdictOf = ({
  * more when its pick is above the effort the role's first agent ran at, in
  * `EffortLevelSchema`'s order. "Clef spots hard tickets" when the "wanted
  * more" side's findings rate or fix rounds per ticket is more than
- * `WORSE_BY` above the rest's, with `MIN_TICKETS` on each side.
+ * `WORSE_BY` above the rest's, with `MIN_TICKETS` on each side. Each band
+ * holds the tickets whose pick's confidence is at or above its lower edge.
  */
 const effortPicksOf = ({
     tickets,
@@ -188,12 +210,23 @@ const effortPicksOf = ({
         const ran = ticket.efforts[role]
         return pick === undefined || ran === undefined
             ? []
-            : [{ ticket, wants_more: rank(pick) > rank(ran) }]
+            : [
+                  {
+                      ticket,
+                      confidence: pick.confidence,
+                      wants_more: rank(pick.effort) > rank(ran),
+                  },
+              ]
     })
-    const sideWhere = (wants_more: boolean): ScoreSide =>
+    const sideWhere = (
+        wants_more: boolean,
+        within: (confidence: number) => boolean = () => true
+    ): ScoreSide =>
         sideOf(
             picked.flatMap((entry) =>
-                entry.wants_more === wants_more ? [entry.ticket] : []
+                entry.wants_more === wants_more && within(entry.confidence)
+                    ? [entry.ticket]
+                    : []
             )
         )
     const wanted_more = sideWhere(true)
@@ -204,7 +237,35 @@ const effortPicksOf = ({
             ? 'Clef spots hard tickets'
             : 'no sign yet'
     }
-    return { role, wanted_more, rest, verdict: verdictOn() }
+    const by_confidence = CONFIDENCE_BANDS.map(({ band, from, below }) => {
+        const within = (confidence: number) =>
+            confidence >= from && confidence < below
+        return {
+            band,
+            wanted_more: sideWhere(true, within),
+            rest: sideWhere(false, within),
+        }
+    })
+    return { role, wanted_more, rest, verdict: verdictOn(), by_confidence }
+}
+
+/**
+ * Whether every one of `role`'s tickets that has a model reason ran Opus
+ * for its floor, with at least one such ticket. A `null` reason, from
+ * before #603, counts neither way.
+ */
+const isFloorOnly = ({
+    tickets,
+    role,
+}: {
+    tickets: TicketFacts[]
+    role: ScoredRole
+}): boolean => {
+    const reasons = tickets.flatMap(({ models, model_reasons }) => {
+        const reason = model_reasons[role] ?? null
+        return models[role] === undefined || reason === null ? [] : [reason]
+    })
+    return reasons.length > 0 && reasons.every((reason) => reason === 'floor')
 }
 
 /**
@@ -327,6 +388,9 @@ export const scoreModels = ({
         effort_picks: SCORED_ROLES.map((role) =>
             effortPicksOf({ tickets, role })
         ),
+        floor_only: SCORED_ROLES.filter((role) =>
+            isFloorOnly({ tickets, role })
+        ),
         learner: ModelNameSchema.options
             .flatMap((model) =>
                 levels.map((effort) => ({
@@ -383,11 +447,32 @@ const scoreText = (score: ModelScore): string[] => {
 }
 
 const effortPicksText = (picks: EffortPicks): string[] => [
-    "  Clef's effort picks (shadow mode)",
+    "  Clef's effort picks (shadow mode), every answer",
     `    wanted more effort than it ran at: ${sideText(picks.wanted_more)}`,
     `    the rest: ${sideText(picks.rest)}`,
     `    verdict: ${picks.verdict}`,
+    "    by Clef's confidence:",
+    ...picks.by_confidence.map(
+        ({ band, wanted_more, rest }) =>
+            `      ${band}: wanted more ${sideText(wanted_more)}; the rest ${sideText(rest)}`
+    ),
 ]
+
+const FLOOR_LINE =
+    "  no cheaper model was ever tried: this role's floor is opus in every run. Set models.floors in .luca/config.json to let it."
+
+/**
+ * A role's model lines: for a floor-only role, its Opus lines and the floor
+ * line in place of the rest.
+ */
+const scoresText = (scores: ModelScore[], floor_only: boolean): string[] => {
+    if (scores.length === 0) return ['  no tickets yet']
+    if (!floor_only) return scores.flatMap(scoreText)
+    return [
+        ...scores.filter(({ model }) => model === 'opus').flatMap(scoreText),
+        FLOOR_LINE,
+    ]
+}
 
 const finalText = (label: string, side: FinalReviewSide): string =>
     `${decimal(side.findings_per_100_lines)} ${label} (${plural(side.runs, 'run')})`
@@ -411,9 +496,7 @@ export const formatModelReport = ({
         const picks = report.effort_picks.find((found) => found.role === role)
         return [
             role,
-            ...(scores.length === 0
-                ? ['  no tickets yet']
-                : scores.flatMap(scoreText)),
+            ...scoresText(scores, report.floor_only.includes(role)),
             ...(picks === undefined ? [] : effortPicksText(picks)),
         ]
     })
