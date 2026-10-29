@@ -193,8 +193,12 @@ The cheapest model a role may run on, set per role in a repo's config: the decis
 _Avoid_: minimum model, model tier
 
 **Confidence bar**:
-How sure the decision model must be before the engine uses its model pick, 0.8 unless the config says otherwise. Below it, or with no confidence given, the agent runs Opus.
+How sure the decision model must be before the engine uses its model pick, 0.5 unless the config says otherwise. Below it, or with no confidence given, the agent runs Opus, unless the launch is in a model trial's trial group.
 _Avoid_: threshold, cutoff
+
+**Model trial**:
+A share of the writer launches Clef would move to a cheaper model, but isn't sure enough about, that really run on Clef's pick (the trial group), against the same kind of launches that stay on Opus (the control group). Set by `models.trial_share`; off by default. Unlike shadow mode, a model trial acts.
+_Avoid_: A/B test, experiment
 
 **Effort**:
 How hard an agent thinks before it acts: low, medium, high, xhigh or max. Each role has one; reviewers always run at xhigh.

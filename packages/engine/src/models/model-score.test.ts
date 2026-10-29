@@ -8,6 +8,7 @@ import {
     pullRequestOpened,
     ticketStuck,
 } from '../testing/build-fixtures'
+import { PICKS_HEADING } from '../testing/effort-pick-fixtures'
 import {
     finalReviewPassed,
     lensFinding,
@@ -16,6 +17,7 @@ import {
 import {
     groups,
     modelAsk,
+    roleSection,
     runOf,
     scoreOf,
     started,
@@ -354,5 +356,117 @@ describe('missing data', () => {
         ])
         expect(scoreOf(report.scores, 'test-writer', 'opus')?.tickets).toBe(2)
         expect(report.without_lines_changed).toBe(2)
+    })
+})
+
+describe('a role whose floor kept it on opus', () => {
+    const FLOOR_LINE =
+        "  no cheaper model was ever tried: this role's floor is opus in every run. Set models.floors in .luca/config.json to let it."
+
+    /** Clef picked `pick` for `role` in shadow mode. */
+    const shadow = (role: 'test-writer' | 'implementer', pick: Model): Ask => ({
+        role,
+        pick,
+        confidence: 0.7,
+        acted: false,
+    })
+
+    /** Whether one of `lines` starts, after its indent, with `start`. */
+    const starts = (lines: string[], start: string): boolean =>
+        lines.some((line) => line.trimStart().startsWith(start))
+
+    test('keeps its opus lines and drops its sonnet and haiku ones, the floor line in their place before the effort picks', () => {
+        const text = formatModelReport({
+            report: scoreModels({
+                runs: [
+                    runOf([
+                        ...ticketRun({
+                            ticket: 11,
+                            tw: 'sonnet',
+                            tw_reason: 'decision_model',
+                            impl_reason: 'floor',
+                            asks: [shadow('implementer', 'sonnet')],
+                        }),
+                        ...ticketRun({
+                            ticket: 12,
+                            tw_reason: 'unsure',
+                            impl_reason: 'floor',
+                            impl_effort: 'high',
+                            asks: [shadow('implementer', 'haiku')],
+                        }),
+                    ]),
+                ],
+            }),
+        })
+        const implementer = roleSection(text, 'implementer')
+        expect(starts(implementer, 'opus at')).toBe(true)
+        expect(starts(implementer, 'sonnet at')).toBe(false)
+        expect(starts(implementer, 'haiku at')).toBe(false)
+        expect(starts(implementer, 'baseline (')).toBe(false)
+        const floor = implementer.indexOf(FLOOR_LINE)
+        const last_opus = implementer.findLastIndex((line) =>
+            line.startsWith('  opus at ')
+        )
+        expect(floor).toBe(last_opus + 1)
+        expect(implementer[floor + 1]).toBe(PICKS_HEADING)
+        // The test-writer ran sonnet once, so it keeps its sonnet line.
+        const writer = roleSection(text, 'test-writer')
+        expect(starts(writer, 'sonnet at')).toBe(true)
+        expect(writer).not.toContain(FLOOR_LINE)
+    })
+
+    test('is not one when a ticket ran for another reason', () => {
+        const text = formatModelReport({
+            report: scoreModels({
+                runs: [
+                    runOf([
+                        ...ticketRun({
+                            ticket: 21,
+                            tw_reason: 'floor',
+                            impl_reason: 'floor',
+                            asks: [shadow('test-writer', 'sonnet')],
+                        }),
+                        ...ticketRun({
+                            ticket: 22,
+                            tw_reason: 'unsure',
+                            impl_reason: 'floor',
+                            asks: [shadow('test-writer', 'sonnet')],
+                        }),
+                    ]),
+                ],
+            }),
+        })
+        const writer = roleSection(text, 'test-writer')
+        expect(writer).not.toContain(FLOOR_LINE)
+        expect(starts(writer, 'sonnet at')).toBe(true)
+        // The implementer ran only for its floor in the same run.
+        expect(roleSection(text, 'implementer')).toContain(FLOOR_LINE)
+    })
+
+    test('is not one when no ticket has a reason, as in journals from before #603', () => {
+        const text = formatModelReport({
+            report: scoreModels({
+                runs: [
+                    runOf([
+                        ...ticketRun({
+                            ticket: 31,
+                            tw_reason: 'floor',
+                            impl_reason: null,
+                            asks: [shadow('implementer', 'sonnet')],
+                        }),
+                        ...ticketRun({
+                            ticket: 32,
+                            tw_reason: 'floor',
+                            impl_reason: null,
+                        }),
+                    ]),
+                ],
+            }),
+        })
+        const implementer = roleSection(text, 'implementer')
+        expect(implementer).not.toContain(FLOOR_LINE)
+        expect(starts(implementer, 'sonnet at')).toBe(true)
+        // The test-writer ran only for its floor in the same run.
+        expect(roleSection(text, 'test-writer')).toContain(FLOOR_LINE)
     })
 })

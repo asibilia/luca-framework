@@ -46,6 +46,20 @@ describe("the glossary on Clef's effort picks (#661)", async () => {
     })
 })
 
+describe('the glossary on the model trial (#698)', async () => {
+    const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
+
+    test('has Model trial, set by models.trial_share and off by default, and Shadow mode still avoids trial mode', () => {
+        expect(entryOf(glossary, 'Model trial')).toBe(
+            "A share of the writer launches Clef would move to a cheaper model, but isn't sure enough about, that really run on Clef's pick (the trial group), against the same kind of launches that stay on Opus (the control group). Set by `models.trial_share`; off by default. Unlike shadow mode, a model trial acts."
+        )
+        const avoid = glossary.match(
+            /^\*\*Shadow mode\*\*:\n.+\n_Avoid_: (.+)$/m
+        )?.[1]
+        expect(avoid?.split(', ')).toContain('trial mode')
+    })
+})
+
 describe('the glossary on effort (#659)', async () => {
     const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
 

@@ -1,4 +1,5 @@
 import {
+    roleSection,
     runOf,
     ticketRun,
     type Built,
@@ -121,19 +122,17 @@ export const runWithBar = (
 export const effortPicksOf = (report: ModelReport, role: Built) =>
     report.effort_picks.find((picks) => picks.role === role)
 
+/** The heading of a role's "Clef's effort picks" section, as printed. */
+export const PICKS_HEADING = "  Clef's effort picks (shadow mode), every answer"
+
 /**
  * The lines of `role`'s "Clef's effort picks (shadow mode)" section in the
  * printed report: the lines after its heading, within the role's part.
  */
 export const pickSection = (text: string, role: Built): string[] => {
-    const lines = text.split('\n')
-    const start = lines.indexOf(role)
-    const end = lines.findIndex(
-        (line, at) => at > start && line !== '' && !line.startsWith(' ')
-    )
-    const part = start < 0 ? [] : lines.slice(start + 1, end)
-    const heading = part.findIndex(
-        (line) => line.trim() === "Clef's effort picks (shadow mode)"
+    const part = roleSection(text, role)
+    const heading = part.findIndex((line) =>
+        line.trim().startsWith("Clef's effort picks (shadow mode)")
     )
     return heading < 0 ? [] : part.slice(heading + 1)
 }

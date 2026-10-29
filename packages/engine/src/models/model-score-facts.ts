@@ -6,14 +6,13 @@ import {
 } from './model-score-rules'
 
 import type { FindingSeverity } from '../agents/role-results'
-import { modelsOf } from '../config/config-fields'
 import {
     EffortLevelSchema,
     ModelNameSchema,
-    ModelsConfigSchema,
     type EffortLevel,
     type ModelName,
 } from '../config/engine-config'
+import type { ModelReason, TrialGroup } from '../jev/model-pick'
 import type { JournalRecord } from '../journal/journal-record'
 import { countedTokens } from '../limits/plan-usage'
 
@@ -31,6 +30,9 @@ export type Pick = {
     shadow: boolean
 }
 
+/** Clef's effort pick for a role on a ticket, with its confidence. */
+export type EffortPick = { effort: EffortLevel; confidence: number }
+
 /** What one run's journal says about one ticket. */
 export type TicketFacts = {
     /** The model of each role's first agent. */
@@ -40,11 +42,18 @@ export type TicketFacts = {
     /** The first ticket review's effort, `high` when none is journaled. */
     review_effort: EffortLevel
     picks: Partial<Record<ScoredRole, Pick>>
+    /** Each role's first agent's model trial group, when it had one (#698). */
+    trial_groups: Partial<Record<ScoredRole, TrialGroup>>
     /**
-     * Clef's first `agent_effort` answer for each role at or above the run's
-     * confidence bar.
+     * Clef's first `agent_effort` answer for each role that has a
+     * confidence, at any confidence (#697).
      */
-    effort_picks: Partial<Record<ScoredRole, EffortLevel>>
+    effort_picks: Partial<Record<ScoredRole, EffortPick>>
+    /**
+     * Why each role's first agent got its model; `null` for one from before
+     * #603.
+     */
+    model_reasons: Partial<Record<ScoredRole, ModelReason | null>>
     reviews: number
     /** The first ticket review's weighted findings. */
     findings: number
@@ -100,7 +109,9 @@ const newTicket = (): TicketFacts => ({
     efforts: {},
     review_effort: EFFORT_BEFORE_659,
     picks: {},
+    trial_groups: {},
     effort_picks: {},
+    model_reasons: {},
     reviews: 0,
     findings: 0,
     fix_rounds: 0,
@@ -125,15 +136,11 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
     const effort_asks = new Map<number, string | null>()
     const reviewed = new Set<number>()
     const learner: LearnerRun[] = []
-    let bar = ModelsConfigSchema.parse({}).confidence_bar
     let routed = false
     let final_rounds = 0
     let final_findings = 0
     for (const record of records) {
         switch (record.kind) {
-            case 'run_started':
-                bar = modelsOf({ config: record.content.config }).confidence_bar
-                break
             case 'jev_asked':
                 if (record.content.job === 'agent_effort') {
                     effort_asks.set(record.seq, record.role)
@@ -159,11 +166,12 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                     if (
                         isScored(effort_role) &&
                         level.success &&
-                        confidence !== null &&
-                        confidence >= bar
+                        confidence !== null
                     ) {
-                        ticketOf(record.ticket).effort_picks[effort_role] ??=
-                            level.data
+                        ticketOf(record.ticket).effort_picks[effort_role] ??= {
+                            effort: level.data,
+                            confidence,
+                        }
                     }
                     break
                 }
@@ -184,7 +192,14 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                 break
             }
             case 'agent_started': {
-                const { role, model, effort, follow_up_of } = record.content
+                const {
+                    role,
+                    model,
+                    effort,
+                    follow_up_of,
+                    model_reason,
+                    trial_group,
+                } = record.content
                 const family = familyOf(model) ?? 'opus'
                 const level = effort ?? EFFORT_BEFORE_659
                 if (follow_up_of !== null) break
@@ -197,8 +212,14 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                 if (record.ticket === null) break
                 if (isScored(role)) {
                     const facts = ticketOf(record.ticket)
-                    facts.models[role] ??= family
-                    facts.efforts[role] ??= level
+                    if (facts.models[role] === undefined) {
+                        facts.models[role] = family
+                        facts.efforts[role] = level
+                        facts.model_reasons[role] = model_reason
+                        if (trial_group !== null) {
+                            facts.trial_groups[role] = trial_group
+                        }
+                    }
                 }
                 if (
                     role === 'ticket-reviewer' &&

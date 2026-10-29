@@ -8,6 +8,7 @@ import {
     EngineConfigSchema,
     featureMapPath,
     loadEngineConfig,
+    modelsOf,
 } from './engine-config'
 
 let repoRoot = ''
@@ -170,6 +171,21 @@ describe('the models block (#603)', () => {
         return loadEngineConfig({ repo_root: repoRoot })
     }
 
+    test('with or without a models block, the bar defaults to 0.5 and the trial share to 0', async () => {
+        expect(await loadModels({})).toMatchObject({
+            ok: true,
+            config: { models: { confidence_bar: 0.5, trial_share: 0 } },
+        })
+        const unset = await loadModels(undefined)
+        expect(unset.ok).toBe(true)
+        if (unset.ok) {
+            expect(modelsOf({ config: unset.config })).toMatchObject({
+                confidence_bar: 0.5,
+                trial_share: 0,
+            })
+        }
+    })
+
     test('floors and the bar parse, a role left out is opus, and the bar defaults to 0.8', async () => {
         expect(await loadModels({})).toMatchObject({
             ok: true,
@@ -180,7 +196,6 @@ describe('the models block (#603)', () => {
                         implementer: 'opus',
                         learner: 'opus',
                     },
-                    confidence_bar: 0.8,
                 },
             },
         })
@@ -218,6 +233,15 @@ describe('the models block (#603)', () => {
 
             expect(result.ok).toBe(false)
             if (!result.ok) expect(result.error).toContain('confidence_bar')
+        }
+    })
+
+    test('a trial share outside 0 to 1 is an error naming the field', async () => {
+        for (const trial_share of [1.5, -0.1, 'half']) {
+            const result = await loadModels({ trial_share })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) expect(result.error).toContain('trial_share')
         }
     })
 
@@ -349,7 +373,6 @@ describe("this repo's models block (#604)", () => {
                         implementer: 'opus',
                         learner: 'opus',
                     },
-                    confidence_bar: 0.8,
                 },
             },
         })

@@ -65,10 +65,11 @@ like `checks`, so a run's asks are all of one model.
 
 **Model floors (#603).** The `models` block in `.luca/config.json` sets
 each routed role's floor, the cheapest model it may run on, and the
-`confidence_bar` (default 0.8):
+`confidence_bar` (default 0.5, #698), and the `trial_share` (0 to 1,
+default 0) of a model trial:
 
 ```json
-{ "models": { "floors": { "test-writer": "sonnet" }, "confidence_bar": 0.8 } }
+{ "models": { "floors": { "test-writer": "sonnet" }, "confidence_bar": 0.5 } }
 ```
 
 Only `test-writer`, `implementer` and `learner` have floors; one left out is
@@ -85,15 +86,27 @@ the model (`pickModel` in `jev/model-pick.ts`); the first match wins:
 3. The role's floor is `opus`: `opus`, reason `floor`.
 4. No answer (off, timed out, errored, or not asked): `opus`, `no_answer`.
 5. Confidence below the bar or missing, or a model not offered: `opus`,
-   `unsure`.
+   `unsure`, unless the launch is in a model trial (below).
 6. Otherwise the decision model's pick, reason `decision_model`.
 
-A launch step a crash cut off is redone on the model and reason its first
-try journaled, with no new ask; if it journaled none, it picks as above.
+**Model trial (#698).** With `trial_share` above 0, a test-writer or
+implementer launch on a ticket is eligible when its only fault in step 5
+is a given confidence below the bar, and it picked an offered model at or
+above the floor and cheaper than Opus. A hash puts it in a group, the same
+on a resume: the first 8 hex digits of the SHA-256 of
+`<run folder name>:<ticket>:<role>`, over `0x100000000`, below
+`trial_share` is the trial group, which runs the pick with reason `trial`;
+otherwise the control group stays on `opus`, `unsure`. A failed trial try
+steps up to `opus`, `after_failure`, like any cheaper try.
 
-Each `agent_started` names its `model` and `model_reason` (older journals
-read both as `null`). A follow-up, a failed try's included, keeps its
-session's model and reason, so one session never switches models; the
+A launch step a crash cut off is redone on the model, reason and trial
+group its first try journaled, with no new ask; if it journaled none, it
+picks as above.
+
+Each `agent_started` names its `model`, `model_reason` and `trial_group`
+(`trial`, `control`, or `null` when not eligible; older journals read all
+three as `null`). A follow-up, a failed try's included, keeps its
+session's model, reason and group, so one session never switches models; the
 step-up comes at the role's next fresh agent. The final review's fixers
 always launch on `opus`, reason `locked`. A role's effort (#659) applies
 whichever model it runs on.

@@ -29,6 +29,8 @@ import type { RunState } from '../journal/replay'
  * - `unsure`: its confidence was below the bar or missing, or it picked a
  *   model the ask didn't offer.
  * - `decision_model`: the decision model's pick.
+ * - `trial`: an unsure but cheaper pick that runs anyway, in a model
+ *   trial's trial group (#698).
  */
 export const ModelReasonSchema = z.enum([
     'locked',
@@ -37,18 +39,78 @@ export const ModelReasonSchema = z.enum([
     'no_answer',
     'unsure',
     'decision_model',
+    'trial',
 ])
 
 export type ModelReason = z.infer<typeof ModelReasonSchema>
 
-/** The model an agent launches on, and why. */
-export type ModelPick = { model: ModelName; model_reason: ModelReason }
+/**
+ * A model trial's group (#698): `trial` runs Clef's unsure but cheaper
+ * pick, `control` stays on Opus.
+ */
+export const TrialGroupSchema = z.enum(['trial', 'control'])
+
+export type TrialGroup = z.infer<typeof TrialGroupSchema>
+
+/**
+ * The model an agent launches on, why, and its model trial group (`null`
+ * when the launch isn't eligible for a trial).
+ */
+export type ModelPick = {
+    model: ModelName
+    model_reason: ModelReason
+    trial_group: TrialGroup | null
+}
 
 /** Reviewers, lenses, and the final review's fixers: always Opus. */
 export const LOCKED_PICK: ModelPick = {
     model: DEFAULT_MODEL,
     model_reason: 'locked',
+    trial_group: null,
 }
+
+/**
+ * A launch's model trial group (#698), the same for the same key every
+ * time: the first 8 hex digits of the key's SHA-256, over `0x100000000`,
+ * below `share` is `trial`, else `control`.
+ *
+ * @example
+ * trialGroupOf({ key: 'luca-20261028-202119-k6q1:697:test-writer', share: 0.5 }) // 'trial'
+ */
+export const trialGroupOf = ({
+    key,
+    share,
+}: {
+    key: string
+    share: number
+}): TrialGroup => {
+    const hex = new Bun.CryptoHasher('sha256').update(key).digest('hex')
+    return parseInt(hex.slice(0, 8), 16) / 0x100000000 < share
+        ? 'trial'
+        : 'control'
+}
+
+/**
+ * The text a launch's model trial group is hashed from: the run folder's
+ * name, the ticket's bare number and the role; `null` for a launch that
+ * can't be in a trial (the learner, or one with no ticket).
+ *
+ * @example
+ * trialKeyOf({ run_id: 'luca-20261028-202119-k6q1', ticket: 697, role: 'test-writer' })
+ * // 'luca-20261028-202119-k6q1:697:test-writer'
+ */
+export const trialKeyOf = ({
+    run_id,
+    ticket,
+    role,
+}: {
+    run_id: string
+    ticket: number | null
+    role: AgentRole
+}): string | null =>
+    ticket === null || (role !== 'test-writer' && role !== 'implementer')
+        ? null
+        : `${run_id}:${ticket}:${role}`
 
 export type RoutedRole = (typeof ROUTED_ROLES)[number]
 
@@ -84,38 +146,69 @@ export type ModelAnswer = {
  * offered is `unsure`; else the decision model's pick. Every fallback is
  * Opus.
  *
+ * An `unsure` pick is in a model trial (#698) when `trial_share` is above
+ * 0, the launch has a `trial_key`, its only fault is a confidence below
+ * the bar, and it picked an offered model at or above the floor and
+ * cheaper than Opus: its trial group runs the pick as `trial`, its control
+ * group stays on Opus as `unsure`.
+ *
  * @example
- * pickModel({ role: 'test-writer', models, failed_cheaper: false, answer: { offered: ['sonnet', 'opus'], pick: 'sonnet', confidence: 0.9 } })
- * // { model: 'sonnet', model_reason: 'decision_model' } with a sonnet floor and the 0.8 bar
+ * pickModel({ role: 'test-writer', models, failed_cheaper: false, answer: { offered: ['sonnet', 'opus'], pick: 'sonnet', confidence: 0.9 }, trial_key: null })
+ * // { model: 'sonnet', model_reason: 'decision_model', trial_group: null } with a sonnet floor and the 0.5 bar
  */
 export const pickModel = ({
     role,
     models,
     failed_cheaper,
     answer,
+    trial_key,
 }: {
     role: AgentRole
     models: ModelsConfig
     /** Whether the role already failed a try on its ticket on a cheaper model. */
     failed_cheaper: boolean
     answer: ModelAnswer | null
+    /** The text hashed for the trial group; `null` if it can't be in one. */
+    trial_key: string | null
 }): ModelPick => {
+    const opus = (model_reason: ModelReason): ModelPick => ({
+        model: 'opus',
+        model_reason,
+        trial_group: null,
+    })
     if (!isRoutedRole(role)) return LOCKED_PICK
-    if (failed_cheaper) return { model: 'opus', model_reason: 'after_failure' }
-    if (models.floors[role] === 'opus') {
-        return { model: 'opus', model_reason: 'floor' }
-    }
-    if (answer === null) return { model: 'opus', model_reason: 'no_answer' }
+    if (failed_cheaper) return opus('after_failure')
+    const floor = models.floors[role]
+    if (floor === 'opus') return opus('floor')
+    if (answer === null) return opus('no_answer')
     const pick = ModelNameSchema.safeParse(answer.pick)
     if (
         !pick.success ||
         !answer.offered.includes(pick.data) ||
-        answer.confidence === null ||
-        answer.confidence < models.confidence_bar
+        answer.confidence === null
     ) {
-        return { model: 'opus', model_reason: 'unsure' }
+        return opus('unsure')
     }
-    return { model: pick.data, model_reason: 'decision_model' }
+    if (answer.confidence >= models.confidence_bar) {
+        return {
+            model: pick.data,
+            model_reason: 'decision_model',
+            trial_group: null,
+        }
+    }
+    const all = ModelNameSchema.options
+    if (
+        trial_key === null ||
+        models.trial_share <= 0 ||
+        pick.data === 'opus' ||
+        all.indexOf(pick.data) > all.indexOf(floor)
+    ) {
+        return opus('unsure')
+    }
+    return trialGroupOf({ key: trial_key, share: models.trial_share }) ===
+        'trial'
+        ? { model: pick.data, model_reason: 'trial', trial_group: 'trial' }
+        : { ...opus('unsure'), trial_group: 'control' }
 }
 
 /**
@@ -211,9 +304,9 @@ export const redonePick = ({
     )
     if (started?.kind !== 'agent_started') return null
     const model = ModelNameSchema.safeParse(started.content.model)
-    const { model_reason } = started.content
+    const { model_reason, trial_group } = started.content
     if (!model.success || model_reason === null) return null
-    return { model: model.data, model_reason }
+    return { model: model.data, model_reason, trial_group }
 }
 
 /** Which try of its step a launch is: a redo names its first try's seq. */
@@ -246,13 +339,16 @@ export const asksModel = ({
 
 /**
  * The model a fresh agent launches on, from the run's config and the
- * answer the launch step just journaled. A redo launches on the model its
- * first try journaled.
+ * answer the launch step just journaled. A redo launches on the model, and
+ * in the trial group, its first try journaled.
+ *
+ * @param run_id - The run folder's name, for the model trial's key.
  */
 export const launchPick = ({
     records,
     state,
     config,
+    run_id,
     ticket,
     role,
     step,
@@ -260,6 +356,7 @@ export const launchPick = ({
     records: JournalRecord[]
     state: RunState
     config: EngineConfig
+    run_id: string
     ticket: number | null
     role: AgentRole
     step: LaunchTry
@@ -272,4 +369,5 @@ export const launchPick = ({
         models: modelsOf({ config }),
         failed_cheaper: failedCheaper({ state, ticket, role }),
         answer: modelAnswerOf({ records, ticket, role }),
+        trial_key: trialKeyOf({ run_id, ticket, role }),
     })

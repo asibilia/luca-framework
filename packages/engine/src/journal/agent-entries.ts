@@ -10,7 +10,7 @@ import {
 } from '../agents/role-results'
 import { EffortLevelSchema } from '../config/engine-config'
 import { GateCheckSchema } from '../gates/gate-schemas'
-import { ModelReasonSchema } from '../jev/model-pick'
+import { ModelReasonSchema, TrialGroupSchema } from '../jev/model-pick'
 
 /**
  * The journal entries of agent turns: started, finished or failed, their
@@ -26,7 +26,9 @@ import { ModelReasonSchema } from '../jev/model-pick'
  * launched on that model (#603; a follow-up's is its session's); `null` in
  * journals from before it. `effort` is the effort it ran at (#659; a
  * follow-up's is its session's); `null` in journals from before it, when
- * every agent ran at `high`.
+ * every agent ran at `high`. `trial_group` is its model trial group (#698;
+ * a redo's is its first try's, a follow-up's is its session's); `null` when
+ * it wasn't eligible, and in journals from before it.
  */
 export const AgentStartedEntrySchema = z.object({
     ...ENTRY_FIELDS,
@@ -38,6 +40,7 @@ export const AgentStartedEntrySchema = z.object({
         model: z.string().nullable().default(null),
         model_reason: ModelReasonSchema.nullable().default(null),
         effort: EffortLevelSchema.nullable().default(null),
+        trial_group: TrialGroupSchema.nullable().default(null),
     }),
 })
 

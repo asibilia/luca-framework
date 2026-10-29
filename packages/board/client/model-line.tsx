@@ -36,8 +36,8 @@ const capital = ({ text }: { text: string }): string =>
  * doesn't know.
  *
  * @example
- * clefLine({ model: { role: 'implementer', name: 'opus', reason: 'unsure', answer: { role: 'implementer', pick: 'sonnet', confidence: 0.56 } }, bar: 0.8 })
- * // { short: '0.56 split → stayed on opus', full: 'Clef picked sonnet but was only 0.56 sure (split: under 0.8), so Luca stayed on opus.', confidence: 0.56, sharp: false }
+ * clefLine({ model: { role: 'implementer', name: 'opus', reason: 'unsure', answer: { role: 'implementer', pick: 'sonnet', confidence: 0.36 } }, bar: 0.5 })
+ * // { short: '0.36 split → stayed on opus', full: 'Clef picked sonnet but was only 0.36 sure (split: under 0.5), so Luca stayed on opus.', confidence: 0.36, sharp: false }
  */
 export const clefLine = ({
     model,
@@ -54,14 +54,25 @@ export const clefLine = ({
     const sure = confidence?.toFixed(2) ?? ''
     const judged = `${word}: ${sharp ? 'at or over' : 'under'} ${bar}`
     const plain = { confidence: null, sharp: false }
+    const picked = `${confidence === null ? 'clef' : `${sure} ${word}`} → ${name}`
     switch (reason) {
         case 'decision_model':
             return {
-                short: `${confidence === null ? 'clef' : `${sure} ${word}`} → ${name}`,
+                short: picked,
                 full:
                     confidence === null
                         ? `Clef picked ${name}, so Luca ran the ${role} on it.`
                         : `Clef picked ${name} and was ${sure} sure (${judged}), so Luca ran the ${role} on it.`,
+                confidence,
+                sharp,
+            }
+        case 'trial':
+            return {
+                short: `${picked} (trial)`,
+                full:
+                    confidence === null
+                        ? `Clef picked ${name}, and Luca ran the ${role} on it in a model trial.`
+                        : `Clef picked ${name} and was ${sure} sure (${judged}), and Luca ran the ${role} on it in a model trial.`,
                 confidence,
                 sharp,
             }

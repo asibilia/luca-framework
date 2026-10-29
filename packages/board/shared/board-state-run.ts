@@ -94,7 +94,7 @@ export const DEFAULT_RUN_BUDGET_TOKENS = 9_000_000
  * `engine/src/config/engine-config-schema.ts`): the decision model is sharp at or
  * over it, split under it. Kept here for the same reason.
  */
-export const DEFAULT_CONFIDENCE_BAR = 0.8
+export const DEFAULT_CONFIDENCE_BAR = 0.5
 
 export const EngineEndedSchema = z.object({
     ok: z.boolean(),
