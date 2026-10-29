@@ -84,6 +84,38 @@ describe('findLiveEngine: one engine per run', () => {
     })
 })
 
+describe('resumeRefusal: one engine per run', () => {
+    /** This process's own chain: itself, a `caffeinate` wrapper, then a shell. */
+    const ownChain = [
+        `${process.pid} 4242 bun /x/luca-run.ts --resume ${RUN_ID}`,
+        `4242 4343 caffeinate -i luca-run --resume ${RUN_ID}`,
+        `4343 1 zsh -c luca-run --resume ${RUN_ID}`,
+    ]
+
+    test('every parent of the resuming process that names the run is left out, at any depth', async () => {
+        const refusal = await liveRuns.resumeRefusal({
+            run_id: RUN_ID,
+            list_processes: async () => ownChain,
+        })
+
+        expect(refusal).toBeNull()
+    })
+
+    test('another engine on the run beside the own parent chain is refused, naming its pid', async () => {
+        const refusal = await liveRuns.resumeRefusal({
+            run_id: RUN_ID,
+            list_processes: async () => [
+                ...ownChain,
+                `75023 1 bun /x/luca-run.ts --resume ${RUN_ID}`,
+            ],
+        })
+
+        expect(refusal).toBe(
+            `[luca-run] Run ${RUN_ID} already has a live engine (pid 75023). Not starting a second one.`
+        )
+    })
+})
+
 describe('listProcesses', () => {
     test('lists every process by its full command line, ps itself included', async () => {
         const lines = await listProcesses()

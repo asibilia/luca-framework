@@ -56,7 +56,7 @@ const resume = async (): Promise<{ exit_code: number; stderr: string }> => {
 describe('luca-run --resume: one engine per run', () => {
     test('a run that already has a live engine is refused, naming its pid, with exit code 1', async () => {
         await fakePs({
-            script: `printf '%s\\n' '75023 bun /x/luca-run.ts --resume ${RUN_ID}'`,
+            script: `printf '%s\\n' '75023 1 bun /x/luca-run.ts --resume ${RUN_ID}'`,
         })
 
         const end = await resume()
