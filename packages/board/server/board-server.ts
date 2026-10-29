@@ -7,6 +7,8 @@
  * - `board-server-start.ts` and `board-server-resume.ts`: `run.start` and
  *   `/luca-run resume`.
  * - `board-server-events.ts`: `engine.event`.
+ * - `board-server-follow.ts`: following the plugin's runs on disk, and an
+ *   ended run that comes back.
  * - `board-server-read.ts`: `board.read` and `reply.post`, and the runs the
  *   plugin didn't start.
  * - `board-server-check.ts`: the engine check, which also labels the runs
@@ -15,6 +17,7 @@
 import { createEngineChecks } from './board-server-check'
 import { createEngineProcess } from './board-server-engine'
 import { createEngineEvents } from './board-server-events'
+import { createJournalFollow } from './board-server-follow'
 import { createBoardReads } from './board-server-read'
 import { createResumer } from './board-server-resume'
 import { createStarter } from './board-server-start'
@@ -40,10 +43,11 @@ export type {
  * checks (`checkEngines`) read processes through `list_processes` and ask
  * the engine through `run_command`.
  *
- * With a `runs_dir`, every run is rebuilt from its journal there: on start
- * the runs this plugin started, and on each `board.read` the runs it didn't
- * start (shown read-only in the workspace whose folder is their repo). Without one, a restarted
- * plugin knows its runs only from the registry and the engine's next send.
+ * With a `runs_dir`, every run is rebuilt from its journal there on start,
+ * and followed there on each `board.read` and engine check: the runs this
+ * plugin started, and the runs it didn't start (shown read-only in each
+ * workspace in their repo). Without one, a restarted plugin knows its runs
+ * only from the registry and the engine's next send.
  *
  * Each run's `engine.event` work goes through its own queue, so rows never
  * interleave. A failed row append is logged and never loses board state.
@@ -73,8 +77,9 @@ export const createBoardServer = (config: BoardServerConfig) => {
     const resumer = createResumer({ config, store, engine })
     const starter = createStarter({ config, store, engine, resumer })
     const events = createEngineEvents({ store })
-    const reads = createBoardReads({ config, store })
-    const checks = createEngineChecks({ config, store, engine, reads })
+    const follow = createJournalFollow({ config, store })
+    const reads = createBoardReads({ config, store, follow })
+    const checks = createEngineChecks({ config, store, engine, reads, follow })
 
     /** Resolves when every queued piece of work (and any check) has finished. */
     const idle = async () => {

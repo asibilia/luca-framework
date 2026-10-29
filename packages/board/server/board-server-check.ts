@@ -2,10 +2,12 @@
  * The engine check: finds runs whose engine process is gone although the run
  * hasn't ended, restarts the ones that can go on from their journal, and
  * marks the rest as stopped, with why. The runs the plugin didn't start are
- * only labelled (#635), never restarted.
+ * only labelled (#635), never restarted. A run marked ended whose journal
+ * grew and that has a live engine again comes back (#701).
  */
 
 import type { EngineProcess } from './board-server-engine'
+import type { JournalFollow } from './board-server-follow'
 import type { RunStore } from './board-server-store'
 import type {
     BoardServerConfig,
@@ -34,15 +36,17 @@ export const createEngineChecks = ({
     store,
     engine,
     reads,
+    follow,
 }: {
     config: BoardServerConfig
     store: RunStore
     engine: EngineProcess
-    /** The runs the plugin didn't start, and how to read them again. */
+    /** The runs the plugin didn't start, and how to read every journal again. */
     reads: {
         outside: Map<string, OutsideRun>
-        readOutside: () => Promise<void>
+        readJournals: () => Promise<void>
     }
+    follow: JournalFollow
 }) => {
     const {
         list_processes,
@@ -171,7 +175,7 @@ export const createEngineChecks = ({
     /** One check: see `checkEngines`. */
     const runCheck = async (): Promise<EngineCheck> => {
         await ready
-        await reads.readOutside()
+        await reads.readJournals()
         const summary: EngineCheck = { restarted: [], stopped: [] }
         const candidates = [...runs.values()].filter((memory) =>
             needsEngine({ state: memory.state })
@@ -179,7 +183,14 @@ export const createEngineChecks = ({
         const others = [...reads.outside.values()].filter((run) =>
             needsEngine({ state: run.state })
         )
-        if (candidates.length === 0 && others.length === 0) return summary
+        const returning = follow.returning()
+        if (
+            candidates.length === 0 &&
+            others.length === 0 &&
+            returning.length === 0
+        ) {
+            return summary
+        }
         let command_lines: string[]
         try {
             command_lines = await list_processes()
@@ -192,6 +203,13 @@ export const createEngineChecks = ({
             return summary
         }
         const live = liveRunIds({ command_lines })
+        // An ended run whose journal grew and that has a live engine (such
+        // as `luca-run --resume`) is live again (#701).
+        await Promise.all(
+            returning
+                .filter((memory) => live.has(memory.entry.run_id))
+                .map((memory) => follow.comeBack({ memory }))
+        )
         await labelOutside({ others, live })
         const dead = candidates.filter(
             (memory) => !live.has(memory.entry.run_id)

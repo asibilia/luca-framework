@@ -106,6 +106,7 @@ export const createStarter = ({
             started_at: now().toISOString(),
             log_path,
             ended: null,
+            ended_at_seq: null,
             restarts: 0,
         }
         registry.add({ entry })

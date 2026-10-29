@@ -73,6 +73,12 @@ export type RunMemory = Replay & {
      * Added when the engine sends those records again.
      */
     unsent_rows: Map<number, BoardRow[]>
+    /**
+     * Its journal's size and change time when the board last read it from
+     * disk (#701), `null` before the first read; a change reads it again.
+     */
+    size: number | null
+    changed_ms: number | null
 }
 
 /**
