@@ -12,7 +12,7 @@ import {
     type EffortLevel,
     type ModelName,
 } from '../config/engine-config'
-import type { ModelReason } from '../jev/model-pick'
+import type { ModelReason, TrialGroup } from '../jev/model-pick'
 import type { JournalRecord } from '../journal/journal-record'
 import { countedTokens } from '../limits/plan-usage'
 
@@ -42,6 +42,8 @@ export type TicketFacts = {
     /** The first ticket review's effort, `high` when none is journaled. */
     review_effort: EffortLevel
     picks: Partial<Record<ScoredRole, Pick>>
+    /** Each role's first agent's model trial group, when it had one (#698). */
+    trial_groups: Partial<Record<ScoredRole, TrialGroup>>
     /**
      * Clef's first `agent_effort` answer for each role that has a
      * confidence, at any confidence (#697).
@@ -107,6 +109,7 @@ const newTicket = (): TicketFacts => ({
     efforts: {},
     review_effort: EFFORT_BEFORE_659,
     picks: {},
+    trial_groups: {},
     effort_picks: {},
     model_reasons: {},
     reviews: 0,
@@ -189,8 +192,14 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                 break
             }
             case 'agent_started': {
-                const { role, model, effort, follow_up_of, model_reason } =
-                    record.content
+                const {
+                    role,
+                    model,
+                    effort,
+                    follow_up_of,
+                    model_reason,
+                    trial_group,
+                } = record.content
                 const family = familyOf(model) ?? 'opus'
                 const level = effort ?? EFFORT_BEFORE_659
                 if (follow_up_of !== null) break
@@ -207,6 +216,9 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                         facts.models[role] = family
                         facts.efforts[role] = level
                         facts.model_reasons[role] = model_reason
+                        if (trial_group !== null) {
+                            facts.trial_groups[role] = trial_group
+                        }
                     }
                 }
                 if (

@@ -3,6 +3,8 @@
  * ended, journaled. Also the `launch_agent` and `follow_up_agent` steps,
  * which start a turn.
  */
+import { basename } from 'node:path'
+
 import { need, ticketWorktree, type BuildContext } from './build-context'
 import { mayEditTests, type BuildAction } from './decide-build'
 import { doChores } from './engine-chores'
@@ -19,7 +21,11 @@ import { DEFAULT_MODEL, type EffortLevel } from '../config/engine-config'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
-import { launchPick, type ModelReason } from '../jev/model-pick'
+import {
+    launchPick,
+    type ModelReason,
+    type TrialGroup,
+} from '../jev/model-pick'
 import type { AgentFailure, JournalRecord } from '../journal/journal-record'
 import type { ReplayedWorktree } from '../journal/replay'
 import { sessionSignal } from '../limits/plan-signals'
@@ -253,13 +259,15 @@ const sessionOf = (record: JournalRecord): string | null => {
 }
 
 /**
- * The model a session launched on, and why (`null` before #603), and the
- * effort it runs at (`null` before #659).
+ * The model a session launched on, and why (`null` before #603), the
+ * effort it runs at (`null` before #659), and its model trial group
+ * (`null` when not eligible, or before #698).
  */
 export type SessionModel = {
     model: string
     model_reason: ModelReason | null
     effort: EffortLevel | null
+    trial_group: TrialGroup | null
 }
 
 /**
@@ -302,8 +310,8 @@ export const sessionModel = ({
                           record.content.follow_up_of === null
                   ))
     if (started?.kind !== 'agent_started') return null
-    const { model, model_reason, effort } = started.content
-    return model === null ? null : { model, model_reason, effort }
+    const { model, model_reason, effort, trial_group } = started.content
+    return model === null ? null : { model, model_reason, effort, trial_group }
 }
 
 /**
@@ -321,6 +329,7 @@ export const followUpModel = ({
         model: DEFAULT_MODEL,
         model_reason: null,
         effort: null,
+        trial_group: null,
     }
 
 export const launchAgent = async ({
@@ -335,10 +344,11 @@ export const launchAgent = async ({
     // a routed role's model; a reviewer is locked on Opus. A redo keeps
     // the model its first try journaled. The role's effort applies on any
     // model (#659).
-    const { model, model_reason } = launchPick({
+    const { model, model_reason, trial_group } = launchPick({
         records: context.journal.read(),
         state: context.state,
         config: context.config,
+        run_id: basename(context.run_dir),
         ticket,
         role,
         step: context.step,
@@ -355,6 +365,7 @@ export const launchAgent = async ({
             model,
             model_reason,
             effort,
+            trial_group,
         },
     })
     await runTurn({
@@ -394,7 +405,7 @@ export const followUpAgent = async ({
         value: context.state.snapshot?.tickets[ticket],
         what: `snapshot of #${ticket}`,
     })
-    const { model, model_reason, effort } = followUpModel({
+    const { model, model_reason, effort, trial_group } = followUpModel({
         records: context.journal.read(),
         session_id,
     })
@@ -409,6 +420,7 @@ export const followUpAgent = async ({
             model,
             model_reason,
             effort,
+            trial_group,
         },
     })
     await runTurn({

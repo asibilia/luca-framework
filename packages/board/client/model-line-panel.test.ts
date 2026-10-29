@@ -365,7 +365,7 @@ const SPLIT_OPUS: Agent = {
     role: 'implementer',
     model: 'opus',
     model_reason: 'unsure',
-    answer: { pick: 'sonnet', confidence: 0.56 },
+    answer: { pick: 'sonnet', confidence: 0.36 },
 }
 
 describe("model tags and Clef's line on each card (#630)", () => {
@@ -419,7 +419,7 @@ describe("model tags and Clef's line on each card (#630)", () => {
     test("each model_reason shows its short text on Clef's line", async () => {
         const cases: { agent: Agent; text: string }[] = [
             { agent: SHARP_SONNET, text: '0.92 sharp → sonnet' },
-            { agent: SPLIT_OPUS, text: '0.56 split → stayed on opus' },
+            { agent: SPLIT_OPUS, text: '0.36 split → stayed on opus' },
             {
                 agent: {
                     role: 'implementer',
@@ -477,8 +477,8 @@ describe("model tags and Clef's line on each card (#630)", () => {
         expect(inHue(sharp?.color ?? '', GREEN)).toBe(true)
 
         const split = barOf({ shown: await cardWith({ agent: SPLIT_OPUS }) })
-        expect(split?.value).toEqual({ min: 0, max: 100, now: 56 })
-        expect(split?.width).toBe('56%')
+        expect(split?.value).toEqual({ min: 0, max: 100, now: 36 })
+        expect(split?.width).toBe('36%')
         expect(inHue(split?.color ?? '', AMBER)).toBe(true)
     })
 
@@ -559,12 +559,12 @@ describe("model tags and Clef's line on each card (#630)", () => {
     })
 
     test("a tap on Clef's line shows the full sentence", async () => {
-        const shown = await cardWith({ agent: SPLIT_OPUS })
+        const shown = await cardWith({ agent: SPLIT_OPUS, bar: 0.8 })
         const sentence =
-            'Clef picked sonnet but was only 0.56 sure (split: under 0.8), so Luca stayed on opus.'
+            'Clef picked sonnet but was only 0.36 sure (split: under 0.8), so Luca stayed on opus.'
         expect(bubbleShows({ shown, text: sentence })).toBe(false)
 
-        shown.press(lineWith({ shown, text: '0.56 split → stayed on opus' }))
+        shown.press(lineWith({ shown, text: '0.36 split → stayed on opus' }))
 
         expect(bubbleShows({ shown, text: sentence })).toBe(true)
     })

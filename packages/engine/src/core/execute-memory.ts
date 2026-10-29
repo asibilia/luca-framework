@@ -1,3 +1,5 @@
+import { basename } from 'node:path'
+
 import type { MemoryAction, MemorySaveStep } from './decide-memory'
 import { buildContext, need, runTurn, type BuildDeps } from './execute-build'
 
@@ -413,6 +415,7 @@ export const executeMemoryAction = async ({
                 records: journal.read(),
                 state: built.state,
                 config: built.config,
+                run_id: basename(built.run_dir),
                 ticket: null,
                 role: 'learner',
                 step,
@@ -432,6 +435,8 @@ export const executeMemoryAction = async ({
                     model,
                     model_reason,
                     effort,
+                    // The learner is never in a model trial.
+                    trial_group: null,
                 },
             })
             await runTurn({

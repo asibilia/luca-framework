@@ -42,11 +42,17 @@ Tests:
 
 Each role has a model floor: the decision model's model pick takes effect for a role whose floor is below Opus, when it is sure enough, and every other agent, reviewers and lenses always, runs Opus. `luca models` reads this repo's run journals and scores each routed role per model and effort from the ticket review's findings, beside fix rounds, stuck tickets and tokens, against the tickets where the decision model picked that model in shadow mode, comparing only tickets whose ticket review ran at the same effort (an agent with no effort, from before #659, counts as `high`). Its "Clef's effort picks (shadow mode)" section, per writer role, compares the tickets where the decision model's first `agent_effort` answer with a confidence, at any confidence, wanted more effort than the agent ran at against the rest, with a verdict of "Clef spots hard tickets", "no sign yet" or "not enough data", then the same two sides by Clef's confidence: below 0.3, 0.3 to 0.5, and 0.5 and up. A role whose every counted ticket that has a model reason ran Opus because of its floor shows only its Opus lines, and says no cheaper model was ever tried and that `models.floors` would let it.
 
-Reached by: the `models` block (`floors`, `confidence_bar`) in a repo's `.luca/config.json`; each `agent_started` record names the model and why; `luca models` in a repo.
+With `models.trial_share` above 0 (it defaults to 0), a model trial runs a share of the writer launches Clef would move to a cheaper model, but isn't sure enough about, on Clef's pick (the trial group, `model_reason: trial`), chosen by a hash of the run, ticket and role, against the rest that stay on Opus (the control group); each `agent_started` names its `trial_group`, and `luca models` counts each model's trial tickets and compares them with its control tickets. The board marks a trial launch's Clef line ` (trial)`.
+
+Reached by: the `models` block (`floors`, `confidence_bar`, `trial_share`) in a repo's `.luca/config.json`; each `agent_started` record names the model and why; `luca models` in a repo.
 
 Tests:
 
+- `packages/engine/src/jev/model-pick.test.ts`
 - `packages/engine/src/jev/jev-model-pick.e2e.test.ts`
+- `packages/engine/src/jev/jev-model-trial.e2e.test.ts`
+- `packages/engine/src/models/model-score-trial.test.ts`
+- `packages/board/client/model-line-trial-panel.test.ts`
 - `packages/engine/src/jev/jev-model-safety.e2e.test.ts`
 - `packages/engine/src/jev/decision-model-glossary.test.ts`
 - `packages/engine/src/models/model-score.test.ts`

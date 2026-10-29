@@ -216,12 +216,15 @@ const RoleEffortsSchema = z.strictObject(
 /**
  * The config's `models` block (#603): each routed role's model floor, each
  * writer's effort (#660), and how sure the decision model must be
- * (`confidence_bar`) before its model pick is used.
+ * (`confidence_bar`) before its model pick is used, and the share of its
+ * unsure but cheaper picks that run anyway in a model trial (`trial_share`,
+ * #698).
  */
 export const ModelsConfigSchema = z.object({
     floors: ModelFloorsSchema.prefault({}),
     effort: RoleEffortsSchema.prefault({}),
-    confidence_bar: z.number().min(0).max(1).default(0.8),
+    confidence_bar: z.number().min(0).max(1).default(0.5),
+    trial_share: z.number().min(0).max(1).default(0),
 })
 
 export type ModelsConfig = z.infer<typeof ModelsConfigSchema>

@@ -265,6 +265,7 @@ export const executeFinalReviewAction = async ({
                     model,
                     model_reason,
                     effort,
+                    trial_group: null,
                 },
             })
             await runTurn({
