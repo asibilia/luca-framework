@@ -81,6 +81,10 @@ import {
     MemoryWriteStartedEntrySchema,
 } from './memory-entries'
 import {
+    NetworkWaitEndedEntrySchema,
+    NetworkWaitStartedEntrySchema,
+} from './network-wait-entries'
+import {
     ChangesetWrittenEntrySchema,
     PullRequestOpenedEntrySchema,
 } from './pull-request-entries'
@@ -218,6 +222,8 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RepoWaitEndedEntrySchema,
     RepoWaitSkippedEntrySchema,
     RepoWaitPsFailedEntrySchema,
+    NetworkWaitStartedEntrySchema,
+    NetworkWaitEndedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */

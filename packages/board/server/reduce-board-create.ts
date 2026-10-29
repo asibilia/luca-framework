@@ -80,6 +80,7 @@ export const createBoardState = ({
     limit_wait: null,
     usage_line_wait: null,
     repo_wait: null,
+    network_waits: [],
     run_plan_used: [],
     needs_you: [],
     tickets: [],

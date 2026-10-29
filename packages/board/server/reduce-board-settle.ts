@@ -47,6 +47,9 @@ const runStatus = ({ state }: { state: BoardState }): RunStatus => {
     if (engine_ended && !engine_ended.ok) return 'ended_with_error'
     if (state.limit_wait) return 'limit_wait'
     if (state.usage_line_wait) return 'usage_line_wait'
+    if (state.network_waits.length > 0 && engine_ended === null) {
+        return 'network_wait'
+    }
     // Nothing new starts while the run is stuck on its budget.
     if (state.needs_you.some((item) => item.key === RUN_KEY)) return 'stuck'
     if (state.needs_you.length > 0 && !isActive({ state })) return 'stuck'

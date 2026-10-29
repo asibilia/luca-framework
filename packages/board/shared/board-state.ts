@@ -135,6 +135,12 @@ export const BoardStateSchema = z.object({
         })
         .nullable()
         .default(null),
+    /**
+     * The steps waiting for GitHub to be reachable (#701), from
+     * `network_wait_started` until a `network_wait_ended` for the same step.
+     * Defaulted, so a board state from before it still parses.
+     */
+    network_waits: z.array(z.string()).default([]),
     /** How much of the plan the whole run used, per window. */
     run_plan_used: z.array(PlanUsedSchema),
     needs_you: z.array(NeedsYouSchema),

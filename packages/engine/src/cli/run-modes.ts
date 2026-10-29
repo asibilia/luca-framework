@@ -157,6 +157,7 @@ export const runSpec = async ({
                 going_runs,
                 board: board ?? undefined,
                 live_file: runLiveFilePath({ runs_dir, run_id }),
+                log,
             }),
     })
 }

@@ -19,10 +19,11 @@ export type BoardEnded = z.infer<typeof BoardEndedSchema>
 /**
  * The board's answer to a send. `next_seq` is the next journal seq the board
  * wants; lower than what was sent means it lost state and wants a replay.
+ * A refusal (`ok: false`, such as an unknown run) has `next_seq` 0.
  */
 export const BoardReplySchema = z.object({
     ok: z.boolean(),
-    next_seq: z.number().int().min(1),
+    next_seq: z.number().int().min(0),
     message: z.string(),
 })
 
@@ -68,7 +69,8 @@ const errorText = (error: unknown): string =>
  * restarted, or saw a gap) gets the journal again from there.
  *
  * The board must never break a run: a failed send or a not-ok answer is
- * logged (once per distinct message) and swallowed.
+ * logged (once per distinct message) and swallowed, and leaves the cursor
+ * where it was.
  *
  * @param link - The transport to the board.
  * @param log - Where problems go. Defaults to `console.error`.
@@ -123,7 +125,9 @@ export const createBoardSync = ({
             )
             if (batch.length === 0) return
             const reply = await send({ records: batch, ended: null })
-            if (reply === null) return
+            // A refusal (`next_seq` 0) keeps the cursor: the next sync sends
+            // the same records again.
+            if (reply === null || !reply.ok) return
             const before = cursor
             // Never past the newest record, or new ones would be skipped.
             cursor = Math.min(reply.next_seq, newest + 1)

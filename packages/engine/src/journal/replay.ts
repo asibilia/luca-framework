@@ -315,6 +315,10 @@ const applyKind = ({
         case 'step_started':
         case 'step_ended':
             return next
+        // A network wait changes no step: the step is run again in place.
+        case 'network_wait_started':
+        case 'network_wait_ended':
+            return next
         // A wait between steps changes no step: only the board reads it.
         case 'ticket_waiting':
             return next

@@ -44,15 +44,74 @@ export const liveRunIds = ({
 }
 
 /**
+ * The first live engine on `run_id` (#701): a process whose command line
+ * names the run with `--run-id` or `--resume`, other than `own_pids` (the
+ * checking process and its parents). `process_lines` are `ps` lines of a pid
+ * then a command line. Pure.
+ *
+ * @example
+ * findLiveEngine({ run_id: 'r1', process_lines: ['75023 bun luca-run.ts --resume r1'], own_pids: [80000] }) // { pid: 75023 }
+ */
+export const findLiveEngine = ({
+    run_id,
+    process_lines,
+    own_pids,
+}: {
+    run_id: string
+    process_lines: string[]
+    own_pids: number[]
+}): { pid: number } | null => {
+    for (const line of process_lines) {
+        const match = /^\s*(\d+)\s+(.*)$/.exec(line)
+        if (!match?.[1] || match[2] === undefined) continue
+        const pid = Number(match[1])
+        if (own_pids.includes(pid)) continue
+        if (liveRunIds({ command_lines: [match[2]] }).has(run_id)) {
+            return { pid }
+        }
+    }
+    return null
+}
+
+/**
+ * Why `luca-run --resume <run_id>` must not start (#701): another live engine
+ * on the run, or a process list it can't read; `null` when it may start.
+ * Leaves out this process and its parent.
+ */
+export const resumeRefusal = async ({
+    run_id,
+    list_processes = () => listProcesses({ with_pids: true }),
+}: {
+    run_id: string
+    list_processes?: ListProcesses
+}): Promise<string | null> => {
+    const process_lines = await list_processes().catch(() => null)
+    if (process_lines === null) {
+        return `[luca-run] Couldn't check for a live engine on run ${run_id}. Not starting.`
+    }
+    const found = findLiveEngine({
+        run_id,
+        process_lines,
+        own_pids: [process.pid, process.ppid],
+    })
+    return found === null
+        ? null
+        : `[luca-run] Run ${run_id} already has a live engine (pid ${found.pid}). Not starting a second one.`
+}
+
+/**
  * Every running process's full command line, from `ps -axww -o command=`
- * (`-ww` never cuts a line). Rejects when `ps` fails, so a caller can take
- * the safe side rather than guess.
+ * (`-ww` never cuts a line), each after its pid with `with_pids`. Rejects
+ * when `ps` fails, so a caller can take the safe side rather than guess.
  *
  * @example
  * const live = liveRunIds({ command_lines: await listProcesses() })
  */
-export const listProcesses: ListProcesses = async () => {
-    const child = Bun.spawn(['ps', '-axww', '-o', 'command='], {
+export const listProcesses = async ({
+    with_pids = false,
+}: { with_pids?: boolean } = {}): Promise<string[]> => {
+    const format = with_pids ? 'pid=,command=' : 'command='
+    const child = Bun.spawn(['ps', '-axww', '-o', format], {
         stdout: 'pipe',
         stderr: 'pipe',
     })

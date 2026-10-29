@@ -41,6 +41,7 @@ export const RunStatusSchema = z.enum([
     'final_review',
     'limit_wait',
     'usage_line_wait',
+    'network_wait',
     'done',
     'refused',
     'nothing_to_do',
