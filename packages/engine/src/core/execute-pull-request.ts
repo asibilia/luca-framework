@@ -10,7 +10,11 @@ import {
 } from './pull-request-text'
 
 import { postCommentOnce } from '../tracker/post-comment-once'
-import { isTrackerFailure, type OpenedPullRequest } from '../tracker/tracker'
+import {
+    isTrackerFailure,
+    isTrackerNetworkFailure,
+    type OpenedPullRequest,
+} from '../tracker/tracker'
 
 const errorText = (error: unknown): string =>
     error instanceof Error ? error.message : String(error)
@@ -25,7 +29,9 @@ const errorText = (error: unknown): string =>
  * is posted as PR comments after it (`fitPullRequestBody`), each once. A
  * failed tracker call (`isTrackerFailure`: finding or opening the PR, such
  * as a failed `gh pr create`) journals the run stuck (`pull_request_failed`)
- * with its error, for the owner's `retry`; any other error is a crash.
+ * with its error, for the owner's `retry`; any other error is a crash. A
+ * tracker that can't be reached isn't stuck: its error goes on to the
+ * engine's network wait (`isTrackerNetworkFailure`, #701).
  */
 export const openPullRequest = async ({
     context,
@@ -54,7 +60,9 @@ export const openPullRequest = async ({
                 body: fitted.body,
             }))
     } catch (error) {
-        if (!isTrackerFailure(error)) throw error
+        if (!isTrackerFailure(error) || isTrackerNetworkFailure(error)) {
+            throw error
+        }
         journal.append({
             kind: 'run_stuck',
             ticket: null,

@@ -10,6 +10,8 @@ import { RESUMED_CLI_TEXT, resumedCliRow } from './engine-watch'
 import { settle } from './reduce-board-settle'
 import type { JournalFile } from './run-journals'
 
+import type { BoardRow } from '../shared/board-rows'
+
 export const createJournalFollow = ({
     config,
     store,
@@ -28,35 +30,57 @@ export const createJournalFollow = ({
         updateEntry,
     } = store
 
+    /** Takes the rows a run still holds from its rebuild at plugin load. */
+    const takeHeld = ({ memory }: { memory: RunMemory }): BoardRow[] => {
+        const rows = [...memory.unsent_rows.values()].flat()
+        memory.unsent_rows.clear()
+        return rows
+    }
+
     /**
      * Reads again the journal of each run this plugin started that changed
      * since the last read, and applies the records past its `next_seq`
      * (the cursor pushes share), adding their rows to the chat at once.
+     * The rows a run still holds from its rebuild at plugin load
+     * (`unsent_rows`) go first, so they reach the chat even when no push
+     * comes: with the first rows read from disk, or on an engine check
+     * (`release_held`) after the first read since the load.
      */
-    const readFollowed = async ({ journals }: { journals: JournalFile[] }) => {
+    const readFollowed = async ({
+        journals,
+        release_held = false,
+    }: {
+        journals: JournalFile[]
+        release_held?: boolean
+    }) => {
         await Promise.all(
             journals.map(({ run_id, size, changed_ms }) => {
                 const memory = runs.get(run_id)
-                if (
-                    !memory ||
-                    (memory.size === size && memory.changed_ms === changed_ms)
-                ) {
-                    return
-                }
+                if (!memory) return
+                const changed =
+                    memory.size !== size || memory.changed_ms !== changed_ms
+                // The first read since the load leaves a push its chance.
+                const release =
+                    release_held &&
+                    memory.size !== null &&
+                    memory.unsent_rows.size > 0
+                if (!changed && !release) return
                 return enqueue({
                     run_id,
                     work: async () => {
-                        const records = await journalOf({ run_id })
                         const { rows, applied } = applyInOrder({
                             memory,
-                            records,
+                            records: changed ? await journalOf({ run_id }) : [],
                         })
                         memory.size = size
                         memory.changed_ms = changed_ms
-                        if (applied === 0) return
+                        const held =
+                            applied > 0 || release ? takeHeld({ memory }) : []
+                        if (applied === 0 && held.length === 0) return
                         await appendRows({
                             memory,
                             rows: [
+                                ...held,
                                 ...[...rows.values()].flat(),
                                 header({ memory }),
                             ],

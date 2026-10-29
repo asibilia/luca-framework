@@ -59,10 +59,10 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/tracker/tracker.ts` | The tracker interface: an object of async functions. Also the labels Luca creates, with their colors and descriptions (`RUN_LABELS`, `labelDefinition`). |
+| `src/tracker/tracker.ts` | The tracker interface: an object of async functions. A failed call throws a `TrackerError`; one marked `network` couldn't reach the tracker (`isTrackerNetworkFailure`, #701), and the engine's step loop waits for the tracker on it (`src/core/network-wait.ts`). Also the labels Luca creates, with their colors and descriptions (`RUN_LABELS`, `labelDefinition`). |
 | `src/tracker/in-memory-tracker.ts` | A tracker in memory, for tests. It records the PRs it opens. |
 | `src/tracker/github-tracker.ts` | The real tracker, through the `gh` CLI. Every call goes through one `gh` runner, which tests fake. A label the repo lacks is created before it's added. |
-| `src/tracker/gh-retry.ts` | Retries for `gh` calls. Each call has a 60 s time limit. A transient failure (a timeout, a cut-off JSON reply, a 5xx, a secondary rate limit, a dropped connection, a GitHub that can't be reached) is tried again after 2 s, then 8 s, and each retry is logged to the run log. Reads throw after the last try; only a 404 reads as none. Writes check whether the first try landed before trying again. A network failure (#701) that outlasts the tries is thrown as a `NetworkGhError`, and the engine's step loop waits for GitHub (`src/core/network-wait.ts`). |
+| `src/tracker/gh-retry.ts` | Retries for `gh` calls. Each call has a 60 s time limit. A transient failure (a timeout, a cut-off JSON reply, a 5xx, a secondary rate limit, a dropped connection, a GitHub that can't be reached) is tried again after 2 s, then 8 s, and each retry is logged to the run log. Reads throw after the last try; only a 404 reads as none. Writes check whether the first try landed before trying again. A network failure (#701) that outlasts the tries is thrown as a `NetworkGhError`, a `TrackerError` marked `network`, and the engine's step loop waits for GitHub (`src/core/network-wait.ts`). |
 | `src/tracker/post-comment-once.ts` | Engine comments carry an invisible marker, so a step redone after a crash adopts its comment instead of posting it again, and the engine never takes its own comments as replies. |
 
 ## `src/testing/`

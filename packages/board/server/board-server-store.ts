@@ -172,7 +172,8 @@ export const createRunStore = ({ config }: { config: BoardServerConfig }) => {
     /**
      * Knows a run this plugin started, rebuilt from its journal `records`.
      * Their rows aren't added now; while the engine may still send, they are
-     * kept until it sends those records again (see `handleEngineEvent`).
+     * kept until it sends those records again (see `handleEngineEvent`) or
+     * the disk follow adds them (see `readFollowed`).
      */
     const remember = ({
         entry,

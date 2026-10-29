@@ -54,13 +54,16 @@ export const createBoardReads = ({
     /**
      * Reads the journals on disk, the latest changed first: a new or changed
      * journal is read again and its new records applied. The runs this
-     * plugin started are all followed (see `readFollowed`); of the others,
-     * the latest `OUTSIDE_RUNS_SHOWN`.
+     * plugin started are all followed (see `readFollowed`, which
+     * `release_held` passes to); of the others, the latest
+     * `OUTSIDE_RUNS_SHOWN`.
      */
-    const readJournals = async () => {
+    const readJournals = async ({
+        release_held = false,
+    }: { release_held?: boolean } = {}) => {
         if (runs_dir === null) return
         const all = await listJournals({ runs_dir })
-        await follow.readFollowed({ journals: all })
+        await follow.readFollowed({ journals: all, release_held })
         const journals = all
             .filter((journal) => !runs.has(journal.run_id))
             .slice(0, OUTSIDE_RUNS_SHOWN)

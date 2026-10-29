@@ -44,7 +44,7 @@ export const createEngineChecks = ({
     /** The runs the plugin didn't start, and how to read every journal again. */
     reads: {
         outside: Map<string, OutsideRun>
-        readJournals: () => Promise<void>
+        readJournals: (args?: { release_held?: boolean }) => Promise<void>
     }
     follow: JournalFollow
 }) => {
@@ -175,7 +175,8 @@ export const createEngineChecks = ({
     /** One check: see `checkEngines`. */
     const runCheck = async (): Promise<EngineCheck> => {
         await ready
-        await reads.readJournals()
+        // Rows held since the plugin loaded stop waiting for a push (#701).
+        await reads.readJournals({ release_held: true })
         const summary: EngineCheck = { restarted: [], stopped: [] }
         const candidates = [...runs.values()].filter((memory) =>
             needsEngine({ state: memory.state })

@@ -1,13 +1,13 @@
 /**
- * The network wait (#701): a step that throws a GitHub network error
- * (`NetworkGhError`, after the tracker's own quick tries) makes the run wait
- * for GitHub instead of crashing. The step runs again every minute; a step
- * can run again safely, as crash recovery already redoes a cut-off step.
- * After 15 minutes the run crashes with the last error.
+ * The network wait (#701): a step that throws a tracker network error
+ * (`isTrackerNetworkFailure`, after the tracker's own quick tries) makes
+ * the run wait for GitHub instead of crashing. The step runs again every
+ * minute; a step can run again safely, as crash recovery already redoes a
+ * cut-off step. After 15 minutes the run crashes with the last error.
  */
 import type { Journal } from '../journal/journal'
 import type { EngineClock } from '../limits/limit-wait'
-import { NetworkGhError } from '../tracker/gh-retry'
+import { isTrackerNetworkFailure } from '../tracker/tracker'
 
 /** How long the engine waits before it runs the step again. */
 export const NETWORK_RETRY_MS = 60_000
@@ -23,7 +23,7 @@ const STILL_LINE =
 
 /**
  * Runs `run` (one try of `step`; `redo` is true for each try after the
- * first), waiting for GitHub while it throws a `NetworkGhError`: journals
+ * first), waiting for GitHub while it throws a network error: journals
  * `network_wait_started`, then `network_wait_ended` once a try works, or
  * with `gave_up` 15 minutes after the start, when it throws the last error.
  * Any other error is thrown at once.
@@ -46,7 +46,7 @@ export const withNetworkWait = async ({
     try {
         return await run({ redo: false })
     } catch (error) {
-        if (!(error instanceof NetworkGhError)) throw error
+        if (!isTrackerNetworkFailure(error)) throw error
         journal.append({
             kind: 'network_wait_started',
             ...who,
@@ -66,7 +66,7 @@ export const withNetworkWait = async ({
             })
             return
         } catch (error) {
-            if (!(error instanceof NetworkGhError)) {
+            if (!isTrackerNetworkFailure(error)) {
                 journal.append({
                     kind: 'network_wait_ended',
                     ...who,

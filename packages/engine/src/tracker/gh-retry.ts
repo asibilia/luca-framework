@@ -58,11 +58,16 @@ export const realGh =
 export class TransientGhError extends TrackerError {}
 
 /**
- * A transient `gh` failure that couldn't reach GitHub (#701). One that
- * outlasts the quick tries is thrown as is, so the engine's step loop can
- * wait for GitHub instead of crashing.
+ * A transient `gh` failure that couldn't reach GitHub (#701), marked as a
+ * network failure (`isTrackerNetworkFailure`). One that outlasts the quick
+ * tries is thrown as is, so the engine's step loop can wait for GitHub
+ * instead of crashing.
  */
-export class NetworkGhError extends TransientGhError {}
+export class NetworkGhError extends TransientGhError {
+    constructor(message: string) {
+        super(message, { network: true })
+    }
+}
 
 /** What `gh` says when it can't reach GitHub at all (#701). */
 const UNREACHABLE_STDERR = [

@@ -7,12 +7,13 @@ import {
     dirs,
     disk,
     inRepo,
+    launchedRun,
     nothingToDoRun,
     plugin,
     stuckRun,
     writeJournal,
 } from './journal-rebuild-helpers'
-import { stamp } from './testing/journal-fixtures'
+import { stamp, ticketStuck } from './testing/journal-fixtures'
 
 import { ROW_KIND } from '../shared/board-rows'
 
@@ -105,5 +106,71 @@ describe('the board follows its own runs on disk', () => {
         expect(runs).toHaveLength(51)
         expect(state.run.status).toBe('stuck')
         expect(state.event_count).toBe(stuckRun().length)
+    })
+})
+
+describe('rows rebuilt at a reload reach the chat with no push', () => {
+    /**
+     * A run whose journal was written while the plugin was down, rebuilt by
+     * a reload, with a live engine that never pushes.
+     */
+    const reloadedRun = async () => {
+        const folders = await disk()
+        const { run_id } = await launchedRun({
+            ...folders,
+            entries: stuckRun(),
+        })
+        const reloaded = await plugin(folders)
+        reloaded.engineRunning({ run_id })
+        await reloaded.board.idle()
+        return { ...folders, reloaded, run_id }
+    }
+
+    test('the first new records read from disk add the rebuilt rows first, each once', async () => {
+        const { reloaded, run_id, runs_dir } = await reloadedRun()
+        await writeJournal({
+            runs_dir,
+            run_id,
+            entries: [
+                ...stuckRun(),
+                ticketStuck({
+                    ticket: 12,
+                    reason: 'red_check_failed',
+                    detail: 'y',
+                }),
+            ],
+        })
+
+        await reloaded.board.checkEngines()
+        await reloaded.board.idle()
+
+        const ids = reloaded.rows
+            .map(({ row }) => row.id)
+            .filter((id) => id !== `${run_id}-run`)
+        const rebuilt = `${run_id}-e${stuckRun().length}`
+        const newer = `${run_id}-e${stuckRun().length + 1}`
+        expect(ids).toContain(`${run_id}-stuck-13`)
+        expect(ids).toContain(newer)
+        expect(ids.filter((id) => id === rebuilt)).toHaveLength(1)
+        expect(new Set(ids).size).toBe(ids.length)
+        expect(ids.indexOf(rebuilt)).toBeLessThan(ids.indexOf(newer))
+    })
+
+    test('with no new records, the engine checks after the first add the rebuilt rows, each once', async () => {
+        const { reloaded, run_id } = await reloadedRun()
+
+        await reloaded.board.checkEngines()
+        await reloaded.board.idle()
+        await reloaded.board.checkEngines()
+        await reloaded.board.idle()
+        await reloaded.board.checkEngines()
+        await reloaded.board.idle()
+
+        const ids = reloaded.rows
+            .map(({ row }) => row.id)
+            .filter((id) => id !== `${run_id}-run`)
+        expect(ids).toContain(`${run_id}-stuck-13`)
+        expect(ids).toContain(`${run_id}-e${stuckRun().length}`)
+        expect(new Set(ids).size).toBe(ids.length)
     })
 })

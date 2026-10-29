@@ -68,9 +68,11 @@ export type RunMemory = Replay & {
     append_failures: number
     rows_stopped: boolean
     /**
-     * The rows of records rebuilt from disk, by seq, that the chat may not
-     * have: the engine may have written them while the plugin was down.
-     * Added when the engine sends those records again.
+     * The rows of records rebuilt from disk at plugin load, by seq, that the
+     * chat may not have: the engine may have written them while the plugin
+     * was down. Added when the engine sends those records again, or, as an
+     * engine that can't push never does, by the disk follow (#701): with the
+     * first rows it reads, or on an engine check after its first read.
      */
     unsent_rows: Map<number, BoardRow[]>
     /**

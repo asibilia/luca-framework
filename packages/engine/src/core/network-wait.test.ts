@@ -6,9 +6,14 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { runEngine, startRun } from './execute'
 
+import { createScriptedLauncher } from '../agents/scripted-launcher'
 import type { EngineConfig } from '../config/engine-config'
+import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { EngineClock } from '../limits/limit-wait'
+import { intakePassed, withInstalls } from '../testing/build-fixtures'
+import { finalReviewPassed, lensRound } from '../testing/final-review-fixtures'
+import { built, TICKET } from '../testing/final-review-steps'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
 import { createGhCalls } from '../tracker/gh-retry'
 import { createInMemoryTracker } from '../tracker/in-memory-tracker'
@@ -176,5 +181,116 @@ describe('the network wait', () => {
         expect(thrown instanceof Error ? thrown.message : '').toContain(
             `(try ${tries()})`
         )
+    })
+})
+
+describe('the network wait at the PR step', () => {
+    /** Ticket #11 built and the final review passed: the PR opens next. */
+    const readyForPullRequest = () => {
+        for (const entry of [
+            ...intakePassed({ tickets: [TICKET] }),
+            ...withInstalls({
+                entries: [
+                    ...built(),
+                    ...lensRound({ round: 1 }),
+                    finalReviewPassed(),
+                ],
+            }),
+        ]) {
+            journal.append(entry)
+        }
+    }
+
+    /**
+     * A tracker whose first look for the run branch's open PR fails as
+     * `gh pr list` does with `stderr`, through the tracker's own retries.
+     */
+    const failingPrTracker = ({ stderr }: { stderr: string }): Tracker => {
+        const base = createInMemoryTracker({
+            issues: [specIssue({ number: 10 }), ticketIssue({ number: 11 })],
+            sub_tickets: { 10: [11] },
+        })
+        const failing = createGhCalls({
+            run: async () => ({ exit_code: 1, stdout: '', stderr }),
+            sleep: async () => undefined,
+            log: () => undefined,
+        })
+        let failed = false
+        return {
+            ...base,
+            findOpenPullRequest: async (args) => {
+                if (failed) return base.findOpenPullRequest(args)
+                failed = true
+                await failing.ok({ args: ['pr', 'list', '--head', args.head] })
+                return base.findOpenPullRequest(args)
+            },
+        }
+    }
+
+    /** Runs the engine from the PR step until it would remove the worktrees. */
+    const runPullRequestStep = ({ tracker }: { tracker: Tracker }) =>
+        runEngine({
+            journal,
+            tracker,
+            git: createGitAdapter({ repo_root: runsDir }),
+            launcher: createScriptedLauncher({ turns: [] }),
+            clock: fakeClock(),
+            log: () => undefined,
+            stop_before: ['remove_worktrees', 'wait_for_reply'],
+        })
+
+    const stuckReasons = () =>
+        journal
+            .read()
+            .flatMap(({ kind, content }) =>
+                kind === 'run_stuck' &&
+                typeof content === 'object' &&
+                content !== null &&
+                'reason' in content
+                    ? [content.reason]
+                    : []
+            )
+
+    test('a PR step that cannot reach GitHub waits for it, not stuck, and opens the PR', async () => {
+        readyForPullRequest()
+
+        const action = await runPullRequestStep({
+            tracker: failingPrTracker({
+                stderr: 'error connecting to api.github.com\n',
+            }),
+        })
+
+        expect(stuckReasons()).toEqual([])
+        expect(waitRecords()).toMatchObject([
+            {
+                kind: 'network_wait_started',
+                content: {
+                    step: 'open_pull_request',
+                    error: expect.stringContaining('error connecting to'),
+                },
+            },
+            {
+                kind: 'network_wait_ended',
+                content: { step: 'open_pull_request', tries: 1 },
+            },
+        ])
+        expect(
+            journal.read().some(({ kind }) => kind === 'pull_request_opened')
+        ).toBe(true)
+        expect(action.type).toBe('remove_worktrees')
+    })
+
+    test('a PR step whose gh call fails for another reason still leaves the run stuck, with no network wait', async () => {
+        readyForPullRequest()
+
+        const action = await runPullRequestStep({
+            tracker: failingPrTracker({
+                stderr: 'HTTP 422: Validation Failed\n',
+            }),
+        })
+
+        expect(stuckReasons()).toEqual(['pull_request_failed'])
+        expect(waitRecords()).toEqual([])
+        expect(action.type).toBe('wait_for_reply')
     })
 })

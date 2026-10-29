@@ -8,6 +8,12 @@
 /** Every running process's full command line. Rejects when it can't list them. */
 export type ListProcesses = () => Promise<string[]>
 
+/** One running process, from `ps`: its pid, its parent's, its command line. */
+export type ProcessRow = { pid: number; ppid: number; command: string }
+
+/** Every running process as a `ProcessRow`. Rejects when it can't list them. */
+export type ListProcessRows = () => Promise<ProcessRow[]>
+
 /**
  * How many times the board plugin restarts one run by itself before it gives
  * up. A copy of the board's `MAX_AUTO_RESTARTS`: change both together.
@@ -46,56 +52,46 @@ export const liveRunIds = ({
 /**
  * The first live engine on `run_id` (#701): a process whose command line
  * names the run with `--run-id` or `--resume`, other than `own_pids` (the
- * checking process and its parents). `process_lines` are `ps` lines of a pid
- * then a command line. Pure.
+ * checking process and its parents). Pure.
  *
  * @example
- * findLiveEngine({ run_id: 'r1', process_lines: ['75023 bun luca-run.ts --resume r1'], own_pids: [80000] }) // { pid: 75023 }
+ * findLiveEngine({ run_id: 'r1', processes: [{ pid: 75023, ppid: 1, command: 'bun luca-run.ts --resume r1' }], own_pids: [80000] }) // { pid: 75023 }
  */
 export const findLiveEngine = ({
     run_id,
-    process_lines,
+    processes,
     own_pids,
 }: {
     run_id: string
-    process_lines: string[]
+    processes: ProcessRow[]
     own_pids: number[]
 }): { pid: number } | null => {
-    for (const line of process_lines) {
-        const match = /^\s*(\d+)\s+(.*)$/.exec(line)
-        if (!match?.[1] || match[2] === undefined) continue
-        const pid = Number(match[1])
-        if (own_pids.includes(pid)) continue
-        if (liveRunIds({ command_lines: [match[2]] }).has(run_id)) {
-            return { pid }
-        }
-    }
-    return null
+    const found = processes.find(
+        ({ pid, command }) =>
+            !own_pids.includes(pid) &&
+            liveRunIds({ command_lines: [command] }).has(run_id)
+    )
+    return found === undefined ? null : { pid: found.pid }
 }
 
 /**
- * `pid` and every parent above it, from `ps` lines of a pid, its parent's
- * pid, then a command line. A shell or wrapper (`zsh -c`, `timeout`,
- * `caffeinate`) that started this engine names the run too, at any depth.
- * Pure.
+ * `pid` and every parent above it, from `processes`. A shell or wrapper
+ * (`zsh -c`, `timeout`, `caffeinate`) that started this engine names the
+ * run too, at any depth. Pure.
  *
  * @example
- * ancestorPids({ pid: 3, process_lines: ['3 2 bun luca-run.ts', '2 1 zsh -c luca-run', '1 0 launchd'] }) // [3, 2, 1]
+ * ancestorPids({ pid: 3, processes: [{ pid: 3, ppid: 2, command: 'bun luca-run.ts' }, { pid: 2, ppid: 1, command: 'zsh -c luca-run' }] }) // [3, 2, 1]
  */
 export const ancestorPids = ({
     pid,
-    process_lines,
+    processes,
 }: {
     pid: number
-    process_lines: string[]
+    processes: ProcessRow[]
 }): number[] => {
-    const parents = new Map<number, number>()
-    for (const line of process_lines) {
-        const match = /^\s*(\d+)\s+(\d+)/.exec(line)
-        if (match?.[1] && match[2]) {
-            parents.set(Number(match[1]), Number(match[2]))
-        }
-    }
+    const parents = new Map(
+        processes.map(({ pid: child, ppid }): [number, number] => [child, ppid])
+    )
     const pids = [pid]
     let parent = parents.get(pid)
     while (parent !== undefined && parent > 0 && !pids.includes(parent)) {
@@ -108,29 +104,30 @@ export const ancestorPids = ({
 /**
  * Why `luca-run --resume <run_id>` must not start (#701): another live engine
  * on the run, or a process list it can't read; `null` when it may start.
- * Leaves out this process and all its parents. `list_processes` gives lines
- * of a pid, its parent's pid, then a command line.
+ * Leaves out this process (`own_pid`) and all its parents (from
+ * `parent_pid` up); both default to the real process's.
  */
 export const resumeRefusal = async ({
     run_id,
-    list_processes = () => listProcesses({ with_pids: true }),
+    list_process_rows = listProcessRows,
+    own_pid = process.pid,
+    parent_pid = process.ppid,
 }: {
     run_id: string
-    list_processes?: ListProcesses
+    list_process_rows?: ListProcessRows
+    own_pid?: number
+    parent_pid?: number
 }): Promise<string | null> => {
-    const lines = await list_processes().catch(() => null)
-    if (lines === null) {
+    const processes = await list_process_rows().catch(() => null)
+    if (processes === null) {
         return `[luca-run] Couldn't check for a live engine on run ${run_id}. Not starting.`
     }
-    const own_pids = ancestorPids({ pid: process.pid, process_lines: lines })
-    if (!own_pids.includes(process.ppid)) own_pids.push(process.ppid)
     const found = findLiveEngine({
         run_id,
-        // Drop the parent's pid: findLiveEngine reads a pid then a command.
-        process_lines: lines.map((line) =>
-            line.replace(/^\s*(\d+)\s+\d+\s+/, '$1 ')
+        processes,
+        own_pids: [own_pid, parent_pid].flatMap((pid) =>
+            ancestorPids({ pid, processes })
         ),
-        own_pids,
     })
     return found === null
         ? null
@@ -138,18 +135,10 @@ export const resumeRefusal = async ({
 }
 
 /**
- * Every running process's full command line, from `ps -axww -o command=`
- * (`-ww` never cuts a line), each after its pid and its parent's pid with
- * `with_pids`. Rejects when `ps` fails, so a caller can take the safe side
- * rather than guess.
- *
- * @example
- * const live = liveRunIds({ command_lines: await listProcesses() })
+ * The lines of `ps -axww -o <format>` (`-ww` never cuts one). Rejects when
+ * `ps` fails.
  */
-export const listProcesses = async ({
-    with_pids = false,
-}: { with_pids?: boolean } = {}): Promise<string[]> => {
-    const format = with_pids ? 'pid=,ppid=,command=' : 'command='
+const runPs = async ({ format }: { format: string }): Promise<string[]> => {
     const child = Bun.spawn(['ps', '-axww', '-o', format], {
         stdout: 'pipe',
         stderr: 'pipe',
@@ -168,4 +157,31 @@ export const listProcesses = async ({
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line !== '')
+}
+
+/**
+ * Every running process's full command line, from `ps -axww -o command=`.
+ * Rejects when `ps` fails, so a caller can take the safe side rather than
+ * guess.
+ *
+ * @example
+ * const live = liveRunIds({ command_lines: await listProcesses() })
+ */
+export const listProcesses: ListProcesses = () => runPs({ format: 'command=' })
+
+/**
+ * Every running process with its pid and its parent's pid, from
+ * `ps -axww -o pid=,ppid=,command=`. Rejects when `ps` fails.
+ *
+ * @example
+ * const own = ancestorPids({ pid: process.pid, processes: await listProcessRows() })
+ */
+export const listProcessRows: ListProcessRows = async () => {
+    const lines = await runPs({ format: 'pid=,ppid=,command=' })
+    return lines.flatMap((line) => {
+        const [, pid, ppid, command] = /^(\d+)\s+(\d+)\s+(.*)$/.exec(line) ?? []
+        return pid && ppid && command !== undefined
+            ? [{ pid: Number(pid), ppid: Number(ppid), command }]
+            : []
+    })
 }
