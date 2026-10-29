@@ -1,6 +1,6 @@
 {
     "name": "@luca/engine",
-    "version": "14.0.0-alpha.27",
+    "version": "14.0.0-alpha.28",
     "private": true,
     "type": "module",
     "main": "src/index.ts",

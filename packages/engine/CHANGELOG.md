@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.28
+
+### Patch Changes
+
+- d84535f: Spec: make Clef's picks measurable: score every effort answer, flag Opus-only floors, a 0.5 bar and a trial share ([#696](https://github.com/asibilia/luca-framework/issues/696))
+
 ## 14.0.0-alpha.27
 
 ### Patch Changes
