@@ -134,8 +134,8 @@ export type StopWhy =
 /**
  * How the owner resumes run `run_id` with the board attached: the
  * `/luca-run resume` slash command (see `resumeRow`). A bare
- * `luca-run --resume` would run without the board's token, so the board
- * would show it read-only.
+ * `luca-run --resume` runs without the board's token: the board follows it
+ * from its journal on disk, but the engine can't push to it.
  *
  * @example
  * resumeHint({ run_id: 'r1' }) // 'type /luca-run resume r1 in a Paseo chat'
@@ -211,6 +211,37 @@ export const restartRow = ({
 /** The words of the chat row for a run resumed with `/luca-run resume`. */
 export const RESUMED_TEXT =
     'The run was resumed from its journal with /luca-run resume.'
+
+/** The words of the chat row for an ended run that came back (#701). */
+export const RESUMED_CLI_TEXT = 'Resumed from the command line.'
+
+/**
+ * The chat row for an ended run that came back with a live engine the board
+ * didn't start, such as `luca-run --resume` (#701). Its id ends in the
+ * newest seq then, so a second comeback gets its own row.
+ *
+ * @example
+ * resumedCliRow({ run_id, seq: 1755, time: new Date().toISOString() })
+ * // id `${run_id}-resumed-cli-1755`
+ */
+export const resumedCliRow = ({
+    run_id,
+    seq,
+    time,
+}: {
+    run_id: string
+    seq: number
+    time: string
+}): BoardRow => ({
+    id: `${run_id}-resumed-cli-${seq}`,
+    kind: ROW_KIND.event,
+    data: {
+        time,
+        ticket: null,
+        text: RESUMED_CLI_TEXT,
+        tone: 'info',
+    },
+})
 
 /**
  * The chat row for a run resumed with `/luca-run resume`; its id is unique

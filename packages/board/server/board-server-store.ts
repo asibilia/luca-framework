@@ -172,7 +172,8 @@ export const createRunStore = ({ config }: { config: BoardServerConfig }) => {
     /**
      * Knows a run this plugin started, rebuilt from its journal `records`.
      * Their rows aren't added now; while the engine may still send, they are
-     * kept until it sends those records again (see `handleEngineEvent`).
+     * kept until it sends those records again (see `handleEngineEvent`) or
+     * the disk follow adds them (see `readFollowed`).
      */
     const remember = ({
         entry,
@@ -194,6 +195,8 @@ export const createRunStore = ({ config }: { config: BoardServerConfig }) => {
             append_failures: 0,
             rows_stopped: false,
             unsent_rows: new Map(),
+            size: null,
+            changed_ms: null,
         }
         const { rows } = applyInOrder({ memory, records })
         // A run whose engine ended stays ended after a plugin restart.
@@ -221,23 +224,44 @@ export const createRunStore = ({ config }: { config: BoardServerConfig }) => {
         const journals = await Promise.all(
             entries.map(({ run_id }) => journalOf({ run_id }))
         )
-        entries.forEach((entry, index) =>
-            remember({ entry, records: journals[index] ?? [] })
-        )
+        entries.forEach((entry, index) => {
+            const memory = remember({ entry, records: journals[index] ?? [] })
+            // An entry ended before `ended_at_seq` existed ended at its
+            // journal's newest seq.
+            if (entry.ended && entry.ended_at_seq === null) {
+                updateEntry({
+                    memory,
+                    change: { ended_at_seq: memory.next_seq - 1 },
+                })
+            }
+        })
     }
 
-    /** Changes a run's registry entry, and its copy in memory. */
+    /**
+     * Changes a run's registry entry, and its copy in memory. Setting
+     * `ended` also sets `ended_at_seq` to the newest seq applied; clearing it
+     * clears that too.
+     */
     const updateEntry = ({
         memory,
         change,
     }: {
         memory: RunMemory
-        change: Partial<Pick<RunEntry, 'ended' | 'restarts' | 'token'>>
+        change: Partial<
+            Pick<RunEntry, 'ended' | 'ended_at_seq' | 'restarts' | 'token'>
+        >
     }) => {
+        const full =
+            change.ended === undefined
+                ? change
+                : {
+                      ...change,
+                      ended_at_seq: change.ended ? memory.next_seq - 1 : null,
+                  }
         memory.entry = registry.update({
             run_id: memory.entry.run_id,
-            change,
-        }) ?? { ...memory.entry, ...change }
+            change: full,
+        }) ?? { ...memory.entry, ...full }
     }
 
     /** Marks a run's engine as ended (kept in the registry) and updates its header. */

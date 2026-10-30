@@ -81,6 +81,10 @@ import {
     MemoryWriteStartedEntrySchema,
 } from './memory-entries'
 import {
+    NetworkWaitEndedEntrySchema,
+    NetworkWaitStartedEntrySchema,
+} from './network-wait-entries'
+import {
     ChangesetWrittenEntrySchema,
     PullRequestOpenedEntrySchema,
 } from './pull-request-entries'
@@ -219,6 +223,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RepoWaitEndedEntrySchema.extend(STAMP_FIELDS),
     RepoWaitSkippedEntrySchema.extend(STAMP_FIELDS),
     RepoWaitPsFailedEntrySchema.extend(STAMP_FIELDS),
+    NetworkWaitStartedEntrySchema.extend(STAMP_FIELDS),
+    NetworkWaitEndedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>

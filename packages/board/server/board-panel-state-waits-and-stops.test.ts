@@ -142,6 +142,88 @@ describe('limit waits', () => {
     })
 })
 
+describe('network waits', () => {
+    /** The engine's network wait on `step`, as it journals it (#701). */
+    const networkWait = ({ step }: { step: string }) => ({
+        started: {
+            kind: 'network_wait_started',
+            ticket: null,
+            role: null,
+            content: { step, error: 'error connecting to api.github.com' },
+        },
+        ended: {
+            kind: 'network_wait_ended',
+            ticket: null,
+            role: null,
+            content: { step, tries: 2 },
+        },
+    })
+
+    test('a network wait is the run status until a network_wait_ended for the same step', async () => {
+        const intake = networkWait({ step: 'run_intake' })
+        const other = networkWait({ step: 'push_run_branch' })
+        const { run_id, token, next } = await runWith({
+            entries: [intake.started],
+        })
+        expect((await harness.state()).run.status).toBe('network_wait')
+
+        const afterOther = await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [other.ended],
+        })
+        expect((await harness.state()).run.status).toBe('network_wait')
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: afterOther.next_seq,
+            entries: [intake.ended],
+        })
+        expect((await harness.state()).run.status).not.toBe('network_wait')
+    })
+
+    test('a run that ended during a network wait is not in one', async () => {
+        const { run_id, token, next } = await runWith({
+            entries: [networkWait({ step: 'run_intake' }).started],
+        })
+        expect((await harness.state()).run.status).toBe('network_wait')
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            ended: { ok: false, message: 'GitHub could not be reached' },
+        })
+
+        expect((await harness.state()).run.status).not.toBe('network_wait')
+    })
+
+    test('a resumed engine is not in the old engine’s network wait', async () => {
+        const { run_id, token, next } = await runWith({
+            entries: [networkWait({ step: 'run_intake' }).started],
+        })
+        expect((await harness.state()).run.status).toBe('network_wait')
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: next,
+            entries: [
+                {
+                    kind: 'engine_resumed',
+                    ticket: null,
+                    role: null,
+                    content: { luca_version: '14.0.0' },
+                },
+            ],
+        })
+
+        expect((await harness.state()).run.status).not.toBe('network_wait')
+    })
+})
+
 describe('a stopped run', () => {
     test('run_stopped shows the reason until the engine moves on again', async () => {
         const reason = 'accountInfo: an API key, not a Claude plan'

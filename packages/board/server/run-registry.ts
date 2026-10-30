@@ -29,6 +29,12 @@ export const RunEntrySchema = z.object({
     /** How the run's engine ended, once it did; `null` while it may run. */
     ended: EngineEndedSchema.nullable().default(null),
     /**
+     * The newest journal seq the board had applied when it set `ended`
+     * (#701); `null` while `ended` is. Records past it from a live engine
+     * bring the run back.
+     */
+    ended_at_seq: z.number().int().min(0).nullable().default(null),
+    /**
      * How many times the plugin restarted the run by itself (#375); back to
      * 0 when the owner resumes it (#493).
      */
@@ -139,16 +145,18 @@ export const createRunRegistry = ({
             write()
         },
         /**
-         * Changes a known run's `ended`, `restarts`, or `token` (a resume
-         * gets a new one) and writes the file. Returns the changed entry, or
-         * `null` for an unknown run.
+         * Changes a known run's `ended` (and `ended_at_seq`), `restarts`, or
+         * `token` (a resume gets a new one) and writes the file. Returns the
+         * changed entry, or `null` for an unknown run.
          */
         update: ({
             run_id,
             change,
         }: {
             run_id: string
-            change: Partial<Pick<RunEntry, 'ended' | 'restarts' | 'token'>>
+            change: Partial<
+                Pick<RunEntry, 'ended' | 'ended_at_seq' | 'restarts' | 'token'>
+            >
         }): RunEntry | null => {
             reread()
             const known = entries.find((entry) => entry.run_id === run_id)

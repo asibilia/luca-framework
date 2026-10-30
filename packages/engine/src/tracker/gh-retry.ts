@@ -1,9 +1,10 @@
 /**
  * Retries for `gh` calls (#569). A call that fails in a way likely to pass
  * on a second try (a timeout, a cut-off JSON reply, a 5xx, a secondary rate
- * limit, a dropped connection or a TLS error) is tried again, three tries in
- * all, after waits of 2 s then 8 s. Any other failure throws at once. Each
- * retry is logged to the run log.
+ * limit, a dropped connection, a TLS error or a GitHub that can't be reached)
+ * is tried again, three tries in all, after waits of 2 s then 8 s. Any other
+ * failure throws at once. Each retry is logged to the run log. A network
+ * failure that outlasts the tries throws a `NetworkGhError` (#701).
  */
 import { TrackerError } from './tracker'
 
@@ -56,6 +57,34 @@ export const realGh =
 /** A failed `gh` call likely to pass on a second try. */
 export class TransientGhError extends TrackerError {}
 
+/**
+ * A transient `gh` failure that couldn't reach GitHub (#701), marked as a
+ * network failure (`isTrackerNetworkFailure`). One that outlasts the quick
+ * tries is thrown as is, so the engine's step loop can wait for GitHub
+ * instead of crashing.
+ */
+export class NetworkGhError extends TransientGhError {
+    constructor(message: string) {
+        super(message, { network: true })
+    }
+}
+
+/** What `gh` says when it can't reach GitHub at all (#701). */
+const UNREACHABLE_STDERR = [
+    /error connecting to/i,
+    /could not resolve host/i,
+    /no such host/i,
+    /network is unreachable/i,
+]
+
+/** What `gh` says when the network failed; with a timeout, network-class. */
+const NETWORK_STDERR = [
+    ...UNREACHABLE_STDERR,
+    /connection (reset|refused|timed out)/i,
+    /ECONN/,
+    /i\/o timeout/i,
+]
+
 /** What `gh` says when a call fails in a way likely to pass next time. */
 const TRANSIENT_STDERR = [
     /unexpected end of JSON input/i,
@@ -66,6 +95,7 @@ const TRANSIENT_STDERR = [
     /ECONNRESET|ECONNREFUSED|ETIMEDOUT/,
     /i\/o timeout|deadline exceeded|timeout exceeded/i,
     /\bTLS\b/i,
+    ...UNREACHABLE_STDERR,
 ]
 
 const NOT_FOUND = /HTTP 404\b/
@@ -80,12 +110,15 @@ const ghError = ({
 }): TrackerError => {
     const what = `\`gh ${args.slice(0, 2).join(' ')}\``
     if (result.timed_out === true) {
-        return new TransientGhError(
+        return new NetworkGhError(
             `${what} failed (timed out after ${durationText(GH_TIMEOUT_MS)})`
         )
     }
     const message = `${what} failed (exit code ${result.exit_code}): ${result.stderr.trim()}`
-    return TRANSIENT_STDERR.some((pattern) => pattern.test(result.stderr))
+    const matches = (patterns: RegExp[]) =>
+        patterns.some((pattern) => pattern.test(result.stderr))
+    if (matches(NETWORK_STDERR)) return new NetworkGhError(message)
+    return matches(TRANSIENT_STDERR)
         ? new TransientGhError(message)
         : new TrackerError(message)
 }

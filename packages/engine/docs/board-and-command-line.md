@@ -128,7 +128,7 @@ bun packages/engine/src/cli/luca-run.ts --unfinished
 | --- | --- |
 | `--spec <n>` | A real run of spec #n, on the repo's GitHub issues (through `gh`). |
 | `--demo` | A practice run instead (below). Give exactly one of `--spec` and `--demo`. |
-| `--resume <run-id>` | Go on with a run that crashed or was killed, from its journal: its spec and base branch come from `run_started`. Not with `--spec`, `--demo`, `--run-id`, or `--base`. |
+| `--resume <run-id>` | Go on with a run that crashed or was killed, from its journal: its spec and base branch come from `run_started`. Not with `--spec`, `--demo`, `--run-id`, or `--base`. One engine per run (#701): before it opens the journal or the board, it lists the processes (`ps -axww -o pid=,command=`) and exits 1 when another one names the run with `--run-id` or `--resume` ("Run <id> already has a live engine (pid 75023). Not starting a second one."), or when it can't list them. |
 | `--unfinished` | Print the runs that are not over, and whether each may be restarted, as one JSON object (see Crash recovery). Takes no other flags. |
 | `--repo <path>` | The repo to run on. Defaults to the current folder; for `--resume`, to the repo the run started in. |
 | `--run-id <id>` | The run's id: letters, digits, `-`, `_`. Defaults to a new one. The journal goes in `<runs folder>/<id>/`; a run id that already has a journal resumes it. |
@@ -144,8 +144,12 @@ with `LUCA_BOARD_TOKEN` set and stdout pointed at a log file. The package's
 It logs to stdout, always tells the board how it ended, and exits 0 when the
 run finished (PR opened, or nothing to do, such as every ticket already
 done), 1 when it stopped (refused,
-stuck, stopped by the launcher, crashed, or `--resume` of a run with no
-journal to go on from), and 2 on bad flags. `--unfinished` exits 0 once it
+stuck, stopped by the launcher, crashed, `--resume` of a run with no
+journal to go on from, or `--resume` of a run with a live engine), and 2
+on bad flags. A step that can't reach GitHub waits instead of crashing:
+the engine journals `network_wait_started`, runs the step again every
+minute, and journals `network_wait_ended` once it works, or after 15
+minutes with `gave_up: true`, when it crashes (#701). `--unfinished` exits 0 once it
 printed the list.
 
 **A real run** (`--spec`) builds with real Claude agents: `runSpec` gets

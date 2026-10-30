@@ -4,12 +4,15 @@ How a user sees and starts runs, the `luca` commands, the publish package, the e
 
 ## The board: seeing a run
 
-The engine sends its journal to the Paseo board, which shows the run's tickets, stages, current step, and chat rows, and rebuilds each run from its journal after a reload.
+The engine sends its journal to the Paseo board, which shows the run's tickets, stages, current step, and chat rows, and rebuilds each run from its journal after a reload. The board also follows every run's journal on disk, its own runs included, so a run resumed with `luca-run --resume` shows live; a run it marked ended comes back when it gets a live engine and new records. A run it didn't start shows in every checkout of its repo.
 
 Reached by: the "Luca board" tab in Paseo.
 
 Tests:
 
+- `packages/board/server/journal-follow.test.ts`
+- `packages/board/server/run-comeback.test.ts`
+- `packages/board/server/journal-rebuild-worktrees.test.ts`
 - `packages/engine/src/board/board-sync.test.ts`
 - `packages/engine/src/board/board-sync.e2e.test.ts`
 - `packages/engine/src/board/paseo-board-link.test.ts`
@@ -77,13 +80,15 @@ Tests:
 
 ## Running from the command line, and Luca's version
 
-`luca-run` runs a spec, resumes a run, lists unfinished runs, or runs the practice demo, and each run records the Luca version it started and resumed on.
+`luca-run` runs a spec, resumes a run, lists unfinished runs, or runs the practice demo, and each run records the Luca version it started and resumed on. A resume refuses to start a second engine on a run that already has a live one, or when it can't list the processes to check.
 
 Reached by: `luca-run --spec <n>`, `--resume <run id>`, `--unfinished`, and `--demo`.
 
 Tests:
 
 - `packages/engine/src/cli/run-args.test.ts`
+- `packages/engine/src/cli/resume-live-engine.test.ts`
+- `packages/engine/src/cli/live-runs.test.ts`
 - `packages/engine/src/cli/run-modes.test.ts`
 - `packages/engine/src/cli/run-modes.e2e.test.ts`
 - `packages/engine/src/cli/run-modes-spec.e2e.test.ts`

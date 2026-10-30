@@ -52,6 +52,10 @@ export const RUN_VOCABULARY = {
     }),
     /** No earlier run on the repo is going anymore. */
     repo_wait_ended: z.looseObject({}),
+    /** A step can't reach GitHub; the run waits for it (#701). */
+    network_wait_started: z.looseObject({ step: z.string() }),
+    /** The step's wait for GitHub is over: it worked, or the run gave up. */
+    network_wait_ended: z.looseObject({ step: z.string() }),
     /** The engine started again on the run's journal, on Luca's `luca_version`. */
     engine_resumed: z.looseObject({ luca_version: z.string() }),
     /**

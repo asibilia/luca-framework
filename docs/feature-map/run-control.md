@@ -100,6 +100,19 @@ Tests:
 - `packages/board/server/board-panel-state-usage.test.ts`
 - `packages/board/server/board-panel-state-waits-and-stops.test.ts`
 
+## GitHub network errors and the network wait
+
+A `gh` call that can't reach GitHub is retried, and a step that still fails on the network makes the run wait for GitHub, trying the step again every minute for up to 15 minutes, before it crashes; the board shows "Waiting for GitHub to be reachable" meanwhile.
+
+Reached by: any run during a GitHub outage; the run header on the board.
+
+Tests:
+
+- `packages/engine/src/tracker/github-tracker-retry.test.ts`
+- `packages/engine/src/core/network-wait.test.ts`
+- `packages/board/server/board-panel-state-waits-and-stops.test.ts`
+- `packages/board/client/network-wait-panel.test.ts`
+
 ## One run per repo: the repo wait
 
 A run started while an earlier run on the same repo is going waits for it before intake, tells its spec issue once which run it waits for, goes on by itself once that run ends or stops, and is stuck as `repo_busy` after 24 hours.

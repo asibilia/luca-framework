@@ -144,6 +144,7 @@ export const statusColor = ({
             return theme.colors.statusDanger
         case 'limit_wait':
         case 'usage_line_wait':
+        case 'network_wait':
             return theme.colors.statusWarning
         case 'starting':
         case 'intake':
@@ -195,6 +196,8 @@ export const statusText = ({ status }: { status: RunStatus }): string => {
             return 'limit wait'
         case 'usage_line_wait':
             return 'paused at the usage line'
+        case 'network_wait':
+            return 'Waiting for GitHub to be reachable'
         case 'done':
             return 'done'
         case 'refused':

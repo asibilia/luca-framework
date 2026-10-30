@@ -115,11 +115,40 @@ export type Tracker = {
 
 /**
  * A tracker call that failed, such as a `gh` command that exited non-zero.
- * The PR step makes one a stuck run (#508); any other error is a crash.
+ * The PR step makes one a stuck run (#508), unless it's marked `network`;
+ * any other error is a crash.
  */
 export class TrackerError extends Error {
     override name = 'TrackerError'
+    /**
+     * The tracker couldn't be reached, after its own quick tries (#701): the
+     * engine's step loop waits for it instead of crashing, so no step's own
+     * handling of tracker failures may take it. See `isTrackerNetworkFailure`.
+     */
+    readonly network: boolean
+
+    constructor(
+        message: string,
+        { network = false }: { network?: boolean } = {}
+    ) {
+        super(message)
+        this.network = network
+    }
 }
+
+/**
+ * Whether `error` is a tracker call that couldn't reach the tracker, after
+ * the tracker's own quick tries (#701). The engine waits for the tracker on
+ * one (`withNetworkWait`); a step that makes other tracker failures stuck
+ * throws it on.
+ *
+ * @example
+ * isTrackerNetworkFailure(new TrackerError('gh api failed', { network: true })) // true
+ * isTrackerNetworkFailure(new TrackerError('gh pr create failed')) // false
+ */
+export const isTrackerNetworkFailure = (
+    error: unknown
+): error is TrackerError => error instanceof TrackerError && error.network
 
 /** A failed `gh` call, in the words `TrackerError`s from `gh` use. */
 const GH_FAILED = /\bgh \w+ \w+`? failed\b/

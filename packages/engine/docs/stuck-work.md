@@ -116,7 +116,9 @@ tickets and notes a run has.
   stuck (`run_stuck`, reason `pull_request_failed`) with the error, tells
   the spec issue why, and waits: a bare `retry` tries the PR again (it adds
   no run budget), and `stop` ends the run without one. Any other error in
-  the step is a crash, taken again on resume.
+  the step is a crash, taken again on resume. A GitHub that can't be
+  reached (`isTrackerNetworkFailure`, #701) isn't stuck either: the step
+  throws it on, and the engine's network wait runs the step again.
 - **Never a second PR.** Before creating, the engine looks for an open PR
   from the run branch (`findOpenPullRequest`) and reuses it: the one a try
   opened before a crash or a failure, or one the owner opened by hand. Only

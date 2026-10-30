@@ -26,12 +26,13 @@
  *
  * Exits 0 when the run finished (PR opened, or nothing to do) or the list was
  * printed, 1 when it stopped (refused, stuck, stopped by the launcher,
- * crashed, or a resume with no journal to go on from), 2 on bad flags.
+ * crashed, a resume with no journal to go on from, or a resume of a run that
+ * already has a live engine), 2 on bad flags.
  */
 import { homedir } from 'node:os'
 
 import { defaultRegistryPath, goingRuns } from './going-runs'
-import { listProcesses } from './live-runs'
+import { listProcesses, resumeRefusal } from './live-runs'
 import { parseRunArgs, type RunArgs } from './run-args'
 import {
     DEMO_TURN_DELAY_MS,
@@ -196,6 +197,15 @@ const main = async (): Promise<number> => {
         const runs = restartableRuns({ runs_dir: defaultRunsDir() })
         console.log(JSON.stringify({ runs }))
         return 0
+    }
+    if (args.mode === 'resume') {
+        // One engine per run (#701): checked before the journal or the
+        // board opens, so a refusal never ends the run on the board.
+        const refusal = await resumeRefusal({ run_id: args.run_id })
+        if (refusal !== null) {
+            console.error(refusal)
+            return 1
+        }
     }
     const board =
         args.board === null

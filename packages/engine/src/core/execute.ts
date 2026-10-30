@@ -10,6 +10,7 @@ import type { BuildDeps } from './execute-build'
 import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
 import { executeWithJev } from './execute-with-jev'
 import { createLiveFile } from './live-file'
+import { withNetworkWait } from './network-wait'
 import {
     agentRoleOf,
     crashesIn,
@@ -38,7 +39,7 @@ import {
     stepFirstSeq,
     type CrashCounts,
 } from '../journal/step-records'
-import type { EngineClock } from '../limits/limit-wait'
+import { SYSTEM_CLOCK, type EngineClock } from '../limits/limit-wait'
 import { runReadings, type UsageLineDeps } from '../limits/usage-line'
 import type { MemoryDeps } from '../memory/memory-client'
 import type { Tracker } from '../tracker/tracker'
@@ -102,6 +103,9 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * its wait starts, from the same decision as the steps (`decideNext`),
  * sent to the board at once.
  *
+ * A step that can't reach GitHub is a network wait (`network-wait.ts`,
+ * #701): it runs again every minute, by `clock`, for up to 15 minutes.
+ *
  * A rejected plan limit is a limit wait: the engine sleeps by `clock` until
  * the window resets, then carries on. Overage or a billing error ends the
  * run for good (`done`, outcome `stopped`).
@@ -150,6 +154,9 @@ export const runEngine = async ({
     usage,
     going_runs,
     live_file,
+    log = (line) => {
+        console.log(line)
+    },
 }: Partial<BuildDeps> & {
     journal: Journal
     tracker: Tracker
@@ -182,6 +189,8 @@ export const runEngine = async ({
      * `runLiveFilePath({ runs_dir, run_id })`. Left out, there is none.
      */
     live_file?: string
+    /** Where the network wait's lines go. Defaults to stdout, the run log. */
+    log?: (line: string) => void
 }): Promise<EngineAction> => {
     const limit = max_steps ?? DEFAULT_MAX_STEPS
     const stops = new Set([...STOP_ACTIONS, ...(stop_before ?? [])])
@@ -270,20 +279,34 @@ export const runEngine = async ({
         key: string
         crashes: CrashCounts
     }): Promise<void> => {
-        if (WAIT_ACTIONS.has(action.type)) return execute(action)
         const step = stepOf(action)
         const who = { ticket: ticketOf(action), role: agentRoleOf(action) }
+        const networkWait = (run: (args: { redo: boolean }) => Promise<void>) =>
+            withNetworkWait({
+                journal,
+                step,
+                who,
+                clock: clock ?? SYSTEM_CLOCK,
+                log,
+                run,
+            })
+        if (WAIT_ACTIONS.has(action.type)) {
+            return networkWait(() => execute(action))
+        }
         const first_seq = stepFirstSeq({ crashes, key, step })
         const started = journal.append({
             kind: 'step_started',
             ...who,
             content: { key, step, first_seq },
         })
+        // A try after a network wait redoes the step, as crash recovery does.
         const run = () =>
-            execute(action, {
-                first_seq: first_seq ?? started.seq,
-                redo: first_seq !== null,
-            })
+            networkWait(({ redo }) =>
+                execute(action, {
+                    first_seq: first_seq ?? started.seq,
+                    redo: redo || first_seq !== null,
+                })
+            )
         // A ticket's check waiting for a slot shows in the live file (#632).
         await (live === null || who.ticket === null
             ? run()

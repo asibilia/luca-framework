@@ -92,6 +92,8 @@ export const JournalKindSchema = z.enum([
     'repo_wait_ended',
     'repo_wait_skipped',
     'repo_wait_ps_failed',
+    'network_wait_started',
+    'network_wait_ended',
 ])
 
 export type JournalKind = z.infer<typeof JournalKindSchema>

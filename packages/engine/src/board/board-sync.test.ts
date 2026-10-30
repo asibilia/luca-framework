@@ -191,6 +191,34 @@ describe('board sync: the engine sends its journal to the board', () => {
         expect(sends).toBe(3)
     })
 
+    test('a refusal with next_seq 0 keeps the cursor: the next sync sends from the same seq again', async () => {
+        const logs: string[] = []
+        const firsts: number[] = []
+        const board = createBoardSync({
+            link: {
+                send: async ({ records }) => {
+                    firsts.push(records[0]?.seq ?? 0)
+                    return firsts.length === 2
+                        ? { ok: false, next_seq: 0, message: 'Unknown run' }
+                        : {
+                              ok: true,
+                              next_seq: (records.at(-1)?.seq ?? 0) + 1,
+                              message: 'ok',
+                          }
+                },
+            },
+            log: (message) => logs.push(message),
+        })
+        const records = nothingToDo({ count: 15 })
+
+        await board.sync({ records: records.slice(0, 11) })
+        await board.sync({ records })
+        await board.sync({ records })
+
+        expect(firsts).toEqual([1, 12, 12])
+        expect(logs).toContain('[board] not ok: Unknown run')
+    })
+
     test('end sends what is left, then the end of the run, then closes', async () => {
         const plugin = createFakePlugin()
         const board = createBoardSync({ link: plugin.link })

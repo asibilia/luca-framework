@@ -1,5 +1,5 @@
 /**
- * The run's own records: how it starts and resumes, its repo wait, intake
+ * The run's own records: how it starts and resumes, its repo and network waits, intake
  * and the spec's snapshot, the run branch, the pull request, and a stop.
  */
 import type { BoardRecord, LeftOutList } from './board-vocabulary'
@@ -89,6 +89,8 @@ export const RUN_KINDS = [
     'run_started',
     'repo_wait_started',
     'repo_wait_ended',
+    'network_wait_started',
+    'network_wait_ended',
     'engine_resumed',
     'config_reloaded',
     'config_reload_refused',
@@ -143,9 +145,29 @@ export const applyRunKind = ({
             }
         case 'repo_wait_ended':
             return { ...state, repo_wait: null }
+        case 'network_wait_started':
+            return {
+                ...state,
+                network_waits: [
+                    ...state.network_waits.filter(
+                        (step) => step !== record.content.step
+                    ),
+                    record.content.step,
+                ],
+            }
+        case 'network_wait_ended':
+            return {
+                ...state,
+                network_waits: state.network_waits.filter(
+                    (step) => step !== record.content.step
+                ),
+            }
+        // A resumed engine isn't in the old engine's network wait, which may
+        // never have journaled its end.
         case 'engine_resumed':
             return {
                 ...state,
+                network_waits: [],
                 run: {
                     ...state.run,
                     version_note: versionNote({
