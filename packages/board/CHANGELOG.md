@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.29
+
+### Patch Changes
+
+- 33a138e: Spec: the board follows every run, however it was started, and a GitHub network blip doesn't end a run ([#701](https://github.com/asibilia/luca-framework/issues/701))
+
 ## 14.0.0-alpha.28
 
 ### Patch Changes
