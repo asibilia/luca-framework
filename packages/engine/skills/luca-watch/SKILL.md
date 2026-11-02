@@ -28,8 +28,9 @@ Run `/luca-unstick`'s summary helper from the repo's folder. It only reads.
 bun ~/.claude/skills/luca-unstick/scripts/stuck-summary.ts <run id>
 ```
 
-- With no run id, it lists this repo's runs, newest first, each `over` or `not over`. Pick the newest one that is not over. With none, write `No unfinished Luca run for this repo.` and stop.
-- If the named run is already over (its "State" line says it opened its PR, was refused, had nothing to do, was stopped, or stopped for good), report how it ended in one line, with the PR URL when there is one, and stop.
+- The summary doesn't read `run_ended` yet, so a run that finished without a PR (every ticket skipped) can still show as `not over`. Before you pick or start on a run, check its journal for the canonical ending yourself: `grep '"kind":"run_ended"' "$RUN_DIR/journal.jsonl"`. A match means the run is over; its `content.outcome`, `detail`, and `url` say how it ended.
+- With no run id, it lists this repo's runs, newest first, each `over` or `not over`. Pick the newest one that is not over and has no `run_ended`. With none, write `No unfinished Luca run for this repo.` and stop.
+- If the named run is already over (a `run_ended` in its journal, or its "State" line says it opened its PR, was refused, had nothing to do, was stopped, or stopped for good), report how it ended in one line, with the PR URL when there is one, and stop. Do this before section 2's startup.
 - The run folder (`$RUN_DIR`) is `~/.local/state/luca/runs/<run id>/` (or under `$LUCA_RUNS_DIR`). It holds `journal.jsonl`, the worktrees, and your own files: `watcher.log`, `watcher-resume.log`, and `watcher-backups/`.
 
 ## 2. Start up
@@ -54,9 +55,9 @@ It polls the journal every five seconds and prints one JSON line, `{ "event", "l
 
 - `stuck`: a `stuck_reported`; `detail` is its comment body. Run the summary for the actual reason (from `ticket_stuck`, `final_review_stuck`, or `run_stuck`), then sections 3 to 5.
 - `ended`: the run is over (a `run_ended`, or an older run's `pull_request_opened`, `intake_refused`, `nothing_to_do`, `stop` reply, or a billing or crash `run_stopped`). Report the outcome in one line, with the PR URL when present, log it, and stop.
-- `engine_gone`: no live engine names the run. Section 6.
+- `engine_gone`: no live engine names the run. Section 6. The helper answers `engine_gone` at once while no engine is live, so after an engine-gone handoff (including a failed or used-up resume) log it and stop; the owner starts `/luca-watch` again after resuming the run.
 - `quiet`: five quiet minutes. Call it again with the same cursor and stay in the loop. Don't log quiet polls.
-- `error`: a missing journal, an unknown run, an invalid cursor, or bad arguments (exit code 2) stop the watcher, with a handoff. A process-inspection error (the process list failed) gets one serious handoff per changed error plus seq; keep processing journal events, but never resume without reliable process evidence. Any other journal-read error: try again on the next loop, and hand it off after three consecutive failures.
+- `error`: a missing journal, an unknown run, an invalid cursor, or bad arguments (exit code 2) stop the watcher, with a handoff. A process-inspection error (the process list kept failing) comes back only after the helper's five-minute wait, during which it still returns new journal records; it gets one serious handoff per changed error plus seq. Then call the helper again and keep processing journal events, but never resume without reliable process evidence. Any other journal-read error: try again on the next loop, and hand it off after three consecutive failures.
 
 ## 3. The retry budget
 
@@ -85,10 +86,10 @@ Product-code edits are serious, and so are spec, ticket, or config edits, and an
 
 Only in the ticket's worktree, only test files (the config's test file patterns say which), and the fix must preserve every assertion's meaning.
 
-1. Before the edit, save each target file's exact current bytes under `watcher-backups/` in the run folder (`cp -p`, one copy per file, never overwritten). That keeps any agent's or owner's edits already in the file.
+1. Before the edit, save each target file's exact current bytes under `watcher-backups/` in the run folder, in a new folder for this attempt: `watcher-backups/<item token>/<UTC timestamp>/<path relative to the worktree>` (`cp -p`, never overwriting an earlier attempt's copy). That keeps any agent's or owner's edits already in the file, and keeps two tickets' same-named tests, or two attempts on one file, apart. Log the attempt's backup folder.
 2. Edit the test. Log the edit.
 3. From the ticket's worktree, run the focused test with a five-minute cap: `timeout 300 bun test "$TEST_FILE"` for a bun test. For a non-bun slow test, use its configured `run_files` command with only that file, under `timeout 300`. With no per-file command, the item is serious. For a lint or type fix, also rerun the check that failed, under the same five-minute cap. Log each check.
-4. If the focused test or rerun fails, or the edit no longer looks semantics-preserving, restore every target file from its saved pre-edit bytes, then hand off. Never use a broad `git reset` or `git checkout`. A failed restoration is serious: hand it off and make no more edits.
+4. If the focused test or rerun fails, or the edit no longer looks semantics-preserving, restore every target file from this attempt's saved pre-edit bytes (only that attempt's folder), then hand off. Never use a broad `git reset` or `git checkout`. A failed restoration is serious: hand it off and make no more edits.
 5. Leave it uncommitted. A `retry` keeps uncommitted edits, and the engine commits them with the ticket.
 
 ## 6. The engine is gone
@@ -101,7 +102,7 @@ One attempted resume spans watcher restarts: it is enforced from `resume` lines 
 cd "$RUN_DIR" && nohup luca-run --resume "$RUN_ID" >> "$RUN_DIR/watcher-resume.log" 2>&1 &
 ```
 
-It appends to `watcher-resume.log`; never truncate it. Then wait at most three minutes for a newer `engine_resumed` in the journal. A missing record, an exited process, or any later crash is serious. Do not kill the process, and never start a second resume.
+It appends to `watcher-resume.log`; never truncate it. Then wait at most three minutes for a newer `engine_resumed` in the journal. A missing record, an exited process, or any later crash is serious. Do not kill the process, and never start a second resume. Once the newer `engine_resumed` is there, go back to the wait loop. After any serious engine-gone handoff, log it and stop.
 
 ## 7. Handing off to the owner
 

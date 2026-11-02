@@ -15,7 +15,8 @@
  *   reply, a billing or crash `run_stopped`), or one before it.
  * - `engine_gone`: no live engine names the run, and it has not ended.
  * - `quiet`: five minutes with none of these. Call it again.
- * - `error`: the process list or the journal can't be read.
+ * - `error`: the journal can't be read; or the process list kept failing
+ *   until the quiet deadline, while the journal still showed nothing new.
  *
  * Several new records come back one call at a time, oldest first: the
  * caller passes the returned `last_seq` as the next cursor, so none is
@@ -233,6 +234,8 @@ export const waitForChange = async ({
     const file = journalFile({ runs_dir, run_id })
     const start = now()
     let highest = last_seq
+    /** The process list's last failure; it waits out the quiet deadline. */
+    let process_error: string | null = null
     for (;;) {
         if (!existsSync(file)) {
             return {
@@ -259,25 +262,34 @@ export const waitForChange = async ({
         if (next !== undefined) return next
         const ended = records.map(eventOf).findLast((e) => e?.event === 'ended')
         if (ended) return { ...ended, last_seq: highest }
-        let processes: ProcessRow[]
+        let processes: ProcessRow[] | null = null
         try {
             processes = await list_process_rows()
+            process_error = null
         } catch (error) {
-            return {
-                event: 'error',
-                last_seq: highest,
-                detail: `Couldn't list the processes: ${reason(error)}`,
-            }
+            process_error = `Couldn't list the processes: ${reason(error)}`
         }
-        const own = own_pids.flatMap((pid) => ancestorPids({ pid, processes }))
-        if (!engineLive({ run_id, processes, own_pids: own })) {
-            return {
-                event: 'engine_gone',
-                last_seq: highest,
-                detail: goneDetail(records),
+        if (processes !== null) {
+            const rows = processes
+            const own = own_pids.flatMap((pid) =>
+                ancestorPids({ pid, processes: rows })
+            )
+            if (!engineLive({ run_id, processes: rows, own_pids: own })) {
+                return {
+                    event: 'engine_gone',
+                    last_seq: highest,
+                    detail: goneDetail(records),
+                }
             }
         }
         if (now() - start >= QUIET_MS) {
+            if (process_error !== null) {
+                return {
+                    event: 'error',
+                    last_seq: highest,
+                    detail: process_error,
+                }
+            }
             return {
                 event: 'quiet',
                 last_seq: highest,
