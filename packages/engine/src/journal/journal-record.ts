@@ -33,10 +33,12 @@ export { UsageLineWindowSchema, type UsageLineWindow } from './limit-entries'
 export { ChangesetBumpSchema, type ChangesetBump } from './pull-request-entries'
 export { InterruptedStepSchema, type InterruptedStep } from './run-entries'
 export {
+    AutoRetriedItemSchema,
     ReplyProblemSchema,
     ReplyWordSchema,
     RunStuckReasonSchema,
     StuckReasonSchema,
+    type AutoRetriedItem,
     type ReplyProblem,
     type ReplyWord,
     type RunStuckReason,

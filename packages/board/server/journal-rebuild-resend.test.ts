@@ -13,6 +13,7 @@ import {
     intakeOfThree,
     runStarted,
     stamp,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     wholeTicket,
@@ -39,6 +40,7 @@ const resentRun = (): Entry[] => [
     ...wholeTicket({ ticket: 11 }),
     ticketWorktreeCreated({ ticket: 13 }),
     ticketStuck({ ticket: 13, reason: 'red_check_failed', detail: 'x' }),
+    stuckReported({ ticket: 13 }),
 ]
 
 /** The first seq the engine resends after the reload: past the intake. */

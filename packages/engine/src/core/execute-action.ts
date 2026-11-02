@@ -111,6 +111,7 @@ export const executeAction = async ({
     }
     switch (action.type) {
         case 'report_stuck':
+        case 'auto_retry':
         case 'wait_for_reply':
         case 'take_reply':
         case 'ignore_reply':

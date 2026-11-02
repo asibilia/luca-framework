@@ -109,7 +109,9 @@ Only the spec owner counts. While the run is stuck on its budget, only a
 bare `retry` or a `stop` is taken; the owner's other replies (such as
 `retry #12` for a stuck ticket) wait until the run carries on. The board
 shows the run's tokens against its budget, and the run stuck on it under
-**Needs you**.
+**Needs you**. A run stuck on its budget is never retried by the engine
+itself; only a PR that didn't open (`pull_request_failed`) is, once per
+run (`auto_retried`, #705, see stuck-work.md).
 
 ## The usage line
 

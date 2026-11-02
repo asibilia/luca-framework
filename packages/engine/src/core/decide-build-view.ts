@@ -3,6 +3,7 @@
  * tickets in order, each one's progress, whether it is skipped, pushed,
  * already done, finished, or stuck, and its stuck steps (`buildViewOf`). Pure.
  */
+import { ticketAutoRetry } from './auto-retry'
 import type { BuildAction } from './build-action'
 import { newestRunNotes } from './build-launch'
 import { stuckTicketSteps } from './decide-stuck'
@@ -80,6 +81,12 @@ export const buildViewOf = ({
                   spec_number,
                   ticket,
                   progress: progress(number),
+                  auto_retry: ticketAutoRetry({
+                      state,
+                      ticket: number,
+                      progress: progress(number),
+                      spec_number,
+                  }),
               })
     }
     const isStuck = (number: number) =>

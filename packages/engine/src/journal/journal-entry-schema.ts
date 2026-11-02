@@ -111,6 +111,7 @@ import {
     TicketWaitingEntrySchema,
 } from './run-entries'
 import {
+    AutoRetriedEntrySchema,
     CommentReadEntrySchema,
     ReplyIgnoredEntrySchema,
     ReplyReceivedEntrySchema,
@@ -196,6 +197,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     FinalReviewPassedEntrySchema,
     FinalReviewShippedEntrySchema,
     StuckReportedEntrySchema,
+    AutoRetriedEntrySchema,
     CommentReadEntrySchema,
     ReplyReceivedEntrySchema,
     ReplyIgnoredEntrySchema,

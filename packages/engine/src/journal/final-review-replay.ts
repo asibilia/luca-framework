@@ -149,6 +149,7 @@ export const finalReviewAfter = ({
                     // cap is on failed tries in a row.
                     agent_failures: omit(review.agent_failures, role),
                     failed_tries: omit(review.failed_tries, role),
+                    failed_kinds: omit(review.failed_kinds, role),
                     engine_failures: omit(review.engine_failures, role),
                     last_out_of_turns: omit(review.last_out_of_turns, role),
                     sessions: sessionsAfter({
@@ -208,6 +209,10 @@ export const finalReviewAfter = ({
                 failed_tries: {
                     ...review.failed_tries,
                     [role]: (review.failed_tries[role] ?? 0) + 1,
+                },
+                failed_kinds: {
+                    ...review.failed_kinds,
+                    [role]: [...(review.failed_kinds[role] ?? []), failure],
                 },
             }
         }
@@ -291,6 +296,7 @@ export const resumedFinalReview = ({
         sessions: {},
         agent_failures: {},
         failed_tries: {},
+        failed_kinds: {},
         engine_failures: {},
         gate_fix_rounds: 0,
         setup_change: null,

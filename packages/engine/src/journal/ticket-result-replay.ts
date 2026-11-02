@@ -12,7 +12,7 @@ import {
     ranCheaper,
     type FinishedContent,
 } from './agent-turn-replay'
-import type { JournalRecord } from './journal-record'
+import type { AgentFailure, JournalRecord } from './journal-record'
 import type { TicketProgress } from './ticket-progress'
 
 import {
@@ -26,17 +26,27 @@ import {
  * A failed try for `role` on its ticket: one more of its tries used up,
  * and, if its agent ran on a model cheaper than Opus, its later fresh
  * agents on the ticket step up to Opus (#604). Engine failures are no try.
+ * How it failed is kept beside the count (#705).
  */
 export const failedTryChange = ({
     progress,
     role,
+    failure,
 }: {
     progress: TicketProgress
     role: AgentRole
-}): Pick<TicketProgress, 'failed_tries' | 'failed_cheaper'> => ({
+    failure: AgentFailure
+}): Pick<
+    TicketProgress,
+    'failed_tries' | 'failed_kinds' | 'failed_cheaper'
+> => ({
     failed_tries: {
         ...progress.failed_tries,
         [role]: (progress.failed_tries[role] ?? 0) + 1,
+    },
+    failed_kinds: {
+        ...progress.failed_kinds,
+        [role]: [...(progress.failed_kinds[role] ?? []), failure],
     },
     failed_cheaper:
         ranCheaper(progress.launched_on[role]) &&
@@ -394,6 +404,6 @@ export const alreadyDoneCheckedChange = ({
             session_id: progress.sessions[role] ?? null,
         },
         engine_failures: 0,
-        ...failedTryChange({ progress, role }),
+        ...failedTryChange({ progress, role, failure: 'evidence' }),
     }
 }

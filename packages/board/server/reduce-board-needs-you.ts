@@ -1,6 +1,7 @@
 /**
- * What needs a person: a stuck ticket or run, a skipped or retried ticket,
- * and the replies that resolve them.
+ * What needs a person: a stuck ticket or run (once the engine told the
+ * owner, #705), a skipped or retried ticket, and the replies and the
+ * engine's own retries that resolve them.
  */
 import type { BoardRecord } from './board-vocabulary'
 import {
@@ -12,6 +13,8 @@ import { clip } from './reduce-board-text'
 import {
     DETAIL_MAX,
     addNeedsYou,
+    addUnreported,
+    reportNeedsYou,
     resolveNeedsYou,
     updateFinal,
     updateTicket,
@@ -191,10 +194,58 @@ const replyReceived = ({
     }
 }
 
+/**
+ * The engine retried a stuck item by itself (#705): nothing to reply to,
+ * so its item is resolved, told or not, and it carries on as after the
+ * owner's `retry`.
+ */
+const autoRetried = ({
+    state,
+    record,
+}: {
+    state: BoardState
+    record: Extract<BoardRecord, { kind: 'auto_retried' }>
+}): BoardState => {
+    const { ticket } = record
+    switch (record.content.item) {
+        case 'ticket':
+            if (ticket === null) return state
+            return resolveNeedsYou({
+                state: updateTicket({
+                    state,
+                    number: ticket,
+                    update: (card) => ({
+                        ...card,
+                        stage: 'building',
+                        activity: 'retrying',
+                    }),
+                }),
+                key: ticketKey({ ticket }),
+            })
+        case 'run':
+            return resolveNeedsYou({
+                state: { ...state, run_stuck_reason: null },
+                key: RUN_KEY,
+            })
+        case 'final_review':
+            return resolveNeedsYou({
+                state: updateFinal({
+                    state,
+                    update: (review) => ({ ...review, state: 'reviewing' }),
+                }),
+                key: FINAL_KEY,
+            })
+        default:
+            return state
+    }
+}
+
 /** The record kinds of what needs a person. */
 export const NEEDS_YOU_KINDS = [
     'ticket_stuck',
     'run_stuck',
+    'stuck_reported',
+    'auto_retried',
     'reply_received',
     'ticket_skipped',
     'ticket_retried',
@@ -229,7 +280,8 @@ export const applyNeedsYouKind = ({
                     activity: 'stuck',
                 }),
             })
-            return addNeedsYou({
+            // Needs you once the engine tells the owner (#705).
+            return addUnreported({
                 state: stuck,
                 item: {
                     key: ticketKey({ ticket }),
@@ -250,7 +302,7 @@ export const applyNeedsYouKind = ({
             })
         }
         case 'run_stuck':
-            return addNeedsYou({
+            return addUnreported({
                 state: { ...state, run_stuck_reason: record.content.reason },
                 item: {
                     key: RUN_KEY,
@@ -266,6 +318,20 @@ export const applyNeedsYouKind = ({
                     since: record.time,
                 },
             })
+        // A report with no ticket is the run's while it waits to be told,
+        // else the final review's.
+        case 'stuck_reported':
+            return reportNeedsYou({
+                state,
+                key:
+                    ticket !== null
+                        ? ticketKey({ ticket })
+                        : state.unreported.some((item) => item.key === RUN_KEY)
+                          ? RUN_KEY
+                          : FINAL_KEY,
+            })
+        case 'auto_retried':
+            return autoRetried({ state, record })
         case 'reply_received':
             return replyReceived({ state, record })
         case 'ticket_skipped':

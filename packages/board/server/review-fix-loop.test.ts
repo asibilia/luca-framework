@@ -14,6 +14,7 @@ import {
     redCheck,
     reviewFinished,
     sessionOf,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     type Entry,
@@ -381,6 +382,7 @@ describe('the review fix loop', () => {
                     reason: 'changes_requested',
                     detail: 'R1-1 still stands.',
                 }),
+                stuckReported({ ticket: TICKET }),
             ],
         })
 

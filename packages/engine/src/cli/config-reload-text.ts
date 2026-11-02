@@ -5,7 +5,9 @@
 import type { JournalRecord } from '../journal/journal-record'
 
 /** A value of a reloaded config field in a log line; `null` is "none". */
-const fieldValue = (value: string | number | string[] | null): string => {
+const fieldValue = (
+    value: string | number | boolean | string[] | null
+): string => {
     if (value === null) return 'none'
     if (Array.isArray(value)) return `[${value.join(', ')}]`
     return String(value)

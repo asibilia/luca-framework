@@ -83,6 +83,7 @@ export const createBoardState = ({
     network_waits: [],
     run_plan_used: [],
     needs_you: [],
+    unreported: [],
     tickets: [],
     final_review: {
         state: 'waiting',

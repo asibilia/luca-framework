@@ -95,6 +95,16 @@ export const modelsOf = ({ config }: { config: EngineConfig }): ModelsConfig =>
     config.models ?? ModelsConfigSchema.parse({})
 
 /**
+ * Whether the engine retries a routine stuck item once by itself (#705):
+ * the config's `auto_retry`, else `true`.
+ *
+ * @example
+ * autoRetryOf({ config: { ...config, auto_retry: false } }) // false
+ */
+export const autoRetryOf = ({ config }: { config: EngineConfig }): boolean =>
+    config.auto_retry ?? true
+
+/**
  * The feature map's path (#583), in the form a worktree-relative path takes
  * everywhere else (`normalize`, no leading `./`), or `null` with no map.
  * `./docs/feature-map.md` and `docs//feature-map.md` are both

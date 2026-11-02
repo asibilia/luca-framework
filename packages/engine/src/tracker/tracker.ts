@@ -153,18 +153,24 @@ export const isTrackerNetworkFailure = (
 /** A failed `gh` call, in the words `TrackerError`s from `gh` use. */
 const GH_FAILED = /\bgh \w+ \w+`? failed\b/
 
+/** GitHub's answer to a request it refused, such as "HTTP 422: Validation Failed". */
+const GITHUB_REFUSED = /^HTTP [45]\d\d\b/
+
 /**
  * Whether `error` is a failed tracker call: a `TrackerError`, or a plain
- * error worded like one from `gh` ("gh pr create failed ..."), as a tracker
- * wrapped around the GitHub one may throw.
+ * error worded like one from `gh` ("gh pr create failed ...") or from
+ * GitHub itself ("HTTP 422: ..."), as a tracker wrapped around the GitHub
+ * one may throw.
  *
  * @example
  * isTrackerFailure(new TrackerError('gh pr create failed')) // true
+ * isTrackerFailure(new Error('HTTP 422: Validation Failed')) // true
  * isTrackerFailure(new Error('The engine crashed.')) // false
  */
 export const isTrackerFailure = (error: unknown): boolean =>
     error instanceof TrackerError ||
-    (error instanceof Error && GH_FAILED.test(error.message))
+    (error instanceof Error &&
+        (GH_FAILED.test(error.message) || GITHUB_REFUSED.test(error.message)))
 
 /** The label a ticket needs before intake lets a run build it. */
 export const READY_LABEL = 'ready-for-agent'

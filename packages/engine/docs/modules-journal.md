@@ -27,7 +27,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/ticket-retry-replay.ts` | Replays a stuck ticket's `retry`: refused, restarted, or resumed. |
 | `src/journal/final-review-replay.ts` | Replays the final review's records, its stuck report and reply, and its `retry`. |
 | `src/journal/final-review-round.ts` | A final review round: namespaced lens results, settling the round, the fixers' answers, and the findings its PR lists. |
-| `src/journal/reply-replay.ts` | Replays owner replies, stuck reports, and a ticket's `retry` at the run level. |
+| `src/journal/reply-replay.ts` | Replays owner replies, stuck reports, the engine's own retries (`auto_retried`, #705), and a ticket's `retry` at the run level. |
 | `src/journal/shared-failure-replay.ts` | Replays shared failures (#544): the run-wide list of old tests that failed, and whether a ticket's failed check gets a lone rerun. |
 | `src/journal/cross-ticket-replay.ts` | Replays records that reach across tickets: crashes cut off, closed sessions, undone joins. |
 
@@ -52,7 +52,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/commit-entries.ts` | Leftover scan and commit entries. |
 | `src/journal/join-entries.ts` | Join, rebase, and push entries. |
 | `src/journal/refactor-update-entries.ts` | A refactor ticket's test update entries (#686). |
-| `src/journal/stuck-entries.ts` | Stuck work and the owner's reply entries. |
+| `src/journal/stuck-entries.ts` | Stuck work and the owner's reply entries, and the engine's own retry of a routine stuck item (`auto_retried`, #705). |
 | `src/journal/already-done-entries.ts` | Already-done ticket entries. |
 | `src/journal/final-review-entries.ts` | Final review entries. |
 | `src/journal/pull-request-entries.ts` | Changeset and pull request entries. |

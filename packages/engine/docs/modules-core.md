@@ -17,6 +17,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`check_already_done`, `mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
 | `src/core/execute-already-done.ts` | Carries out an already-done ticket's steps on the tracker: the spec comment, and closing the ticket with a comment in a run with no PR. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
+| `src/core/auto-retry.ts` | Pure: the engine's own retry of a routine stuck ticket, final review, or run (#705), once per item with `auto_retry` on, and its comment. |
 | `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget (or its PR, or its repo wait), its report, and the owner's `retry` or `stop`. |
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |

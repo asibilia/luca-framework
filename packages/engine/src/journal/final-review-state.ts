@@ -79,6 +79,8 @@ export type FinalReviewState = {
      * turn of the role starts its count again.
      */
     failed_tries: Partial<Record<AgentRole, number>>
+    /** How each of `failed_tries` failed, oldest first, per role (#705). */
+    failed_kinds: Partial<Record<AgentRole, AgentFailure[]>>
     /** Engine failures in a row, per role. */
     engine_failures: Partial<Record<AgentRole, number>>
     /** The open fix round's gates, and its gate fix follow-ups. */
@@ -164,6 +166,7 @@ export const EMPTY_FINAL_REVIEW: FinalReviewState = {
     sessions: {},
     agent_failures: {},
     failed_tries: {},
+    failed_kinds: {},
     engine_failures: {},
     gates: null,
     gate_fix_rounds: 0,

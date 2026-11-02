@@ -6,6 +6,7 @@ import {
     agentSession,
     intakeOfThree,
     replyReceived,
+    stuckReported,
     ticketWorktreeCreated,
     type Entry,
 } from './testing/journal-fixtures'
@@ -109,7 +110,11 @@ describe('the run stuck on its budget', () => {
     test('a run stuck on its budget asks the owner on the spec issue: `retry` or `stop`', async () => {
         const { board } = await runWith({
             budget: BUDGET,
-            entries: [...spent(BUDGET), runStuck()],
+            entries: [
+                ...spent(BUDGET),
+                runStuck(),
+                stuckReported({ ticket: null }),
+            ],
         })
 
         const { needs_you } = await board.state()
@@ -129,6 +134,7 @@ describe('the run stuck on its budget', () => {
             entries: [
                 ...spent(BUDGET),
                 runStuck(),
+                stuckReported({ ticket: null }),
                 replyReceived({ word: 'retry', ticket: null }),
             ],
         })
@@ -146,6 +152,7 @@ describe('the run stuck on its budget', () => {
             entries: [
                 ...spent(BUDGET),
                 runStuck(),
+                stuckReported({ ticket: null }),
                 {
                     ...replyReceived({ word: 'retry', ticket: null }),
                     content: {

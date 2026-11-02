@@ -77,6 +77,44 @@ export const addNeedsYou = ({
     ],
 })
 
+/**
+ * A stuck item the engine hasn't told the owner of yet (#705): it waits in
+ * `unreported` until `stuck_reported` (`reportNeedsYou`).
+ */
+export const addUnreported = ({
+    state,
+    item,
+}: {
+    state: BoardState
+    item: NeedsYou
+}): BoardState => ({
+    ...state,
+    unreported: [
+        ...state.unreported.filter((entry) => entry.key !== item.key),
+        item,
+    ],
+})
+
+/** The engine told the owner: the item `key` waiting to be told needs you now. */
+export const reportNeedsYou = ({
+    state,
+    key,
+}: {
+    state: BoardState
+    key: string
+}): BoardState => {
+    const item = state.unreported.find((entry) => entry.key === key)
+    if (item === undefined) return state
+    return addNeedsYou({
+        state: {
+            ...state,
+            unreported: state.unreported.filter((entry) => entry.key !== key),
+        },
+        item,
+    })
+}
+
+/** Resolves item `key`, told or not yet told, or every item for `null`. */
 export const resolveNeedsYou = ({
     state,
     key,
@@ -89,6 +127,10 @@ export const resolveNeedsYou = ({
         key === null
             ? []
             : state.needs_you.filter((entry) => entry.key !== key),
+    unreported:
+        key === null
+            ? []
+            : state.unreported.filter((entry) => entry.key !== key),
 })
 
 /** The final review with one more "tried" line. */

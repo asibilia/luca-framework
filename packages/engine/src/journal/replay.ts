@@ -17,6 +17,7 @@ import type { JournalRecord } from './journal-record'
 import { EMPTY_MEMORY, learnerAfter, learnerRecordOf } from './memory-replay'
 import { planAfter } from './plan-replay'
 import {
+    autoRetriedAfter,
     replyReceivedAfter,
     stuckReportedAfter,
     ticketRetriedAfter,
@@ -391,6 +392,8 @@ const applyKind = ({
             return replyReceivedAfter({ state, next, record })
         case 'stuck_reported':
             return stuckReportedAfter({ state, next, record })
+        case 'auto_retried':
+            return autoRetriedAfter({ state, next, record })
         // Its note on the spec issue is the engine's own, never a reply.
         case 'ticket_already_done':
             return applyTicketRecord({

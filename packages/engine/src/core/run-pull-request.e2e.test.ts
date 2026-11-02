@@ -18,6 +18,7 @@ import { SPEC_OWNER } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
     happyTurns,
+    PRACTICE_ENGINE_CONFIG,
     HAPPY_TURNS,
     practiceTracker,
     TEST_WRITER_RESULT,
@@ -281,7 +282,11 @@ describe('a failed gh pr create', () => {
     const folder = eachRoot()
 
     test('leaves the run stuck with the error in the stuck text, not a crash, and retry opens the PR', async () => {
-        const practice = await createPracticeRepo({ root: folder.root })
+        // The owner's retry is tested here, so the engine's own is off (#705).
+        const practice = await createPracticeRepo({
+            root: folder.root,
+            config: { ...PRACTICE_ENGINE_CONFIG, auto_retry: false },
+        })
         let failing = true
         const tracker = failingPullRequests({
             tracker: practiceTracker(),
@@ -327,7 +332,11 @@ describe('an open PR from the run branch', () => {
     const folder = eachRoot()
 
     test('a PR gh made before failing is reused on retry, never opened twice', async () => {
-        const practice = await createPracticeRepo({ root: folder.root })
+        // The owner's retry is tested here, so the engine's own is off (#705).
+        const practice = await createPracticeRepo({
+            root: folder.root,
+            config: { ...PRACTICE_ENGINE_CONFIG, auto_retry: false },
+        })
         let failing = true
         const tracker = failingPullRequests({
             tracker: practiceTracker(),
@@ -364,7 +373,11 @@ describe('an open PR from the run branch', () => {
     }, 60_000)
 
     test('a PR the owner opened by hand from the run branch is reused on retry, never opened twice', async () => {
-        const practice = await createPracticeRepo({ root: folder.root })
+        // The owner's retry is tested here, so the engine's own is off (#705).
+        const practice = await createPracticeRepo({
+            root: folder.root,
+            config: { ...PRACTICE_ENGINE_CONFIG, auto_retry: false },
+        })
         let failing = true
         const tracker = failingPullRequests({
             tracker: practiceTracker(),

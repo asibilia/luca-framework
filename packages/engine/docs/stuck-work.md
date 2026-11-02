@@ -8,7 +8,8 @@ stuck ticket and the tickets that wait on it pause.
 ```
 ticket_stuck
   decide ──> undo_join        only if its join is still on the run branch  ──> join_undone
-  decide ──> report_stuck     comment on the spec issue                     ──> stuck_reported
+  decide ──> auto_retry       routine, once per ticket: comment on the spec ──> auto_retried, then retry_ticket
+          or report_stuck     comment on the spec issue                     ──> stuck_reported
   decide ──> wait_for_reply   sleep, then read the spec's new comments      ──> comment_read × n
   decide ──> take_reply       the owner's reply word                        ──> reply_received
           or ignore_reply     answer on the spec why it can't be used       ──> reply_ignored
@@ -17,11 +18,34 @@ ticket_stuck
   stop  ──> remove_worktrees (pushed tickets'), then done (stopped_by_user)
 
 final_review_stuck
-  decide ──> report_final_review_stuck  comment on the spec issue           ──> stuck_reported (ticket null)
+  decide ──> auto_retry                 routine, once per run               ──> auto_retried, then final_review_retried
+          or report_final_review_stuck  comment on the spec issue           ──> stuck_reported (ticket null)
   ship  ──> ship_final_review           commit edits left over, shipFinalReview ──> final_review_shipped, then the PR
   retry ──> retry_final_review                                              ──> final_review_retried
 ```
 
+- **The engine's own retry (#705).** A newly stuck item whose stuck is
+  routine is retried once by the engine itself, before anyone is told:
+  it posts `Luca retried #12 by itself after agent_failed. If it gets stuck
+  the same way again, it'll wait for a reply.` on the spec issue (`the
+  final review`, `the run` for those), through `postCommentOnce`, then
+  journals `auto_retried { item, reason, comment_id, body }` (`item` is
+  `ticket`, `final_review`, or `run`; the record's `ticket` is the ticket's
+  number or `null`). Replay takes it like the owner's `retry`, marks the
+  comment as the engine's, and the item's usual retry follows
+  (`ticket_retried`, `final_review_retried`, or the PR tried again, with no
+  top-up). Routine: a ticket's or the final review's `agent_failed` whose
+  failed tries since the last retry were all `agent`, `result`, or `chore`
+  (an `engine` failure is no try; `guard` or `evidence` is for the owner),
+  a `prepare_failed` whose prepare output starts with `Timed out`, a
+  ticket's `join_failed` or `join_gates_failed`, and the run's
+  `pull_request_failed`. `run_budget` and `repo_busy` always wait for the
+  owner. Each item gets one per run, kept across resumes; a serious stuck
+  doesn't use it up, and any stuck after it is told and waits. A refused
+  ticket retry uses it too: the original stuck is then told with the usual
+  comment. `auto_retry: false` in `.luca/config.json` turns it off; it is
+  reloaded on a resume, and only an item stuck after the resume is retried,
+  so one already told keeps waiting.
 - **The comment** names the ticket, says why in one line, what was tried
   (fix rounds, failed tries, rebases, ...), the last error, a suggestion, the
   ticket's worktree, and the replies.

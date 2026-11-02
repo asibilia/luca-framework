@@ -3,6 +3,7 @@ import omit from 'lodash/omit'
 import reduce from 'lodash/reduce'
 import { z } from 'zod'
 
+import { autoRetryOf } from './config-fields'
 import type { EngineConfig } from './engine-config'
 
 /**
@@ -28,6 +29,9 @@ import type { EngineConfig } from './engine-config'
  * - `leftover_allow`: more new markdown the leftover scan lets through
  *   (#520). Each scan reads it then, so a run stuck on a leftover can be
  *   unstuck by allowing the file and resuming.
+ * - `auto_retry`: whether the engine retries a routine stuck item once by
+ *   itself (#705). Only an item stuck after the resume is retried, so
+ *   turning it on leaves an item already told to the owner waiting.
  */
 export const RELOADED_FIELDS = [
     'prepare',
@@ -37,6 +41,7 @@ export const RELOADED_FIELDS = [
     'test_timeout_ms',
     'test_case_timeout_ms',
     'leftover_allow',
+    'auto_retry',
 ] as const
 
 /**
@@ -130,6 +135,12 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         from: patterns,
         to: patterns,
     }),
+    // Never left out: a config without it reads as `true`.
+    z.object({
+        field: z.literal('auto_retry'),
+        from: z.boolean(),
+        to: z.boolean(),
+    }),
 ])
 
 export type ConfigChange = z.infer<typeof ConfigChangeSchema>
@@ -186,6 +197,11 @@ export const configChanges = ({
             from: current.leftover_allow ?? null,
             to: next.leftover_allow ?? null,
         },
+        {
+            field: 'auto_retry',
+            from: autoRetryOf({ config: current }),
+            to: autoRetryOf({ config: next }),
+        },
     ]
     return all.filter(({ from, to }) => !isEqual(from, to))
 }
@@ -226,6 +242,8 @@ const applyChange = ({
             return change.to === null
                 ? omit(config, 'leftover_allow')
                 : { ...config, leftover_allow: change.to }
+        case 'auto_retry':
+            return { ...config, auto_retry: change.to }
     }
 }
 

@@ -278,6 +278,9 @@ export const describeRecord = ({
                 text: `The run is stuck. ${runReasonText({ reason: record.content.reason })}`,
                 tone: 'danger',
             })
+        // The engine's own retry (#705): its comment on the spec issue.
+        case 'auto_retried':
+            return event({ text: record.content.body, tone: 'info' })
         case 'pull_request_opened':
             return event({
                 text: `Pull request #${record.content.number} opened: ${record.content.url}`,
@@ -377,11 +380,13 @@ export const describeRecord = ({
                 tone: 'info',
             })
         // The repo wait shows as a banner on the panel (#632), the network
-        // wait as the run's status (#701).
+        // wait as the run's status (#701), and a stuck report as the stuck
+        // row it brings (#705).
         case 'repo_wait_started':
         case 'repo_wait_ended':
         case 'network_wait_started':
         case 'network_wait_ended':
+        case 'stuck_reported':
         case 'intake_read':
         case 'ticket_snapshot':
         case 'baseline_tests':

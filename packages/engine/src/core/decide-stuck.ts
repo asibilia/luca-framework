@@ -1,5 +1,6 @@
 import max from 'lodash/max'
 
+import { finalAutoRetry, type AutoRetryAction } from './auto-retry'
 import {
     finalStuckComment,
     replyAnswer,
@@ -26,6 +27,8 @@ export type StuckAction =
           spec_number: number
           body: string
       }
+    /** Retry a newly stuck item by itself, once, as its stuck is routine (#705). */
+    | AutoRetryAction
     /**
      * Wait a while, then read the spec issue's comments with an id above
      * `since_id`. The run waits this way, with no time limit, while stuck
@@ -184,15 +187,21 @@ const awaitingReply = (progress: TicketProgress): boolean =>
  * on the owner's reply. Nothing while it waits for one. A ticket stuck
  * because its undo was refused (`undo_refused`, #519) is never undone again
  * before a reply: it is told at once, with its join left where it is.
+ * A routine stuck the engine may retry by itself (`auto_retry`, #705) is
+ * retried instead of told; that retry is taken like the owner's, so the
+ * ticket's `retry` comes next. One the engine refused is told after all.
  */
 export const stuckTicketSteps = ({
     spec_number,
     ticket,
     progress,
+    auto_retry,
 }: {
     spec_number: number
     ticket: TicketSnapshot
     progress: TicketProgress
+    /** The engine's own retry of this stuck (`ticketAutoRetry`), if it may. */
+    auto_retry: AutoRetryAction | null
 }): StuckAction[] => {
     const { stuck, joined } = progress
     if (stuck === null) return []
@@ -208,6 +217,11 @@ export const stuckTicketSteps = ({
         }
     }
     if (progress.stuck_report === null) {
+        // The engine retried it by itself: its retry, never told.
+        if (progress.reply?.word === 'retry') {
+            return [{ type: 'retry_ticket', ticket: number, spec_number }]
+        }
+        if (auto_retry !== null) return [auto_retry]
         return [
             {
                 type: 'report_stuck',
@@ -250,7 +264,8 @@ const finalAwaitingReply = (state: RunState): boolean =>
 /**
  * The next steps of a stuck final review: tell the spec issue, then act on
  * the owner's `retry` or `ship` (`stop` is the whole run's). Nothing while
- * it waits for one.
+ * it waits for one. A routine stuck the engine may retry by itself (#705)
+ * is retried instead of told, and its `retry` comes next.
  */
 export const finalStuckSteps = ({
     state,
@@ -262,6 +277,12 @@ export const finalStuckSteps = ({
     run_branch: ReplayedWorktree
 }): StuckAction[] => {
     if (state.final_stuck_report === null) {
+        // The engine retried it by itself: its retry, never told.
+        if (state.final_reply?.word === 'retry') {
+            return [{ type: 'retry_final_review' }]
+        }
+        const auto_retry = finalAutoRetry({ state, spec_number })
+        if (auto_retry !== null) return [auto_retry]
         return [
             {
                 type: 'report_final_review_stuck',

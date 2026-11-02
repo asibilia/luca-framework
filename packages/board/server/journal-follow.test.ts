@@ -24,6 +24,13 @@ import { ROW_KIND } from '../shared/board-rows'
  * cursor, so a record adds its chat rows once, whichever way it comes.
  */
 
+/**
+ * The seq of the stuck record in `stuckRun()`, the record whose chat row
+ * these tests follow. A `stuck_reported` after it adds no row of its own.
+ */
+const STUCK_SEQ =
+    stuckRun().findIndex(({ kind }) => kind === 'ticket_stuck') + 1
+
 afterEach(async () => {
     for (const dir of dirs.splice(0)) {
         await rm(dir, { recursive: true, force: true })
@@ -50,7 +57,7 @@ describe('the board follows its own runs on disk', () => {
 
         const added = board.rows.slice(seen)
         expect(added.map(({ row }) => row.id)).toContain(
-            `${run_id}-e${stuckRun().length}`
+            `${run_id}-e${STUCK_SEQ}`
         )
         expect(added.some(({ row }) => row.kind === ROW_KIND.stuck)).toBe(true)
         expect(new Set(added.map(({ agent_id }) => agent_id))).toEqual(
@@ -77,7 +84,7 @@ describe('the board follows its own runs on disk', () => {
             next_seq: stuckRun().length + 1,
         })
         expect(board.rows.slice(seen)).toEqual([])
-        const stuck_event = `${run_id}-e${stuckRun().length}`
+        const stuck_event = `${run_id}-e${STUCK_SEQ}`
         expect(
             board.rows.filter(({ row }) => row.id === stuck_event)
         ).toHaveLength(1)
@@ -147,7 +154,7 @@ describe('rows rebuilt at a reload reach the chat with no push', () => {
         const ids = reloaded.rows
             .map(({ row }) => row.id)
             .filter((id) => id !== `${run_id}-run`)
-        const rebuilt = `${run_id}-e${stuckRun().length}`
+        const rebuilt = `${run_id}-e${STUCK_SEQ}`
         const newer = `${run_id}-e${stuckRun().length + 1}`
         expect(ids).toContain(`${run_id}-stuck-13`)
         expect(ids).toContain(newer)
@@ -170,7 +177,7 @@ describe('rows rebuilt at a reload reach the chat with no push', () => {
             .map(({ row }) => row.id)
             .filter((id) => id !== `${run_id}-run`)
         expect(ids).toContain(`${run_id}-stuck-13`)
-        expect(ids).toContain(`${run_id}-e${stuckRun().length}`)
+        expect(ids).toContain(`${run_id}-e${STUCK_SEQ}`)
         expect(new Set(ids).size).toBe(ids.length)
     })
 })
