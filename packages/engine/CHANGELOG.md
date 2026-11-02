@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.30
+
+### Patch Changes
+
+- ceead3a: Accept Claude Ultra plans in the account check. Before, every agent launch on an Ultra plan was refused with "no Claude subscription (subscriptionType=Claude Ultra)".
+
 ## 14.0.0-alpha.29
 
 ### Patch Changes
