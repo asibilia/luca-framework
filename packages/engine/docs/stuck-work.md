@@ -176,6 +176,10 @@ board's "Help me" button sends the same command. The skill:
 1. Sums the run up with its helper, `scripts/stuck-summary.ts`, which only
    reads: what is stuck and why, the worktree, the agent's last result, the
    failed checks, the replies since, and whether the engine is running.
+   Under each stuck item it also prints its retry history: how many
+   `auto_retried` records it has in the whole run, how each failed try
+   since its last retry failed (a ticket or the final review), and the
+   `run_budget` stucks before it (the run).
 2. Says why in plain words, and recommends one reply (or a fix first), from
    a playbook with an entry for every stuck reason.
 3. May fix tests (test files only) in the ticket's worktree, runs just those
@@ -208,8 +212,10 @@ every five seconds and prints one JSON line (`event` `stuck`, `ended`,
 `engine_gone`, `quiet`, or `error`, with `last_seq` and `detail`): the
 oldest `stuck_reported` or ending after the cursor, a run with no live
 engine, or five quiet minutes. The skill retries routine items within two
-unattended retries per item (the engine's `auto_retried` records plus its
-own retries in `watcher.log`), makes only semantics-preserving test fixes
+unattended retries per item (the engine's `auto_retried` records, from the
+summary's retry history, plus its own retries in `watcher.log`), never
+retries an `agent_failed` whose failed tries since its last retry include a
+`guard` or `evidence` failure, makes only semantics-preserving test fixes
 with byte backups, resumes once after a `network_wait_ended` that gave up,
 and never posts `skip`, `stop`, or `ship`.
 

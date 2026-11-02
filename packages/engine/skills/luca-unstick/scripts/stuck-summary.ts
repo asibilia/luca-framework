@@ -17,7 +17,7 @@
  * beside it: it runs from `~/.claude/skills/luca-unstick/`, where no
  * packages are installed. So it reads records loosely, not with the
  * engine's Zod schemas. Its journal reading is in `stuck-records.ts`, and
- * what it says about a stuck ticket or final review in `stuck-lines.ts`.
+ * what it says about a stuck item in `stuck-lines.ts`.
  * `stuck-summary.test.ts` checks it against journals built with the
  * engine's own fixtures, and every kind in `KINDS_READ` against the
  * journal's kinds, so the two can't drift apart unseen.
@@ -26,7 +26,7 @@ import { existsSync, readdirSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 
-import { finalReviewLines, ticketLines } from './stuck-lines'
+import { finalReviewLines, historyLines, ticketLines } from './stuck-lines'
 import {
     clip,
     commandLines,
@@ -230,6 +230,7 @@ export const formatSummary = ({
         if (item.refused.length > 0) {
             lines.push(`  A retry was refused: ${item.refused.join('; ')}`)
         }
+        lines.push(...nest(historyLines({ records, item }), '  '))
         if (item.what === 'ticket') {
             lines.push(...nest(ticketLines({ records, item }), '  '))
         } else if (item.what === 'final_review') {

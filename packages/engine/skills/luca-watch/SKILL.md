@@ -63,7 +63,7 @@ It polls the journal every five seconds and prints one JSON line, `{ "event", "l
 
 Each item (a ticket, the final review, or the run) gets at most two unattended retries per run, shared by the engine and you:
 
-- Count each engine `auto_retried` record in the journal for that item.
+- Count each engine `auto_retried` record in the journal for that item. The summary counts them for you over the whole run, on the item's `Retried by the engine itself (auto_retried): <n>` line. Don't count them from its "Since then" lines: those start at the current stuck, so they miss the earlier automatic retry.
 - Count each watcher retry in `watcher.log` for that item. A retry counts as soon as `gh issue comment` succeeds, even before the engine reads it; log it at once. Ignored replies do not refund the attempt.
 - Owner replies never count.
 
@@ -74,8 +74,9 @@ Reading both sources at startup makes the budget survive watcher restarts. The j
 Routine, while the item has fewer than two unattended retries:
 
 - `agent_failed`, `prepare_failed` only when the prepare check's output starts with `Timed out`, `join_failed`, and `join_gates_failed` on a ticket; `agent_failed` and a timed-out `prepare_failed` on the final review; `pull_request_failed` on the run. The engine retries these once by itself (`auto_retried`); after that, post `retry #12` (a bare `retry` for the final review or the run).
+- `agent_failed` only when every failed try on the item's `Failed tries since its last retry` summary line is `agent`, `result`, or `chore`. Any `guard` or `evidence` failure there makes it serious: an agent wrote where its role may not, or its evidence didn't check out, and the engine sent it to the owner on purpose. Never retry over that.
 - `repo_busy`: a bare `retry` only while the other run is live and not over.
-- The first `run_budget` stuck in the run's history: a bare `retry`, which adds half a budget. Every later `run_budget` stuck is serious, even when the owner answered an earlier one.
+- The first `run_budget` stuck in the run's history, which the run's `Earlier run_budget stucks in this run: 0` summary line shows: a bare `retry`, which adds half a budget. Every later `run_budget` stuck is serious, even when the owner answered an earlier one.
 - `gates_failed`, `bad_test`, or `red_check_failed` only when the complete fix is in test files and is semantics-preserving: it keeps every assertion's meaning. Fix it as section 5 says, then `retry #12`.
 
 Serious, always: `environment_failed`, `setup_change_needed`, `undo_refused`, `install_failed`, `leftovers_found`, `changes_requested`, and `nothing_new_to_test` are serious.

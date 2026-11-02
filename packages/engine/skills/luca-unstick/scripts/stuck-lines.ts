@@ -1,8 +1,8 @@
 /**
  * What the journal says about one stuck item, as the `/luca-unstick`
- * helper prints it: a stuck ticket's last results and failed checks, and
- * the stuck final review's open findings and failures. Pure; it imports
- * nothing but the helper's own journal reading.
+ * helper prints it: its retry history, a stuck ticket's last results and
+ * failed checks, and the stuck final review's open findings and failures.
+ * Pure; it imports nothing but the helper's own journal reading.
  */
 import {
     clip,
@@ -14,11 +14,41 @@ import {
     numberOr,
     objectOf,
     ofKind,
+    retryHistory,
     seqText,
     text,
     type LooseRecord,
     type StuckItem,
 } from './stuck-records'
+
+/**
+ * A stuck item's retry history, for `/luca-watch`: the engine's own
+ * retries of it, and how its failed tries since its last retry failed (a
+ * ticket or the final review) or the `run_budget` stucks before it (the
+ * run). Pure.
+ *
+ * @example
+ * historyLines({ records, item })
+ * // ['Retried by the engine itself (auto_retried): 1', 'Failed tries since its last retry: implementer agent, guard']
+ */
+export const historyLines = ({
+    records,
+    item,
+}: {
+    records: LooseRecord[]
+    item: StuckItem
+}): string[] => {
+    const history = retryHistory({ records, item })
+    const failed = history.failed_kinds
+        .map(([role, kinds]) => `${role} ${kinds.join(', ')}`)
+        .join('; ')
+    return [
+        `Retried by the engine itself (auto_retried): ${history.auto_retried}`,
+        item.what === 'run'
+            ? `Earlier run_budget stucks in this run: ${history.budget_stucks_before}`
+            : `Failed tries since its last retry: ${failed || 'none'}`,
+    ]
+}
 
 /** A failed check's lines: its name, command, how it ended, its output's end. */
 const checkLines = (check: Record<string, unknown>): string[] => {

@@ -97,6 +97,27 @@ describe('the luca-watch skill', () => {
         ).toBe(true)
     })
 
+    test("it reads the engine's retries and earlier run_budget stucks from the summary's retry-history lines", () => {
+        expect(skill).toContain(
+            '`Retried by the engine itself (auto_retried): <n>`'
+        )
+        expect(
+            linesWith('`Earlier run_budget stucks in this run: 0`').some(
+                (line) => /first `run_budget`/i.test(line)
+            )
+        ).toBe(true)
+    })
+
+    test('a guard or evidence failed try since the last retry makes agent_failed serious', () => {
+        expect(
+            linesWith('`Failed tries since its last retry`').some(
+                (line) =>
+                    line.includes('`agent_failed`') &&
+                    /`guard` or `evidence`[^\n]*serious/i.test(line)
+            )
+        ).toBe(true)
+    })
+
     test('it marks the risky reasons and plan, config and product-code edits serious', () => {
         for (const reason of [
             'environment_failed',

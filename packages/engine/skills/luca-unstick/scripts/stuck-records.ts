@@ -1,8 +1,9 @@
 /**
  * The `/luca-unstick` helper's journal reading: the record kinds it reads,
- * records read loosely, what waits on the owner (`openStuck`), how the run
- * stands (`runState`), the board's registry entry, and whether the engine
- * runs. `stuck-summary.ts` prints them.
+ * records read loosely, what waits on the owner (`openStuck`), a stuck
+ * item's retry history (`retryHistory`), how the run stands (`runState`),
+ * the board's registry entry, and whether the engine runs.
+ * `stuck-summary.ts` prints them.
  *
  * Like the rest of the helper, it imports nothing but Bun's and Node's own
  * modules: it runs from `~/.claude/skills/luca-unstick/`, where no packages
@@ -30,6 +31,7 @@ export const KINDS_READ = [
     'gates_run',
     'ticket_rebased',
     'tests_sent_back',
+    'final_review_started',
     'ticket_stuck',
     'run_stuck',
     'final_review_stuck',
@@ -225,6 +227,93 @@ export const openStuck = ({
         ...(final === null ? [] : [final]),
     ]
 }
+
+/** What `/luca-watch` counts before it answers a stuck item itself (#702). */
+export type RetryHistory = {
+    /** The item's `auto_retried` records, in the whole run. */
+    auto_retried: number
+    /**
+     * How each failed try since the item's last retry failed, per role,
+     * oldest first; an `engine` failure is no try. Empty for the run.
+     */
+    failed_kinds: [role: string, kinds: string[]][]
+    /** The run's `run_budget` stucks before this one; 0 for a ticket or the final review. */
+    budget_stucks_before: number
+}
+
+/**
+ * How each failed try of `item` failed since its last retry, per role: a
+ * ticket's since its last `ticket_retried` that wasn't refused (a failed
+ * `already_done` check is an `evidence` try for the test-writer), the final
+ * review's since its last `final_review_retried`. Pure.
+ */
+const failedKindsSinceRetry = ({
+    records,
+    item,
+}: {
+    records: LooseRecord[]
+    item: StuckItem
+}): RetryHistory['failed_kinds'] => {
+    const kinds = new Map<string, string[]>()
+    const failed = (role: string, failure: string) =>
+        kinds.set(role, [...(kinds.get(role) ?? []), failure])
+    let final_started = false
+    for (const { kind, ticket, content } of records) {
+        if (kind === 'final_review_started') final_started = true
+        const mine =
+            item.what === 'ticket'
+                ? ticket === item.ticket
+                : item.what === 'final_review' && ticket === null
+        if (!mine) continue
+        if (
+            kind === 'agent_failed' &&
+            content.failure !== 'engine' &&
+            (item.what === 'ticket' || final_started)
+        ) {
+            failed(text(content.role), text(content.failure) || 'agent')
+        } else if (
+            kind === 'already_done_checked' &&
+            content.ok === false &&
+            item.what === 'ticket'
+        ) {
+            failed('test-writer', 'evidence')
+        } else if (
+            (kind === 'ticket_retried' && content.mode !== 'refused') ||
+            kind === 'final_review_retried'
+        ) {
+            kinds.clear()
+        }
+    }
+    return [...kinds.entries()]
+}
+
+/**
+ * A stuck item's retry history, for `/luca-watch`'s budget of two
+ * unattended retries per item and its first-`run_budget` rule: the
+ * engine's own retries of it, how its failed tries since its last retry
+ * failed, and the `run_budget` stucks before it. Pure.
+ */
+export const retryHistory = ({
+    records,
+    item,
+}: {
+    records: LooseRecord[]
+    item: StuckItem
+}): RetryHistory => ({
+    auto_retried: ofKind(records, 'auto_retried').filter(
+        ({ ticket, content }) =>
+            content.item === item.what &&
+            (item.what !== 'ticket' || ticket === item.ticket)
+    ).length,
+    failed_kinds: failedKindsSinceRetry({ records, item }),
+    budget_stucks_before:
+        item.what === 'run'
+            ? ofKind(records, 'run_stuck').filter(
+                  ({ content, seq }) =>
+                      content.reason === 'run_budget' && seq < item.seq
+              ).length
+            : 0,
+})
 
 /**
  * How the run stands, from its last records: its one `run_ended` (#706)
