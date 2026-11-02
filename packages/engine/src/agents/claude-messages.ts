@@ -9,7 +9,7 @@ import type { ModelTokens } from './agent-launcher'
 import { checkModel } from './claude-options'
 
 /** The Claude plans an agent may run on. */
-const PLANS = ['pro', 'max', 'team', 'enterprise']
+const PLANS = ['pro', 'max', 'ultra', 'team', 'enterprise']
 
 export const AccountSchema = z.looseObject({
     subscriptionType: z.string().optional(),

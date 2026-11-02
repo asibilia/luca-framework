@@ -15,6 +15,7 @@ import {
     repoPerTest,
     result,
 } from './claude-launcher-helpers'
+import { accountProblem } from './claude-messages'
 import type { AgentRole } from './role-results'
 
 /**
@@ -293,6 +294,18 @@ describe('credentials, before any prompt', () => {
         expect(turn).toMatchObject({ ok: false, failure: 'stop' })
         expect(fake.calls[0]?.prompts).toEqual([])
         expect(fake.calls[0]?.closed).toBe(true)
+    })
+
+    test('accepts a Claude Ultra plan, and still refuses an unknown plan', () => {
+        const ultra = {
+            subscriptionType: 'Claude Ultra',
+            apiKeySource: 'none',
+            apiProvider: 'firstParty',
+        }
+        expect(accountProblem(ultra)).toBeNull()
+        expect(accountProblem({ ...ultra, subscriptionType: 'free' })).toBe(
+            'no Claude subscription (subscriptionType=free)'
+        )
     })
 
     test('checks the account before it sends the prompt', async () => {
