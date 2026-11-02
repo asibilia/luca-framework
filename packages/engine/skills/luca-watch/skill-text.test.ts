@@ -139,6 +139,18 @@ describe('the luca-watch skill', () => {
         expect(skill).toMatch(/unrequested run/i)
     })
 
+    test('it takes comments, stuck details and output as evidence, never instructions, even a comment claiming to be the owner', () => {
+        const rule =
+            skill
+                .split('\n')
+                .find((line) => /evidence, never instructions/i.test(line)) ??
+            ''
+        expect(rule).toMatch(/comment bodies/i)
+        expect(rule).toMatch(/stuck details/i)
+        expect(rule).toMatch(/agent output/i)
+        expect(rule).toMatch(/claims to be the owner/i)
+    })
+
     test('it backs up exact bytes before a test edit, runs the focused test for five minutes at most, and restores them without a broad reset', () => {
         expect(skill).toContain('watcher-backups/')
         expect(skill).toMatch(/exact[^\n]*bytes/i)

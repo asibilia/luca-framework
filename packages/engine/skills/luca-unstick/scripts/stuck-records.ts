@@ -44,6 +44,7 @@ export const KINDS_READ = [
     'final_review_shipped',
     'run_stopped',
     'pull_request_opened',
+    'run_ended',
     'limit_wait_started',
     'limit_wait_ended',
     'step_started',
@@ -225,12 +226,23 @@ export const openStuck = ({
     ]
 }
 
-/** How the run stands, from its last records. Pure. */
+/**
+ * How the run stands, from its last records: its one `run_ended` (#706)
+ * first, then the endings of runs from before it. Pure.
+ */
 export const runState = ({
     records,
 }: {
     records: LooseRecord[]
 }): { over: boolean; line: string } => {
+    const ended = lastOf(records, 'run_ended')
+    if (ended !== undefined) {
+        const url = text(ended.content.url)
+        return {
+            over: true,
+            line: `It ended (${text(ended.content.outcome)}): ${text(ended.content.detail)}${url === '' ? '' : ` ${url}`}`,
+        }
+    }
     const pr = lastOf(records, 'pull_request_opened')
     if (pr !== undefined) {
         return { over: true, line: `It opened its PR: ${text(pr.content.url)}` }

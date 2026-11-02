@@ -35,6 +35,7 @@ Tests:
 
 - `packages/engine/skills/luca-watch/skill-text.test.ts`
 - `packages/engine/skills/luca-watch/scripts/wait-for-change.test.ts`
+- `packages/engine/skills/luca-unstick/scripts/stuck-records.test.ts`
 - `packages/engine/src/core/run-ended.test.ts`
 - `packages/engine/src/core/run-ended.e2e.test.ts`
 

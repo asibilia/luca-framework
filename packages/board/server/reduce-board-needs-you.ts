@@ -129,6 +129,55 @@ const ticketRetried = ({
     }
 }
 
+/**
+ * A retry of a ticket, the run, or the final review, the owner's or the
+ * engine's own (#705): it carries on, and its item is resolved.
+ */
+const retriedTicket = ({
+    state,
+    ticket,
+}: {
+    state: BoardState
+    ticket: number
+}): BoardState =>
+    resolveNeedsYou({
+        state: updateTicket({
+            state,
+            number: ticket,
+            update: (card) => ({
+                ...card,
+                stage: 'building',
+                activity: 'retrying',
+            }),
+        }),
+        key: ticketKey({ ticket }),
+    })
+
+const retriedRun = ({
+    state,
+    top_up,
+}: {
+    state: BoardState
+    top_up: number
+}): BoardState =>
+    resolveNeedsYou({
+        state: {
+            ...state,
+            run_budget_tokens: state.run_budget_tokens + top_up,
+            run_stuck_reason: null,
+        },
+        key: RUN_KEY,
+    })
+
+const retriedFinal = ({ state }: { state: BoardState }): BoardState =>
+    resolveNeedsYou({
+        state: updateFinal({
+            state,
+            update: (review) => ({ ...review, state: 'reviewing' }),
+        }),
+        key: FINAL_KEY,
+    })
+
 const replyReceived = ({
     state,
     record,
@@ -140,45 +189,21 @@ const replyReceived = ({
     const ticket = record.content.ticket ?? record.ticket
     switch (word) {
         case 'retry':
-            if (ticket !== null) {
-                return resolveNeedsYou({
-                    state: updateTicket({
-                        state,
-                        number: ticket,
-                        update: (card) => ({
-                            ...card,
-                            stage: 'building',
-                            activity: 'retrying',
-                        }),
-                    }),
-                    key: ticketKey({ ticket }),
-                })
-            }
+            if (ticket !== null) return retriedTicket({ state, ticket })
             // A bare `retry` while the run is stuck on its budget adds its
             // top-up (one whole budget for a retry journaled with none,
             // #543); stuck for another reason, no budget. The final review
             // is left as it is.
             if (state.needs_you.some((item) => item.key === RUN_KEY)) {
-                const top_up =
-                    state.run_stuck_reason === 'run_budget'
-                        ? (record.content.top_up ?? state.run_budget_each)
-                        : 0
-                return resolveNeedsYou({
-                    state: {
-                        ...state,
-                        run_budget_tokens: state.run_budget_tokens + top_up,
-                        run_stuck_reason: null,
-                    },
-                    key: RUN_KEY,
+                return retriedRun({
+                    state,
+                    top_up:
+                        state.run_stuck_reason === 'run_budget'
+                            ? (record.content.top_up ?? state.run_budget_each)
+                            : 0,
                 })
             }
-            return resolveNeedsYou({
-                state: updateFinal({
-                    state,
-                    update: (review) => ({ ...review, state: 'reviewing' }),
-                }),
-                key: FINAL_KEY,
-            })
+            return retriedFinal({ state })
         case 'skip':
             return skipTicket({ state, ticket, because: null })
         case 'ship':
@@ -209,32 +234,13 @@ const autoRetried = ({
     const { ticket } = record
     switch (record.content.item) {
         case 'ticket':
-            if (ticket === null) return state
-            return resolveNeedsYou({
-                state: updateTicket({
-                    state,
-                    number: ticket,
-                    update: (card) => ({
-                        ...card,
-                        stage: 'building',
-                        activity: 'retrying',
-                    }),
-                }),
-                key: ticketKey({ ticket }),
-            })
+            return ticket === null ? state : retriedTicket({ state, ticket })
+        // The engine retries the run only after `pull_request_failed`: no
+        // budget to add.
         case 'run':
-            return resolveNeedsYou({
-                state: { ...state, run_stuck_reason: null },
-                key: RUN_KEY,
-            })
+            return retriedRun({ state, top_up: 0 })
         case 'final_review':
-            return resolveNeedsYou({
-                state: updateFinal({
-                    state,
-                    update: (review) => ({ ...review, state: 'reviewing' }),
-                }),
-                key: FINAL_KEY,
-            })
+            return retriedFinal({ state })
         default:
             return state
     }
