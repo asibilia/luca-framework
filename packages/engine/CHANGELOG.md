@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.32
+
+### Patch Changes
+
+- ec3c005: Spec: a watcher agent keeps a run moving, retrying routine stucks itself, and only calls you for serious ones ([#702](https://github.com/asibilia/luca-framework/issues/702))
+
 ## 14.0.0-alpha.31
 
 ### Patch Changes
