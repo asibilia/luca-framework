@@ -80,6 +80,30 @@ export const StuckReportedEntrySchema = z.object({
     }),
 })
 
+/** What the engine retried by itself (#705): a ticket, the final review, or the run. */
+export const AutoRetriedItemSchema = z.enum(['ticket', 'final_review', 'run'])
+
+export type AutoRetriedItem = z.infer<typeof AutoRetriedItemSchema>
+
+/**
+ * The engine retried a newly stuck item by itself, once, as its stuck was
+ * routine (#705), and said so on the spec issue in its comment
+ * `comment_id`, word for word (`body`). `ticket` is the ticket's number, or
+ * `null` for the final review and the run; `reason` is the stuck's. Replay
+ * takes it like the owner's `retry`, so the item's usual retry follows; an
+ * item stuck again after it waits for the owner.
+ */
+export const AutoRetriedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('auto_retried'),
+    content: z.object({
+        item: AutoRetriedItemSchema,
+        reason: z.string(),
+        comment_id: z.number().int(),
+        body: z.string(),
+    }),
+})
+
 /**
  * A comment the engine read on the spec issue while it waited for a reply,
  * word for word, whoever wrote it. Only the spec owner's count as replies.

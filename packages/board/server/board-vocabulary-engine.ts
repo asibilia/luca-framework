@@ -75,6 +75,21 @@ export const ENGINE_VOCABULARY = {
         reason: z.string(),
         detail: z.string().catch(''),
     }),
+    /**
+     * The engine told the owner a ticket (`ticket` set), the run, or the
+     * final review is stuck (#705): its Needs-you item shows from here.
+     */
+    stuck_reported: z.looseObject({}),
+    /**
+     * The engine retried a stuck ticket, the final review, or the run by
+     * itself (#705): `item` is `ticket`, `final_review`, or `run`, and
+     * `body` its comment on the spec issue, word for word.
+     */
+    auto_retried: z.looseObject({
+        item: z.string(),
+        reason: z.string().catch(''),
+        body: z.string().catch(''),
+    }),
     pull_request_opened: z.looseObject({
         number: z.number().int(),
         url: z.string(),

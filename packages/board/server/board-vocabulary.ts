@@ -65,6 +65,8 @@ const BoardEntrySchema = z.discriminatedUnion('kind', [
     entry({ kind: 'run_branch_pushed' }),
     entry({ kind: 'ticket_stuck' }),
     entry({ kind: 'run_stuck' }),
+    entry({ kind: 'stuck_reported' }),
+    entry({ kind: 'auto_retried' }),
     entry({ kind: 'pull_request_opened' }),
     entry({ kind: 'worktrees_removed' }),
     entry({ kind: 'jev_asked' }),

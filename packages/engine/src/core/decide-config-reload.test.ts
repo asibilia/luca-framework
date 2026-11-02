@@ -139,7 +139,7 @@ describe('a config_reloaded record', () => {
         ]).config
 
         expect(config).toEqual({
-            ...BUILD_CONFIG,
+            ...(stateOf(UP_TO_TESTS).config ?? BUILD_CONFIG),
             prepare: OLD_PREPARE,
             prepare_timeout_ms: 60_000,
             prepare_concurrency: 2,
@@ -156,7 +156,7 @@ describe('a config_reloaded record', () => {
         ]).config
 
         expect(config).toEqual({
-            ...BUILD_CONFIG,
+            ...(stateOf(UP_TO_TESTS).config ?? BUILD_CONFIG),
             prepare: OLD_PREPARE,
             test_timeout_ms: 900_000,
         })
@@ -176,7 +176,7 @@ describe('a config_reloaded record', () => {
         ]).config
 
         expect(config).toEqual({
-            ...BUILD_CONFIG,
+            ...(stateOf(UP_TO_TESTS).config ?? BUILD_CONFIG),
             prepare: OLD_PREPARE,
             leftover_allow: ['handbook/**/*.md'],
         })
@@ -221,7 +221,7 @@ describe('a config_reload_refused record', () => {
         ]
 
         expect(stateOf(withRefusal).config).toEqual({
-            ...BUILD_CONFIG,
+            ...(stateOf(UP_TO_TESTS).config ?? BUILD_CONFIG),
             prepare: OLD_PREPARE,
         })
         expect(nextOf(withRefusal)).toEqual(nextOf([...UP_TO_TESTS, resumed]))
@@ -354,5 +354,20 @@ describe('what a resume journals from the repo’s config file', () => {
                 ? reload.content.reason
                 : null
         ).toContain('has no test command')
+    })
+
+    test('a resume that turns auto_retry from false to true journals it in config_reloaded (#705)', async () => {
+        const { added } = await reloadWith({
+            text: JSON.stringify({ ...STARTED, auto_retry: true }),
+        })
+
+        expect(added).toMatchObject([
+            {
+                kind: 'config_reloaded',
+                content: {
+                    changes: [{ field: 'auto_retry', from: false, to: true }],
+                },
+            },
+        ])
     })
 })

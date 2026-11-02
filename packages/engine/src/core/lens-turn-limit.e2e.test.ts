@@ -10,6 +10,7 @@ import { SPEC_OWNER } from '../testing/intake-fixtures'
 import {
     createPracticeRepo,
     happyTurns,
+    PRACTICE_ENGINE_CONFIG,
     PRACTICE_SPEC_NUMBER,
 } from '../testing/practice-repo'
 
@@ -154,7 +155,11 @@ describe('a rules lens whose failures were not all out of turns', () => {
 
 describe('a rules lens out of turns three times, then a retry', () => {
     const state = oneRun(async (root) => {
-        const practice = await createPracticeRepo({ root })
+        // The owner's retry is tested here, so the engine's own is off (#705).
+        const practice = await createPracticeRepo({
+            root,
+            config: { ...PRACTICE_ENGINE_CONFIG, auto_retry: false },
+        })
         const stuck = await practice.run({
             turns: [
                 ...Object.values(happyTurns()),

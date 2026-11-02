@@ -306,6 +306,12 @@ export type TicketProgress = {
      */
     failed_tries: Partial<Record<AgentRole, number>>
     /**
+     * How each of `failed_tries` failed, oldest first, per role (#705): the
+     * engine retries a stuck ticket by itself only when none was `guard`
+     * or `evidence`. A retry starts them over, as it does `failed_tries`.
+     */
+    failed_kinds: Partial<Record<AgentRole, AgentFailure[]>>
+    /**
      * The model each role's latest agent on this ticket launched on
      * (#604); `null` in older journals.
      */
@@ -401,6 +407,7 @@ export const EMPTY_TICKET_PROGRESS: TicketProgress = {
     refactor_fixed: [],
     agent_failure: null,
     failed_tries: {},
+    failed_kinds: {},
     launched_on: {},
     failed_cheaper: [],
     engine_failures: 0,

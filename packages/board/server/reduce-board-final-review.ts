@@ -7,7 +7,7 @@ import { finalReasonText } from './reduce-board-reasons'
 import { clip } from './reduce-board-text'
 import {
     DETAIL_MAX,
-    addNeedsYou,
+    addUnreported,
     resolveNeedsYou,
     updateFinal,
     withTried,
@@ -125,8 +125,9 @@ export const applyFinalReviewKind = ({
                     }),
                 }),
             })
+        // Needs you once the engine tells the owner (#705).
         case 'final_review_stuck':
-            return addNeedsYou({
+            return addUnreported({
                 state: updateFinal({
                     state,
                     update: (review) => ({ ...review, state: 'stuck' }),

@@ -17,6 +17,7 @@ import type { JournalRecord } from './journal-record'
 import { EMPTY_MEMORY, learnerAfter, learnerRecordOf } from './memory-replay'
 import { planAfter } from './plan-replay'
 import {
+    autoRetriedAfter,
     replyReceivedAfter,
     stuckReportedAfter,
     ticketRetriedAfter,
@@ -319,6 +320,9 @@ const applyKind = ({
         case 'network_wait_started':
         case 'network_wait_ended':
             return next
+        // The run's ending (#706) changes no step: only a watcher reads it.
+        case 'run_ended':
+            return next
         // A wait between steps changes no step: only the board reads it.
         case 'ticket_waiting':
             return next
@@ -388,6 +392,8 @@ const applyKind = ({
             return replyReceivedAfter({ state, next, record })
         case 'stuck_reported':
             return stuckReportedAfter({ state, next, record })
+        case 'auto_retried':
+            return autoRetriedAfter({ state, next, record })
         // Its note on the spec issue is the engine's own, never a reply.
         case 'ticket_already_done':
             return applyTicketRecord({

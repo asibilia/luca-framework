@@ -41,7 +41,8 @@ export const ticketChanged = ({
 /**
  * Carries out the tracker steps of stuck work, then journals what happened:
  * marking the run stuck on its budget, telling the spec issue a ticket, the
- * run, or the final review is stuck, waiting for
+ * run, or the final review is stuck (or retried by the engine itself,
+ * #705), waiting for
  * and reading its comments, taking or sending back a reply, skipping a
  * ticket (with a comment on it), and retrying the stuck final review
  * (shipping it is `shipFinalReviewIn`'s). Its comments are posted once
@@ -165,6 +166,25 @@ export const executeStuckAction = async ({
                 ticket: null,
                 role: null,
                 content: { comment_id: id, body: action.body },
+            })
+            return
+        }
+        // Posted once, so a crash before the record posts no second comment.
+        case 'auto_retry': {
+            const { id } = await post({
+                number: action.spec_number,
+                body: action.body,
+            })
+            journal.append({
+                kind: 'auto_retried',
+                ticket: action.ticket,
+                role: null,
+                content: {
+                    item: action.item,
+                    reason: action.reason,
+                    comment_id: id,
+                    body: action.body,
+                },
             })
             return
         }

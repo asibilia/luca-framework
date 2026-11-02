@@ -150,11 +150,13 @@ describe('billing stops', () => {
             outcome: 'stopped',
             reason: 'rate_limit_event isUsingOverage=true (five_hour)',
         })
-        expect(kinds(records).slice(-2)).toEqual([
+        // The run's ending (#706) is checked in `run-ended.test.ts`.
+        const stopped = records.filter(({ kind }) => kind !== 'run_ended')
+        expect(kinds(stopped).slice(-2)).toEqual([
             'run_stopped',
             'usage_recorded',
         ])
-        expect(records.at(-2)).toMatchObject({ content: { billing: true } })
+        expect(stopped.at(-2)).toMatchObject({ content: { billing: true } })
         expect(time.slept).toEqual([])
 
         const again = await practice.run({

@@ -102,6 +102,7 @@ import {
     ConfigReloadedEntrySchema,
     ConfigReloadRefusedEntrySchema,
     EngineResumedEntrySchema,
+    RunEndedEntrySchema,
     RunResumedEntrySchema,
     RunStartedEntrySchema,
     RunStoppedEntrySchema,
@@ -110,6 +111,7 @@ import {
     TicketWaitingEntrySchema,
 } from './run-entries'
 import {
+    AutoRetriedEntrySchema,
     CommentReadEntrySchema,
     ReplyIgnoredEntrySchema,
     ReplyReceivedEntrySchema,
@@ -196,6 +198,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     FinalReviewPassedEntrySchema.extend(STAMP_FIELDS),
     FinalReviewShippedEntrySchema.extend(STAMP_FIELDS),
     StuckReportedEntrySchema.extend(STAMP_FIELDS),
+    AutoRetriedEntrySchema.extend(STAMP_FIELDS),
     CommentReadEntrySchema.extend(STAMP_FIELDS),
     ReplyReceivedEntrySchema.extend(STAMP_FIELDS),
     ReplyIgnoredEntrySchema.extend(STAMP_FIELDS),
@@ -225,6 +228,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RepoWaitPsFailedEntrySchema.extend(STAMP_FIELDS),
     NetworkWaitStartedEntrySchema.extend(STAMP_FIELDS),
     NetworkWaitEndedEntrySchema.extend(STAMP_FIELDS),
+    RunEndedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>

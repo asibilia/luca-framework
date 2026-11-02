@@ -17,6 +17,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/already-done.ts` | A ticket whose work is already on the base branch (#484): its steps (`check_already_done`, `mark_already_done`, `close_ticket`, `finish_nothing_to_do`) and their texts. |
 | `src/core/execute-already-done.ts` | Carries out an already-done ticket's steps on the tracker: the spec comment, and closing the ticket with a comment in a run with no PR. |
 | `src/core/decide-usage.ts` | The usage half of the decision step: each finished ticket's usage, then the run's. |
+| `src/core/auto-retry.ts` | Pure: the engine's own retry of a routine stuck ticket, final review, or run (#705), once per item with `auto_retry` on, and its comment. |
 | `src/core/decide-run-budget.ts` | The run budget half of the decision step: the run stuck on its budget (or its PR, or its repo wait), its report, and the owner's `retry` or `stop`. |
 | `src/core/fix-loop-text.ts` | The follow-up messages a fix loop sends: a failed red check's or gate's output, a failed try's error, or the files that clashed on the run branch. |
 | `src/core/review-text.ts` | The **ticket review**'s texts: the reviewer's diff, gate results, and earlier findings (also after a ticket was sent back onto the run branch), and what each review fixer is sent. |
@@ -25,6 +26,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/not-in-run.ts` | Just before the PR: the spec's open sub-issues that aren't in the run (#484). |
 | `src/core/left-out.ts` | The words for tickets left out for a person (#499): why each is out, the PR's "For a person" and "Waiting on a person", and why a run had nothing to do. |
 | `src/core/execute.ts` | `runEngine`: the scheduler that runs tickets' steps at the same time. |
+| `src/core/run-ended.ts` | The run's one canonical ending (#706): the `run_ended` that `runEngine` journals when it stops on `done`, once however often the ending is redone. |
 | `src/core/execute-action.ts` | Carries out one action. |
 | `src/core/schedule-rules.ts` | An action's scheduler key, step name, and kind. |
 | `src/core/execute-with-jev.ts` | An action with the decision model in shadow mode. |

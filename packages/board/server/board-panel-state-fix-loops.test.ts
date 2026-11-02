@@ -14,6 +14,7 @@ import {
     gatesRun,
     redCheck,
     sessionOf,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     worktreeReset,
@@ -289,6 +290,7 @@ describe('a bad test', () => {
                     reason: 'nothing_new_to_test',
                     detail: 'Every criterion is already tested.',
                 }),
+                stuckReported({ ticket: 13 }),
             ],
         })
 

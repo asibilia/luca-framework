@@ -18,6 +18,7 @@ import {
     replyReceived,
     specSnapshot,
     stamp,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     type Entry,
@@ -112,6 +113,7 @@ const ticket13Stuck = (): Entry[] => [
         reason: 'red_check_failed',
         detail: 'The red check failed 3 times.',
     }),
+    stuckReported({ ticket: 13 }),
 ]
 
 describe('posting a reply', () => {
@@ -229,6 +231,7 @@ describe('posting a reply', () => {
                     reason: 'changes_requested',
                     detail: 'Still 1 blocker.',
                 }),
+                stuckReported({ ticket: null }),
             ],
         })
 
@@ -251,6 +254,7 @@ describe('posting a reply', () => {
                     role: null,
                     content: { reason: 'run_budget', detail: 'Used it all.' },
                 },
+                stuckReported({ ticket: null }),
             ],
         })
 

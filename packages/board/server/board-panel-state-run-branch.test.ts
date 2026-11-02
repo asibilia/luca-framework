@@ -8,6 +8,7 @@ import {
     pullRequestOpened,
     ticketRebased,
     testsSentBack,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     wholeTicket,
@@ -56,6 +57,7 @@ describe("the engine's install in a new worktree", () => {
                     reason: 'install_failed',
                     detail: '`bun install --frozen-lockfile` failed',
                 }),
+                stuckReported({ ticket: 13 }),
             ],
         })
 

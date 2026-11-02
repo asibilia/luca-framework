@@ -9,6 +9,7 @@ import {
     intakeOfThree,
     runStarted,
     stamp,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     type Entry,
@@ -46,6 +47,7 @@ const stuckRunIn = ({ repo }: { repo: string }): Entry[] =>
         ...intakeOfThree(),
         ticketWorktreeCreated({ ticket: 13 }),
         ticketStuck({ ticket: 13, reason: 'red_check_failed', detail: 'x' }),
+        stuckReported({ ticket: 13 }),
     ].map((entry) =>
         entry.kind === 'run_started'
             ? {

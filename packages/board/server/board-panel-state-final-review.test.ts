@@ -13,6 +13,7 @@ import {
     lensStarted,
     pullRequestOpened,
     replyReceived,
+    stuckReported,
     ticketSkipped,
     ticketStuck,
     ticketWorktreeCreated,
@@ -236,6 +237,7 @@ describe('the final review', () => {
                     reason: 'fix_loop_capped',
                     detail: 'The security blocker is still there.',
                 }),
+                stuckReported({ ticket: null }),
             ],
         })
 

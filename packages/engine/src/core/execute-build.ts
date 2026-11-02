@@ -338,6 +338,7 @@ export const executeBuildAction = async ({
         case 'retry_ticket':
             return retryTicket({ context, action })
         case 'report_stuck':
+        case 'auto_retry':
         case 'wait_for_reply':
         case 'take_reply':
         case 'ignore_reply':

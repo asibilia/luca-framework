@@ -344,6 +344,13 @@ export const EngineConfigSchema = z.object({
      * (`DEFAULT_RUN_BUDGET_TOKENS`).
      */
     run_budget_tokens: z.number().int().positive().optional(),
+    /**
+     * Whether the engine retries a routine stuck item once by itself
+     * (#705), with a comment on the spec issue, before it asks the owner.
+     * Left out, `true`; a config written before it may lack it, and reads
+     * as `true` too (`autoRetryOf`).
+     */
+    auto_retry: z.boolean().default(true).optional(),
 })
 
 export type EngineConfig = z.infer<typeof EngineConfigSchema>

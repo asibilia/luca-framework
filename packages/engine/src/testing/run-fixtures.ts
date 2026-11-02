@@ -10,11 +10,17 @@ import type { TestRun } from '../gates/gate-schemas'
 import type { TicketSnapshot } from '../intake/intake-schemas'
 import type { JournalEntry } from '../journal/journal-record'
 
+/**
+ * The decision-step tests' config. The engine's own retry of a routine
+ * stuck (#705) is off, so a stuck item is told to the owner as before; the
+ * tests of that retry turn it on.
+ */
 export const BUILD_CONFIG: EngineConfig = {
     checks: { test: 'bun test', types: 'bun run types', lint: 'bun run lint' },
     test_file_patterns: ['**/*.test.ts'],
     test_setup_files: [],
     rule_files: [],
+    auto_retry: false,
 }
 
 /** A ticket as intake snapshots it. */

@@ -108,6 +108,50 @@ export const stuckReportedAfter = ({
         : applyTicketRecord({ state: reported, record })
 }
 
+/**
+ * The engine retried a stuck item by itself (#705): its comment is the
+ * engine's own, the item has used its one automatic retry, and the item
+ * takes it as the owner's `retry`. The stuck run carries on (no top-up, as
+ * only a PR that didn't open is retried this way); the final review and a
+ * ticket go on to their usual retry step (`final_review_retried`,
+ * `ticket_retried`).
+ */
+export const autoRetriedAfter = ({
+    state,
+    next,
+    record,
+}: {
+    state: RunState
+    next: RunState
+    record: Extract<JournalRecord, { kind: 'auto_retried' }>
+}): RunState => {
+    const { item, comment_id } = record.content
+    const { tickets, final_review, run } = state.auto_retried
+    const own = {
+        ...next,
+        engine_comments: engineCommentsAfter({ state, comment_id }),
+        auto_retried: {
+            tickets:
+                item === 'ticket' && record.ticket !== null
+                    ? [...tickets, record.ticket]
+                    : tickets,
+            final_review: final_review || item === 'final_review',
+            run: run || item === 'run',
+        },
+    }
+    switch (item) {
+        case 'run':
+            return {
+                ...own,
+                run_budget: { ...state.run_budget, stuck: null, report: null },
+            }
+        case 'final_review':
+            return { ...own, final_reply: { word: 'retry', comment_id } }
+        case 'ticket':
+            return applyTicketRecord({ state: own, record })
+    }
+}
+
 /** A ticket's `retry`, with the run-wide parts it resets. */
 export const ticketRetriedAfter = ({
     state,

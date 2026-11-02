@@ -69,7 +69,10 @@ const runSpec = async ({
     return {
         tracker,
         action,
-        kinds: withoutStepRecords(journal.read()).map((r) => r.kind),
+        // The run's ending (#706) is checked in `run-ended.test.ts`.
+        kinds: withoutStepRecords(journal.read())
+            .map((r) => r.kind)
+            .filter((kind) => kind !== 'run_ended'),
     }
 }
 

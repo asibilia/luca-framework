@@ -34,7 +34,8 @@ describe('engine config', () => {
 
         const result = await loadEngineConfig({ repo_root: repoRoot })
 
-        expect(result).toEqual({
+        // `auto_retry`'s default (#705) has its own test below.
+        expect(result).toMatchObject({
             ok: true,
             config: {
                 checks: { test: 'bun test' },
@@ -42,6 +43,27 @@ describe('engine config', () => {
                 test_setup_files: [],
                 rule_files: [],
             },
+        })
+    })
+
+    test('auto_retry is true when left out, and false when the config says so (#705)', async () => {
+        await writeConfig({
+            text: JSON.stringify({ checks: { test: 'bun test' } }),
+        })
+        expect(await loadEngineConfig({ repo_root: repoRoot })).toMatchObject({
+            ok: true,
+            config: { auto_retry: true },
+        })
+
+        await writeConfig({
+            text: JSON.stringify({
+                checks: { test: 'bun test' },
+                auto_retry: false,
+            }),
+        })
+        expect(await loadEngineConfig({ repo_root: repoRoot })).toMatchObject({
+            ok: true,
+            config: { auto_retry: false },
         })
     })
 
@@ -58,7 +80,7 @@ describe('engine config', () => {
 
         const result = await loadEngineConfig({ repo_root: repoRoot })
 
-        expect(result).toEqual({
+        expect(result).toMatchObject({
             ok: true,
             config: {
                 checks: { test: 'bun test', types: 'tsc', lint: 'eslint .' },
@@ -88,14 +110,27 @@ describe('engine config', () => {
 
         expect(result).toEqual({
             ok: true,
-            config: {
+            config: EngineConfigSchema.parse({
                 checks: { test: 'bun test' },
-                test_file_patterns: ['**/*.test.ts'],
-                test_setup_files: [],
-                rule_files: [],
                 muninn: { vault: 'luca-monorepo' },
-            },
+            }),
         })
+    })
+
+    test('an auto_retry that is not a boolean is an error naming the field (#705)', async () => {
+        for (const auto_retry of ['yes', 1, null]) {
+            await writeConfig({
+                text: JSON.stringify({
+                    checks: { test: 'bun test' },
+                    auto_retry,
+                }),
+            })
+
+            const result = await loadEngineConfig({ repo_root: repoRoot })
+
+            expect(result.ok).toBe(false)
+            if (!result.ok) expect(result.error).toContain('auto_retry')
+        }
     })
 
     test('a config without a test command still loads', async () => {

@@ -160,6 +160,11 @@ export type RunState = {
     final_reply: { word: 'retry' | 'ship'; comment_id: number } | null
     /** The run's budget of tokens: stuck on it, and the budgets added (#435). */
     run_budget: RunBudgetState
+    /**
+     * The items the engine already retried by itself (#705), once each per
+     * run: any later stuck of theirs waits for the owner.
+     */
+    auto_retried: { tickets: number[]; final_review: boolean; run: boolean }
     /** The wait for earlier runs on the same repo (#615). */
     repo_wait: RepoWaitState
     /** Memory's recalls, the learner, and the saves (#370). */
@@ -212,6 +217,7 @@ export const EMPTY_STATE: RunState = {
     final_stuck_report: null,
     final_reply: null,
     run_budget: { stuck: null, report: null, top_ups: 0 },
+    auto_retried: { tickets: [], final_review: false, run: false },
     repo_wait: { status: 'none', since: null },
     memory: EMPTY_MEMORY,
     crashes: {},

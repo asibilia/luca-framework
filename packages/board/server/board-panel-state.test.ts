@@ -12,6 +12,7 @@ import {
     gatesRun,
     replyIgnored,
     replyReceived,
+    stuckReported,
     ticketRetried,
     ticketSkipped,
     ticketSnapshot,
@@ -42,6 +43,7 @@ describe('stuck work: "Needs you" and stuck rows', () => {
                     reason: 'gates_failed',
                     detail: 'bun test: 2 tests fail in menu.test.ts',
                 }),
+                stuckReported({ ticket: 13 }),
             ],
         })
 
@@ -99,6 +101,7 @@ describe('stuck work: "Needs you" and stuck rows', () => {
                     reason: 'red_check_failed',
                     detail: 'x',
                 }),
+                stuckReported({ ticket: 13 }),
             ],
         })
         expect((await harness.state()).run.status).toBe('stuck')
@@ -139,6 +142,7 @@ describe('stuck work: replies the engine reads (#366)', () => {
                     reason: 'gates_failed',
                     detail: 'bun test: 1 test fails',
                 }),
+                stuckReported({ ticket: 13 }),
             ],
         })
         const reply = await harness.send({
@@ -293,6 +297,7 @@ describe('stuck work: replies the engine reads (#366)', () => {
                     reason: 'setup_change_needed',
                     detail: 'test/setup.ts needs a new global',
                 }),
+                stuckReported({ ticket: 13 }),
             ],
         })
         expect((await harness.state()).needs_you[0]).toMatchObject({
@@ -306,6 +311,7 @@ describe('stuck work: replies the engine reads (#366)', () => {
             entries: [
                 ticketWorktreeCreated({ ticket: 13 }),
                 ticketStuck({ ticket: 13, reason: 'gates_failed', detail: '' }),
+                stuckReported({ ticket: 13 }),
             ],
         })
         const before = await harness.state()

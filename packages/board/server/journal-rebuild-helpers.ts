@@ -9,6 +9,7 @@ import {
     pullRequestOpened,
     runStarted,
     stamp,
+    stuckReported,
     ticketStuck,
     ticketWorktreeCreated,
     wholeTicket,
@@ -133,11 +134,15 @@ export const finishedRun = (): Entry[] => [
     }),
 ]
 
-/** Spec 10 with ticket 13 stuck and nothing else running. */
+/**
+ * Spec 10 with ticket 13 stuck, told to the owner (so it needs you, #705),
+ * and nothing else running.
+ */
 export const stuckRun = (): Entry[] => [
     ...intakeOfThree(),
     ticketWorktreeCreated({ ticket: 13 }),
     ticketStuck({ ticket: 13, reason: 'red_check_failed', detail: 'x' }),
+    stuckReported({ ticket: 13 }),
 ]
 
 export const nothingToDoRun = (): Entry[] => [

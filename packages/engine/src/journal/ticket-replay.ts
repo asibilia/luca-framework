@@ -53,6 +53,7 @@ type TicketRecord = Exclude<
             | 'repo_wait_ps_failed'
             | 'network_wait_started'
             | 'network_wait_ended'
+            | 'run_ended'
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'
@@ -157,7 +158,7 @@ const progressChange = ({
                 agent_failure,
                 out_of_turns,
                 engine_failures: 0,
-                ...failedTryChange({ progress, role }),
+                ...failedTryChange({ progress, role, failure }),
             }
         }
         case 'red_check': {
@@ -307,6 +308,11 @@ const progressChange = ({
                 ? { reply: { word, comment_id } }
                 : {}
         }
+        // The engine's own retry (#705) is taken like the owner's `retry`.
+        case 'auto_retried':
+            return {
+                reply: { word: 'retry', comment_id: record.content.comment_id },
+            }
         case 'ticket_retried':
             return retriedChange({ progress, retried: record.content })
         case 'ticket_skipped':

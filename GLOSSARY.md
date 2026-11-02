@@ -164,6 +164,10 @@ _Avoid_: quota, token limit
 What a resumed run does with the repo's `.luca/config.json`: it takes the new build fields (the prepare command, its time limit, and how many may run at once) and keeps everything else, such as the checks, as the run started with it. A config it can't use leaves the run's own in place.
 _Avoid_: hot reload, config refresh
 
+**Watcher**:
+An agent that watches a run for its owner, handles a bounded set of routine problems, and hands serious ones to the owner. Started with `/luca-watch`.
+_Avoid_: orchestrator, babysitter
+
 **Agent message**:
 A one-way heads-up one agent sends another during a run, handed over by the engine at the receiver's next tool call.
 _Avoid_: chat, ping, prompt

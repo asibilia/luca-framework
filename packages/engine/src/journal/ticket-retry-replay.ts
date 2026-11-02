@@ -68,6 +68,7 @@ const resumedProgress = ({
         setup_change: null,
         agent_failure: null,
         failed_tries: {},
+        failed_kinds: {},
         engine_failures: 0,
         sessions: {},
         red_fix_rounds: 0,

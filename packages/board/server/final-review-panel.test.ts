@@ -15,6 +15,7 @@ import {
     finding,
     intakeOfThree,
     pullRequestOpened,
+    stuckReported,
     wholeTicket,
     type Entry,
 } from './testing/journal-fixtures'
@@ -289,6 +290,7 @@ describe('the final review as the engine journals it', () => {
                     reason: 'changes_requested',
                     detail: '- security-S1 [should-fix, code]: Finding',
                 }),
+                stuckReported({ ticket: null }),
             ],
         })
 

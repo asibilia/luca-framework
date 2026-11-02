@@ -126,6 +126,7 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply. See "Getting a stuck run moving". |
+| `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply, with its journal reading in `scripts/stuck-records.ts` (including a stuck item's retry history, for `/luca-watch`) and its lines on a stuck item in `scripts/stuck-lines.ts`. See "Getting a stuck run moving". |
+| `skills/luca-watch/` | The `/luca-watch` skill (#706), a **watcher**: its `SKILL.md`, and `scripts/wait-for-change.ts`, which waits up to five minutes for the next record a watcher acts on (the oldest `stuck_reported` or ending after its cursor), a gone engine, or quiet, and prints it as one JSON line. See "Watching a run". |
 | `skills/luca-retro/` | The `/luca-retro` skill (#514): its `SKILL.md`, and `scripts/retro-summary.ts`, which sums up what went wrong in finished runs, from their journals, and the patterns that repeat across them. See "Looking back at a run". |
 | `skills/luca-spec-check/` | The `/luca-spec-check` skill (#678): its `SKILL.md`, and `scripts/spec-bundle.ts`, which prints a spec, its tickets in order, and the repo's rule files, glossary and ADRs as one bundle for the skill's three fresh readers (Comprehension, Readiness, Codebase). The skill merges their findings into one report and posts it on the spec issue only after a yes. |

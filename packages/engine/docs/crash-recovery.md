@@ -68,8 +68,9 @@ repo's `.luca/config.json` again and takes its new **build fields**:
 `prepare`, `prepare_timeout_ms`, `prepare_concurrency`, the test slots'
 cap `test_concurrency` (#544), the test time
 limit `test_timeout_ms` (#542), the fast test speed limit
-`test_case_timeout_ms` (#580), and the leftover scan's `leftover_allow`
-(#520), including one added or removed. So a repo that swaps a slow `prepare` for a fast cached one
+`test_case_timeout_ms` (#580), the leftover scan's `leftover_allow`
+(#520), including one added or removed, and `auto_retry` (#705; left out,
+`true`, so it is never `null`). So a repo that swaps a slow `prepare` for a fast cached one
 gets it in its runs that are going, without losing their work. Right after
 the resume's `engine_resumed`, and before its first step, it journals
 `config_reloaded { changes: [{ field, from, to }] }` (`null` for a field

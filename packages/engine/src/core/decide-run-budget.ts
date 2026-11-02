@@ -1,3 +1,4 @@
+import { runAutoRetry } from './auto-retry'
 import {
     amountTokens,
     pendingReplies,
@@ -57,7 +58,8 @@ export type RunBudgetAction =
  * replies wait until the run carries on. A run whose PR didn't open (#508)
  * or whose repo wait ran out is stuck the same way, told why, and a bare
  * `retry` tries again, adding no budget; an amount there is sent back
- * (`amount_only_for_run_budget`). `null` when
+ * (`amount_only_for_run_budget`). A PR that didn't open is first retried
+ * once by the engine itself, with `auto_retry` on (#705). `null` when
  * the budget has nothing to say: the run is under it, stopping, or its PR
  * is open.
  *
@@ -90,6 +92,9 @@ export const decideRunBudget = ({
         ]
     }
     if (report === null) {
+        // A PR that didn't open is tried again once by the engine (#705).
+        const auto_retry = runAutoRetry({ state, spec_number })
+        if (auto_retry !== null) return [auto_retry]
         return [
             {
                 type: 'report_run_stuck',

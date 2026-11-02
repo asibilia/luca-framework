@@ -122,10 +122,13 @@ describe('luca-run --spec, on one happy run', () => {
         ).toEqual(LENS_ROLES.toSorted())
         expect(closedAfterFirst).toBe(1)
         expect(recorder.kinds()).toContain('agent_finished')
-        expect(recorder.kinds().slice(-2)).toEqual([
-            'pull_request_opened',
-            'worktrees_removed',
-        ])
+        // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        expect(
+            recorder
+                .kinds()
+                .filter((kind) => kind !== 'run_ended')
+                .slice(-2)
+        ).toEqual(['pull_request_opened', 'worktrees_removed'])
         expect(recorder.endings()).toEqual([first])
     })
 

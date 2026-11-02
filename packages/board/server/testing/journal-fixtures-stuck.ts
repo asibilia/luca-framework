@@ -17,6 +17,48 @@ export const ticketStuck = ({
     entry({ kind: 'ticket_stuck', ticket, content: { reason, detail } })
 
 /**
+ * The engine told the spec issue that stuck work waits for a reply, in its
+ * comment `comment_id`: a ticket's, or with `ticket` `null`, the run's or
+ * the final review's. The board's Needs-you items wait for it (#705).
+ */
+export const stuckReported = ({
+    ticket,
+    comment_id = 400,
+}: {
+    ticket: number | null
+    comment_id?: number
+}): Entry =>
+    entry({
+        kind: 'stuck_reported',
+        ticket,
+        content: { comment_id, body: 'stuck' },
+    })
+
+/**
+ * The engine retried a routine stuck item by itself (#705), saying so in
+ * its comment `comment_id` on the spec issue: a ticket, the final review, or
+ * the run.
+ */
+export const autoRetried = ({
+    item,
+    ticket = null,
+    reason,
+    comment_id = 450,
+    body,
+}: {
+    item: 'ticket' | 'final_review' | 'run'
+    ticket?: number | null
+    reason: string
+    comment_id?: number
+    body: string
+}): Entry =>
+    entry({
+        kind: 'auto_retried',
+        ticket,
+        content: { item, reason, comment_id, body },
+    })
+
+/**
  * The owner's one-word reply on the spec issue, as the engine journals it
  * (#366): `retry #n`, `skip #n`, `stop`, or `retry` and `ship` for a stuck
  * final review (`ticket: null`).

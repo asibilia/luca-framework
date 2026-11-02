@@ -25,6 +25,36 @@ Tests:
 - `packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
 
+## Watching a run
+
+The `/luca-watch` skill is a watcher: it follows a run's journal in five-minute waits, answers routine stuck items itself within a budget of two unattended retries per item, resumes once after a network wait gave up, and hands every serious item to the spec's owner. Every way a run ends journals one `run_ended`, so the watcher can tell a finished run from a crashed one.
+
+Reached by: `/luca-watch [run id]` in Claude Code or a Paseo chat; `run_ended` in every finished run's journal.
+
+Tests:
+
+- `packages/engine/skills/luca-watch/skill-text.test.ts`
+- `packages/engine/skills/luca-watch/scripts/wait-for-change.test.ts`
+- `packages/engine/skills/luca-unstick/scripts/stuck-records.test.ts`
+- `packages/engine/src/core/run-ended.test.ts`
+- `packages/engine/src/core/run-ended.e2e.test.ts`
+
+## The engine's own retry of a routine stuck
+
+A routine stuck item (a ticket, the final review, or the run) is retried once by the engine itself, with a comment on the spec issue and an `auto_retried` record, unless `auto_retry` is `false`; a second stuck of the same item waits for the owner. The board shows the comment as a chat row and puts stuck work in Needs you only once it is reported.
+
+Reached by: any run whose ticket, final review, or PR step gets stuck for a routine reason; `auto_retry` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/core/auto-retry-ticket.test.ts`
+- `packages/engine/src/core/auto-retry-items.test.ts`
+- `packages/engine/src/core/run-auto-retry.e2e.test.ts`
+- `packages/engine/src/config/engine-config.test.ts`
+- `packages/engine/src/config/config-reload.test.ts`
+- `packages/engine/src/core/decide-config-reload.test.ts`
+- `packages/board/server/auto-retry-panel.test.ts`
+
 ## Looking back at a run
 
 The `/luca-retro` skill reads finished runs' journals and suggests changes to the agents' environment, ranked by how serious the problem was.

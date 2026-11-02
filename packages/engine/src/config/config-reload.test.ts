@@ -83,6 +83,11 @@ describe('the fields a resume reloads', () => {
         })
     })
 
+    test('auto_retry is reloaded, not frozen (#705)', () => {
+        expect(RELOADED_FIELDS).toContain('auto_retry')
+        expect(FROZEN_FIELDS).not.toContain('auto_retry')
+    })
+
     test('leftover_allow is reloaded, not frozen (#520)', () => {
         expect(RELOADED_FIELDS).toContain('leftover_allow')
         expect(FROZEN_FIELDS).not.toContain('leftover_allow')

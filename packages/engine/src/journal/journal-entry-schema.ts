@@ -102,6 +102,7 @@ import {
     ConfigReloadedEntrySchema,
     ConfigReloadRefusedEntrySchema,
     EngineResumedEntrySchema,
+    RunEndedEntrySchema,
     RunResumedEntrySchema,
     RunStartedEntrySchema,
     RunStoppedEntrySchema,
@@ -110,6 +111,7 @@ import {
     TicketWaitingEntrySchema,
 } from './run-entries'
 import {
+    AutoRetriedEntrySchema,
     CommentReadEntrySchema,
     ReplyIgnoredEntrySchema,
     ReplyReceivedEntrySchema,
@@ -195,6 +197,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     FinalReviewPassedEntrySchema,
     FinalReviewShippedEntrySchema,
     StuckReportedEntrySchema,
+    AutoRetriedEntrySchema,
     CommentReadEntrySchema,
     ReplyReceivedEntrySchema,
     ReplyIgnoredEntrySchema,
@@ -224,6 +227,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RepoWaitPsFailedEntrySchema,
     NetworkWaitStartedEntrySchema,
     NetworkWaitEndedEntrySchema,
+    RunEndedEntrySchema,
 ])
 
 /** A journal entry as callers write it; schema defaults fill the rest. */

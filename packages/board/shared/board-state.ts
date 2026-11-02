@@ -144,6 +144,13 @@ export const BoardStateSchema = z.object({
     /** How much of the plan the whole run used, per window. */
     run_plan_used: z.array(PlanUsedSchema),
     needs_you: z.array(NeedsYouSchema),
+    /**
+     * A stuck ticket's or run's item before the engine told the owner
+     * (#705): it moves to `needs_you` on the engine's `stuck_reported`, and
+     * is dropped when the engine retries the item by itself. Defaulted, so
+     * a board state from before it still parses.
+     */
+    unreported: z.array(NeedsYouSchema).default([]),
     tickets: z.array(TicketCardSchema),
     final_review: FinalReviewSchema,
     jev: JevCountsSchema,
