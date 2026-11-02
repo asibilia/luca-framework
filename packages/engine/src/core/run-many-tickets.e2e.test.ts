@@ -350,7 +350,10 @@ describe('many tickets in one run, end to end, with scripted agents', () => {
         }
         expect(existsSync(run.journal_file)).toBe(true)
         expect(ofKind(run.records, 'worktrees_removed')).toHaveLength(1)
-        expect(run.records.at(-1)?.kind).toBe('worktrees_removed')
+        // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        expect(
+            run.records.filter(({ kind }) => kind !== 'run_ended').at(-1)?.kind
+        ).toBe('worktrees_removed')
     })
 })
 

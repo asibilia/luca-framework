@@ -25,6 +25,19 @@ Tests:
 - `packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
 
+## Watching a run
+
+The `/luca-watch` skill is a watcher: it follows a run's journal in five-minute waits, answers routine stuck items itself within a budget of two unattended retries per item, resumes once after a network wait gave up, and hands every serious item to the spec's owner. Every way a run ends journals one `run_ended`, so the watcher can tell a finished run from a crashed one.
+
+Reached by: `/luca-watch [run id]` in Claude Code or a Paseo chat; `run_ended` in every finished run's journal.
+
+Tests:
+
+- `packages/engine/skills/luca-watch/skill-text.test.ts`
+- `packages/engine/skills/luca-watch/scripts/wait-for-change.test.ts`
+- `packages/engine/src/core/run-ended.test.ts`
+- `packages/engine/src/core/run-ended.e2e.test.ts`
+
 ## Looking back at a run
 
 The `/luca-retro` skill reads finished runs' journals and suggests changes to the agents' environment, ranked by how serious the problem was.

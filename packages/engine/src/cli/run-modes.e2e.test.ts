@@ -71,10 +71,13 @@ describe('luca-run --demo', () => {
         expect(result.pull_requests[0]?.body).toContain('Closes #11')
         expect(result.pull_requests[0]?.body).toContain('Closes #12')
         expect(recorder.kinds()[0]).toBe('run_started')
-        expect(recorder.kinds().slice(-2)).toEqual([
-            'pull_request_opened',
-            'worktrees_removed',
-        ])
+        // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        expect(
+            recorder
+                .kinds()
+                .filter((kind) => kind !== 'run_ended')
+                .slice(-2)
+        ).toEqual(['pull_request_opened', 'worktrees_removed'])
         // The decision model is off in the demo: no asks, nothing sent.
         expect(recorder.kinds()).not.toContain('jev_asked')
         expect(recorder.kinds()).not.toContain('jev_failed')

@@ -194,6 +194,9 @@ describe('gates that fail after joining, end to end', () => {
             expect(existsSync(content.path)).toBe(false)
         }
         expect(existsSync(run.journal_file)).toBe(true)
-        expect(run.records.at(-1)?.kind).toBe('worktrees_removed')
+        // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        expect(
+            run.records.filter(({ kind }) => kind !== 'run_ended').at(-1)?.kind
+        ).toBe('worktrees_removed')
     })
 })

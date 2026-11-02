@@ -117,7 +117,9 @@ describe('a plan limit with two tickets in flight, end to end', () => {
                 content.scope === 'run' ? 'run' : content.ticket
             )
         ).toEqual([12, 11, 'run'])
-        expect(records.at(-2)?.kind).toBe('worktrees_removed')
-        expect(records.at(-1)?.kind).toBe('usage_recorded')
+        // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        const ending = records.filter(({ kind }) => kind !== 'run_ended')
+        expect(ending.at(-2)?.kind).toBe('worktrees_removed')
+        expect(ending.at(-1)?.kind).toBe('usage_recorded')
     }, 120_000)
 })

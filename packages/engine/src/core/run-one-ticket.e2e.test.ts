@@ -52,7 +52,10 @@ describe('one ticket, end to end, with scripted agents', () => {
 
         // The journal holds every step, in order, with the final review
         // (its five lenses at once, in any order) right before the PR.
-        const kinds = allKinds.filter((kind) => kind !== 'agent_session_closed')
+        // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        const kinds = allKinds.filter(
+            (kind) => kind !== 'agent_session_closed' && kind !== 'run_ended'
+        )
         const finalFrom = kinds.indexOf('final_review_started')
         const finalTo = kinds.indexOf('final_review_passed')
         expect(kinds.slice(finalFrom + 1, finalTo).toSorted()).toEqual(
