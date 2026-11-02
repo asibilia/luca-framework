@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.31
+
+### Patch Changes
+
+- 820eb5b: Fix the luca-retro skill's frontmatter so it is valid YAML.
+
 ## 14.0.0-alpha.30
 
 ### Patch Changes
