@@ -99,6 +99,36 @@ export const RunStoppedEntrySchema = z.object({
     }),
 })
 
+/** How a run ended, in its one `run_ended` (#706). */
+export const RunEndOutcomeSchema = z.enum([
+    'pull_request',
+    'stopped',
+    'completed',
+    'refused',
+    'nothing_to_do',
+    'failed',
+])
+
+export type RunEndOutcome = z.infer<typeof RunEndOutcomeSchema>
+
+/**
+ * The run is over for good (#706): its PR opened (`pull_request`), the
+ * owner's `stop`, every ticket finished without a PR (`completed`), intake
+ * refused it, it had nothing to do, or a billing or crash stop (`failed`).
+ * `detail` says it for a person; `url` is the PR's, else `null`. Journaled
+ * once, as the run's last record. A launcher stop the run can go on from
+ * and a crash are not endings.
+ */
+export const RunEndedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('run_ended'),
+    content: z.object({
+        outcome: RunEndOutcomeSchema,
+        detail: z.string().min(1),
+        url: z.string().nullable(),
+    }),
+})
+
 /**
  * The scheduler is about to carry out one step: an action it started, other
  * than a wait. `key` is the scheduler's key for it (a ticket's number,

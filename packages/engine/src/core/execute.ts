@@ -11,6 +11,7 @@ import { readEarlierRuns, type GoingRunsReader } from './execute-repo-wait'
 import { executeWithJev } from './execute-with-jev'
 import { createLiveFile } from './live-file'
 import { withNetworkWait } from './network-wait'
+import { recordRunEnded } from './run-ended'
 import {
     agentRoleOf,
     crashesIn,
@@ -66,7 +67,8 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * every action that can run now from the journal and starts those it can,
  * so tickets build at the same time; then it waits for any one to settle
  * and decides again, until the run is done: refused, nothing to do, its PR
- * opened, stopped by the owner's `stop`, or every ticket skipped. Building tickets needs `git` and `launcher`. Safe to
+ * opened, stopped by the owner's `stop`, or every ticket skipped, and
+ * journals its one `run_ended` (#706). Building tickets needs `git` and `launcher`. Safe to
  * call on a journal left by a crashed engine; it picks up where the journal
  * ends.
  *
@@ -350,6 +352,10 @@ export const runEngine = async ({
             if (stop !== undefined && inFlight.size === 0) {
                 if (STOP_ACTIONS.has(stop.type)) {
                     await closeFinished({ all: true })
+                }
+                // The run's one canonical ending, as its last record (#706).
+                if (stop.type === 'done') {
+                    recordRunEnded({ journal, action: stop })
                 }
                 return stop
             }

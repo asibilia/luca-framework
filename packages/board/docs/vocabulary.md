@@ -20,6 +20,8 @@ The engine reads the replies a stuck ticket offers (`retry #n`, `skip #n`, `stop
 
 The engine journals a few more #366 kinds the board doesn't show; they are skipped quietly as unknown kinds: `stuck_reported` (the engine told the spec issue a ticket, the run, or the final review is stuck), `comment_read` (a comment it read on the spec issue while waiting), `final_review_retried` (a `retry` of the stuck final review; the `reply_received` before it already moved the board on), `join_undone` (a stuck ticket's join was undone on the run branch, never pushed), and `baseline_prepared` (the repo's prepare command before a ticket's baseline tests, #481; a failed one is shown by the `ticket_stuck` after it).
 
+`run_ended` (#706) is skipped quietly too: the run's one canonical ending, `{ outcome, detail, url }`, journaled last on every way a run ends (`pull_request`, `stopped`, `completed`, `refused`, `nothing_to_do`, or `failed`). It is for the `/luca-watch` watcher; the board already ends the run from the record before it (`pull_request_opened`, `intake_refused`, `nothing_to_do`, a `stop` reply, or a `run_stopped`) and from the engine's own `ended` message.
+
 `lens` is one of `architecture`, `simplification`, `security`, `integration`, or `rules`.
 
 ### The limit and usage shapes

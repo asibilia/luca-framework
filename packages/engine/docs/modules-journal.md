@@ -41,7 +41,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/journal-record-schema.ts` | `JournalRecordSchema` (one line of a journal, with `seq` and `time`) and `JournalRecord`: the same union, stamped. |
 | `src/journal/journal-kinds.ts` | `JournalKindSchema`, `JournalKind`, and `JOURNAL_KINDS`: every record kind's name. |
 | `src/journal/entry-fields.ts` | The fields every entry has. |
-| `src/journal/run-entries.ts` | Run start, resume, stop, and step entries. |
+| `src/journal/run-entries.ts` | Run start, resume, stop, ending (`run_ended`, #706), and step entries. |
 | `src/journal/intake-entries.ts` | Intake entries. |
 | `src/journal/worktree-entries.ts` | Worktree and baseline entries. |
 | `src/journal/agent-entries.ts` | Agent turn and session entries. |

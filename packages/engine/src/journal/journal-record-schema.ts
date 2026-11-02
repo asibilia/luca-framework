@@ -102,6 +102,7 @@ import {
     ConfigReloadedEntrySchema,
     ConfigReloadRefusedEntrySchema,
     EngineResumedEntrySchema,
+    RunEndedEntrySchema,
     RunResumedEntrySchema,
     RunStartedEntrySchema,
     RunStoppedEntrySchema,
@@ -225,6 +226,7 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     RepoWaitPsFailedEntrySchema.extend(STAMP_FIELDS),
     NetworkWaitStartedEntrySchema.extend(STAMP_FIELDS),
     NetworkWaitEndedEntrySchema.extend(STAMP_FIELDS),
+    RunEndedEntrySchema.extend(STAMP_FIELDS),
 ])
 
 export type JournalRecord = z.infer<typeof JournalRecordSchema>

@@ -174,6 +174,30 @@ every record kind and stuck reason it names is the journal's, and that its
 playbook covers every stuck reason, so a new reason fails them until the
 skill covers it.
 
+### Watching a run (#706)
+
+The `/luca-watch [run id]` skill is a **watcher**: an agent that watches a
+run for its owner, answers a bounded set of routine stuck items itself, and
+hands the serious ones to the owner. It waits with its helper,
+`scripts/wait-for-change.ts <run id> <last seq>`, which polls the journal
+every five seconds and prints one JSON line (`event` `stuck`, `ended`,
+`engine_gone`, `quiet`, or `error`, with `last_seq` and `detail`): the
+oldest `stuck_reported` or ending after the cursor, a run with no live
+engine, or five quiet minutes. The skill retries routine items within two
+unattended retries per item (the engine's `auto_retried` records plus its
+own retries in `watcher.log`), makes only semantics-preserving test fixes
+with byte backups, resumes once after a `network_wait_ended` that gave up,
+and never posts `skip`, `stop`, or `ship`.
+
+Every way a run ends journals one `run_ended` as its last record:
+`content.outcome` is `pull_request` (after `pull_request_opened`, with its
+`url`), `stopped` (the owner's `stop`), `completed` (every ticket finished
+without a PR), `refused`, `nothing_to_do`, or `failed` (a billing or crash
+stop), with a `detail` line and `url` (`null` but for a PR). A resumable
+launcher stop and a crash journal none, and a redone ending adds no second
+one. The helper also reads the older endings for journals from before it.
+It ships, and is installed and checked, the same way as `/luca-unstick`.
+
 ### Looking back at a run (#514)
 
 After a run, the `/luca-retro` skill asks what would have stopped the

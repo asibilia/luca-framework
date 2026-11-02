@@ -53,6 +53,7 @@ type TicketRecord = Exclude<
             | 'repo_wait_ps_failed'
             | 'network_wait_started'
             | 'network_wait_ended'
+            | 'run_ended'
             | 'usage_recorded'
             | 'agent_message'
             | 'agent_message_delivered'

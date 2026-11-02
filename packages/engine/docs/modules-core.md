@@ -25,6 +25,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/not-in-run.ts` | Just before the PR: the spec's open sub-issues that aren't in the run (#484). |
 | `src/core/left-out.ts` | The words for tickets left out for a person (#499): why each is out, the PR's "For a person" and "Waiting on a person", and why a run had nothing to do. |
 | `src/core/execute.ts` | `runEngine`: the scheduler that runs tickets' steps at the same time. |
+| `src/core/run-ended.ts` | The run's one canonical ending (#706): the `run_ended` that `runEngine` journals when it stops on `done`, once however often the ending is redone. |
 | `src/core/execute-action.ts` | Carries out one action. |
 | `src/core/schedule-rules.ts` | An action's scheduler key, step name, and kind. |
 | `src/core/execute-with-jev.ts` | An action with the decision model in shadow mode. |

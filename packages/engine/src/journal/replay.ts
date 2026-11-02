@@ -319,6 +319,9 @@ const applyKind = ({
         case 'network_wait_started':
         case 'network_wait_ended':
             return next
+        // The run's ending (#706) changes no step: only a watcher reads it.
+        case 'run_ended':
+            return next
         // A wait between steps changes no step: only the board reads it.
         case 'ticket_waiting':
             return next
