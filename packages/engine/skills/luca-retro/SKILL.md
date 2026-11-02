@@ -1,6 +1,6 @@
 ---
 name: luca-retro
-description: Looks back at a finished Luca run and suggests changes to the agents' environment, not the code, so the next run goes better. It reads the run's journal, ranks what went wrong (most serious first), and says for each one the change to make and where: a check to add, a line for the repo's rules file, an instruction to delete, missing information, waste, or a Luca bug. Once the owner picks findings by number, it opens a GitHub issue for each, after a yes. Use it for `/luca-retro [run id ...]`, and whenever someone asks for a retro, what went wrong in the run, how to stop this happening again, or the lessons from a run, even if they don't name the skill.
+description: "Looks back at a finished Luca run and suggests changes to the agents' environment, not the code, so the next run goes better. It reads the run's journal, ranks what went wrong (most serious first), and says for each one the change to make and where: a check to add, a line for the repo's rules file, an instruction to delete, missing information, waste, or a Luca bug. Once the owner picks findings by number, it opens a GitHub issue for each, after a yes. Use it for `/luca-retro [run id ...]`, and whenever someone asks for a retro, what went wrong in the run, how to stop this happening again, or the lessons from a run, even if they don't name the skill."
 argument-hint: "[run id ...]"
 ---
 
