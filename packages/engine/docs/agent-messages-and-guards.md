@@ -149,7 +149,7 @@ they count toward the run budget. `agent_session` counts the turn's helpers
 in `helpers_started` (0 in older journals).
 
 Before each launch, the launcher checks `accountInfo()` for a Claude plan
-(pro, max, team, or enterprise) and no API key, before the prompt is sent.
+(pro, max, ultra, team, or enterprise) and no API key, before the prompt is sent.
 The agent's environment comes from an allow-list, so `ANTHROPIC_API_KEY`,
 `ANTHROPIC_AUTH_TOKEN`, and `ANTHROPIC_BASE_URL` never reach it. It loads no
 settings, MCP servers, or skills, and keeps no session on disk.
