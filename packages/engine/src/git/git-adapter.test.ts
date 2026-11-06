@@ -9,9 +9,10 @@ import { createGitAdapter } from './git-adapter'
 import { git } from '../testing/practice-repo'
 
 /**
- * `undoReplay` on a real git repo: it undoes a join on top of the branch,
- * is safe to run twice, and never rewinds the branch over other work
- * (#519).
+ * `replay` and `undoReplay` on a real git repo: a replay of no commits is a
+ * join that adds nothing (#716), and `undoReplay` undoes a join on top of
+ * the branch, is safe to run twice, and never rewinds the branch over
+ * other work (#519).
  */
 
 let repo = ''
@@ -119,5 +120,19 @@ describe('undoReplay', () => {
         expect(result.ok).toBe(false)
         expect(result.ok ? '' : result.error).toContain(other.slice(0, 7))
         expect(await headOf()).toBe(other)
+    })
+})
+
+describe('replay', () => {
+    test('nothing to replay is a join that adds nothing (#716)', async () => {
+        const tip = await headOf()
+
+        const result = await createGitAdapter({ repo_root: repo }).replay({
+            cwd: repo,
+            commits: [],
+        })
+
+        expect(result).toEqual({ ok: true, shas: [], lines_changed: 0 })
+        expect(await headOf()).toBe(tip)
     })
 })
