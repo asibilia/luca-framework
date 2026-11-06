@@ -32,6 +32,10 @@ export const joinOps: Pick<
             })
         ),
     replay: async ({ cwd, commits }) => {
+        // The ticket's change is already on the branch (#716). `git
+        // cherry-pick` with no commits only prints its usage and fails.
+        if (commits.length === 0)
+            return { ok: true, shas: [], lines_changed: 0 }
         const before = await head({ cwd })
         const picked = await gitRun({
             cwd,

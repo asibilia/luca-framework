@@ -127,7 +127,9 @@ export type GitAdapter = {
     /**
      * Replays commits onto the branch checked out at `cwd`, in order. A clash
      * is undone and returned as an error. `lines_changed` is the lines the
-     * replay added plus removed, binary files counting 0.
+     * replay added plus removed, binary files counting 0. No commits (the
+     * change is already on the branch) is a join that adds nothing: `ok`,
+     * with no `shas` (#716).
      */
     replay: (args: {
         cwd: string
