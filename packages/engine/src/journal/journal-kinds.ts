@@ -15,6 +15,8 @@ export const JournalKindSchema = z.enum([
     'ticket_snapshot',
     'run_branch_created',
     'ticket_worktree_created',
+    'build_cache_copied',
+    'build_cache_skipped',
     'baseline_prepared',
     'prepare_made',
     'baseline_tests',

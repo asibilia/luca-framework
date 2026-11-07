@@ -437,6 +437,10 @@ const applyKind = ({
         // An agent's changeset the engine removed: noted, never acted on.
         case 'changeset_dropped':
             return next
+        // Warm builds (#721): noted; the worktree keeps what was copied.
+        case 'build_cache_copied':
+        case 'build_cache_skipped':
+            return next
         case 'prepare_made':
             return {
                 ...next,

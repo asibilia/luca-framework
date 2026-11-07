@@ -119,8 +119,10 @@ when nothing is left to do and 1 otherwise.
 throwaway repos with a local bare `origin`, a fake GitHub, and a fake
 MuninnDB. Its config side (guessing checks, the config report) is in
 `src/cli/setup-config.ts`, doctor's repo group in
-`src/cli/setup-repo-checks.ts`, and the `junit` check in
-`src/cli/setup-junit-check.ts`.
+`src/cli/setup-repo-checks.ts`, the `junit` check in
+`src/cli/setup-junit-check.ts`, and the `build_cache` check (#721: a
+warning for each `build_cache_paths` path git doesn't ignore in the
+checkout) in `src/cli/setup-build-cache-check.ts`.
 
 ## Checking a setup: `luca doctor`
 

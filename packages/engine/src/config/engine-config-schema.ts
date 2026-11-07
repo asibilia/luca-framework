@@ -45,6 +45,32 @@ const isFileInsideRepo = (path: string): boolean => {
     )
 }
 
+/**
+ * Whether a `build_cache_paths` entry names a path or glob inside the repo
+ * (#721): not empty, not absolute, and, once cleaned, neither the repo root
+ * nor a path that climbs out of it with `..`.
+ */
+const isCachePathInsideRepo = (path: string): boolean => {
+    const clean = normalize(path)
+    return (
+        path !== '' &&
+        !isAbsolute(path) &&
+        clean !== '.' &&
+        clean !== './' &&
+        clean !== '..' &&
+        !clean.startsWith('../')
+    )
+}
+
+/** One `build_cache_paths` entry, its trailing `/` dropped. */
+const BuildCachePathSchema = z
+    .string()
+    .refine(isCachePathInsideRepo, {
+        message:
+            'each build_cache_paths entry must be a path or glob inside the repo, relative to its root: not empty, not an absolute path, not the repo root, and not one that leaves the repo with ".."',
+    })
+    .transform((path) => path.replace(/\/+$/, ''))
+
 /** One JUnit file a junit test command writes, relative to the repo root. */
 const JunitPathSchema = z.string().min(1).refine(isFileInsideRepo, {
     message:
@@ -383,6 +409,14 @@ export const EngineConfigSchema = z.object({
      * as `true` too (`autoRetryOf`).
      */
     auto_retry: z.boolean().default(true).optional(),
+    /**
+     * The repo's build-cache folders (#721), as paths or globs relative to
+     * the repo root, such as `packages/ios/.derived`: each new ticket
+     * worktree gets the ones git ignores cloned in from the run branch's
+     * worktree, or else the repo's checkout. Left out, `[]`; a config
+     * written before it may lack it (`buildCachePathsOf`).
+     */
+    build_cache_paths: z.array(BuildCachePathSchema).default([]).optional(),
 })
 
 export type EngineConfig = z.infer<typeof EngineConfigSchema>

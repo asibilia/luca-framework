@@ -25,6 +25,10 @@ import {
     TicketClosedEntrySchema,
 } from './already-done-entries'
 import {
+    BuildCacheCopiedEntrySchema,
+    BuildCacheSkippedEntrySchema,
+} from './build-cache-entries'
+import {
     ChangesetDroppedEntrySchema,
     CommitMadeEntrySchema,
     LeftoverScanEntrySchema,
@@ -148,6 +152,8 @@ export const JournalRecordSchema = z.discriminatedUnion('kind', [
     TicketSnapshotEntrySchema.extend(STAMP_FIELDS),
     RunBranchCreatedEntrySchema.extend(STAMP_FIELDS),
     TicketWorktreeCreatedEntrySchema.extend(STAMP_FIELDS),
+    BuildCacheCopiedEntrySchema.extend(STAMP_FIELDS),
+    BuildCacheSkippedEntrySchema.extend(STAMP_FIELDS),
     BaselinePreparedEntrySchema.extend(STAMP_FIELDS),
     PrepareMadeEntrySchema.extend(STAMP_FIELDS),
     BaselineTestsEntrySchema.extend(STAMP_FIELDS),

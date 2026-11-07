@@ -18,6 +18,7 @@ import {
 
 export {
     autoRetryOf,
+    buildCachePathsOf,
     DEFAULT_PREPARE_CONCURRENCY,
     DEFAULT_PREPARE_TIMEOUT_MS,
     decisionModelOf,

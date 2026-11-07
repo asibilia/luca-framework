@@ -38,6 +38,8 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/repo-wait-text.ts` | The repo wait's texts: the spec comment, and the run stuck on it. |
 | `src/core/execute-build.ts` | Carries out a build step through the git adapter, the gates, and the agent launcher. Its turn, gates, and commit helpers serve the final review too. |
 | `src/core/build-context.ts` | `BuildContext` and the lookups every build step shares. |
+| `src/core/build-cache.ts` | Warm builds' reads (#721): an entry's matches in a folder, which git ignores, and the real `copy_dir`. |
+| `src/core/build-cache-copy.ts` | Clones the repo's `build_cache_paths` into a new ticket worktree (#721), from the run branch's worktree or the checkout. |
 | `src/core/worktree-changes.ts` | A worktree's changes, less what prepare made and outside links. |
 | `src/core/agent-turn.ts` | One agent turn (`runTurn`), guarded and journaled; launches and follow-ups. |
 | `src/core/engine-chores.ts` | The chores a writer's result asks the engine for (#618): file modes, and the repo's named generators, as `generate` checks. |

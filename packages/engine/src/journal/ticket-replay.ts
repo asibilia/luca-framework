@@ -87,6 +87,8 @@ type TicketRecord = Exclude<
             | 'memory_write_done'
             | 'baseline_reused'
             | 'prepare_made'
+            | 'build_cache_copied'
+            | 'build_cache_skipped'
     }
 >
 

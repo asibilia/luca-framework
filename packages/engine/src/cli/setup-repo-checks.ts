@@ -1,6 +1,6 @@
 /**
  * Doctor's repo group (`repoChecks`), which `luca setup` runs once too: the
- * labels, the config, its junit commands (#668), the GitHub remote, issue
+ * labels, the config, its junit commands (#668) and build caches (#721), the GitHub remote, issue
  * links, the base branch on `origin`, and the memory vault. Read-only.
  */
 import { join } from 'node:path'
@@ -12,10 +12,12 @@ import {
     type DoctorCheck,
     type Found,
 } from './doctor-checks'
+import { checkBuildCache } from './setup-build-cache-check'
 import { errorText, findConfig } from './setup-config'
 import { checkJunit } from './setup-junit-check'
 
 import {
+    buildCachePathsOf,
     ENGINE_CONFIG_FILE,
     hasJunitCommand,
     loadEngineConfig,
@@ -223,7 +225,8 @@ const checkConfig = async ({
 /**
  * `luca setup`'s checks as doctor's repo group, read-only: they create no
  * label and write no file. Each problem carries its fix. The `junit` check
- * (#668) is there only when the config loads and has a junit command.
+ * (#668) is there only when the config loads and has a junit command, and
+ * the `build_cache` check (#721) only when it has build cache paths.
  *
  * @example
  * const checks = await repoChecks({ repo: process.cwd(), github, memory })
@@ -248,12 +251,22 @@ export const repoChecks = async ({
         loaded.ok && hasJunitCommand({ config: loaded.config })
             ? [['junit', () => checkJunit({ repo, config: loaded.config })]]
             : []
+    const build_cache: [string, () => Promise<Found>][] =
+        loaded.ok && buildCachePathsOf({ config: loaded.config }).length > 0
+            ? [
+                  [
+                      'build_cache',
+                      () => checkBuildCache({ repo, config: loaded.config }),
+                  ],
+              ]
+            : []
     return checksFor({
         group: 'repo',
         checks: [
             ['labels', () => checkLabels({ repo, github, github_repo })],
             ['config', () => checkConfig({ repo, loaded })],
             ...junit,
+            ...build_cache,
             ['github_remote', async () => checkGitHubRemote({ github_repo })],
             ['issue_links', () => checkIssueLinks({ github, github_repo })],
             ['base_branch', () => checkBaseBranch({ repo, base_branch })],
