@@ -20,7 +20,7 @@
         "zod": "catalog:"
     },
     "devDependencies": {
-        "@getpaseo/plugin": "0.9.1",
+        "@getpaseo/plugin": "0.14.0",
         "@tanstack/react-query": "^5.90.11",
         "@types/bun": "latest",
         "@types/react": "~19.2.0",

@@ -67,6 +67,7 @@ const fakeServer = () => {
             )
         },
         registerProvider: () => {},
+        registerUsageSource: () => {},
         on: () => () => {},
         before: () => () => {},
     }
