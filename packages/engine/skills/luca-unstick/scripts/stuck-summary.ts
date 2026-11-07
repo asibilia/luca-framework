@@ -35,6 +35,7 @@ import {
     indent,
     lastOf,
     listOf,
+    liveWrittenAt,
     logTail,
     nest,
     numberOr,
@@ -54,6 +55,7 @@ export {
     cutOffSteps,
     engineRunning,
     KINDS_READ,
+    liveWrittenAt,
     openStuck,
     readRecords,
     registryEntry,
@@ -539,7 +541,15 @@ const main = async () => {
             records,
             ticket: args.ticket,
             registry,
-            running: engineRunning({ run_id, command_lines: commandLines() }),
+            running: engineRunning({
+                run_id,
+                command_lines: commandLines(),
+                live_written_at: liveWrittenAt({
+                    runs_dir: args.runs_dir,
+                    run_id,
+                }),
+                now: Date.now(),
+            }),
             log_tail: logTail(registry?.log_path ?? null),
         })
     )

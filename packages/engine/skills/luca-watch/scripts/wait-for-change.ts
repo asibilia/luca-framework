@@ -13,7 +13,8 @@
  * - `ended`: the oldest ending after the cursor (`run_ended`, or a legacy
  *   one: `pull_request_opened`, `intake_refused`, `nothing_to_do`, a `stop`
  *   reply, a billing or crash `run_stopped`), or one before it.
- * - `engine_gone`: no live engine names the run, and it has not ended.
+ * - `engine_gone`: no live engine names the run, its live file is not
+ *   fresh, and it has not ended.
  * - `quiet`: five minutes with none of these. Call it again.
  * - `error`: the journal can't be read; or the process list kept failing
  *   until the quiet deadline, while the journal still showed nothing new.
@@ -23,7 +24,7 @@
  * skipped. A missing journal, an unknown run, an invalid cursor or bad
  * arguments print an `error` line and exit 2; every other event exits 0.
  *
- * It only reads: the journal and the process list. It imports nothing but
+ * It only reads: the journal, the run's live file, and the process list. It imports nothing but
  * Bun's and Node's own modules, since it runs from
  * `~/.claude/skills/luca-watch/`, where no packages are installed.
  */
@@ -185,6 +186,46 @@ const engineLive = ({
         )
     })
 
+/** The engine's live file in a run folder: `LIVE_FILE` in `src/core/live-file.ts`. */
+const LIVE_FILE = 'live.json'
+
+/**
+ * A live file written at most this long ago means a live engine: the
+ * board's `LIVE_STALE_MS` (`packages/board/shared/board-state-live.ts`).
+ * The engine writes it at least every 5 seconds while it runs.
+ */
+export const LIVE_STALE_MS = 60_000
+
+/**
+ * Whether run `run_id`'s live file was written at most `LIVE_STALE_MS`
+ * before `now` (#727). An engine started with `luca-run --spec <n>` and no
+ * `--run-id` makes the run id itself, so no command line names it; its
+ * live file still shows it runs, as the board checks. A missing or
+ * unreadable file is not fresh.
+ */
+const liveFileFresh = async ({
+    runs_dir,
+    run_id,
+    now,
+}: {
+    runs_dir: string
+    run_id: string
+    now: number
+}): Promise<boolean> => {
+    try {
+        const live: unknown = await Bun.file(
+            join(runs_dir, run_id, LIVE_FILE)
+        ).json()
+        const written_at =
+            isObject(live) && typeof live.written_at === 'string'
+                ? Date.parse(live.written_at)
+                : Number.NaN
+        return Number.isFinite(written_at) && now - written_at <= LIVE_STALE_MS
+    } catch {
+        return false
+    }
+}
+
 /** `pid` and every parent above it, from `processes`. Pure. */
 const ancestorPids = ({
     pid,
@@ -274,7 +315,10 @@ export const waitForChange = async ({
             const own = own_pids.flatMap((pid) =>
                 ancestorPids({ pid, processes: rows })
             )
-            if (!engineLive({ run_id, processes: rows, own_pids: own })) {
+            if (
+                !engineLive({ run_id, processes: rows, own_pids: own }) &&
+                !(await liveFileFresh({ runs_dir, run_id, now: now() }))
+            ) {
                 return {
                     event: 'engine_gone',
                     last_seq: highest,

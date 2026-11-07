@@ -10,6 +10,7 @@
  * are installed.
  */
 import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 /** Every journal record kind the helper reads. */
 export const KINDS_READ = [
@@ -459,14 +460,35 @@ export const registryEntry = ({
     }
 }
 
-/** Whether a run's engine is running now, from `ps`; `null` when unknown. */
+/**
+ * A live file written at most this long ago means a live engine: the
+ * board's `LIVE_STALE_MS` (`packages/board/shared/board-state-live.ts`).
+ * The engine writes it at least every 5 seconds while it runs.
+ */
+export const LIVE_STALE_MS = 60_000
+
+/**
+ * Whether a run's engine is running now; `null` when unknown. It runs when
+ * its live file was written at most `LIVE_STALE_MS` before `now`, or a
+ * command line from `ps` names the run. An engine started with
+ * `luca-run --spec <n>` and no `--run-id` names no run id (#727), so only
+ * its live file shows it, as the board checks.
+ */
 export const engineRunning = ({
     run_id,
     command_lines,
+    live_written_at,
+    now,
 }: {
     run_id: string
     command_lines: string[] | null
+    /** The live file's `written_at` (`liveWrittenAt`), or `null`. */
+    live_written_at: string | null
+    now: number
 }): boolean | null => {
+    const written =
+        live_written_at === null ? Number.NaN : Date.parse(live_written_at)
+    if (Number.isFinite(written) && now - written <= LIVE_STALE_MS) return true
     if (command_lines === null) return null
     return command_lines.some((line) => {
         const tokens = line.split(/\s+/)
@@ -478,6 +500,29 @@ export const engineRunning = ({
                 token === `--resume=${run_id}`
         )
     })
+}
+
+/**
+ * The `written_at` of run `run_id`'s live file (`live.json`, kept by the
+ * engine while it runs), or `null` when it is missing or unreadable.
+ */
+export const liveWrittenAt = ({
+    runs_dir,
+    run_id,
+}: {
+    runs_dir: string
+    run_id: string
+}): string | null => {
+    const file = join(runs_dir, run_id, 'live.json')
+    if (!existsSync(file)) return null
+    try {
+        const live: unknown = JSON.parse(readFileSync(file, 'utf8'))
+        return isObject(live) && typeof live.written_at === 'string'
+            ? live.written_at
+            : null
+    } catch {
+        return null
+    }
 }
 
 /** Every process's command line, or `null` when `ps` fails. */
