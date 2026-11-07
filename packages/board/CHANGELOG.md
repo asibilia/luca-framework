@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.34
+
+### Patch Changes
+
+- b5d7f99: Spec: faster gates: warm builds for new ticket worktrees, and tests by path at ticket gates ([#720](https://github.com/asibilia/luca-framework/issues/720))
+
 ## 14.0.0-alpha.33
 
 No changes in this release.
