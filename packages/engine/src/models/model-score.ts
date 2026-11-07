@@ -1,4 +1,9 @@
 import {
+    calibrationOf,
+    calibrationText,
+    type ModelCalibration,
+} from './calibration'
+import {
     factsOf,
     sum,
     type RunFacts,
@@ -138,6 +143,8 @@ export type ModelReport = {
     final_review: { routed: FinalReviewSide; not_routed: FinalReviewSide }
     /** Joined tickets with no `lines_changed`, left out of the rates. */
     without_lines_changed: number
+    /** How often Clef's answer matches a reference, per decision model (#723). */
+    calibration: ModelCalibration[]
 }
 
 const median = (values: number[]): number | null => {
@@ -388,6 +395,7 @@ export const scoreModels = ({
         without_lines_changed: tickets.filter(
             ({ joined, lines }) => joined && lines === null
         ).length,
+        calibration: calibrationOf({ runs }),
     }
 }
 
@@ -455,7 +463,8 @@ const finalText = (label: string, side: FinalReviewSide): string =>
 /**
  * The report as `luca models` prints it: each routed role's models and
  * efforts with their verdicts and Clef's effort picks, the learner, the
- * final review's line, and the tickets left out of the rates. Pure.
+ * final review's line, the tickets left out of the rates, and the
+ * calibration section (#723). Pure.
  *
  * @example
  * console.log(formatModelReport({ report: scoreModels({ runs }) }))
@@ -489,5 +498,6 @@ export const formatModelReport = ({
         '',
         `Final review findings per 100 changed lines: ${finalText('with routed agents', routed)}, ${finalText('without', not_routed)}.`,
         `${plural(report.without_lines_changed, 'joined ticket')} with no lines_changed, left out of the rates.`,
+        ...calibrationText(report.calibration),
     ].join('\n')
 }

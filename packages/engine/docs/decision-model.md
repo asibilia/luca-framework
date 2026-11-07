@@ -111,6 +111,29 @@ step-up comes at the role's next fresh agent. The final review's fixers
 always launch on `opus`, reason `locked`. A role's effort (#659) applies
 whichever model it runs on.
 
+**Calibration.** `luca models` ends with a calibration section (#723): per
+decision model (its name cut to its last part after `/`), for each of
+three jobs, how many of Clef's answers fall in each confidence band (below
+0.3, 0.3 to 0.5, 0.5 to 0.7, 0.7 to 0.9, 0.9 and up; an edge goes to the
+higher band) and how many match a reference from the journal. Only the
+first answer to each ask counts, and answers from Jev (no `model`) or with
+no value or confidence are left out. `ticket_order` is right when it names
+the ticket the engine started. `finding_severity` answers on a 0-to-2 score
+(nit 0, should_fix 1, blocker 2), rounded to the nearest level, a half
+going up, and is right when that level is the reviewer's own severity; a
+string or a number outside 0 to 2 is left out. `failure_kind` is checked
+against the engine's routing, corrected by the first `agent_finished` on
+the ticket after the answer: after failed gates routed to `code`, the
+implementer's `bad_test` makes it `test`, and its `environment` or
+`needs_setup_change` leaves the answer out; after a failed red check, a
+test-writer outcome other than `tests_written` leaves it out. A band is
+rated from 20 answers and holds when at least 90% of them are right. The
+suggested bar walks the bands from the top down, passing over unrated
+bands until one holds, and stops at a rated band that doesn't hold or,
+once one has held, at any band that is unrated or doesn't hold; it is the
+lower edge of the last band that held, else `none`. It is only printed:
+`luca models` changes no config.
+
 **Writers' effort (#660).** `models.effort` sets the effort the test-writer
 and the implementer run at on tickets, and the learner's: `low`, `medium`,
 `high`, `xhigh` or `max`, and a role left out is `medium`. An effort for any

@@ -200,6 +200,10 @@ _Avoid_: minimum model, model tier
 How sure the decision model must be before the engine uses its model pick, 0.5 unless the config says otherwise. Below it, or with no confidence given, the agent runs Opus, unless the launch is in a model trial's trial group.
 _Avoid_: threshold, cutoff
 
+**Calibration**:
+How well the decision model's confidence predicts whether its answer is right: a calibrated model is right more often when it is surer. `luca models` measures it per job against a reference answer from the journal, and suggests a confidence bar from it.
+_Avoid_: accuracy, reliability
+
 **Model trial**:
 A share of the writer launches Clef would move to a cheaper model, but isn't sure enough about, that really run on Clef's pick (the trial group), against the same kind of launches that stay on Opus (the control group). Set by `models.trial_share`; off by default. Unlike shadow mode, a model trial acts.
 _Avoid_: A/B test, experiment
