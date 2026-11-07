@@ -33,6 +33,9 @@ export type Pick = {
 /** Clef's effort pick for a role on a ticket, with its confidence. */
 export type EffortPick = { effort: EffortLevel; confidence: number }
 
+/** A decision model's `agent_model` answer for a role, by its short name. */
+export type ClefModelPick = { model: string; confidence: number | null }
+
 /** What one run's journal says about one ticket. */
 export type TicketFacts = {
     /** The model of each role's first agent. */
@@ -49,6 +52,11 @@ export type TicketFacts = {
      * confidence, at any confidence (#697).
      */
     effort_picks: Partial<Record<ScoredRole, EffortPick>>
+    /**
+     * Clef's first `agent_model` answer for each role from a record with a
+     * `model` (#725): that decision model, cut to its last part after `/`.
+     */
+    clef_model_picks: Partial<Record<ScoredRole, ClefModelPick>>
     /**
      * Why each role's first agent got its model; `null` for one from before
      * #603.
@@ -111,6 +119,7 @@ const newTicket = (): TicketFacts => ({
     picks: {},
     trial_groups: {},
     effort_picks: {},
+    clef_model_picks: {},
     model_reasons: {},
     reviews: 0,
     findings: 0,
@@ -189,6 +198,18 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                         : SCORED_ROLES.filter((role) => role === ask.role)
                 const facts = ticketOf(record.ticket)
                 for (const role of roles) facts.picks[role] ??= pick
+                const named = record.content.model
+                if (
+                    record.content.job === 'agent_model' &&
+                    named !== undefined
+                ) {
+                    for (const role of roles) {
+                        facts.clef_model_picks[role] ??= {
+                            model: named.split('/').at(-1) ?? named,
+                            confidence: pick.confidence,
+                        }
+                    }
+                }
                 break
             }
             case 'agent_started': {

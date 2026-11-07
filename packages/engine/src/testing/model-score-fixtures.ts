@@ -64,7 +64,9 @@ export const started = ({
 /**
  * An `agent_model` ask about `role` and Clef's answer, or with `role` null
  * an older journal's `ticket_model` ask, which named full model ids.
- * `runOf` points the answer's `asked_seq` at the ask.
+ * `runOf` points the answer's `asked_seq` at the ask. `model` is the
+ * answering decision model; left out, the answer has no `model`, as Jev
+ * wrote.
  */
 export const modelAsk = ({
     ticket,
@@ -72,12 +74,14 @@ export const modelAsk = ({
     pick,
     confidence,
     acted,
+    model,
 }: {
     ticket: number | null
     role: Built | 'learner' | null
     pick: string
     confidence: number | null
     acted?: boolean
+    model?: string
 }): JournalEntry[] => {
     const job = role === null ? 'ticket_model' : 'agent_model'
     const options =
@@ -116,6 +120,7 @@ export const modelAsk = ({
                 asked_seq: 1,
                 answers: { model: { value: pick, confidence, raw: {} } },
                 ms: 5,
+                ...(model === undefined ? {} : { model }),
             },
         },
     ]
