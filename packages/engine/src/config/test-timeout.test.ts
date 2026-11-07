@@ -91,7 +91,7 @@ describe('the fast test speed limit (#580)', () => {
         expect(fastBunCommand({ run: 'bun test src', config })).toBe(
             'bun test src --timeout=2000'
         )
-        expect(caseTestCommands({ config })).toEqual([
+        expect(caseTestCommands({ config })).toMatchObject([
             {
                 run: 'bun test src --timeout=2000',
                 results: 'bun',
@@ -109,7 +109,7 @@ describe('the fast test speed limit (#580)', () => {
         expect(fastBunCommand({ run: 'bun test src', config })).toBe(
             'bun test src'
         )
-        expect(caseTestCommands({ config })).toEqual([
+        expect(caseTestCommands({ config })).toMatchObject([
             { run: 'bun test src', results: 'bun', junit_path: [] },
         ])
     })

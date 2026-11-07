@@ -108,7 +108,7 @@ Tests:
 
 ## Test commands and the gates
 
-The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed.
+The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed. At a ticket's own gates, a test command with `paths` runs only when the ticket changed a file under them.
 
 Reached by: `checks` in a repo's `.luca/config.json`; the gates run after every agent turn that changes code.
 
@@ -123,6 +123,7 @@ Tests:
 - `packages/engine/src/gates/gate-runner-junit.test.ts`
 - `packages/engine/src/shell/run-command.test.ts`
 - `packages/engine/src/config/test-commands.test.ts`
+- `packages/engine/src/config/test-commands-to-run.test.ts`
 - `packages/engine/src/core/decide-test-commands.test.ts`
 - `packages/engine/src/core/read-intake-junit.test.ts`
 - `packages/engine/src/core/run-test-commands.e2e.test.ts`

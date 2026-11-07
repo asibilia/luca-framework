@@ -242,7 +242,7 @@ describe('junit test commands (#668)', () => {
             testCommands({ config: result.config }),
             slowTestCommands({ config: result.config }),
         ]) {
-            expect(commands).toEqual([
+            expect(commands).toMatchObject([
                 {
                     run: 'bun run ios:test:core',
                     results: 'junit',
@@ -265,7 +265,7 @@ describe('junit test commands (#668)', () => {
             },
         })
 
-        expect(commands).toEqual([
+        expect(commands).toMatchObject([
             {
                 run: 'bun run ios:test:core',
                 results: 'junit',
@@ -285,7 +285,7 @@ describe('junit test commands (#668)', () => {
             },
         })
 
-        expect(commands).toEqual([
+        expect(commands).toMatchObject([
             { run: 'bun test', results: 'bun', junit_path: [] },
             {
                 run: 'bun run test:workers',
@@ -412,6 +412,64 @@ describe("a slow test command's file_patterns and run_files (#683)", () => {
         })
         expect(error).toContain(
             'checks.test: file_patterns and run_files belong only on checks.slow_test entries.'
+        )
+    })
+})
+
+describe("a test command's paths (#722)", () => {
+    test('an entry with paths loads with them, and a string entry has paths null', async () => {
+        const commands = await loadTestCommands({
+            checks: {
+                test: [
+                    { run: 'bun test src/a', paths: ['src/a/**'] },
+                    'bun test',
+                ],
+            },
+        })
+
+        expect(commands).toEqual([
+            {
+                run: 'bun test src/a',
+                results: 'bun',
+                junit_path: [],
+                paths: ['src/a/**'],
+            },
+            { run: 'bun test', results: 'bun', junit_path: [], paths: null },
+        ])
+    })
+
+    test('an empty paths list is refused', async () => {
+        const error = await loadError({
+            checks: { test: [{ run: 'bun test src/a', paths: [] }] },
+        })
+
+        expect(error).toContain(
+            'paths must list at least one glob; leave paths out to run the command at every gate'
+        )
+    })
+
+    test('a paths entry that is empty, absolute or leaves the repo is refused', async () => {
+        for (const path of ['', '/src/a/**', '../src/**']) {
+            const error = await loadError({
+                checks: { test: [{ run: 'bun test src/a', paths: [path] }] },
+            })
+
+            expect(error).toContain(
+                'each paths entry must be a glob inside the repo, relative to its root: not empty, not an absolute path, and not one that leaves the repo with ".."'
+            )
+        }
+    })
+
+    test('paths on a checks.slow_test entry is refused', async () => {
+        const error = await loadError({
+            checks: {
+                test: 'bun test',
+                slow_test: [{ run: 'bun test .e2e.test', paths: ['e2e/**'] }],
+            },
+        })
+
+        expect(error).toContain(
+            'checks.slow_test: paths belongs only on checks.test entries.'
         )
     })
 })

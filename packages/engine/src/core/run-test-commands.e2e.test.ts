@@ -11,6 +11,8 @@ import {
     happyTurns,
     PRACTICE_ENGINE_CONFIG,
     SUM,
+    SUM_TEST,
+    TEST_WRITER_RESULT,
 } from '../testing/practice-repo'
 
 /**
@@ -148,5 +150,89 @@ describe('several test commands, end to end', () => {
             ({ content }) => content.stage === 'green'
         )
         expect(green?.content.files).toEqual(['src/index.ts', 'src/sum.ts'])
+    }, 90_000)
+})
+
+const PASSING_TEST = `import { expect, test } from 'bun:test'
+
+test('ok', () => {
+    expect(1).toBe(1)
+})
+`
+
+/** Two test commands, each covering its own folder (#722). */
+const BY_PATH_CONFIG = {
+    ...PRACTICE_ENGINE_CONFIG,
+    checks: {
+        ...PRACTICE_ENGINE_CONFIG.checks,
+        test: [
+            { run: 'bun test src/a', paths: ['src/a/**'] },
+            { run: 'bun test src/b', paths: ['src/b/**'] },
+        ],
+    },
+}
+
+describe('tests by path, end to end (#722)', () => {
+    test("a ticket's gate skips the test command whose paths its changes don't touch", async () => {
+        const practice = await createPracticeRepo({
+            root,
+            config: BY_PATH_CONFIG,
+            files: {
+                'src/a/a.test.ts': PASSING_TEST,
+                'src/b/old.test.ts': PASSING_TEST,
+            },
+        })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const file = 'src/b/x.test.ts'
+        const writesB: ScriptedTurn = {
+            ...testWriter,
+            files: { [file]: SUM_TEST.replace("'./sum'", "'./x'") },
+            result: {
+                ...TEST_WRITER_RESULT,
+                criteria: [
+                    {
+                        criterion_id: 'AC1',
+                        tests: [{ file, name: 'sum > adds two numbers' }],
+                    },
+                    {
+                        criterion_id: 'AC2',
+                        tests: [{ file, name: 'sum > of no numbers is zero' }],
+                    },
+                ],
+            },
+        }
+        const codesB: ScriptedTurn = {
+            ...implementer,
+            files: { 'src/b/x.ts': SUM },
+        }
+
+        const { records } = await practice.run({
+            turns: [writesB, codesB, reviewer],
+        })
+
+        const [gate] = byKind(records, 'gates_run').filter(
+            ({ ticket, content }) =>
+                ticket === 11 && content.target === 'ticket'
+        )
+        expect(gate?.content.ok).toBe(true)
+        expect(
+            gate?.content.checks.find(
+                ({ command }) => command === 'bun test src/b'
+            )
+        ).toMatchObject({ name: 'test', ok: true })
+        expect(
+            gate?.content.checks.find(
+                ({ command }) => command === 'bun test src/a'
+            )
+        ).toEqual({
+            name: 'test',
+            command: 'bun test src/a',
+            ok: true,
+            exit_code: 0,
+            output: '',
+            duration_ms: 0,
+            skipped: true,
+            reason: 'no changed file matches its paths',
+        })
     }, 90_000)
 })

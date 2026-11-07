@@ -138,6 +138,66 @@ describe('fix loops', () => {
     })
 })
 
+describe('skipped test commands at a ticket gate (#722)', () => {
+    const SKIPPED = {
+        name: 'test',
+        command: 'bun test src/a',
+        ok: true,
+        exit_code: 0,
+        output: '',
+        duration_ms: 0,
+        skipped: true,
+        reason: 'no changed file matches its paths',
+    }
+    const ticketGate = ({ ok }: { ok: boolean }) => ({
+        kind: 'gates_run' as const,
+        ticket: 12,
+        role: null,
+        content: {
+            target: 'ticket',
+            ok,
+            checks: [
+                SKIPPED,
+                {
+                    name: 'test',
+                    command: 'bun test src/b',
+                    ok,
+                    exit_code: ok ? 0 : 1,
+                    output: ok ? '' : '1 fail',
+                },
+            ],
+        },
+    })
+
+    test('a passing gate names the skipped commands', async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 12 }),
+                ticketGate({ ok: true }),
+            ],
+        })
+
+        expect(eventRows().at(-1)).toEqual({
+            text: '#12: checks passed. Skipped (no changed file matches its paths): bun test src/a.',
+            tone: 'success',
+        })
+    })
+
+    test('a failing gate names the skipped commands after the failed checks', async () => {
+        await runWith({
+            entries: [
+                ticketWorktreeCreated({ ticket: 12 }),
+                ticketGate({ ok: false }),
+            ],
+        })
+
+        expect(eventRows().at(-1)).toEqual({
+            text: '#12: checks failed: test. Skipped (no changed file matches its paths): bun test src/a.',
+            tone: 'danger',
+        })
+    })
+})
+
 describe('failed tries', () => {
     test.each([
         ['agent', 'failed', 'danger'],

@@ -233,6 +233,7 @@ describe('runCaseTests: the test time limit (#542)', () => {
                         run: 'sleep 5; bun test',
                         results: 'bun',
                         junit_path: [],
+                        paths: null,
                     },
                 ],
                 test_files: [],
