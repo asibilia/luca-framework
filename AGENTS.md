@@ -59,5 +59,8 @@ Key patterns:
 
 1. Run `bunx --bun tsc --noEmit` before committing
 2. Use `bun run commit` for interactive conventional commits
+   - **Agents: commit non-interactively** (types and scopes from `commit.config.ts`; drop `--dry-run` to commit):
+     `bun run commit -- -t chore -s repo -m "bump the toolchain" -b "Why." --trailer "Co-Authored-By: Claude <noreply@anthropic.com>" --dry-run`.
+     It exits 1 on a missing or unknown type, scope or subject.
 3. Format: `type(scope): #issue description` (lowercase, present tense verb)
 4. Branch naming: `{issue_number}--{dash-cased-description}`

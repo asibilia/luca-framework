@@ -8,6 +8,10 @@
 # 7 days = 60 * 60 * 24 * 7 = 604800
 minimumReleaseAge = 604800
 
+# Alec's own packages, published from his GitHub via npm trusted publishing
+# (OIDC), so a fresh release can be adopted right away.
+minimumReleaseAgeExcludes = ["@alecsibilia/commit"]
+
 # Block transitive deps installed via git/tarball/etc. The TanStack
 # attack used `"@tanstack/setup": "github:tanstack/router#<sha>"` as
 # its entrypoint dependency — this setting prevents that vector.

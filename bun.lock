@@ -8,7 +8,7 @@
         "zod": "^4.3.6",
       },
       "devDependencies": {
-        "@alecsibilia/commit": "^1.0.8",
+        "@alecsibilia/commit": "^1.1.0",
         "@changesets/cli": "^3.0.0",
         "@eslint/js": "^9",
         "@types/bun": "latest",
@@ -84,7 +84,7 @@
   "packages": {
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.4.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-/eufudw+aFY1LKLolT6yFE6UMmYRl7fMJ/DEONSIyR6wI3slHWITBsANRGqXEY8FRzqUxwh7QEaGiZHcJPVThg=="],
 
-    "@alecsibilia/commit": ["@alecsibilia/commit@1.0.8", "", { "dependencies": { "@clack/prompts": "0.11.0", "chalk": "^5.3.0", "commander": "^14.0.0", "zod": "^3.24.1" }, "bin": { "commit": "dist/index.js" } }, "sha512-/h9gveB7HUw+2j0bORsyiM2sfVZbCj8GIIueBTxiXlIV9mYa3wAMC6XUse2r/OuukvE9ndIgfmJW3Ifn2hzu6A=="],
+    "@alecsibilia/commit": ["@alecsibilia/commit@1.1.0", "", { "dependencies": { "@clack/prompts": "0.11.0", "chalk": "^5.3.0", "commander": "^14.0.0", "zod": "^3.24.1" }, "bin": { "commit": "dist/index.js" } }, "sha512-1BQ8FvcEoYPMQQOdg+/TePXE2b5EL9/U5Qv9KvJwNv6IQkcgc23N9l2CO1PtvvSxesaJACh06Wenf6RHA1dlkQ=="],
 
     "@alecsibilia/luca": ["@alecsibilia/luca@workspace:packages/luca"],
 
@@ -875,8 +875,6 @@
     "jest-validate": ["jest-validate@29.7.0", "", { "dependencies": { "@jest/types": "^29.6.3", "camelcase": "^6.2.0", "chalk": "^4.0.0", "jest-get-type": "^29.6.3", "leven": "^3.1.0", "pretty-format": "^29.7.0" } }, "sha512-ZB7wHqaRGVw/9hST/OuFUReG7M8vKeq0/J2egIGLdvjHCmYqGARhzXmtgi+gVeZ5uXFF219aOc3Ls2yLg27tkw=="],
 
     "jest-worker": ["jest-worker@29.7.0", "", { "dependencies": { "@types/node": "*", "jest-util": "^29.7.0", "merge-stream": "^2.0.0", "supports-color": "^8.0.0" } }, "sha512-eIz2msL/EzL9UFTFFx7jBTkeZfku0yUAyZZZmJ93H2TYEiroIx2PQjEXcwYtYl8zXCxb+PAmA2hLIt/6ZEkPHw=="],
-
-    "jiti": ["jiti@2.6.1", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ=="],
 
     "jju": ["jju@1.4.0", "", {}, "sha512-8wb9Yw966OSxApiCt0K3yNJL8pnNeIv+OEq2YMidz4FKP6nonSRoOXc80iXY4JaN2FC11B9qsNmDsm+ZOfMROA=="],
 
