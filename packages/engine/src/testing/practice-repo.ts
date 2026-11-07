@@ -13,6 +13,7 @@ import {
     type ScriptedTurn,
 } from '../agents/scripted-launcher'
 import { loadEngineConfig } from '../config/engine-config'
+import type { BuildDeps } from '../core/build-context'
 import type { EngineAction } from '../core/decide'
 import { runEngine, startRun } from '../core/execute'
 import { createGitAdapter, type GitAdapter } from '../git/git-adapter'
@@ -350,6 +351,7 @@ export const createPracticeRepo = async ({
         git: wrapGit,
         journal: wrapJournal,
         live_file,
+        copy_dir,
     }: {
         /**
          * Scripted agents' turns, then a clean final review for any lens they
@@ -390,6 +392,8 @@ export const createPracticeRepo = async ({
         journal?: (real: Journal) => Journal
         /** Where the engine keeps the run's live file (#628). Left out, it keeps none. */
         live_file?: string
+        /** Copies a build-cache folder (#721), such as a fake. Left out, the engine's own. */
+        copy_dir?: BuildDeps['copy_dir']
     }) => {
         const loaded = await loadEngineConfig({ repo_root: repo })
         if (!loaded.ok) throw new Error(loaded.error)
@@ -425,6 +429,7 @@ export const createPracticeRepo = async ({
                     ? undefined
                     : { client: memory.client, timeout_ms: memory.timeout_ms },
             live_file,
+            ...(copy_dir === undefined ? {} : { copy_dir }),
         })
         return {
             action,

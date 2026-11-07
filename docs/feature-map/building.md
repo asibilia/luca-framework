@@ -146,6 +146,18 @@ Tests:
 - `packages/engine/src/core/run-junit-own-files.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
 
+## Warm builds
+
+A new ticket worktree gets the repo's gitignored build-cache folders cloned in from the run branch's worktree, or else the repo's checkout, before its baseline, so its first test run doesn't rebuild everything; a cache that isn't ignored, isn't found, or fails to copy is skipped and never stops the ticket. `luca doctor` and `luca setup` warn about a build-cache path git doesn't ignore.
+
+Reached by: `build_cache_paths` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/config/build-cache-paths.test.ts`
+- `packages/engine/src/core/run-build-cache.e2e.test.ts`
+- `packages/engine/src/cli/setup-build-cache.test.ts`
+
 ## Test slots
 
 A repo can cap how many test runs go at once across a run, so tests that share ports, files, or a database don't collide; waiting for a slot is journaled as `wait_ms` and never counts toward a time limit.
