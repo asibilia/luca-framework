@@ -275,6 +275,9 @@ export const executeBuildAction = async ({
                 exclusive: action.exclusive,
             })
         case 'join_run_branch': {
+            // Already joined: its commits are on the run branch, and its
+            // join keeps the record of which ones are its own (#719).
+            if (state.tickets[action.ticket]?.joined?.ok === true) return
             const worktree = ticketWorktree({ state, ticket: action.ticket })
             const runBranch = need({
                 value: state.run_branch,

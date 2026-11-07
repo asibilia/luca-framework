@@ -239,6 +239,7 @@ Tests:
 - `packages/engine/src/core/run-broken-join.e2e.test.ts`
 - `packages/engine/src/core/undo-join.test.ts`
 - `packages/engine/src/core/join-run-branch.test.ts`
+- `packages/engine/src/core/stale-decision.test.ts`
 - `packages/engine/src/git/git-adapter.test.ts`
 - `packages/engine/src/core/run-rebase-reinstall.e2e.test.ts`
 - `packages/engine/src/core/run-rebase-test-update.e2e.test.ts`
