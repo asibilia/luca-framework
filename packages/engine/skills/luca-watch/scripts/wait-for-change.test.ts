@@ -326,6 +326,68 @@ describe('the engine is gone', () => {
     })
 })
 
+describe('an engine started with --spec and no --run-id (#727)', () => {
+    /** The engine's own command line: the run id it made is not on it. */
+    const SPEC_ONLY = [
+        {
+            pid: 56973,
+            ppid: 1,
+            command: 'bun /luca/engine/luca-run.ts --spec 720',
+        },
+        { pid: 600, ppid: 1, command: 'bun /luca/board/server.ts' },
+    ]
+
+    /** Run-1's live file, written at `written_at`. */
+    const writeLiveFile = async (written_at: string): Promise<void> => {
+        await Bun.write(
+            join(dir, 'run-1', 'live.json'),
+            JSON.stringify({ written_at, agents: [], waits: [], feed: [] })
+        )
+    }
+
+    test('a fresh live file is a live engine: five quiet minutes, never engine_gone', async () => {
+        await writeRun({ after: [] })
+        const { slept, sleep, now, ...deps } = fakes({ rows: SPEC_ONLY })
+        // The engine writes its live file every few seconds while it runs.
+        const writeNow = () =>
+            writeLiveFile(new Date(now() - 3_000).toISOString())
+        await writeNow()
+
+        const result = await waitForChange({
+            run_id: 'run-1',
+            last_seq: 40,
+            runs_dir: dir,
+            ...deps,
+            now,
+            sleep: async (ms) => {
+                await sleep(ms)
+                await writeNow()
+            },
+        })
+
+        expect(result).toMatchObject({ event: 'quiet', last_seq: 40 })
+        expect(slept.length).toBeGreaterThan(0)
+    })
+
+    test('a live file not written for over a minute is no live engine', async () => {
+        await writeRun({ after: [] })
+        await writeLiveFile('2026-10-29T11:58:00.000Z')
+
+        expect(await waitOn({ rows: SPEC_ONLY }).result).toMatchObject({
+            event: 'engine_gone',
+        })
+    })
+
+    test('an unreadable live file is no live engine', async () => {
+        await writeRun({ after: [] })
+        await Bun.write(join(dir, 'run-1', 'live.json'), '{ half')
+
+        expect(await waitOn({ rows: SPEC_ONLY }).result).toMatchObject({
+            event: 'engine_gone',
+        })
+    })
+})
+
 describe('nothing happens', () => {
     test('five quiet minutes return quiet and the highest seq read, polling every five seconds', async () => {
         await writeRun({
