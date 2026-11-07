@@ -60,6 +60,7 @@ export {
     ownSlowCommands,
     slowTestCommands,
     testCommands,
+    testCommandsToRun,
     type OwnSlowCommand,
     type TestCommand,
 } from './test-commands'

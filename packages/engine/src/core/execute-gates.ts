@@ -11,7 +11,11 @@ import difference from 'lodash/difference'
 import { reportFile, testFilesIn, type BuildContext } from './build-context'
 import { watchPrepare } from './worktree-changes'
 
-import { hasSlowTests } from '../config/engine-config'
+import {
+    hasSlowTests,
+    testCommands,
+    testCommandsToRun,
+} from '../config/engine-config'
 import { runGates, runSlowTests, shellCheck } from '../gates/gate-runner'
 import {
     installCommand,
@@ -79,6 +83,16 @@ export const gatesIn = async ({
         own_test_files,
         measured_files: changed_test_files,
         exclusive,
+        // A ticket's gates run only the test commands its changes touch
+        // (#722); a join's and the final review's run every one.
+        test_commands:
+            target === 'ticket'
+                ? testCommandsToRun({
+                      commands: testCommands({ config: context.config }),
+                      changed_files: changed,
+                      test_file_patterns: context.config.test_file_patterns,
+                  })
+                : undefined,
     })
     // A ticket's gates journal the cases of its red test files, with their
     // expect() counts, so a mapped test that checks nothing is found (#581).

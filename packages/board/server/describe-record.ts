@@ -238,13 +238,21 @@ export const describeRecord = ({
                       ? ' after joining'
                       : ''
             const who = record.ticket === null ? 'Final review: ' : at
+            // The test commands a ticket gate skipped by path (#722).
+            const skipped = record.content.checks
+                .filter((check) => check.skipped === true)
+                .map((check) => check.command ?? check.name)
+            const skips =
+                record.content.target === 'ticket' && skipped.length > 0
+                    ? ` Skipped (no changed file matches its paths): ${skipped.join(', ')}.`
+                    : ''
             return record.content.ok
                 ? event({
-                      text: `${who}checks passed${where}.`,
+                      text: `${who}checks passed${where}.${skips}`,
                       tone: 'success',
                   })
                 : event({
-                      text: `${who}checks failed${where}: ${failed.join(', ') || 'no detail'}.`,
+                      text: `${who}checks failed${where}: ${failed.join(', ') || 'no detail'}.${skips}`,
                       tone: 'danger',
                   })
         }

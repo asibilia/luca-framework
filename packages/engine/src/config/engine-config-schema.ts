@@ -51,6 +51,32 @@ const JunitPathSchema = z.string().min(1).refine(isFileInsideRepo, {
         'must be a file inside the repo, relative to its root: not an absolute path, not one that leaves the repo with "..", and not ending in "/"',
 })
 
+/**
+ * Whether a `paths` glob stays inside the repo (#722): not absolute, and,
+ * once cleaned (`normalize`), not one that climbs out of it with `..`.
+ */
+const isGlobInsideRepo = (glob: string): boolean => {
+    const clean = normalize(glob)
+    return !isAbsolute(glob) && clean !== '..' && !clean.startsWith('../')
+}
+
+/**
+ * The paths a `checks.test` command covers (#722): repo-relative globs. At a
+ * ticket's gates the command runs only when the ticket changed a file under
+ * them.
+ */
+const TestPathsSchema = z
+    .array(
+        z.string().refine((glob) => glob !== '' && isGlobInsideRepo(glob), {
+            message:
+                'each paths entry must be a glob inside the repo, relative to its root: not empty, not an absolute path, and not one that leaves the repo with ".."',
+        })
+    )
+    .min(1, {
+        message:
+            'paths must list at least one glob; leave paths out to run the command at every gate',
+    })
+
 /** The text a slow command's `run_files` must hold, where the files go (#683). */
 export const RUN_FILES_PLACEHOLDER = '{files}'
 
@@ -60,7 +86,8 @@ export const RUN_FILES_PLACEHOLDER = '{files}'
  * `junit_path` (#668), one path or a list; no other kind may have one. A slow
  * entry may also name the test files it owns (`file_patterns`) and how to run
  * some of them (`run_files`, #683); they come together, and a `checks.test`
- * entry may have neither.
+ * entry may have neither. Only a `checks.test` entry may name the paths it
+ * covers (`paths`, #722).
  */
 const testCommandEntrySchema = ({ slow }: { slow: boolean }) =>
     z.union([
@@ -74,6 +101,11 @@ const testCommandEntrySchema = ({ slow }: { slow: boolean }) =>
                     .optional(),
                 file_patterns: z.array(z.string().min(1)).min(1).optional(),
                 run_files: z.string().min(1).optional(),
+                paths: TestPathsSchema.optional(),
+            })
+            .refine(({ paths }) => !slow || paths === undefined, {
+                message:
+                    'checks.slow_test: paths belongs only on checks.test entries.',
             })
             .refine(
                 ({ file_patterns, run_files }) =>
