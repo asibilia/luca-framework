@@ -55,6 +55,7 @@ const namedFileCommands = ({
             run: fileTestsCommand({ files: bun_files }),
             results: 'bun',
             junit_path: [],
+            paths: null,
         }
         return [
             ...(bun_files.length === 0 ? [] : [plain]),

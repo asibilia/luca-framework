@@ -51,7 +51,12 @@ const bunRun = ({ name, exclusive }: { name: string; exclusive?: boolean }) =>
     runCaseTests({
         cwd: folder,
         commands: [
-            { run: `${logged(name)}; true`, results: 'bun', junit_path: [] },
+            {
+                run: `${logged(name)}; true`,
+                results: 'bun',
+                junit_path: [],
+                paths: null,
+            },
         ],
         test_files: [],
         report_file: join(folder, `${name}.xml`),

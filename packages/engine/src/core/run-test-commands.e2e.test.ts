@@ -2,15 +2,27 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    test,
+} from 'bun:test'
 
+import { lensRole } from '../agents/role-results'
 import type { ScriptedTurn } from '../agents/scripted-launcher'
 import type { JournalRecord } from '../journal/journal-record'
 import {
     createPracticeRepo,
     happyTurns,
+    IMPLEMENTER_RESULT,
     PRACTICE_ENGINE_CONFIG,
     SUM,
+    SUM_TEST,
+    TEST_WRITER_RESULT,
 } from '../testing/practice-repo'
 
 /**
@@ -149,4 +161,252 @@ describe('several test commands, end to end', () => {
         )
         expect(green?.content.files).toEqual(['src/index.ts', 'src/sum.ts'])
     }, 90_000)
+})
+
+const PASSING_TEST = `import { expect, test } from 'bun:test'
+
+test('ok', () => {
+    expect(1).toBe(1)
+})
+`
+
+/** Two test commands, each covering its own folder (#722). */
+const BY_PATH_CONFIG = {
+    ...PRACTICE_ENGINE_CONFIG,
+    checks: {
+        ...PRACTICE_ENGINE_CONFIG.checks,
+        test: [
+            { run: 'bun test src/a', paths: ['src/a/**'] },
+            { run: 'bun test src/b', paths: ['src/b/**'] },
+        ],
+    },
+}
+
+/** A final review finding on ticket 11's code, which only touches src/b. */
+const B_FINDING = {
+    id: 'S1',
+    severity: 'should_fix',
+    kind: 'code',
+    file: 'src/b/x.ts',
+    title: 'Say what x adds',
+    detail: 'x has no doc comment.',
+}
+
+describe('tests by path, end to end (#722)', () => {
+    // One run, built once and shared: ticket 11 changes only src/b, joins,
+    // and a final review finding is fixed in src/b too, so the final
+    // review's gates run.
+    let shared = ''
+    let records: JournalRecord[] = []
+
+    beforeAll(async () => {
+        shared = await mkdtemp(join(tmpdir(), 'luca-engine-by-path-'))
+        const practice = await createPracticeRepo({
+            root: shared,
+            config: BY_PATH_CONFIG,
+            files: {
+                'src/a/a.test.ts': PASSING_TEST,
+                'src/b/old.test.ts': PASSING_TEST,
+            },
+        })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const file = 'src/b/x.test.ts'
+        const writesB: ScriptedTurn = {
+            ...testWriter,
+            files: { [file]: SUM_TEST.replace("'./sum'", "'./x'") },
+            result: {
+                ...TEST_WRITER_RESULT,
+                criteria: [
+                    {
+                        criterion_id: 'AC1',
+                        tests: [{ file, name: 'sum > adds two numbers' }],
+                    },
+                    {
+                        criterion_id: 'AC2',
+                        tests: [{ file, name: 'sum > of no numbers is zero' }],
+                    },
+                ],
+            },
+        }
+        const codesB: ScriptedTurn = {
+            ...implementer,
+            files: { 'src/b/x.ts': SUM },
+        }
+        const findsB: ScriptedTurn = {
+            role: lensRole({ lens: 'security' }),
+            ticket: 10,
+            result: {
+                verdict: 'changes_requested',
+                findings: [B_FINDING],
+                summary: 'The security lens looked.',
+                assumptions: [],
+            },
+        }
+        const fixesB: ScriptedTurn = {
+            role: 'implementer',
+            ticket: 10,
+            files: { 'src/b/x.ts': `/** Adds the numbers. */\n${SUM}` },
+            result: {
+                ...IMPLEMENTER_RESULT,
+                finding_responses: [
+                    {
+                        finding_id: 'security-S1',
+                        response: 'fixed',
+                        reason: '',
+                    },
+                ],
+            },
+        }
+
+        records = (
+            await practice.run({
+                turns: [writesB, codesB, reviewer, findsB, fixesB],
+            })
+        ).records
+    }, 150_000)
+
+    afterAll(async () => {
+        await rm(shared, { recursive: true, force: true })
+    })
+
+    test("a ticket's gate skips the test command whose paths its changes don't touch", () => {
+        const [gate] = byKind(records, 'gates_run').filter(
+            ({ ticket, content }) =>
+                ticket === 11 && content.target === 'ticket'
+        )
+        expect(gate?.content.ok).toBe(true)
+        expect(
+            gate?.content.checks.find(
+                ({ command }) => command === 'bun test src/b'
+            )
+        ).toMatchObject({ name: 'test', ok: true })
+        expect(
+            gate?.content.checks.find(
+                ({ command }) => command === 'bun test src/a'
+            )
+        ).toEqual({
+            name: 'test',
+            command: 'bun test src/a',
+            ok: true,
+            exit_code: 0,
+            output: '',
+            duration_ms: 0,
+            skipped: true,
+            reason: 'no changed file matches its paths',
+        })
+    })
+
+    test("a join's and the final review's gates run every test command, paths or not", () => {
+        // Nothing in the run changed src/a, so the paths rule would skip it.
+        const gates = byKind(records, 'gates_run').filter(
+            ({ content }) => content.target === 'run_branch'
+        )
+        expect(gates.map(({ ticket }) => ticket)).toEqual([11, null])
+        for (const { content } of gates) {
+            expect(content.ok).toBe(true)
+            const ranA = content.checks.find(
+                ({ command }) => command === 'bun test src/a'
+            )
+            expect(ranA).toMatchObject({ name: 'test', ok: true })
+            expect(ranA?.skipped).toBeUndefined()
+        }
+    })
+})
+
+/** `one`, which lives in src/a, though src/b's old test checks it. */
+const ONE = 'export const one = (): number => 1\n'
+
+const ONE_TEST = `import { expect, test } from 'bun:test'
+
+import { one } from '../a/one'
+
+test('one is still one', () => {
+    expect(one()).toBe(1)
+})
+`
+
+describe("tests by path after a join's gates fail, end to end (#722)", () => {
+    test("the rebased ticket's gate runs every test command, and its failure reaches the implementer", async () => {
+        // Ticket 11 changes only src/a, so its own gate skips src/b's tests,
+        // but its change breaks them, and the join's gates catch it.
+        const practice = await createPracticeRepo({
+            root,
+            config: BY_PATH_CONFIG,
+            files: {
+                'src/a/one.ts': ONE,
+                'src/a/a.test.ts': PASSING_TEST,
+                'src/b/one.test.ts': ONE_TEST,
+            },
+        })
+        const { testWriter, implementer, reviewer } = happyTurns()
+        const file = 'src/a/x.test.ts'
+        const writesA: ScriptedTurn = {
+            ...testWriter,
+            files: { [file]: SUM_TEST.replace("'./sum'", "'./x'") },
+            result: {
+                ...TEST_WRITER_RESULT,
+                criteria: [
+                    {
+                        criterion_id: 'AC1',
+                        tests: [{ file, name: 'sum > adds two numbers' }],
+                    },
+                    {
+                        criterion_id: 'AC2',
+                        tests: [{ file, name: 'sum > of no numbers is zero' }],
+                    },
+                ],
+            },
+        }
+        const breaksB: ScriptedTurn = {
+            ...implementer,
+            files: {
+                'src/a/x.ts': SUM,
+                'src/a/one.ts': 'export const one = (): number => 2\n',
+            },
+        }
+        const fixesB: ScriptedTurn = {
+            ...implementer,
+            files: { 'src/a/one.ts': ONE },
+        }
+
+        const { action, records, launches } = await practice.run({
+            turns: [writesA, breaksB, fixesB, reviewer, reviewer],
+        })
+
+        expect(action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        const [rebased] = byKind(records, 'ticket_rebased')
+        expect(rebased?.content).toMatchObject({
+            cause: 'join_gates',
+            code: [],
+        })
+        // What each of ticket 11's gate runs did with src/b's tests.
+        const ranB = byKind(records, 'gates_run')
+            .filter(({ ticket }) => ticket === 11)
+            .map(({ content }) => {
+                const check = content.checks.find(
+                    ({ command }) => command === 'bun test src/b'
+                )
+                return {
+                    target: content.target,
+                    ok: check?.ok,
+                    skipped: check?.skipped === true,
+                }
+            })
+        expect(ranB).toEqual([
+            { target: 'ticket', ok: true, skipped: true },
+            { target: 'run_branch', ok: false, skipped: false },
+            { target: 'ticket', ok: false, skipped: false },
+            { target: 'ticket', ok: true, skipped: false },
+            { target: 'run_branch', ok: true, skipped: false },
+        ])
+
+        // The rebased gate's failure went to the implementer, who fixed it.
+        const fixer = launches
+            .filter(
+                ({ ticket, role }) => ticket === 11 && role === 'implementer'
+            )
+            .at(-1)
+        expect(fixer?.prompt).toContain('The gates failed')
+        expect(fixer?.prompt).toContain('one is still one')
+    }, 150_000)
 })

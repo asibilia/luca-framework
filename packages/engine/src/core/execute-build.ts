@@ -3,6 +3,7 @@ import { basename, join } from 'node:path'
 
 import { followUpAgent, launchAgent } from './agent-turn'
 import type { AlreadyDoneAction } from './already-done'
+import { copyBuildCaches } from './build-cache-copy'
 import {
     buildContext,
     need,
@@ -76,6 +77,7 @@ export const executeBuildAction = async ({
     tracker,
     git,
     launcher,
+    copy_dir,
     step,
 }: BuildDeps & {
     /**
@@ -95,7 +97,14 @@ export const executeBuildAction = async ({
     /** Which try of its step this is. Left out, a first try. */
     step?: CommentStep
 }): Promise<void> => {
-    const context = buildContext({ journal, tracker, git, launcher, step })
+    const context = buildContext({
+        journal,
+        tracker,
+        git,
+        launcher,
+        copy_dir,
+        step,
+    })
     const { state, run_dir } = context
     switch (action.type) {
         case 'create_run_branch': {
@@ -144,6 +153,12 @@ export const executeBuildAction = async ({
                 branch,
                 from: action.run_branch,
                 path,
+            })
+            // Warm builds (#721): before the baseline, so it starts warm.
+            await copyBuildCaches({
+                context,
+                ticket: action.ticket,
+                worktree: path,
             })
             journal.append({
                 kind: 'ticket_worktree_created',

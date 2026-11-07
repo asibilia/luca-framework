@@ -8,12 +8,14 @@ import type { EngineConfig, TestResults } from './engine-config-schema'
 /**
  * One test command the engine runs, how it reads the results, and the JUnit
  * files a `junit` command writes (#668), relative to the repo root: `[]`
- * for every other kind.
+ * for every other kind. `paths` are the globs it covers at a ticket's gates
+ * (#722), or `null` when it covers everything.
  */
 export type TestCommand = {
     run: string
     results: TestResults
     junit_path: string[]
+    paths: string[] | null
 }
 
 /** Whether `run` is a `bun test` command, which gives bun's per-test results. */
@@ -36,7 +38,12 @@ const commandsOf = (value: EngineConfig['checks']['test']): TestCommand[] => {
     if (value === undefined) return []
     return (typeof value === 'string' ? [value] : value).map((entry) =>
         typeof entry === 'string'
-            ? { run: entry, results: defaultResults(entry), junit_path: [] }
+            ? {
+                  run: entry,
+                  results: defaultResults(entry),
+                  junit_path: [],
+                  paths: null,
+              }
             : {
                   run: entry.run,
                   results: entry.results ?? defaultResults(entry.run),
@@ -44,8 +51,54 @@ const commandsOf = (value: EngineConfig['checks']['test']): TestCommand[] => {
                       typeof entry.junit_path === 'string'
                           ? [entry.junit_path]
                           : (entry.junit_path ?? []),
+                  paths: entry.paths ?? null,
               }
     )
+}
+
+/** Whether `file` matches one of the globs. */
+const matchesAny = ({
+    file,
+    globs,
+}: {
+    file: string
+    globs: string[]
+}): boolean => globs.some((glob) => new Bun.Glob(glob).match(file))
+
+/**
+ * The test commands a ticket's gate runs, and the ones it skips (#722), each
+ * in config order. A command with no `paths` always runs; one with `paths`
+ * runs only when a changed file matches one of them. If a changed test file
+ * (by `test_file_patterns`) matches no command's `paths`, every command
+ * runs, so a ticket's own tests always run at its gates.
+ *
+ * @example
+ * testCommandsToRun({ commands: [a, b], changed_files: ['src/b/x.ts'], test_file_patterns: ['**\/*.test.ts'] })
+ * // { run: [b], skipped: [a] } when a has paths ['src/a/**'] and b ['src/b/**']
+ */
+export const testCommandsToRun = ({
+    commands,
+    changed_files,
+    test_file_patterns,
+}: {
+    commands: TestCommand[]
+    changed_files: string[]
+    test_file_patterns: string[]
+}): { run: TestCommand[]; skipped: TestCommand[] } => {
+    const covered = commands.flatMap(({ paths }) => paths ?? [])
+    const uncoveredTest = changed_files.some(
+        (file) =>
+            matchesAny({ file, globs: test_file_patterns }) &&
+            !matchesAny({ file, globs: covered })
+    )
+    if (uncoveredTest) return { run: commands, skipped: [] }
+    const runs = ({ paths }: TestCommand): boolean =>
+        paths === null ||
+        changed_files.some((file) => matchesAny({ file, globs: paths }))
+    return {
+        run: commands.filter(runs),
+        skipped: commands.filter((command) => !runs(command)),
+    }
 }
 
 /**

@@ -108,7 +108,7 @@ Tests:
 
 ## Test commands and the gates
 
-The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed.
+The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed. At a ticket's own gates, a test command with `paths` runs only when the ticket changed a file under them, until its join's gates fail: then every command runs at its gates, so the fix loop sees the failure.
 
 Reached by: `checks` in a repo's `.luca/config.json`; the gates run after every agent turn that changes code.
 
@@ -123,6 +123,7 @@ Tests:
 - `packages/engine/src/gates/gate-runner-junit.test.ts`
 - `packages/engine/src/shell/run-command.test.ts`
 - `packages/engine/src/config/test-commands.test.ts`
+- `packages/engine/src/config/test-commands-to-run.test.ts`
 - `packages/engine/src/core/decide-test-commands.test.ts`
 - `packages/engine/src/core/read-intake-junit.test.ts`
 - `packages/engine/src/core/run-test-commands.e2e.test.ts`
@@ -144,6 +145,18 @@ Tests:
 - `packages/engine/src/core/run-own-slow-run-files.e2e.test.ts`
 - `packages/engine/src/core/run-junit-own-files.e2e.test.ts`
 - `packages/engine/src/core/run-fast-limit.e2e.test.ts`
+
+## Warm builds
+
+A new ticket worktree gets the repo's gitignored build-cache folders cloned in from the run branch's worktree, or else the repo's checkout, before its baseline, so its first test run doesn't rebuild everything; a cache that isn't ignored, isn't found, or fails to copy is skipped and never stops the ticket. `luca doctor` and `luca setup` warn about a build-cache path git doesn't ignore.
+
+Reached by: `build_cache_paths` in a repo's `.luca/config.json`.
+
+Tests:
+
+- `packages/engine/src/config/build-cache-paths.test.ts`
+- `packages/engine/src/core/run-build-cache.e2e.test.ts`
+- `packages/engine/src/cli/setup-build-cache.test.ts`
 
 ## Test slots
 

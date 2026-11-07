@@ -148,6 +148,7 @@ export const runEngine = async ({
     stop_before,
     git,
     launcher,
+    copy_dir,
     jev,
     board,
     clock,
@@ -201,7 +202,11 @@ export const runEngine = async ({
     const build =
         git === undefined || launcher === undefined
             ? undefined
-            : { git, launcher: live?.launcher(launcher) ?? launcher }
+            : {
+                  git,
+                  launcher: live?.launcher(launcher) ?? launcher,
+                  ...(copy_dir === undefined ? {} : { copy_dir }),
+              }
     const inFlight = new Map<string, InFlight>()
     let started = 0
     // The run's own asker, so turning the decision model off lasts this run.

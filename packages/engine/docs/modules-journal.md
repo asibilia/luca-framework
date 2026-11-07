@@ -44,6 +44,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/run-entries.ts` | Run start, resume, stop, ending (`run_ended`, #706), and step entries. |
 | `src/journal/intake-entries.ts` | Intake entries. |
 | `src/journal/worktree-entries.ts` | Worktree and baseline entries. |
+| `src/journal/build-cache-entries.ts` | Warm builds' entries (#721): `build_cache_copied` and `build_cache_skipped`. |
 | `src/journal/agent-entries.ts` | Agent turn and session entries. |
 | `src/journal/agent-message-entries.ts` | Agent message entries. |
 | `src/journal/limit-entries.ts` | Plan limit and usage entries. |

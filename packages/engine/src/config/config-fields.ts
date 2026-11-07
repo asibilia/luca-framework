@@ -105,6 +105,19 @@ export const autoRetryOf = ({ config }: { config: EngineConfig }): boolean =>
     config.auto_retry ?? true
 
 /**
+ * The repo's build-cache paths and globs (#721): the config's
+ * `build_cache_paths`, else none.
+ *
+ * @example
+ * buildCachePathsOf({ config: { ...config, build_cache_paths: ['cache'] } }) // ['cache']
+ */
+export const buildCachePathsOf = ({
+    config,
+}: {
+    config: EngineConfig
+}): string[] => config.build_cache_paths ?? []
+
+/**
  * The feature map's path (#583), in the form a worktree-relative path takes
  * everywhere else (`normalize`, no leading `./`), or `null` with no map.
  * `./docs/feature-map.md` and `docs//feature-map.md` are both

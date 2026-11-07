@@ -2,6 +2,7 @@ import uniq from 'lodash/uniq'
 
 import { rejoinOpening, type RejoinContext } from '../agents/role-prompts'
 import type { Finding, FindingResponse } from '../agents/role-results'
+import type { GateCheck } from '../gates/gate-schemas'
 import type {
     ReplayedGates,
     ReviewFix,
@@ -27,6 +28,18 @@ export const findingLine = (finding: Finding): string => {
 export const findingList = (findings: Finding[]): string =>
     findings.map(findingLine).join('\n')
 
+/** A check's outcome: skipped (#722, with why), passed, or FAILED. */
+const outcomeText = ({
+    ok,
+    skipped,
+    reason,
+}: Pick<GateCheck, 'ok' | 'skipped' | 'reason'>): string => {
+    if (skipped === true) {
+        return reason === undefined ? 'skipped' : `skipped (${reason})`
+    }
+    return ok ? 'passed' : 'FAILED'
+}
+
 /** Each gate's command and outcome, with a failed gate's (clipped) output. */
 export const gateResults = ({
     gates,
@@ -35,8 +48,8 @@ export const gateResults = ({
 }): string => {
     if (gates === null) return 'The engine has no gate results for this ticket.'
     return gates.checks
-        .map(({ name, command, ok, output }) => {
-            const line = `- ${name} (\`${command}\`): ${ok ? 'passed' : 'FAILED'}`
+        .map(({ name, command, ok, output, skipped, reason }) => {
+            const line = `- ${name} (\`${command}\`): ${outcomeText({ ok, skipped, reason })}`
             return ok || output === ''
                 ? line
                 : `${line}\n\n\`\`\`\n${clipOutput({ text: output, max: 2000 })}\n\`\`\``

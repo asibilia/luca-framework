@@ -1,4 +1,9 @@
-import type { GateCheck, GateName, TestCase } from './gate-schemas'
+import {
+    SKIPPED_BY_PATHS_REASON,
+    type GateCheck,
+    type GateName,
+    type TestCase,
+} from './gate-schemas'
 import { ownFilesCheck } from './own-files-check'
 import { ownSlowChecks, ownSlowRuns } from './own-slow-check'
 import { prepareCheck } from './prepare-check'
@@ -14,6 +19,7 @@ import {
     testCommands,
     testTimeoutOf,
     type EngineConfig,
+    type TestCommand,
 } from '../config/engine-config'
 
 export { prepareCheck } from './prepare-check'
@@ -75,6 +81,7 @@ export const runGates = async ({
     own_test_files,
     measured_files,
     exclusive = false,
+    test_commands,
 }: {
     cwd: string
     config: EngineConfig
@@ -104,6 +111,12 @@ export const runGates = async ({
     measured_files?: string[]
     /** Run each test command alone (#544). Left out, they don't. */
     exclusive?: boolean
+    /**
+     * A ticket gate's test commands by path (#722, see `testCommandsToRun`):
+     * only `run` runs, and each of `skipped` is a passing `skipped` check.
+     * Left out, every test command runs.
+     */
+    test_commands?: { run: TestCommand[]; skipped: TestCommand[] }
 }): Promise<{ ok: boolean; checks: GateCheck[]; cases: TestCase[] }> => {
     const checks: GateCheck[] = []
     if (install !== null) {
@@ -125,7 +138,7 @@ export const runGates = async ({
     const timeout_ms = testTimeoutOf({ config })
     const { test_concurrency } = config
     const limit_ms = caseLimitOf({ config })
-    const fast = testCommands({ config })
+    const fast = test_commands?.run ?? testCommands({ config })
     // With a junit command (#668), only files bun can run lack bun results,
     // and only they go to the own-files run.
     const bun_files_only = hasJunitCommand({ config })
@@ -146,6 +159,20 @@ export const runGates = async ({
         bun_files_only,
     })
     checks.push(...fastChecks.checks)
+    checks.push(
+        ...(test_commands?.skipped ?? []).map(
+            ({ run }): GateCheck => ({
+                name: 'test',
+                command: run,
+                ok: true,
+                exit_code: 0,
+                output: '',
+                duration_ms: 0,
+                skipped: true,
+                reason: SKIPPED_BY_PATHS_REASON,
+            })
+        )
+    )
     // The test cases the gates saw, for the empty-test check (#581).
     const cases = fastChecks.runs.flatMap((run) => run.cases)
     // The own files a slow command's run_files owns (#683) run through it,

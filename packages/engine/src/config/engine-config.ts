@@ -18,6 +18,7 @@ import {
 
 export {
     autoRetryOf,
+    buildCachePathsOf,
     DEFAULT_PREPARE_CONCURRENCY,
     DEFAULT_PREPARE_TIMEOUT_MS,
     decisionModelOf,
@@ -60,6 +61,7 @@ export {
     ownSlowCommands,
     slowTestCommands,
     testCommands,
+    testCommandsToRun,
     type OwnSlowCommand,
     type TestCommand,
 } from './test-commands'

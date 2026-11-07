@@ -6,6 +6,8 @@
 import { mkdir } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
+import type { CopyDir } from './build-cache'
+
 import type { AgentLauncher } from '../agents/agent-launcher'
 import type { EngineConfig } from '../config/engine-config'
 import { testFilesAmong } from '../gates/test-runner'
@@ -23,6 +25,11 @@ import type { Tracker } from '../tracker/tracker'
 export type BuildDeps = {
     git: GitAdapter
     launcher: AgentLauncher
+    /**
+     * Copies a build-cache folder into a new ticket worktree (#721). Left
+     * out, the engine's own (`copyDir`); tests pass a fake.
+     */
+    copy_dir?: CopyDir
 }
 
 /** What a build step's executor works with. */
@@ -108,6 +115,7 @@ export const buildContext = ({
     tracker,
     git,
     launcher,
+    copy_dir,
     step,
 }: BuildDeps & {
     journal: Journal
@@ -121,6 +129,7 @@ export const buildContext = ({
     return {
         git,
         launcher,
+        ...(copy_dir === undefined ? {} : { copy_dir }),
         journal,
         tracker,
         state,

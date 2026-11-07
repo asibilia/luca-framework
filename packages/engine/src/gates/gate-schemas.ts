@@ -86,9 +86,19 @@ export const GateCheckSchema = z.object({
      * (#544).
      */
     wait_ms: z.number().int().nonnegative().optional(),
+    /**
+     * A ticket gate's test command it didn't run (#722): no file the ticket
+     * changed matches its `paths`. It counts as passing. Left out otherwise.
+     */
+    skipped: z.literal(true).optional(),
+    /** Why it was skipped, only with `skipped`. */
+    reason: z.string().optional(),
 })
 
 export type GateCheck = z.infer<typeof GateCheckSchema>
+
+/** Why a ticket gate skipped a test command (#722). */
+export const SKIPPED_BY_PATHS_REASON = 'no changed file matches its paths'
 
 /**
  * How a failed check ended, for a message: `exit 2`, say, or `timed out`.

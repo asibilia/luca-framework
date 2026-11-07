@@ -40,6 +40,7 @@ const bunCommand = ({ run }: { run: string }): TestCommand => ({
     run,
     results: 'bun',
     junit_path: [],
+    paths: null,
 })
 
 const logLines = async (): Promise<string[]> =>

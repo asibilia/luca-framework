@@ -35,7 +35,15 @@ export const ENGINE_VOCABULARY = {
     gates_run: z.looseObject({
         target: z.string(),
         ok: z.boolean(),
-        checks: z.array(z.looseObject({ name: z.string(), ok: z.boolean() })),
+        /** `skipped`: a ticket gate didn't run the test command (#722). */
+        checks: z.array(
+            z.looseObject({
+                name: z.string(),
+                ok: z.boolean(),
+                command: z.string().optional(),
+                skipped: z.boolean().optional(),
+            })
+        ),
     }),
     ticket_joined: z.looseObject({
         ok: z.boolean(),

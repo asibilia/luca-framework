@@ -3,7 +3,7 @@ import omit from 'lodash/omit'
 import reduce from 'lodash/reduce'
 import { z } from 'zod'
 
-import { autoRetryOf } from './config-fields'
+import { autoRetryOf, buildCachePathsOf } from './config-fields'
 import type { EngineConfig } from './engine-config'
 
 /**
@@ -32,6 +32,9 @@ import type { EngineConfig } from './engine-config'
  * - `auto_retry`: whether the engine retries a routine stuck item once by
  *   itself (#705). Only an item stuck after the resume is retried, so
  *   turning it on leaves an item already told to the owner waiting.
+ * - `build_cache_paths`: the build caches cloned into each new ticket
+ *   worktree (#721). Each new worktree reads it then, so a new value counts
+ *   from the next ticket started.
  */
 export const RELOADED_FIELDS = [
     'prepare',
@@ -42,6 +45,7 @@ export const RELOADED_FIELDS = [
     'test_case_timeout_ms',
     'leftover_allow',
     'auto_retry',
+    'build_cache_paths',
 ] as const
 
 /**
@@ -141,6 +145,12 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         from: z.boolean(),
         to: z.boolean(),
     }),
+    // Never left out: a config without it reads as `[]`.
+    z.object({
+        field: z.literal('build_cache_paths'),
+        from: z.array(z.string().min(1)),
+        to: z.array(z.string().min(1)),
+    }),
 ])
 
 export type ConfigChange = z.infer<typeof ConfigChangeSchema>
@@ -202,6 +212,11 @@ export const configChanges = ({
             from: autoRetryOf({ config: current }),
             to: autoRetryOf({ config: next }),
         },
+        {
+            field: 'build_cache_paths',
+            from: buildCachePathsOf({ config: current }),
+            to: buildCachePathsOf({ config: next }),
+        },
     ]
     return all.filter(({ from, to }) => !isEqual(from, to))
 }
@@ -244,6 +259,8 @@ const applyChange = ({
                 : { ...config, leftover_allow: change.to }
         case 'auto_retry':
             return { ...config, auto_retry: change.to }
+        case 'build_cache_paths':
+            return { ...config, build_cache_paths: change.to }
     }
 }
 
