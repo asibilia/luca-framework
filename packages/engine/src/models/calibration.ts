@@ -1,12 +1,23 @@
-import { plural } from './model-score-sides'
+import type { TicketFacts } from './model-score-facts'
+import { SCORED_ROLES, type ScoredRole } from './model-score-rules'
+import {
+    plural,
+    sideOf,
+    sideText,
+    verdictOf,
+    type ScoreSide,
+    type Verdict,
+} from './model-score-sides'
 
+import { EffortLevelSchema, type EffortLevel } from '../config/engine-config'
 import type { JournalRecord } from '../journal/journal-record'
 
 /**
  * The calibration section of `luca models` (#723): how often Clef's answer
  * matches a reference from the journal, per decision model, job and
  * confidence band, with a suggested bar per job. The bar is only printed,
- * never acted on. Pure: it reads records and never writes.
+ * never acted on. Also each writer role's model trial by Clef's confidence
+ * (#725), with a suggested bar. Pure: it reads records and never writes.
  */
 
 /** The jobs whose answers the journal holds a sound reference for. */
@@ -314,3 +325,125 @@ export const calibrationText = (calibration: ModelCalibration[]): string[] => {
         ]),
     ]
 }
+
+/** One band of a role's model trial: trial tickets against control tickets. */
+export type TrialBand = {
+    band: CalibrationBandName
+    trial: ScoreSide
+    control: ScoreSide
+    verdict: Verdict
+}
+
+/**
+ * A writer role's model trial by Clef's confidence (#725), for one decision
+ * model's answers on tickets reviewed at one effort, pooled over every
+ * model and effort the role ran at.
+ */
+export type TrialByConfidence = {
+    role: ScoredRole
+    model: string
+    review_effort: EffortLevel
+    /** In `CALIBRATION_BANDS`' order. */
+    bands: TrialBand[]
+    /** Over the bands with a ticket; `null` with none held. */
+    suggested_bar: number | null
+}
+
+/** Whether a band has a trial or control ticket, and so prints. */
+const hasTickets = ({ trial, control }: TrialBand): boolean =>
+    trial.tickets > 0 || control.tickets > 0
+
+/**
+ * The suggested bar over the bands that print: a band is rated unless it
+ * has not enough data, and holds when it is about the same.
+ */
+const trialBar = (bands: TrialBand[]): number | null =>
+    suggestedBar(
+        bands.flatMap((entry, at) =>
+            hasTickets(entry)
+                ? [
+                      {
+                          from: CALIBRATION_BANDS[at]?.from ?? 0,
+                          rated: entry.verdict !== 'not enough data',
+                          holds: entry.verdict === 'about the same',
+                      },
+                  ]
+                : []
+        )
+    )
+
+/**
+ * Each writer role's model trial by the confidence of its first
+ * `agent_model` answer from a decision model, one block per decision model,
+ * in name order, and review effort, in effort order, with a trial or
+ * control ticket. Pure.
+ */
+export const trialByConfidenceOf = ({
+    tickets,
+}: {
+    tickets: TicketFacts[]
+}): TrialByConfidence[] =>
+    SCORED_ROLES.flatMap((role) => {
+        const grouped = tickets.flatMap((ticket) => {
+            const group = ticket.trial_groups[role]
+            const pick = ticket.clef_model_picks[role]
+            const confidence = pick?.confidence ?? null
+            return group === undefined ||
+                pick === undefined ||
+                confidence === null
+                ? []
+                : [{ ticket, group, model: pick.model, confidence }]
+        })
+        const models = [...new Set(grouped.map(({ model }) => model))]
+        return models.toSorted().flatMap((model) =>
+            EffortLevelSchema.options.flatMap((review_effort) => {
+                const alike = grouped.filter(
+                    (entry) =>
+                        entry.model === model &&
+                        entry.ticket.review_effort === review_effort
+                )
+                if (alike.length === 0) return []
+                const bands = CALIBRATION_BANDS.map(({ band }, at) => {
+                    const sideIn = (group: string): ScoreSide =>
+                        sideOf(
+                            alike.flatMap((entry) =>
+                                entry.group === group &&
+                                bandAt(entry.confidence) === at
+                                    ? [entry.ticket]
+                                    : []
+                            )
+                        )
+                    const trial = sideIn('trial')
+                    const control = sideIn('control')
+                    return {
+                        band,
+                        trial,
+                        control,
+                        verdict: verdictOf({ side: trial, baseline: control }),
+                    }
+                })
+                return [
+                    {
+                        role,
+                        model,
+                        review_effort,
+                        bands,
+                        suggested_bar: trialBar(bands),
+                    },
+                ]
+            })
+        )
+    })
+
+/** A role's model trial blocks as `luca models` prints them. Pure. */
+export const trialByConfidenceText = (blocks: TrialByConfidence[]): string[] =>
+    blocks.flatMap(({ model, review_effort, bands, suggested_bar }) => [
+        `  model trial, by Clef's confidence (decision model ${model}, reviewed at ${review_effort}, every model and effort):`,
+        ...bands
+            .filter(hasTickets)
+            .map(
+                ({ band, trial, control, verdict }) =>
+                    `    ${band}: trial ${sideText(trial)}; control ${sideText(control)}; verdict: ${verdict}`
+            ),
+        `    suggested bar: ${suggested_bar ?? 'none yet'}`,
+    ])

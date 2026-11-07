@@ -1,7 +1,10 @@
 import {
     calibrationOf,
     calibrationText,
+    trialByConfidenceOf,
+    trialByConfidenceText,
     type ModelCalibration,
+    type TrialByConfidence,
 } from './calibration'
 import {
     factsOf,
@@ -145,6 +148,8 @@ export type ModelReport = {
     without_lines_changed: number
     /** How often Clef's answer matches a reference, per decision model (#723). */
     calibration: ModelCalibration[]
+    /** Each writer role's model trial by Clef's confidence (#725). */
+    trial_by_confidence: TrialByConfidence[]
 }
 
 const median = (values: number[]): number | null => {
@@ -396,6 +401,7 @@ export const scoreModels = ({
             ({ joined, lines }) => joined && lines === null
         ).length,
         calibration: calibrationOf({ runs }),
+        trial_by_confidence: trialByConfidenceOf({ tickets }),
     }
 }
 
@@ -482,6 +488,11 @@ export const formatModelReport = ({
             role,
             ...scoresText(scores, report.floor_only.includes(role)),
             ...(picks === undefined ? [] : effortPicksText(picks)),
+            ...trialByConfidenceText(
+                report.trial_by_confidence.filter(
+                    (block) => block.role === role
+                )
+            ),
         ]
     })
     const learner =

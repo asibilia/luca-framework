@@ -99,6 +99,19 @@ on a resume: the first 8 hex digits of the SHA-256 of
 otherwise the control group stays on `opus`, `unsure`. A failed trial try
 steps up to `opus`, `after_failure`, like any cheaper try.
 
+`luca models` splits each writer role's model trial by Clef's confidence
+(#725), after the role's effort-picks block: one block per decision model
+(cut to its last part after `/`) and ticket review effort, headed
+`model trial, by Clef's confidence (decision model clef, reviewed at xhigh,
+every model and effort):`. A ticket's band is the confidence of the role's
+first `agent_model` answer on it from a decision model (Jev's answers and
+old `ticket_model` answers don't count); trial and control tickets are
+pooled over every model and effort the role ran at. Each band with a
+ticket prints trial against control with the usual verdict, then a
+suggested bar: the calibration walk below over those bands, where a band
+is rated unless it has `not enough data` and holds when it is `about the
+same`; `none yet` with no band held. It is only a suggestion.
+
 A launch step a crash cut off is redone on the model, reason and trial
 group its first try journaled, with no new ask; if it journaled none, it
 picks as above.
