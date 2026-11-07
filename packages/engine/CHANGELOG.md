@@ -1,5 +1,12 @@
 # @luca/engine
 
+## 14.0.0-alpha.34
+
+### Patch Changes
+
+- b5d7f99: Spec: faster gates: warm builds for new ticket worktrees, and tests by path at ticket gates ([#720](https://github.com/asibilia/luca-framework/issues/720))
+- 91d9c0f: Spec: a calibration table in luca models: how often Clef is right per job and confidence band, with a suggested bar ([#723](https://github.com/asibilia/luca-framework/issues/723))
+
 ## 14.0.0-alpha.33
 
 ### Patch Changes
