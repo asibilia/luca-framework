@@ -4,7 +4,8 @@
  * worktree or else the repo's checkout, both only read. Each copy goes to a
  * temporary folder in the run folder first and is then renamed into place,
  * so a worktree never holds a half-made copy. Nothing here ever stops the
- * ticket.
+ * ticket: a failed scan, git check, copy or temporary folder only skips
+ * paths, each journaled with its reason.
  */
 import { existsSync } from 'node:fs'
 import { mkdir, rename, rm } from 'node:fs/promises'
@@ -31,6 +32,14 @@ type Source = { from: BuildCacheSource; dir: string }
 /** One match of an entry, in the first source that has it. */
 type Match = Source & { path: string }
 
+/** An error's text. */
+const messageOf = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error)
+
+/** Removes a folder; one it can't remove is left, and never throws. */
+const removeQuietly = (dir: string): Promise<void> =>
+    rm(dir, { recursive: true, force: true }).catch(() => undefined)
+
 /** The run's two warm sources, in order: the run branch's worktree, then the checkout. */
 const sourcesOf = ({ context }: { context: BuildContext }): Source[] => {
     const started = context.journal
@@ -46,7 +55,10 @@ const sourcesOf = ({ context }: { context: BuildContext }): Source[] => {
     return sources
 }
 
-/** An entry's matches, each from the first source that has it. */
+/**
+ * An entry's matches, each from the first source that has it. A source it
+ * can't scan has no match.
+ */
 const matchesOf = async ({
     entry,
     sources,
@@ -56,7 +68,10 @@ const matchesOf = async ({
 }): Promise<Match[]> => {
     const found: Match[] = []
     for (const source of sources) {
-        for (const path of await matchesIn({ entry, dir: source.dir })) {
+        const paths = await matchesIn({ entry, dir: source.dir }).catch(
+            (): string[] => []
+        )
+        for (const path of paths) {
             if (!found.some((match) => match.path === path)) {
                 found.push({ ...source, path })
             }
@@ -90,12 +105,9 @@ const copyInto = async ({
         await rename(temp, target)
         return { ok: true }
     } catch (error) {
-        return {
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-        }
+        return { ok: false, error: messageOf(error) }
     } finally {
-        await rm(temp, { recursive: true, force: true })
+        await removeQuietly(temp)
     }
 }
 
@@ -129,9 +141,13 @@ export const copyBuildCaches = async ({
             role: null,
             content,
         })
-    // A crashed try's leftovers go first; this try's go at the end.
+    // A crashed try's leftovers go first; this try's go at the end. When
+    // the temporary folder can't be cleared or made, each copy fails.
     const temps = join(context.run_dir, 'cache-copies', String(ticket))
-    await rm(temps, { recursive: true, force: true })
+    const uncleared = await rm(temps, { recursive: true, force: true }).then(
+        () => null,
+        messageOf
+    )
     const sources = sourcesOf({ context })
     const matches: Match[] = []
     for (const entry of entries) {
@@ -149,7 +165,9 @@ export const copyBuildCaches = async ({
         cwd: worktree,
         paths: matches.map(({ path }) => path),
     }).catch(() => new Set<string>())
-    await mkdir(temps, { recursive: true })
+    const unmade =
+        uncleared ??
+        (await mkdir(temps, { recursive: true }).then(() => null, messageOf))
     const started = performance.now()
     const copied: { path: string; from: BuildCacheSource }[] = []
     for (const [index, match] of matches.entries()) {
@@ -157,6 +175,8 @@ export const copyBuildCaches = async ({
             skip({ path: match.path, reason: 'not_ignored' })
         } else if (existsSync(join(worktree, match.path))) {
             skip({ path: match.path, reason: 'already_present' })
+        } else if (unmade !== null) {
+            skip({ path: match.path, reason: 'copy_failed', error: unmade })
         } else {
             const done = await copyInto({
                 context,
@@ -175,7 +195,7 @@ export const copyBuildCaches = async ({
         }
     }
     const ms = Math.round(performance.now() - started)
-    await rm(temps, { recursive: true, force: true })
+    await removeQuietly(temps)
     if (copied.length === 0) return
     context.journal.append({
         kind: 'build_cache_copied',

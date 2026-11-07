@@ -114,6 +114,55 @@ describe('decision step: the ticket review', () => {
         expect(prompt).toContain('AC1: sum adds two numbers')
     })
 
+    test("the reviewer sees a test command the ticket's gate skipped as skipped, with why, not as passed", () => {
+        const prompt = promptOf(
+            decideAfter([
+                runBranchCreated(),
+                ...ticketBuilt({ ticket: 11 }).slice(0, 7),
+                {
+                    kind: 'gates_run',
+                    ticket: 11,
+                    role: null,
+                    content: {
+                        target: 'ticket',
+                        ok: true,
+                        checks: [
+                            {
+                                name: 'test',
+                                command: 'bun test src/a',
+                                ok: true,
+                                exit_code: 0,
+                                output: '',
+                                duration_ms: 0,
+                                skipped: true,
+                                reason: 'no changed file matches its paths',
+                            },
+                            {
+                                name: 'test',
+                                command: 'bun test src/b',
+                                ok: true,
+                                exit_code: 0,
+                                output: '',
+                            },
+                        ],
+                    },
+                },
+                leftoverScan({ ticket: 11, stage: 'green' }),
+                commitMade({
+                    ticket: 11,
+                    stage: 'green',
+                    files: ['src/sum.ts'],
+                }),
+            ])
+        )
+
+        expect(prompt).toContain(
+            '- test (`bun test src/a`): skipped (no changed file matches its paths)'
+        )
+        expect(prompt).not.toContain('- test (`bun test src/a`): passed')
+        expect(prompt).toContain('- test (`bun test src/b`): passed')
+    })
+
     test("a refactor ticket's reviewer also checks that behavior didn't change", () => {
         const refactor = practiceTicket({
             number: 11,
