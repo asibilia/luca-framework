@@ -63,3 +63,47 @@ then waits at most 2 seconds more for output, so a child that left the
 group can't hold the step open. The result says `timed_out: true`, with no
 exit code. If the engine itself is stopped (Ctrl-C, say), it passes the
 signal on to the commands it is running.
+
+**Warm builds (#721).** A repo that keeps its build caches inside the
+checkout (a Swift repo's `.derived` and `.build` folders, say) gives every
+new ticket worktree a cold build, so its baseline, red check and first gate
+rebuild everything. Such a repo lists those folders in `build_cache_paths`
+in `.luca/config.json`: repo-relative paths or globs. For
+`asibilia/movie-rankings`:
+
+```json
+{ "build_cache_paths": ["packages/ios/.derived", "packages/ios/Packages/*/.build"] }
+```
+
+- In `create_ticket_worktree`, after the worktree is made and before
+  `ticket_worktree_created`, the engine clones each one into it, so the
+  baseline, the test-writer, the red check and the gates all start warm.
+- It copies from two sources, and only reads them: first the run branch's
+  worktree, then the repo's own checkout (`run_started`'s `repo`; none when
+  that is `null`, in an older journal). An entry with no `*`, `?`, `[` or `{`
+  is one path. A glob is expanded in each source (`Bun.Glob`, dot files
+  too), and each match is copied from the first source that has it.
+- Each path must be ignored by git: a match `git check-ignore` doesn't
+  ignore in the new worktree is never copied, so a copied cache can't end
+  up in a commit. `luca doctor` and `luca setup` warn about each path git
+  doesn't ignore in the checkout (the `build_cache` check, see
+  [Setup](setup.md)).
+- Each copy goes to `<run folder>/cache-copies/<n>` first (`cp -c -R`, an
+  APFS clone on macOS, else `cp -R`), then is renamed into the worktree, so
+  a worktree never holds a half-made copy. That folder is cleared before and
+  after. `create_ticket_worktree` already runs alone among the run branch's
+  steps, so no join or gate writes the run branch's caches mid-copy.
+- The journal has one `build_cache_copied { paths: [{ path, from }], ms }`
+  per ticket when anything was copied (`from` is `run_branch` or
+  `checkout`; `ms` is how long the copies and renames took), and one
+  `build_cache_skipped { path, reason }` for each path not copied:
+  `not_ignored`; `no_source`, when the entry matched nothing in either
+  source (`path` is then the entry as written); `copy_failed`, with the
+  copy's `error`; or `already_present`, on a redo after a crash. A skipped
+  path only means a cold start: it never fails or blocks the ticket.
+- A worktree reset (a bad-test bounce, a rebase) keeps the ignored files the
+  worktree has, so nothing is copied again. A resume reloads the field (see
+  [Crash recovery](crash-recovery.md)).
+- Left out, it is `[]`, and nothing is copied. A trailing `/` is dropped.
+  The loader refuses an entry that is empty, absolute, the repo root (`.`),
+  or leaves the repo with `..`.

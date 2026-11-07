@@ -108,7 +108,7 @@ Tests:
 
 ## Test commands and the gates
 
-The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed. At a ticket's own gates, a test command with `paths` runs only when the ticket changed a file under them.
+The gates run the repo's test commands, types, and lint in a ticket's worktree, in their own process group with a time limit, and report what failed. At a ticket's own gates, a test command with `paths` runs only when the ticket changed a file under them, until its join's gates fail: then every command runs at its gates, so the fix loop sees the failure.
 
 Reached by: `checks` in a repo's `.luca/config.json`; the gates run after every agent turn that changes code.
 

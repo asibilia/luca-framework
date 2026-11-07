@@ -13,7 +13,9 @@ startRun ──> run_started
 create_run_branch       git: fetch the base, worktree for the run branch from origin/<base> ──> run_branch_created
 install_dependencies    bun install --frozen-lockfile, if there's a package.json ──> dependencies_installed
 for each ticket, at the same time, once every ticket it waits on has pushed:
-  create_ticket_worktree  git: worktree on a new branch from the run branch ──> ticket_worktree_created
+  create_ticket_worktree  git: worktree on a new branch from the run branch, then the
+                          ignored build_cache_paths cloned in (#721) ──> build_cache_skipped (each path not copied),
+                                                        build_cache_copied (if any was), ticket_worktree_created
   install_dependencies    bun install --frozen-lockfile, before any test or agent ──> dependencies_installed
   run_baseline_tests      the config's prepare command, if any, then its bun test
                           commands, before any agent ──> prepare_made (if it made new untracked paths),
@@ -38,6 +40,8 @@ for each ticket, at the same time, once every ticket it waits on has pushed:
               a fresh test-writer fixes only that file, check_refactor_update,
               then the implementer (same session) carries on            ──> refactor_test_update, refactor_test_update_checked
   run_gates ticket        install if a manifest changed, then tests, types, lint ──> gates_run
+                          (a test command with paths only if the ticket changed a file
+                          under them; a skipped one is a check with skipped: true, #722)
     failed: follow_up_agent implementer (same session), gates again, ≤ 3 rounds
     a mapped test passed with no expect(): reset_ticket_worktree, then as for
               a bad test, counted toward the same cap (#581)            ──> worktree_reset (with bad_test)
@@ -134,10 +138,11 @@ baseline test run. The first such ticket in order runs it
 replay gives it that ticket's `baseline_tests` as it stood then. A baseline
 belongs to the commit it was taken at: a rebase moves the worktree but not
 its baseline, so a ticket starting from a newer commit (after a join) runs a
-fresh one. Nothing else is shared or skipped: each red check runs the tests
-in its own worktree, the gates run in full before every green and fix
-commit, and again on the run branch after every join, since each of those
-sees code no earlier run saw.
+fresh one. Nothing else is shared: each red check runs the tests in its own
+worktree, the gates run before every green and fix commit (skipping only
+the test commands whose `paths` the ticket's changes don't touch, #722), and
+in full on the run branch after every join, since each of those sees code no
+earlier run saw.
 
 **Plan limits with many tickets.** A limit wait and a billing stop are the
 whole run's: while one is due, `decideSteps` returns only it, so no ticket
@@ -160,7 +165,8 @@ files that clash. `ticket_rebased` names them, split into `tests` and `code`
 by the config's test file patterns. Clashed tests go to a fresh test-writer
 and clashed code to the implementer's session, each told the files; neither
 answer counts as a fix round. Then the gates run in the worktree (after a
-failed join, they fail again, and go through the gate fix loop), the ticket's
+failed join, they run every test command, `paths` or not, so they fail
+again, and go through the gate fix loop), the ticket's
 change becomes **one** commit (`fix: rejoin #n <title> onto the run branch`;
 its old red and green commits are left behind), a fresh reviewer re-reviews
 only the new changes, and the ticket joins again. A ticket is rebased at most

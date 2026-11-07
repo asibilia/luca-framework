@@ -39,7 +39,9 @@
 - **Run branch:** `luca/spec-<n>-<run_id>`, in a worktree at
   `<run folder>/run-branch`. Each ticket's branch is `<run branch>--ticket-<n>`,
   in `<run folder>/tickets/<n>`. Test reports go in `<run folder>/reports`, so
-  they are never leftovers.
+  they are never leftovers. Warm builds' copies (#721) go through
+  `<run folder>/cache-copies/<n>` before they are renamed into ticket `n`'s
+  worktree; the folder is cleared before and after.
 - **Runs start from `origin/<base>`.** A new run fetches its base branch
   (`main`, or `--base`) from `origin` and makes the run branch from
   `origin/<base>`, never from the local branch, so it never builds on stale
@@ -105,9 +107,12 @@
   `test_file_patterns`) matches no command's `paths`, every command runs. A
   skipped command stays in the gate's checks as a passing check with
   `skipped: true` and its `reason`. The baseline, the red check, the
-  already-done check, join gates and the final review run every command.
-  The loader refuses `paths: []`, an empty, absolute or `..` entry, and
-  `paths` on a `checks.slow_test` entry.
+  already-done check, join gates and the final review run every command,
+  and so do a ticket's own gates after a rebase for failed join gates, so
+  the gate fix loop sees what the join found. The loader refuses
+  `paths: []`, an empty, absolute or `..` entry, and `paths` on a
+  `checks.slow_test` entry. See "Tests by path (#722)" in
+  [Test limits and slow tests](test-commands-and-limits.md).
 - **Slow test commands (#563):** `checks.slow_test` is a test command setting
   of the same shape as `checks.test`, for the tests `checks.test` leaves out.
   See "Slow tests (#563)" above. It is frozen for a run, like `checks.test`.

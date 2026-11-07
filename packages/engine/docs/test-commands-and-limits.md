@@ -230,3 +230,50 @@ such as `"packages/ios/**/Tests/**/*.swift"`: with the default,
 `**/*.test.ts`, each Swift case's `file` is its classname with no
 `assertions`, the speed limit never measures it, and the test-writer may not
 write a `.swift` test.
+
+**Tests by path (#722).** By default a ticket's gates run every test
+command, even one whose tests the ticket's change can't affect. An object
+`checks.test` entry, of any `results` kind, can list the repo-relative globs
+it covers in `paths`. For `asibilia/movie-rankings`'s core suite:
+
+```json
+{
+    "run": "bun run ios:test:core",
+    "results": "junit",
+    "junit_path": [
+        "packages/ios/.derived/junit/core.xml",
+        "packages/ios/.derived/junit/core-swift-testing.xml"
+    ],
+    "paths": ["packages/ios/Packages/FilmRankCore/**"]
+}
+```
+
+- At a ticket's own gates (`target: ticket`, its lone and environment
+  reruns too), a command with `paths` runs only when one of the ticket's
+  changed files matches one of them (`Bun.Glob`'s `match`). The changed
+  files are those changed since the worktree's base, untracked and deleted
+  ones too, less what prepare made. A string entry, or one with no `paths`,
+  always runs.
+- **The safety rule.** If a changed test file (by `test_file_patterns`)
+  matches no command's `paths`, every command runs, so a ticket's own tests
+  always run at its gates. A command with no `paths` doesn't count as
+  covering it: a `bun` command can't run a `.swift` test.
+- A skipped command stays in the gate's checks as a passing one, with its
+  `command` as written: `{ "name": "test", "command": "bun test src/a",
+  "ok": true, "exit_code": 0, "output": "", "duration_ms": 0, "skipped":
+  true, "reason": "no changed file matches its paths" }`, with no `wait_ms`.
+  The board's line for the gate names it: `#12: checks passed. Skipped (no
+  changed file matches its paths): bun test src/a.` Prepare, types and lint
+  run as always.
+- Every other run leaves `paths` out and runs every command: the baseline
+  and the red check (so the red check stays exact), the already-done check,
+  a join's gates, the final review's gates, and the final slow run. So a
+  break a ticket's gates skipped is caught when that ticket joins. After a
+  rebase for failed join gates (`ticket_rebased` with cause `join_gates`),
+  the ticket's own gates run every command too, so the gate fix loop sees
+  the failure the join found.
+- `paths` is part of `checks`, so a resume keeps the run's first value.
+  `luca setup` never writes it: add it by hand. The loader refuses
+  `paths: []` (leave `paths` out to run the command at every gate), an
+  entry that is empty, absolute or leaves the repo with `..`, and `paths` on
+  a `checks.slow_test` entry.
