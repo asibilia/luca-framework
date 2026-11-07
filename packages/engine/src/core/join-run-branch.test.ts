@@ -115,3 +115,69 @@ describe('join_run_branch with nothing to replay', () => {
         ).toEqual({ type: 'run_gates', ticket: 11, target: 'run_branch' })
     })
 })
+
+describe('join_run_branch for a ticket that already joined', () => {
+    test('leaves the run branch and the join it has alone (#719)', async () => {
+        // The ticket's join put its commit on the run branch; a second join
+        // of the same ticket must not replay it again or overwrite the
+        // record of which run-branch commit is the ticket's.
+        const base = await headOf(repo)
+        await git(repo, 'worktree', 'add', '-q', '-b', 'ticket-11', worktree)
+        await Bun.write(join(worktree, 'sum.ts'), 'export const sum = 1\n')
+        await git(worktree, 'add', '-A')
+        await git(worktree, 'commit', '-q', '-m', 'feat: build #11')
+        await git(repo, 'cherry-pick', 'ticket-11')
+        const tip = await headOf(repo)
+        const entries: JournalEntry[] = [
+            ...intakePassed({
+                tickets: [practiceTicket({ number: 11, title: 'Add sum' })],
+            }),
+            {
+                kind: 'run_branch_created',
+                ticket: null,
+                role: null,
+                content: { branch: RUN_BRANCH, path: repo, base_sha: base },
+            },
+            {
+                kind: 'ticket_worktree_created',
+                ticket: 11,
+                role: null,
+                content: {
+                    branch: 'ticket-11',
+                    path: worktree,
+                    base_sha: base,
+                },
+            },
+            {
+                kind: 'join_started',
+                ticket: 11,
+                role: null,
+                content: { run_branch_sha: base },
+            },
+            {
+                kind: 'ticket_joined',
+                ticket: 11,
+                role: null,
+                content: { ok: true, shas: [tip], lines_changed: 1 },
+            },
+        ]
+        for (const entry of entries) journal.append(entry)
+        const before = journal.read().length
+
+        await executeBuildAction({
+            action: { type: 'join_run_branch', ticket: 11 },
+            journal,
+            tracker: {} as Tracker,
+            git: createGitAdapter({ repo_root: repo }),
+            launcher: {} as AgentLauncher,
+        })
+
+        expect(await headOf(repo)).toBe(tip)
+        expect(journal.read()).toHaveLength(before)
+        const state = replayRun({ records: journal.read() })
+        expect(state.tickets[11]?.joined).toMatchObject({
+            ok: true,
+            shas: [tip],
+        })
+    })
+})
