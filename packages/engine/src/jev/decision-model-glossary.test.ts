@@ -60,6 +60,20 @@ describe('the glossary on the model trial (#698)', async () => {
     })
 })
 
+describe('the glossary on calibration (#723)', async () => {
+    const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
+
+    test('has Calibration, with its meaning and the words to avoid, right after Confidence bar', () => {
+        const entry =
+            "**Calibration**:\nHow well the decision model's confidence predicts whether its answer is right: a calibrated model is right more often when it is surer. `luca models` measures it per job against a reference answer from the journal, and suggests a confidence bar from it.\n_Avoid_: accuracy, reliability\n"
+        const next = glossary.match(
+            /^\*\*Confidence bar\*\*:\n.+\n_Avoid_: .+\n\n(\*\*[^*]+\*\*:\n.+\n_Avoid_: .+\n)/m
+        )?.[1]
+
+        expect(next).toBe(entry)
+    })
+})
+
 describe('the glossary on effort (#659)', async () => {
     const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
 

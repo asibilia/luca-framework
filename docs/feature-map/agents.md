@@ -44,6 +44,8 @@ Each role has a model floor: the decision model's model pick takes effect for a 
 
 With `models.trial_share` above 0 (it defaults to 0), a model trial runs a share of the writer launches Clef would move to a cheaper model, but isn't sure enough about, on Clef's pick (the trial group, `model_reason: trial`), chosen by a hash of the run, ticket and role, against the rest that stay on Opus (the control group); each `agent_started` names its `trial_group`, and `luca models` counts each model's trial tickets and compares them with its control tickets. The board marks a trial launch's Clef line ` (trial)`.
 
+`luca models` ends with a calibration section (#723): per decision model, for Clef's `ticket_order`, `failure_kind` and `finding_severity` answers, how many fall in each confidence band (below 0.3, 0.3 to 0.5, 0.5 to 0.7, 0.7 to 0.9, 0.9 and up) and how many match a reference from the journal, with a suggested bar per job that it only prints, never acts on.
+
 Reached by: the `models` block (`floors`, `confidence_bar`, `trial_share`) in a repo's `.luca/config.json`; each `agent_started` record names the model and why; `luca models` in a repo.
 
 Tests:
@@ -59,6 +61,7 @@ Tests:
 - `packages/engine/src/models/model-score-verdicts.test.ts`
 - `packages/engine/src/models/model-score-effort.test.ts`
 - `packages/engine/src/models/model-score-effort-picks.test.ts`
+- `packages/engine/src/models/calibration.test.ts`
 - `packages/engine/src/cli/luca-command.test.ts`
 
 ## Agent messages and run notes
