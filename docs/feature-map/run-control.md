@@ -23,6 +23,7 @@ Tests:
 - `packages/board/server/reply-post.test.ts`
 - `packages/engine/skills/luca-unstick/skill-text.test.ts`
 - `packages/engine/skills/luca-unstick/scripts/stuck-summary.test.ts`
+- `packages/engine/skills/luca-unstick/scripts/stuck-summary-runs.test.ts`
 - `packages/board/server/board-panel-state.test.ts`
 
 ## Watching a run

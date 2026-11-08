@@ -107,6 +107,12 @@ const LiveFeedEntrySchema = z.object({
 /** The whole live file, as each write has it. */
 export const LiveFileSchema = z.object({
     written_at: z.string(),
+    /**
+     * The engine's pid (#727), so `/luca-watch` and `/luca-unstick` can
+     * tell a live engine from a stopped one whatever the file's age.
+     * Missing in files from older engines.
+     */
+    pid: z.number().int().optional(),
     /** The run's first plan-usage reading, as its `rate_limit_event` sent it. */
     plan_usage: z.record(z.string(), z.unknown()).nullable(),
     agents: z.array(LiveAgentSchema),
@@ -203,6 +209,7 @@ export const createLiveFile = ({ file }: { file: string }) => {
         changed = false
         const live: LiveFile = {
             written_at: new Date(at).toISOString(),
+            pid: process.pid,
             plan_usage,
             agents: [...agents].map(([key, agent]) => ({
                 ...agent,

@@ -10,6 +10,7 @@
  * are installed.
  */
 import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 /** Every journal record kind the helper reads. */
 export const KINDS_READ = [
@@ -459,14 +460,57 @@ export const registryEntry = ({
     }
 }
 
-/** Whether a run's engine is running now, from `ps`; `null` when unknown. */
+/**
+ * A live file written at most this long ago means a live engine: the
+ * board's `LIVE_STALE_MS` (`packages/board/shared/board-state-live.ts`).
+ * The engine writes it at least every 5 seconds while it runs.
+ */
+export const LIVE_STALE_MS = 60_000
+
+/** What a run's live file says of its engine: when it was written, and its pid. */
+export type LiveFacts = {
+    written_at: string
+    /** `null` in a file from an engine older than #727. */
+    pid: number | null
+}
+
+/**
+ * Whether a run's engine is running now; `null` when unknown. It runs when
+ * a command line from `ps` names the run, or its live file shows it. An
+ * engine started with `luca-run --spec <n>` and no `--run-id` names no run
+ * id (#727), so only its live file shows it. When the file names the
+ * engine's pid, it runs exactly while `alive(pid)`, however old the file
+ * (a laptop asleep) or fresh (an engine that just stopped). A file with no
+ * pid counts while written at most `LIVE_STALE_MS` from `now`, either way,
+ * as the board checks.
+ */
 export const engineRunning = ({
     run_id,
     command_lines,
+    live,
+    alive,
+    now,
 }: {
     run_id: string
     command_lines: string[] | null
+    /** The run's live file (`readLiveFile`), or `null`. */
+    live: LiveFacts | null
+    alive: (pid: number) => boolean
+    now: number
 }): boolean | null => {
+    if (live !== null) {
+        if (live.pid !== null) {
+            if (alive(live.pid)) return true
+        } else {
+            const written = Date.parse(live.written_at)
+            if (
+                Number.isFinite(written) &&
+                Math.abs(now - written) <= LIVE_STALE_MS
+            ) {
+                return true
+            }
+        }
+    }
     if (command_lines === null) return null
     return command_lines.some((line) => {
         const tokens = line.split(/\s+/)
@@ -478,6 +522,43 @@ export const engineRunning = ({
                 token === `--resume=${run_id}`
         )
     })
+}
+
+/**
+ * Run `run_id`'s live file (`live.json`, kept by the engine while it runs):
+ * its `written_at` and the engine's `pid`, or `null` when it is missing or
+ * unreadable.
+ */
+export const readLiveFile = ({
+    runs_dir,
+    run_id,
+}: {
+    runs_dir: string
+    run_id: string
+}): LiveFacts | null => {
+    const file = join(runs_dir, run_id, 'live.json')
+    if (!existsSync(file)) return null
+    try {
+        const live: unknown = JSON.parse(readFileSync(file, 'utf8'))
+        if (!isObject(live) || typeof live.written_at !== 'string') return null
+        return {
+            written_at: live.written_at,
+            pid: typeof live.pid === 'number' ? live.pid : null,
+        }
+    } catch {
+        return null
+    }
+}
+
+/** Whether process `pid` is alive: signal 0 checks without sending. */
+export const pidAlive = (pid: number): boolean => {
+    try {
+        process.kill(pid, 0)
+        return true
+    } catch (error) {
+        // EPERM: it's alive, just not ours to signal.
+        return isObject(error) && error.code === 'EPERM'
+    }
 }
 
 /** Every process's command line, or `null` when `ps` fails. */

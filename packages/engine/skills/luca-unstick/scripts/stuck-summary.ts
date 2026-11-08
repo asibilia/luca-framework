@@ -40,6 +40,8 @@ import {
     numberOr,
     objectOf,
     openStuck,
+    pidAlive,
+    readLiveFile,
     readRecords,
     registryEntry,
     repoOfUrl,
@@ -54,7 +56,9 @@ export {
     cutOffSteps,
     engineRunning,
     KINDS_READ,
+    LIVE_STALE_MS,
     openStuck,
+    readLiveFile,
     readRecords,
     registryEntry,
     repoOfUrl,
@@ -539,7 +543,13 @@ const main = async () => {
             records,
             ticket: args.ticket,
             registry,
-            running: engineRunning({ run_id, command_lines: commandLines() }),
+            running: engineRunning({
+                run_id,
+                command_lines: commandLines(),
+                live: readLiveFile({ runs_dir: args.runs_dir, run_id }),
+                alive: pidAlive,
+                now: Date.now(),
+            }),
             log_tail: logTail(registry?.log_path ?? null),
         })
     )
