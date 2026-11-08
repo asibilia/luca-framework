@@ -84,9 +84,9 @@ type InFlight = { action: EngineAction; done: Promise<void> }
  * the run branch at a time (a new worktree, a join, its gates, a push, a
  * rebase). A stop action waits for everything in flight, then the journal is
  * read again. A step that ends while the engine decides makes it decide
- * again, so no step runs twice from a stale decision (#719). If an action throws (such as a launcher stop), the rest are
- * let finish, then the first error is thrown. `max_steps` counts the actions
- * started.
+ * again, so no step runs twice from a stale decision (#719). If an action
+ * throws (such as a launcher stop), the rest are let finish, then the first
+ * error is thrown. `max_steps` counts the actions started.
  *
  * With `jev`, the decision model is asked around each step in **shadow
  * mode** and its answers are journaled but never acted on (see
@@ -357,8 +357,15 @@ export const runEngine = async ({
             // A step that ended while the engine decided freed its key, but
             // the decision was made from records where it had not ended: it
             // would run that step again, such as a second join (#719).
-            // Decide again from the journal as it is now.
-            if (readWhile.some((key) => !inFlight.has(key))) continue
+            // Decide again from the journal as it is now. The journal tells
+            // first: `step_ended` is written before the key is freed.
+            const endedSince = journal
+                .read()
+                .slice(records.length)
+                .some(({ kind }) => kind === 'step_ended')
+            if (endedSince || readWhile.some((key) => !inFlight.has(key))) {
+                continue
+            }
             const actions = redosFirst({ actions: decided.actions, crashes })
             const stop = actions.find((action) => stops.has(action.type))
             if (stop !== undefined && inFlight.size === 0) {

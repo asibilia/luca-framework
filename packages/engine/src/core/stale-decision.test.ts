@@ -69,11 +69,13 @@ const replyWaitEnds: EngineClock = {
     },
 }
 
-/** Resolves once the journal has a record that `matches`. */
+/** Resolves once the journal has a record that `matches`; throws after 5s. */
 const journaled = async (
     matches: (kind: string, ticket: number | null) => boolean
 ): Promise<void> => {
+    const until = Date.now() + 5_000
     while (!journal.read().some((r) => matches(r.kind, r.ticket))) {
+        if (Date.now() > until) throw new Error('the record never came')
         await Bun.sleep(1)
     }
 }
