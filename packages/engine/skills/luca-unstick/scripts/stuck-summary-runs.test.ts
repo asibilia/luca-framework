@@ -10,8 +10,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
     currentRepos,
     engineRunning,
-    liveWrittenAt,
+    LIVE_STALE_MS,
     parseArgs,
+    readLiveFile,
     readRecords,
     registryEntry,
     replyOutcome,
@@ -32,6 +33,7 @@ import {
     type UnstickRun,
 } from '../../../src/testing/unstick-fixtures'
 import { currentRepos as retroCurrentRepos } from '../../luca-retro/scripts/retro-summary'
+import { LIVE_STALE_MS as WATCH_LIVE_STALE_MS } from '../../luca-watch/scripts/wait-for-change'
 
 /**
  * The `/luca-unstick` helper's reply check, and how it finds the run, its
@@ -233,7 +235,8 @@ describe('finding the run', () => {
             engineRunning({
                 run_id,
                 command_lines: lines,
-                live_written_at: null,
+                live: null,
+                alive: () => false,
                 now: 0,
             })
         expect(running({ run_id: 'run-1' })).toBe(false)
@@ -245,39 +248,82 @@ describe('finding the run', () => {
     test('an engine started with --spec and no --run-id is running while its live file is fresh (#727)', () => {
         const command_lines = ['bun luca-run.ts --spec 720']
         const now = Date.parse('2026-11-07T02:10:00.000Z')
-        const running = (live_written_at: string | null) =>
+        const running = (written_at: string | null) =>
             engineRunning({
                 run_id: 'run-1',
                 command_lines,
-                live_written_at,
+                live: written_at === null ? null : { written_at, pid: null },
+                alive: () => false,
                 now,
             })
         expect(running('2026-11-07T02:09:57.000Z')).toBe(true)
         expect(running('2026-11-07T02:08:00.000Z')).toBe(false)
+        // A clock ahead, or a copied file, is not fresh forever.
+        expect(running('2026-11-07T02:30:00.000Z')).toBe(false)
         expect(running(null)).toBe(false)
         // A fresh live file says so even when ps failed.
         expect(
             engineRunning({
                 run_id: 'run-1',
                 command_lines: null,
-                live_written_at: '2026-11-07T02:09:57.000Z',
+                live: { written_at: '2026-11-07T02:09:57.000Z', pid: null },
+                alive: () => false,
                 now,
             })
         ).toBe(true)
     })
 
-    test("the live file's written_at is read from the run folder, or null", async () => {
+    test('with a pid in the live file, the engine runs exactly while that pid is alive, however old the file (#727)', () => {
+        const now = Date.parse('2026-11-07T02:10:00.000Z')
+        const running = ({
+            written_at,
+            alive,
+        }: {
+            written_at: string
+            alive: boolean
+        }) =>
+            engineRunning({
+                run_id: 'run-1',
+                command_lines: ['bun luca-run.ts --spec 720'],
+                live: { written_at, pid: 56973 },
+                alive: (pid) => alive && pid === 56973,
+                now,
+            })
+        // Asleep for minutes, still alive.
+        expect(
+            running({ written_at: '2026-11-07T02:05:00.000Z', alive: true })
+        ).toBe(true)
+        // Just stopped or crashed: its last write is fresh, but it's gone.
+        expect(
+            running({ written_at: '2026-11-07T02:09:59.000Z', alive: false })
+        ).toBe(false)
+    })
+
+    test("the stale window is /luca-watch's", () => {
+        expect(LIVE_STALE_MS).toBe(WATCH_LIVE_STALE_MS)
+    })
+
+    test("the live file's written_at and pid are read from the run folder, or null", async () => {
         await mkdir(join(dir, 'run-1'), { recursive: true })
-        expect(liveWrittenAt({ runs_dir: dir, run_id: 'run-1' })).toBeNull()
+        expect(readLiveFile({ runs_dir: dir, run_id: 'run-1' })).toBeNull()
         await Bun.write(join(dir, 'run-1', 'live.json'), '{ half')
-        expect(liveWrittenAt({ runs_dir: dir, run_id: 'run-1' })).toBeNull()
+        expect(readLiveFile({ runs_dir: dir, run_id: 'run-1' })).toBeNull()
         await Bun.write(
             join(dir, 'run-1', 'live.json'),
             JSON.stringify({ written_at: '2026-11-07T02:09:57.000Z' })
         )
-        expect(liveWrittenAt({ runs_dir: dir, run_id: 'run-1' })).toBe(
-            '2026-11-07T02:09:57.000Z'
+        expect(readLiveFile({ runs_dir: dir, run_id: 'run-1' })).toEqual({
+            written_at: '2026-11-07T02:09:57.000Z',
+            pid: null,
+        })
+        await Bun.write(
+            join(dir, 'run-1', 'live.json'),
+            JSON.stringify({ written_at: '2026-11-07T02:09:57.000Z', pid: 42 })
         )
+        expect(readLiveFile({ runs_dir: dir, run_id: 'run-1' })).toEqual({
+            written_at: '2026-11-07T02:09:57.000Z',
+            pid: 42,
+        })
     })
 
     test('the arguments: a run id, a ticket with or without #, and flags', () => {

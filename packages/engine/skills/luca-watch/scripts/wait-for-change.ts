@@ -13,8 +13,8 @@
  * - `ended`: the oldest ending after the cursor (`run_ended`, or a legacy
  *   one: `pull_request_opened`, `intake_refused`, `nothing_to_do`, a `stop`
  *   reply, a billing or crash `run_stopped`), or one before it.
- * - `engine_gone`: no live engine names the run, its live file is not
- *   fresh, and it has not ended.
+ * - `engine_gone`: no live engine names the run, its live file shows no
+ *   live engine, and it has not ended.
  * - `quiet`: five minutes with none of these. Call it again.
  * - `error`: the journal can't be read; or the process list kept failing
  *   until the quiet deadline, while the journal still showed nothing new.
@@ -197,30 +197,42 @@ const LIVE_FILE = 'live.json'
 export const LIVE_STALE_MS = 60_000
 
 /**
- * Whether run `run_id`'s live file was written at most `LIVE_STALE_MS`
- * before `now` (#727). An engine started with `luca-run --spec <n>` and no
- * `--run-id` makes the run id itself, so no command line names it; its
- * live file still shows it runs, as the board checks. A missing or
- * unreadable file is not fresh.
+ * Whether run `run_id`'s live file shows a live engine (#727). An engine
+ * started with `luca-run --spec <n>` and no `--run-id` makes the run id
+ * itself, so no command line names it; its live file still shows it. When
+ * the file names the engine's pid, the engine is live exactly while that
+ * pid is in `processes`, however old the file (a laptop asleep) or fresh
+ * (an engine that just stopped). A file from an older engine, with no pid,
+ * counts while it was written at most `LIVE_STALE_MS` from `now`, either
+ * way, as the board checks. A missing or unreadable file shows nothing.
  */
-const liveFileFresh = async ({
+const liveFileLive = async ({
     runs_dir,
     run_id,
+    processes,
     now,
 }: {
     runs_dir: string
     run_id: string
+    processes: ProcessRow[]
     now: number
 }): Promise<boolean> => {
     try {
         const live: unknown = await Bun.file(
             join(runs_dir, run_id, LIVE_FILE)
         ).json()
+        if (!isObject(live)) return false
+        if (typeof live.pid === 'number') {
+            return processes.some(({ pid }) => pid === live.pid)
+        }
         const written_at =
-            isObject(live) && typeof live.written_at === 'string'
+            typeof live.written_at === 'string'
                 ? Date.parse(live.written_at)
                 : Number.NaN
-        return Number.isFinite(written_at) && now - written_at <= LIVE_STALE_MS
+        return (
+            Number.isFinite(written_at) &&
+            Math.abs(now - written_at) <= LIVE_STALE_MS
+        )
     } catch {
         return false
     }
@@ -317,7 +329,12 @@ export const waitForChange = async ({
             )
             if (
                 !engineLive({ run_id, processes: rows, own_pids: own }) &&
-                !(await liveFileFresh({ runs_dir, run_id, now: now() }))
+                !(await liveFileLive({
+                    runs_dir,
+                    run_id,
+                    processes: rows,
+                    now: now(),
+                }))
             ) {
                 return {
                     event: 'engine_gone',

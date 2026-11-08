@@ -137,3 +137,16 @@ describe('the live feed in the live file (#634)', () => {
         expect(feed).toMatchObject(expected)
     })
 })
+
+describe("the live file names the engine's pid (#727)", () => {
+    test('each write has the pid, so a reader can tell a live engine from a stopped one', async () => {
+        const file = join(root, 'live.json')
+        const live = createLiveFile({ file })
+        try {
+            const read = await waitForLive({ file, until: () => true })
+            expect(read?.pid).toBe(process.pid)
+        } finally {
+            live.close()
+        }
+    })
+})
