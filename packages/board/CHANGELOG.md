@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.35
+
+### Patch Changes
+
+- 09ca4e2: Upgrade the Paseo SDK (`@getpaseo/client`, `@getpaseo/plugin`) from 0.9.1 to 0.14.0.
+
 ## 14.0.0-alpha.34
 
 ### Patch Changes

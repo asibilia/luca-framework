@@ -1,5 +1,13 @@
 # @luca/engine
 
+## 14.0.0-alpha.35
+
+### Patch Changes
+
+- 09ca4e2: Upgrade the Paseo SDK (`@getpaseo/client`, `@getpaseo/plugin`) from 0.9.1 to 0.14.0.
+- 10ef1b1: A step that ends while the engine is deciding no longer runs a second time. The engine read the journal, then awaited (the usage line's files) before starting steps; a step that ended in that gap freed its ticket, and the decision, made from before it ended, started the same step again. In one run a ticket joined the run branch twice in a row, and the second, empty join wiped the record of the first. The engine now decides again when a step ends during a decision, and a join of a ticket that has already joined leaves the run branch and its join record alone (#719).
+- 268bfd4: `/luca-watch` and `/luca-unstick` now see the live engine of a run started with `luca-run --spec <n>` and no `--run-id`. The engine makes the run id itself, so no command line names it, and the watcher reported `engine_gone` for a running run (#727). The engine now writes its pid into the run's live file (`live.json`), and both helpers count the engine as live exactly while that pid runs, so a laptop asleep for minutes doesn't look like a gone engine, and an engine that just stopped doesn't look live. A live file from an older engine, with no pid, still counts while it was written within a minute of now.
+
 ## 14.0.0-alpha.34
 
 ### Patch Changes
