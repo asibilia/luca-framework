@@ -34,7 +34,28 @@ There are no grades in a story. Blast radius is a count with the list behind it.
 | **Shared** | Comments on the PR, plus the `review-ready` label | A repo that belongs to the signed-in GitHub user's own account |
 | **Private** | `~/.local/state/luca/stories/<owner>/<repo>/pr-<number>.json` (`LUCA_STORIES_DIR` moves the folder) | Every other repo. Nothing is posted |
 
-`--shared` or `--private` forces a home. The format is the same in both. A reader looks in the private home first, then in the PR's comments.
+`--shared` or `--private` forces a home. The format is the same in both. A reader looks in both homes. When both hold a story for the PR, a stale copy never hides a fresh one:
+
+1. The copy written for the PR's current head is used.
+2. Otherwise a readable copy beats a broken one.
+3. Otherwise the repo's default home wins: shared in your own repo, private everywhere else.
+
+Every reader should find a story through `findStory` (`story-pick.ts`, exported from `@luca/engine` with `pickStory`), so the helper, a review app, and the engine all follow this one rule:
+
+```typescript
+import { findStory, storiesDir } from '@luca/engine'
+
+const { found, home, other_copy } = await findStory({
+    gh, // runs the `gh` command
+    stories_dir: storiesDir({ home: homedir(), env: process.env }),
+    repo: 'acme/site',
+    pr_number: 12,
+})
+```
+
+A writer that posts to the shared home should call `removePrivateStory` afterwards, as the helper's `save` does.
+
+`status` reports the copy that was not used as `other_copy` (`null` when there is only one), and `load` mentions it. Saving to the shared home removes the PR's private copy, so the two can't drift apart. When the PR's comments can't be read (no network, no access), a private copy is still used.
 
 ### A story as comments
 
@@ -62,7 +83,28 @@ A story names the commit it was written for (`head_sha`). When the PR's head mov
 
 - The helper's `status` command says `stale`, and takes `review-ready` off the PR. There is no GitHub Action for this: the label comes off the next time the skill or a reader asks for the status.
 - `save` refuses to post a story whose `head_sha` is not the PR's head.
-- Run again, `/luca-pr-prep` loads the old story, keeps every change in a file the new commits didn't touch, and rewrites the rest. After a force-push it writes a new story.
+- Run again, `/luca-pr-prep` loads the old story and brings it up to date instead of writing it again. After a force-push it writes a new story.
+
+### Moving the line numbers
+
+New commits move code they don't change: one line added at the top of a file pushes every change, test, and caller below it down. So "keep a change word for word" is not enough; its line numbers have to move too. The helper's `shift` command does that, so it is not left to a careful reread:
+
+```bash
+bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js shift <story.json> <new head sha> [--out <file>] [--repo-dir <dir>]
+```
+
+It asks `git` for the zero-context diff between the story's commit and the new one, for the files the story points into, and moves every line number through it (`shiftStory` in `story-shift.ts`): each change's range, and the line of every test in `proof`, every place in `blast_radius`, and every flag. It sets `head_sha` to the new commit and writes the story back (or to `--out`).
+
+What the new commits **edited** it leaves alone and lists as `notes` in the one JSON line it prints, `{ status, from, to, lines_moved, notes }`:
+
+| Note | Means | The writer must |
+| --- | --- | --- |
+| `change_touched` | The commits edit lines inside this change | Rewrite the change |
+| `change_file_gone` | The change's file was deleted | Rewrite it as a deletion, or drop it |
+| `ref_touched` | A test, caller, or flag line it points at was edited | Find the line again, or redo the proof, count, or flag |
+| `ref_file_gone` | The file of such a line was deleted | Redo the proof or the count without it |
+
+A range on the `base` side counts lines of the old file and is not moved. `shift` exits 1 when the story's commit is not an ancestor of the new one, and 2 when `git` doesn't have a commit. Run on a story already at that commit, it changes nothing, so running it twice is safe.
 
 ## The skill's helper
 
@@ -74,9 +116,10 @@ bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js home <owner/repo> [--share
 bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js save <story.json> [--shared | --private]
 bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js load <owner/repo> <pr number> [--out <file>]
 bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js status <owner/repo> <pr number>
+bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js shift <story.json> <new head sha> [--out <file>] [--repo-dir <dir>]
 ```
 
-Exit codes: 0 done, 1 the story is invalid or missing, 2 bad arguments or a failed step. `save` checks first, so a story that fails the schema is never saved or posted. GitHub is reached only through `gh`.
+Exit codes: 0 done, 1 the story is invalid or missing, 2 bad arguments or a failed step. `save` checks first, so a story that fails the schema is never saved or posted. GitHub is reached only through `gh`, and only `shift` runs `git`.
 
 **After any change in `src/story/`, rebuild and commit the bundle:**
 
@@ -95,7 +138,7 @@ bun packages/engine/scripts/write-story-example.ts   # when the test fixture sto
 
 ## Tests
 
-`packages/engine/src/story/*.test.ts` cover the schema, the comments round trip and its size limit, the private store, and the helper's commands against a pretend GitHub. `skills/luca-pr-prep/` holds the skill's text test and the bundle's freshness test.
+`packages/engine/src/story/*.test.ts` cover the schema, the comments round trip and its size limit, the private store, the two-homes rule, moving line numbers, and the helper's commands against a pretend GitHub and a pretend `git`. `story-shift.e2e.test.ts` runs `shift` against a real git repo. `skills/luca-pr-prep/` holds the skill's text test and the bundle's freshness test.
 
 ## Related
 

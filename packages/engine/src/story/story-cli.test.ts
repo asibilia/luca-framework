@@ -7,8 +7,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { runStoryCli } from './story-cli'
 import { packStory } from './story-comments'
 import type { Gh } from './story-github'
+import { pickStory } from './story-pick'
 import type { Story } from './story-schema'
-import { loadPrivateStory } from './story-store'
+import { loadPrivateStory, savePrivateStory } from './story-store'
 import { sha, story } from './testing/story-fixtures'
 
 /**
@@ -98,6 +99,7 @@ const run = async ({
     const code = await runStoryCli({
         argv: argv.map((arg) => (arg === 'STORY' ? path : arg)),
         gh: github.gh,
+        git: async () => ({ ok: false, stdout: '', stderr: 'no git here' }),
         home: dir,
         env: { LUCA_STORIES_DIR: join(dir, 'stories') },
         out: (line) => lines.push(line),
@@ -209,7 +211,168 @@ describe('the luca-pr-prep helper', () => {
             home: 'shared',
             story_head_sha: sha({ char: 'a' }),
             pr_head_sha: sha({ char: 'd' }),
+            other_copy: null,
         })
         expect(stale.state.labels).toEqual(['bug'])
+    })
+})
+
+/** A story as one home holds it, written for the commit `char` repeats. */
+const copy = ({ home, char }: { home: 'shared' | 'private'; char: string }) => {
+    const head_sha = sha({ char })
+    return {
+        home,
+        found: { status: 'ok' as const, story: { ...story(), head_sha } },
+        head_sha,
+    }
+}
+
+describe('a story saved in both homes', () => {
+    const pr_head_sha = sha({ char: 'a' })
+
+    test('the copy written for the head wins, whichever home it is in', () => {
+        const fresh_shared = pickStory({
+            copies: [
+                copy({ home: 'private', char: 'b' }),
+                copy({ home: 'shared', char: 'a' }),
+            ],
+            pr_head_sha,
+            default_home: 'private',
+        })
+        expect(fresh_shared.used?.home).toBe('shared')
+        expect(fresh_shared.other?.home).toBe('private')
+
+        const fresh_private = pickStory({
+            copies: [
+                copy({ home: 'private', char: 'a' }),
+                copy({ home: 'shared', char: 'b' }),
+            ],
+            pr_head_sha,
+            default_home: 'shared',
+        })
+        expect(fresh_private.used?.home).toBe('private')
+        expect(fresh_private.other?.home).toBe('shared')
+    })
+
+    test("when both or neither are for the head, the repo's default home wins", () => {
+        for (const char of ['a', 'b']) {
+            const copies = [
+                copy({ home: 'private', char }),
+                copy({ home: 'shared', char }),
+            ]
+            for (const default_home of ['shared', 'private'] as const) {
+                expect(
+                    pickStory({ copies, pr_head_sha, default_home }).used?.home
+                ).toBe(default_home)
+            }
+        }
+    })
+
+    test('a readable copy beats a broken one, and one copy is simply used', () => {
+        const broken = {
+            home: 'shared' as const,
+            found: { status: 'broken' as const, reason: 'part 2 is missing' },
+            head_sha: null,
+        }
+        const readable = copy({ home: 'private', char: 'b' })
+        expect(
+            pickStory({
+                copies: [readable, broken],
+                pr_head_sha,
+                default_home: 'shared',
+            }).used?.home
+        ).toBe('private')
+        expect(
+            pickStory({ copies: [broken], pr_head_sha, default_home: 'shared' })
+        ).toEqual({ used: broken, other: null })
+        expect(
+            pickStory({ copies: [], pr_head_sha, default_home: 'shared' })
+        ).toEqual({ used: null, other: null })
+    })
+
+    test('a leftover private copy does not hide the fresh story posted on the PR', async () => {
+        const stories_dir = join(dir, 'stories')
+        await savePrivateStory({
+            stories_dir,
+            story: { ...story(), head_sha: sha({ char: 'b' }) },
+        })
+        const github = fakeGitHub({
+            labels: ['review-ready'],
+            comments: [{ id: 2, body: packStory({ story: story() })[0] ?? '' }],
+        })
+        const status = await run({
+            argv: ['status', 'acme/site', '12'],
+            github,
+        })
+        expect(JSON.parse(status.text.split('\n')[0] ?? '')).toEqual({
+            status: 'fresh',
+            home: 'shared',
+            story_head_sha: sha({ char: 'a' }),
+            pr_head_sha: sha({ char: 'a' }),
+            other_copy: {
+                home: 'private',
+                status: 'ok',
+                story_head_sha: sha({ char: 'b' }),
+            },
+        })
+        expect(status.text).toContain(
+            'A second copy in the private home was not used (written for bbbbbbbbb).'
+        )
+        expect(github.state.labels).toEqual(['review-ready'])
+
+        const loaded = await run({ argv: ['load', 'acme/site', '12'], github })
+        expect(loaded.text).toContain('Found in the shared home')
+        expect(loaded.text).toContain('A second copy in the private home')
+    })
+
+    test('posting a story removes the private copy, and says so', async () => {
+        const stories_dir = join(dir, 'stories')
+        await savePrivateStory({ stories_dir, story: story() })
+        const github = fakeGitHub({})
+        const saved = await run({
+            argv: ['save', 'STORY', '--shared'],
+            github,
+            file: story(),
+        })
+        expect(saved.code).toBe(0)
+        expect(saved.text).toContain('Removed the private copy')
+        expect(
+            await loadPrivateStory({
+                stories_dir,
+                repo: 'acme/site',
+                pr_number: 12,
+            })
+        ).toEqual({ status: 'none' })
+
+        const again = await run({
+            argv: ['save', 'STORY', '--shared'],
+            github,
+            file: story(),
+        })
+        expect(again.text).not.toContain('Removed the private copy')
+        expect(
+            JSON.parse(
+                (await run({ argv: ['status', 'acme/site', '12'], github }))
+                    .text
+            ).other_copy
+        ).toBeNull()
+    })
+
+    test("a private story still loads when the PR's comments can't be read", async () => {
+        await savePrivateStory({
+            stories_dir: join(dir, 'stories'),
+            story: story(),
+        })
+        const offline = fakeGitHub({})
+        const gh: Gh = async (call) =>
+            call.args.join(' ').includes('/comments?per_page=100')
+                ? { ok: false, stdout: '', stderr: 'no network' }
+                : offline.gh(call)
+        const loaded = await run({
+            argv: ['load', 'acme/site', '12'],
+            github: { ...offline, gh },
+        })
+        expect(loaded.code).toBe(0)
+        expect(loaded.text).toContain('Found in the private home')
     })
 })

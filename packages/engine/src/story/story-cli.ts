@@ -1,18 +1,18 @@
 import { readFile, writeFile } from 'node:fs/promises'
 
-import type { StoryUnpack } from './story-comments'
 import {
     addReadyLabel,
     defaultStoryHome,
-    loadSharedStory,
     postSharedStory,
     prNow,
     removeReadyLabel,
     REVIEW_READY_LABEL,
     type Gh,
 } from './story-github'
+import { findStory, type OtherCopy, type StoryHome } from './story-pick'
 import { readStory, STORY_SCHEMA_VERSION } from './story-schema'
-import { loadPrivateStory, savePrivateStory, storiesDir } from './story-store'
+import { runShift, type Git } from './story-shift-cli'
+import { removePrivateStory, savePrivateStory, storiesDir } from './story-store'
 
 /**
  * The `/luca-pr-prep` skill's helper (#738). The skill runs it as one
@@ -24,17 +24,27 @@ import { loadPrivateStory, savePrivateStory, storiesDir } from './story-store'
  *   bun pr-story.js save <story.json> [--shared | --private]
  *   bun pr-story.js load <owner/repo> <pr number> [--out <file>]
  *   bun pr-story.js status <owner/repo> <pr number>
+ *   bun pr-story.js shift <story.json> <new head sha> [--out <file>] [--repo-dir <dir>]
  *
  * - `check` reads a story file against the schema and prints every problem.
  * - `home` prints where a story for the repo goes: `shared` (PR comments
  *   and the `review-ready` label) or `private` (a file on this computer).
  * - `save` checks the story, then saves it to its home. A story that fails
  *   the check is never saved or posted. In the shared home it also
- *   refuses a story written for a commit that is no longer the PR's head.
+ *   refuses a story written for a commit that is no longer the PR's head,
+ *   and after posting it removes the PR's private copy, so the two homes
+ *   can't drift apart.
  * - `load` prints the PR's saved story as JSON (to `--out`, or stdout).
  * - `status` prints one JSON line, `{ status, home, story_head_sha,
- *   pr_head_sha }`, with status `none`, `fresh`, `stale`, or `broken`. A
- *   stale shared story loses its `review-ready` label.
+ *   pr_head_sha, other_copy }`, with status `none`, `fresh`, `stale`, or
+ *   `broken`. A stale shared story loses its `review-ready` label.
+ *
+ * - `shift` moves a stale story's line numbers to a newer commit and
+ *   lists what the new commits touched (see `story-shift.ts`).
+ *
+ * `load` and `status` look in both homes. When both hold a story for the
+ * PR, a stale one never hides a fresh one (see `pickStory` in
+ * `story-pick.ts`), and `other_copy` names the copy that was not used.
  *
  * Exit codes: 0 done, 1 the story is invalid or missing, 2 bad arguments
  * or a failed step.
@@ -44,6 +54,8 @@ import { loadPrivateStory, savePrivateStory, storiesDir } from './story-store'
 export type StoryCliEnv = {
     argv: string[]
     gh: Gh
+    /** Runs `git` in a folder. Only `shift` uses it. */
+    git: Git
     home: string
     env: Record<string, string | undefined>
     out: (line: string) => void
@@ -55,12 +67,11 @@ const USAGE = `Usage:
   bun pr-story.js home <owner/repo> [--shared | --private]
   bun pr-story.js save <story.json> [--shared | --private]
   bun pr-story.js load <owner/repo> <pr number> [--out <file>]
-  bun pr-story.js status <owner/repo> <pr number>`
-
-type Home = 'shared' | 'private'
+  bun pr-story.js status <owner/repo> <pr number>
+  bun pr-story.js shift <story.json> <new head sha> [--out <file>] [--repo-dir <dir>]`
 
 /** The home a flag forces, or null when no flag was given. */
-const forcedHome = ({ flags }: { flags: string[] }): Home | null => {
+const forcedHome = ({ flags }: { flags: string[] }): StoryHome | null => {
     if (flags.includes('--shared')) return 'shared'
     if (flags.includes('--private')) return 'private'
     return null
@@ -94,27 +105,13 @@ const storyFromFile = async ({
     return null
 }
 
-/** The PR's saved story and which home it was found in: private first. */
-const findStory = async ({
-    cli,
-    repo,
-    pr_number,
-}: {
-    cli: StoryCliEnv
-    repo: string
-    pr_number: number
-}): Promise<{ found: StoryUnpack; home: Home }> => {
-    const kept = await loadPrivateStory({
-        stories_dir: storiesDir(cli),
-        repo,
-        pr_number,
-    })
-    if (kept.status !== 'none') return { found: kept, home: 'private' }
-    return {
-        found: await loadSharedStory({ gh: cli.gh, repo, pr_number }),
-        home: 'shared',
-    }
-}
+/** One line about the copy that was not used, for a person to read. */
+const otherCopyLine = ({ other_copy }: { other_copy: OtherCopy }): string =>
+    `A second copy in the ${other_copy.home} home was not used (${
+        other_copy.story_head_sha === null
+            ? other_copy.status
+            : `written for ${other_copy.story_head_sha.slice(0, 9)}`
+    }).`
 
 const save = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const [path, ...flags] = args
@@ -145,6 +142,16 @@ const save = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     cli.out(
         `Posted on ${story.pr_url}: ${posted.updated} comments updated, ${posted.created} created, ${posted.deleted} deleted. Label ${REVIEW_READY_LABEL} added.`
     )
+    const removed = await removePrivateStory({
+        stories_dir: storiesDir(cli),
+        repo,
+        pr_number,
+    })
+    if (removed) {
+        cli.out(
+            'Removed the private copy on this computer, so it cannot hide the posted story.'
+        )
+    }
     return 0
 }
 
@@ -160,7 +167,11 @@ const prArgs = ({ args }: { args: string[] }) => {
 const load = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const pr = prArgs({ args })
     if (pr === null) return usage({ cli })
-    const { found, home } = await findStory({ cli, ...pr })
+    const { found, home, other_copy } = await findStory({
+        gh: cli.gh,
+        stories_dir: storiesDir(cli),
+        ...pr,
+    })
     if (found.status !== 'ok') {
         cli.err(
             `No usable story for ${pr.repo}#${pr.pr_number}: ${found.status}.`
@@ -173,13 +184,18 @@ const load = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     if (out_path === undefined) cli.out(json)
     else await writeFile(out_path, json)
     cli.err(`Found in the ${home} home, written for ${found.story.head_sha}.`)
+    if (other_copy !== null) cli.err(otherCopyLine({ other_copy }))
     return 0
 }
 
 const status = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const pr = prArgs({ args })
     if (pr === null) return usage({ cli })
-    const { found, home } = await findStory({ cli, ...pr })
+    const { found, home, other_copy } = await findStory({
+        gh: cli.gh,
+        stories_dir: storiesDir(cli),
+        ...pr,
+    })
     const now = await prNow({ gh: cli.gh, ...pr })
     const story_head_sha = found.status === 'ok' ? found.story.head_sha : null
     const state =
@@ -196,11 +212,13 @@ const status = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     cli.out(
         JSON.stringify({
             status: state,
-            home: found.status === 'none' ? null : home,
+            home,
             story_head_sha,
             pr_head_sha: now.head_sha,
+            other_copy,
         })
     )
+    if (other_copy !== null) cli.err(otherCopyLine({ other_copy }))
     return 0
 }
 
@@ -244,6 +262,15 @@ export const runStoryCli = async (cli: StoryCliEnv): Promise<number> => {
         if (command === 'save') return await save({ cli, args })
         if (command === 'load') return await load({ cli, args })
         if (command === 'status') return await status({ cli, args })
+        if (command === 'shift') {
+            const [path, new_head_sha] = args
+            if (path === undefined || new_head_sha === undefined) {
+                return usage({ cli })
+            }
+            const story = await storyFromFile({ path, err: cli.err })
+            if (story === null) return 1
+            return await runShift({ cli, story, path, new_head_sha, args })
+        }
         return usage({ cli })
     } catch (error) {
         cli.err(error instanceof Error ? error.message : String(error))

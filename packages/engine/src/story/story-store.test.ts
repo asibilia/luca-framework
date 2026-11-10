@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import {
     loadPrivateStory,
     privateStoryPath,
+    removePrivateStory,
     savePrivateStory,
     storiesDir,
 } from './story-store'
@@ -73,5 +74,14 @@ describe('the private story store', () => {
                 privateStoryPath({ stories_dir, repo, pr_number: 1 })
             ).toThrow()
         }
+    })
+
+    test('a removed story is gone, and removing a missing one is not an error', async () => {
+        const pr = { stories_dir, repo: 'acme/site', pr_number: 12 }
+        expect(await removePrivateStory(pr)).toBe(false)
+        await savePrivateStory({ stories_dir, story: story() })
+        expect(await removePrivateStory(pr)).toBe(true)
+        expect(await loadPrivateStory(pr)).toEqual({ status: 'none' })
+        expect(await removePrivateStory(pr)).toBe(false)
     })
 })

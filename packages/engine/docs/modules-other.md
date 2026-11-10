@@ -146,5 +146,7 @@ The PR story (#738). See [The PR story](pr-story.md).
 | `src/story/story-comments.ts` | A story as PR comments: `packStory`, `unpackStory`, `isStoryComment`, and `planCommentSync` for replacing a story's own comments. |
 | `src/story/story-store.ts` | The private home: one file per PR under the stories folder. |
 | `src/story/story-github.ts` | The shared home through `gh`: reading and posting story comments, the `review-ready` label, and which home a repo gets. |
-| `src/story/story-cli.ts`, `pr-story-main.ts` | The skill's helper commands, and its entry point with the real `gh`. |
-| `scripts/build-pr-story.ts`, `scripts/write-story-example.ts` | Build the helper bundle and the example story the skill ships. |
+| `src/story/story-pick.ts` | The two-homes rule: `findStory` reads both homes, and `pickStory` makes sure a stale copy never hides a fresh one. |
+| `src/story/story-shift.ts`, `story-shift-cli.ts` | Moving a stale story's line numbers to a newer commit (`shiftStory`), and the helper's `shift` command that runs it against `git`. |
+| `src/story/story-cli.ts`, `pr-story-main.ts` | The skill's helper commands, and its entry point with the real `gh` and `git`. |
+| `scripts/build-pr-story.ts`, `scripts/write-story-example.ts` | Build the helper bundle and the example story the skill ships. Both take the skill's folder and file names from `scripts/pr-prep-skill-paths.ts`. |

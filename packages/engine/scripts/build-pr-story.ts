@@ -17,18 +17,20 @@
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 
-const ENGINE_DIR = join(import.meta.dir, '..')
+import {
+    BUNDLE_PATH_PARTS,
+    ENGINE_DIR,
+    PR_PREP_SKILL_DIR,
+} from './pr-prep-skill-paths'
 
 /** The folder whose non-test files are the bundle's source. */
 export const STORY_SOURCE_DIR = join(ENGINE_DIR, 'src', 'story')
 
 /** The bundle the skill ships. */
 export const BUNDLE_FILE = join(
-    ENGINE_DIR,
-    'skills',
-    'luca-pr-prep',
-    'scripts',
-    'pr-story.js'
+    PR_PREP_SKILL_DIR,
+    BUNDLE_PATH_PARTS.scripts,
+    BUNDLE_PATH_PARTS.bundle
 )
 
 /** What the bundle's first line starts with; the hash follows. */
