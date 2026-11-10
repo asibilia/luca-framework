@@ -323,7 +323,22 @@ export {
     type CommentAction,
     type StoryUnpack,
 } from './story/story-comments'
-export { REVIEW_READY_LABEL } from './story/story-github'
+export {
+    defaultStoryHome,
+    loadSharedStory,
+    postSharedStory,
+    prNow,
+    REVIEW_READY_LABEL,
+    type Gh,
+    type PrRef,
+} from './story/story-github'
+export {
+    findStory,
+    pickStory,
+    type OtherCopy,
+    type StoryCopy,
+    type StoryHome,
+} from './story/story-pick'
 export * from './story/story-parts'
 export { renderStorySummary } from './story/story-render'
 export {
@@ -338,6 +353,16 @@ export {
 export {
     loadPrivateStory,
     privateStoryPath,
+    removePrivateStory,
     savePrivateStory,
     storiesDir,
 } from './story/story-store'
+export {
+    parseShiftDiff,
+    shiftLine,
+    shiftStory,
+    storyLinePaths,
+    type DiffHunk,
+    type FileShift,
+    type ShiftNote,
+} from './story/story-shift'

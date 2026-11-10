@@ -4,9 +4,10 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { pickStory, runStoryCli } from './story-cli'
+import { runStoryCli } from './story-cli'
 import { packStory } from './story-comments'
 import type { Gh } from './story-github'
+import { pickStory } from './story-pick'
 import type { Story } from './story-schema'
 import { loadPrivateStory, savePrivateStory } from './story-store'
 import { sha, story } from './testing/story-fixtures'
@@ -98,6 +99,7 @@ const run = async ({
     const code = await runStoryCli({
         argv: argv.map((arg) => (arg === 'STORY' ? path : arg)),
         gh: github.gh,
+        git: async () => ({ ok: false, stdout: '', stderr: 'no git here' }),
         home: dir,
         env: { LUCA_STORIES_DIR: join(dir, 'stories') },
         out: (line) => lines.push(line),

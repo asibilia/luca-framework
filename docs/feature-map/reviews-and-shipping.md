@@ -64,5 +64,8 @@ Tests:
 - `packages/engine/src/story/story-comments.test.ts`
 - `packages/engine/src/story/story-store.test.ts`
 - `packages/engine/src/story/story-cli.test.ts`
+- `packages/engine/src/story/story-exports.test.ts`
+- `packages/engine/src/story/story-shift.test.ts`
+- `packages/engine/src/story/story-shift.e2e.test.ts`
 - `packages/engine/skills/luca-pr-prep/skill-text.test.ts`
 - `packages/engine/skills/luca-pr-prep/scripts/pr-story-bundle.test.ts`

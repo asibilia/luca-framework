@@ -119,17 +119,25 @@ Then tell the person, in a few lines: where the story is, how many stops it has,
 
 ## 7. Bring a stale story up to date
 
-Rewrite only what the new commits touched.
+Rewrite only what the new commits touched. Run these in a checkout that has both commits (`git fetch origin pull/<number>/head` first, or pass `--repo-dir <dir>` to `shift`):
 
 ```bash
-bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js load <owner/repo> <number> --out <old-story.json>
-git merge-base --is-ancestor <story_head_sha> <pr_head_sha> && git diff --name-only <story_head_sha> <pr_head_sha>
+bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js load <owner/repo> <number> --out <story.json>
+bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js shift <story.json> <pr_head_sha>
+git diff --name-status --find-renames <story_head_sha> <pr_head_sha>
 ```
 
-- If the old head is **not** an ancestor of the new one (a force-push or rebase), write a new story from step 4.
-- Otherwise keep every change whose file is not in that list, word for word. Rewrite the changes in the touched files: reread the file, fix the lines, redo the context. Add stops for newly changed files and drop changes that were reverted.
-- Recount `blast_radius` for a kept change when one of its `dependents` is in a touched file.
-- Redo the summary, the map, and the counts for the whole PR, and set `head_sha`, `base_sha`, and `written_at`.
+`shift` does the line numbers for you. New commits move code even where they don't change it: a line added at the top of a file pushes every change, test, and caller below it down. `shift` moves every line number in the story through the diff between the two commits (each change's `start_line` and `end_line`, the `line` of every test in `proof`, of every place in `blast_radius`, and of every flag), sets `head_sha`, and writes the story back to the file. It prints one JSON line, `{ "status", "from", "to", "lines_moved", "notes" }`.
+
+- If `shift` exits 1, the old head is **not** an ancestor of the new one (a force-push or rebase): write a new story from step 4.
+- Everything `shift` moved is done. Keep those changes word for word; don't recheck their lines by hand.
+- `notes` lists everything the new commits edited, which `shift` left as it was. **The story is not ready until you have dealt with every note:**
+  - `change_touched`: the commits edit lines inside this change. Reread the file, fix its lines, and redo its context.
+  - `change_file_gone`: its file was deleted. Rewrite it as a deletion (`side: "base"`) or drop it if the PR no longer touches that file.
+  - `ref_touched`: a test, caller, or flag line the change points at was edited. Find it again in the file at the head and fix the `line`; if it is gone, redo `proof`, recount `blast_radius`, or drop the flag.
+  - `ref_file_gone`: the file of such a line was deleted. Redo `proof` or recount `blast_radius` without it.
+- Then handle what no line number can tell you. Add changes and stops for files the new commits changed that the story doesn't cover yet, and drop changes that were reverted. Recount `blast_radius` for a kept change when a touched file could now call it.
+- Redo the summary, the map, and the counts for the whole PR, and set `base_sha` and `written_at`.
 
 Then check and save as in step 6.
 

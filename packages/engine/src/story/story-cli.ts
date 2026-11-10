@@ -1,23 +1,18 @@
 import { readFile, writeFile } from 'node:fs/promises'
 
-import type { StoryUnpack } from './story-comments'
 import {
     addReadyLabel,
     defaultStoryHome,
-    loadSharedStory,
     postSharedStory,
     prNow,
     removeReadyLabel,
     REVIEW_READY_LABEL,
     type Gh,
 } from './story-github'
+import { findStory, type OtherCopy, type StoryHome } from './story-pick'
 import { readStory, STORY_SCHEMA_VERSION } from './story-schema'
-import {
-    loadPrivateStory,
-    removePrivateStory,
-    savePrivateStory,
-    storiesDir,
-} from './story-store'
+import { runShift, type Git } from './story-shift-cli'
+import { removePrivateStory, savePrivateStory, storiesDir } from './story-store'
 
 /**
  * The `/luca-pr-prep` skill's helper (#738). The skill runs it as one
@@ -29,6 +24,7 @@ import {
  *   bun pr-story.js save <story.json> [--shared | --private]
  *   bun pr-story.js load <owner/repo> <pr number> [--out <file>]
  *   bun pr-story.js status <owner/repo> <pr number>
+ *   bun pr-story.js shift <story.json> <new head sha> [--out <file>] [--repo-dir <dir>]
  *
  * - `check` reads a story file against the schema and prints every problem.
  * - `home` prints where a story for the repo goes: `shared` (PR comments
@@ -43,9 +39,12 @@ import {
  *   pr_head_sha, other_copy }`, with status `none`, `fresh`, `stale`, or
  *   `broken`. A stale shared story loses its `review-ready` label.
  *
+ * - `shift` moves a stale story's line numbers to a newer commit and
+ *   lists what the new commits touched (see `story-shift.ts`).
+ *
  * `load` and `status` look in both homes. When both hold a story for the
- * PR, a stale one never hides a fresh one (see `pickStory`), and
- * `other_copy` names the copy that was not used.
+ * PR, a stale one never hides a fresh one (see `pickStory` in
+ * `story-pick.ts`), and `other_copy` names the copy that was not used.
  *
  * Exit codes: 0 done, 1 the story is invalid or missing, 2 bad arguments
  * or a failed step.
@@ -55,6 +54,8 @@ import {
 export type StoryCliEnv = {
     argv: string[]
     gh: Gh
+    /** Runs `git` in a folder. Only `shift` uses it. */
+    git: Git
     home: string
     env: Record<string, string | undefined>
     out: (line: string) => void
@@ -66,12 +67,11 @@ const USAGE = `Usage:
   bun pr-story.js home <owner/repo> [--shared | --private]
   bun pr-story.js save <story.json> [--shared | --private]
   bun pr-story.js load <owner/repo> <pr number> [--out <file>]
-  bun pr-story.js status <owner/repo> <pr number>`
-
-type Home = 'shared' | 'private'
+  bun pr-story.js status <owner/repo> <pr number>
+  bun pr-story.js shift <story.json> <new head sha> [--out <file>] [--repo-dir <dir>]`
 
 /** The home a flag forces, or null when no flag was given. */
-const forcedHome = ({ flags }: { flags: string[] }): Home | null => {
+const forcedHome = ({ flags }: { flags: string[] }): StoryHome | null => {
     if (flags.includes('--shared')) return 'shared'
     if (flags.includes('--private')) return 'private'
     return null
@@ -103,115 +103,6 @@ const storyFromFile = async ({
     err(`${path} is not a valid story (${read.problems.length} problems):`)
     for (const problem of read.problems) err(`- ${problem}`)
     return null
-}
-
-/** One home's answer for a PR, and the commit its story was written for. */
-type StoryCopy = { home: Home; found: StoryUnpack; head_sha: string | null }
-
-/** The copy that was not used, as `status` reports it. */
-type OtherCopy = {
-    home: Home
-    status: StoryUnpack['status']
-    story_head_sha: string | null
-}
-
-const copyOf = ({ home, found }: { home: Home; found: StoryUnpack }) => ({
-    home,
-    found,
-    head_sha: found.status === 'ok' ? found.story.head_sha : null,
-})
-
-/**
- * Picks between the two homes' copies of a PR's story, so a stale copy
- * never hides a fresh one:
- *
- * 1. A copy written for the PR's current head beats one that wasn't.
- * 2. Otherwise a readable copy beats a broken one.
- * 3. Otherwise the repo's default home wins (`shared` in the user's own
- *    repo, `private` everywhere else).
- *
- * @example
- * pickStory({ copies, pr_head_sha, default_home: 'shared' }) // { used, other }
- */
-export const pickStory = ({
-    copies,
-    pr_head_sha,
-    default_home,
-}: {
-    copies: StoryCopy[]
-    pr_head_sha: string
-    default_home: Home
-}): { used: StoryCopy | null; other: StoryCopy | null } => {
-    const [first, second] = copies
-    if (first === undefined) return { used: null, other: null }
-    if (second === undefined) return { used: first, other: null }
-    const rank = (copy: StoryCopy) =>
-        (copy.head_sha === pr_head_sha ? 4 : 0) +
-        (copy.found.status === 'ok' ? 2 : 0) +
-        (copy.home === default_home ? 1 : 0)
-    return rank(first) >= rank(second)
-        ? { used: first, other: second }
-        : { used: second, other: first }
-}
-
-/**
- * The PR's saved story, the home it was found in, and the copy in the
- * other home when there is one. Both homes are read. A PR whose comments
- * can't be read (no network, no access) still gives up its private copy.
- */
-const findStory = async ({
-    cli,
-    repo,
-    pr_number,
-}: {
-    cli: StoryCliEnv
-    repo: string
-    pr_number: number
-}): Promise<{
-    found: StoryUnpack
-    home: Home | null
-    other_copy: OtherCopy | null
-}> => {
-    const { gh } = cli
-    const kept = await loadPrivateStory({
-        stories_dir: storiesDir(cli),
-        repo,
-        pr_number,
-    })
-    let posted: StoryUnpack
-    try {
-        posted = await loadSharedStory({ gh, repo, pr_number })
-    } catch (error) {
-        if (kept.status === 'none') throw error
-        posted = { status: 'none' }
-    }
-    const copies = [
-        copyOf({ home: 'private', found: kept }),
-        copyOf({ home: 'shared', found: posted }),
-    ].filter(({ found }) => found.status !== 'none')
-    const tie = copies.length === 2
-    const { used, other } = pickStory({
-        copies,
-        pr_head_sha: tie ? (await prNow({ gh, repo, pr_number })).head_sha : '',
-        default_home: tie
-            ? (await defaultStoryHome({ gh, repo })).home
-            : 'private',
-    })
-    if (used === null) {
-        return { found: { status: 'none' }, home: null, other_copy: null }
-    }
-    return {
-        found: used.found,
-        home: used.home,
-        other_copy:
-            other === null
-                ? null
-                : {
-                      home: other.home,
-                      status: other.found.status,
-                      story_head_sha: other.head_sha,
-                  },
-    }
 }
 
 /** One line about the copy that was not used, for a person to read. */
@@ -276,7 +167,11 @@ const prArgs = ({ args }: { args: string[] }) => {
 const load = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const pr = prArgs({ args })
     if (pr === null) return usage({ cli })
-    const { found, home, other_copy } = await findStory({ cli, ...pr })
+    const { found, home, other_copy } = await findStory({
+        gh: cli.gh,
+        stories_dir: storiesDir(cli),
+        ...pr,
+    })
     if (found.status !== 'ok') {
         cli.err(
             `No usable story for ${pr.repo}#${pr.pr_number}: ${found.status}.`
@@ -296,7 +191,11 @@ const load = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
 const status = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const pr = prArgs({ args })
     if (pr === null) return usage({ cli })
-    const { found, home, other_copy } = await findStory({ cli, ...pr })
+    const { found, home, other_copy } = await findStory({
+        gh: cli.gh,
+        stories_dir: storiesDir(cli),
+        ...pr,
+    })
     const now = await prNow({ gh: cli.gh, ...pr })
     const story_head_sha = found.status === 'ok' ? found.story.head_sha : null
     const state =
@@ -363,6 +262,15 @@ export const runStoryCli = async (cli: StoryCliEnv): Promise<number> => {
         if (command === 'save') return await save({ cli, args })
         if (command === 'load') return await load({ cli, args })
         if (command === 'status') return await status({ cli, args })
+        if (command === 'shift') {
+            const [path, new_head_sha] = args
+            if (path === undefined || new_head_sha === undefined) {
+                return usage({ cli })
+            }
+            const story = await storyFromFile({ path, err: cli.err })
+            if (story === null) return 1
+            return await runShift({ cli, story, path, new_head_sha, args })
+        }
         return usage({ cli })
     } catch (error) {
         cli.err(error instanceof Error ? error.message : String(error))
