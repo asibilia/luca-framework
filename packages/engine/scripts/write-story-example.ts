@@ -10,16 +10,15 @@
  */
 import { join } from 'node:path'
 
+import { BUNDLE_PATH_PARTS, PR_PREP_SKILL_DIR } from './pr-prep-skill-paths'
+
 import { story } from '../src/story/testing/story-fixtures'
 
 /** The example the skill ships. */
 export const EXAMPLE_FILE = join(
-    import.meta.dir,
-    '..',
-    'skills',
-    'luca-pr-prep',
-    'references',
-    'story-example.json'
+    PR_PREP_SKILL_DIR,
+    BUNDLE_PATH_PARTS.references,
+    BUNDLE_PATH_PARTS.example
 )
 
 /** The example's text. */

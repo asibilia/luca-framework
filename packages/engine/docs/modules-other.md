@@ -146,4 +146,4 @@ The PR story (#738). See [The PR story](pr-story.md).
 | `src/story/story-store.ts` | The private home: one file per PR under the stories folder. |
 | `src/story/story-github.ts` | The shared home through `gh`: reading and posting story comments, the `review-ready` label, and which home a repo gets. |
 | `src/story/story-cli.ts`, `pr-story-main.ts` | The skill's helper commands, and its entry point with the real `gh`. |
-| `scripts/build-pr-story.ts`, `scripts/write-story-example.ts` | Build the helper bundle and the example story the skill ships. |
+| `scripts/build-pr-story.ts`, `scripts/write-story-example.ts` | Build the helper bundle and the example story the skill ships. Both take the skill's folder and file names from `scripts/pr-prep-skill-paths.ts`. |
