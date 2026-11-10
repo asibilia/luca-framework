@@ -12,7 +12,12 @@ import {
     type Gh,
 } from './story-github'
 import { readStory, STORY_SCHEMA_VERSION } from './story-schema'
-import { loadPrivateStory, savePrivateStory, storiesDir } from './story-store'
+import {
+    loadPrivateStory,
+    removePrivateStory,
+    savePrivateStory,
+    storiesDir,
+} from './story-store'
 
 /**
  * The `/luca-pr-prep` skill's helper (#738). The skill runs it as one
@@ -30,11 +35,17 @@ import { loadPrivateStory, savePrivateStory, storiesDir } from './story-store'
  *   and the `review-ready` label) or `private` (a file on this computer).
  * - `save` checks the story, then saves it to its home. A story that fails
  *   the check is never saved or posted. In the shared home it also
- *   refuses a story written for a commit that is no longer the PR's head.
+ *   refuses a story written for a commit that is no longer the PR's head,
+ *   and after posting it removes the PR's private copy, so the two homes
+ *   can't drift apart.
  * - `load` prints the PR's saved story as JSON (to `--out`, or stdout).
  * - `status` prints one JSON line, `{ status, home, story_head_sha,
- *   pr_head_sha }`, with status `none`, `fresh`, `stale`, or `broken`. A
- *   stale shared story loses its `review-ready` label.
+ *   pr_head_sha, other_copy }`, with status `none`, `fresh`, `stale`, or
+ *   `broken`. A stale shared story loses its `review-ready` label.
+ *
+ * `load` and `status` look in both homes. When both hold a story for the
+ * PR, a stale one never hides a fresh one (see `pickStory`), and
+ * `other_copy` names the copy that was not used.
  *
  * Exit codes: 0 done, 1 the story is invalid or missing, 2 bad arguments
  * or a failed step.
@@ -94,7 +105,60 @@ const storyFromFile = async ({
     return null
 }
 
-/** The PR's saved story and which home it was found in: private first. */
+/** One home's answer for a PR, and the commit its story was written for. */
+type StoryCopy = { home: Home; found: StoryUnpack; head_sha: string | null }
+
+/** The copy that was not used, as `status` reports it. */
+type OtherCopy = {
+    home: Home
+    status: StoryUnpack['status']
+    story_head_sha: string | null
+}
+
+const copyOf = ({ home, found }: { home: Home; found: StoryUnpack }) => ({
+    home,
+    found,
+    head_sha: found.status === 'ok' ? found.story.head_sha : null,
+})
+
+/**
+ * Picks between the two homes' copies of a PR's story, so a stale copy
+ * never hides a fresh one:
+ *
+ * 1. A copy written for the PR's current head beats one that wasn't.
+ * 2. Otherwise a readable copy beats a broken one.
+ * 3. Otherwise the repo's default home wins (`shared` in the user's own
+ *    repo, `private` everywhere else).
+ *
+ * @example
+ * pickStory({ copies, pr_head_sha, default_home: 'shared' }) // { used, other }
+ */
+export const pickStory = ({
+    copies,
+    pr_head_sha,
+    default_home,
+}: {
+    copies: StoryCopy[]
+    pr_head_sha: string
+    default_home: Home
+}): { used: StoryCopy | null; other: StoryCopy | null } => {
+    const [first, second] = copies
+    if (first === undefined) return { used: null, other: null }
+    if (second === undefined) return { used: first, other: null }
+    const rank = (copy: StoryCopy) =>
+        (copy.head_sha === pr_head_sha ? 4 : 0) +
+        (copy.found.status === 'ok' ? 2 : 0) +
+        (copy.home === default_home ? 1 : 0)
+    return rank(first) >= rank(second)
+        ? { used: first, other: second }
+        : { used: second, other: first }
+}
+
+/**
+ * The PR's saved story, the home it was found in, and the copy in the
+ * other home when there is one. Both homes are read. A PR whose comments
+ * can't be read (no network, no access) still gives up its private copy.
+ */
 const findStory = async ({
     cli,
     repo,
@@ -103,18 +167,60 @@ const findStory = async ({
     cli: StoryCliEnv
     repo: string
     pr_number: number
-}): Promise<{ found: StoryUnpack; home: Home }> => {
+}): Promise<{
+    found: StoryUnpack
+    home: Home | null
+    other_copy: OtherCopy | null
+}> => {
+    const { gh } = cli
     const kept = await loadPrivateStory({
         stories_dir: storiesDir(cli),
         repo,
         pr_number,
     })
-    if (kept.status !== 'none') return { found: kept, home: 'private' }
+    let posted: StoryUnpack
+    try {
+        posted = await loadSharedStory({ gh, repo, pr_number })
+    } catch (error) {
+        if (kept.status === 'none') throw error
+        posted = { status: 'none' }
+    }
+    const copies = [
+        copyOf({ home: 'private', found: kept }),
+        copyOf({ home: 'shared', found: posted }),
+    ].filter(({ found }) => found.status !== 'none')
+    const tie = copies.length === 2
+    const { used, other } = pickStory({
+        copies,
+        pr_head_sha: tie ? (await prNow({ gh, repo, pr_number })).head_sha : '',
+        default_home: tie
+            ? (await defaultStoryHome({ gh, repo })).home
+            : 'private',
+    })
+    if (used === null) {
+        return { found: { status: 'none' }, home: null, other_copy: null }
+    }
     return {
-        found: await loadSharedStory({ gh: cli.gh, repo, pr_number }),
-        home: 'shared',
+        found: used.found,
+        home: used.home,
+        other_copy:
+            other === null
+                ? null
+                : {
+                      home: other.home,
+                      status: other.found.status,
+                      story_head_sha: other.head_sha,
+                  },
     }
 }
+
+/** One line about the copy that was not used, for a person to read. */
+const otherCopyLine = ({ other_copy }: { other_copy: OtherCopy }): string =>
+    `A second copy in the ${other_copy.home} home was not used (${
+        other_copy.story_head_sha === null
+            ? other_copy.status
+            : `written for ${other_copy.story_head_sha.slice(0, 9)}`
+    }).`
 
 const save = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const [path, ...flags] = args
@@ -145,6 +251,16 @@ const save = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     cli.out(
         `Posted on ${story.pr_url}: ${posted.updated} comments updated, ${posted.created} created, ${posted.deleted} deleted. Label ${REVIEW_READY_LABEL} added.`
     )
+    const removed = await removePrivateStory({
+        stories_dir: storiesDir(cli),
+        repo,
+        pr_number,
+    })
+    if (removed) {
+        cli.out(
+            'Removed the private copy on this computer, so it cannot hide the posted story.'
+        )
+    }
     return 0
 }
 
@@ -160,7 +276,7 @@ const prArgs = ({ args }: { args: string[] }) => {
 const load = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const pr = prArgs({ args })
     if (pr === null) return usage({ cli })
-    const { found, home } = await findStory({ cli, ...pr })
+    const { found, home, other_copy } = await findStory({ cli, ...pr })
     if (found.status !== 'ok') {
         cli.err(
             `No usable story for ${pr.repo}#${pr.pr_number}: ${found.status}.`
@@ -173,13 +289,14 @@ const load = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     if (out_path === undefined) cli.out(json)
     else await writeFile(out_path, json)
     cli.err(`Found in the ${home} home, written for ${found.story.head_sha}.`)
+    if (other_copy !== null) cli.err(otherCopyLine({ other_copy }))
     return 0
 }
 
 const status = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     const pr = prArgs({ args })
     if (pr === null) return usage({ cli })
-    const { found, home } = await findStory({ cli, ...pr })
+    const { found, home, other_copy } = await findStory({ cli, ...pr })
     const now = await prNow({ gh: cli.gh, ...pr })
     const story_head_sha = found.status === 'ok' ? found.story.head_sha : null
     const state =
@@ -196,11 +313,13 @@ const status = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     cli.out(
         JSON.stringify({
             status: state,
-            home: found.status === 'none' ? null : home,
+            home,
             story_head_sha,
             pr_head_sha: now.head_sha,
+            other_copy,
         })
     )
+    if (other_copy !== null) cli.err(otherCopyLine({ other_copy }))
     return 0
 }
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
 import { readStory, type Story, type StoryRead } from './story-schema'
@@ -111,4 +111,31 @@ export const loadPrivateStory = async ({
     } catch {
         return { status: 'invalid', problems: [`${path} is not JSON`] }
     }
+}
+
+/**
+ * Removes a PR's private story, so it can't outlive a newer one posted on
+ * the PR. Never throws for a missing file.
+ *
+ * @returns Whether there was a file to remove.
+ * @example
+ * await removePrivateStory({ stories_dir, repo: 'acme/site', pr_number: 12 }) // true
+ */
+export const removePrivateStory = async ({
+    stories_dir,
+    repo,
+    pr_number,
+}: {
+    stories_dir: string
+    repo: string
+    pr_number: number
+}): Promise<boolean> => {
+    const path = privateStoryPath({ stories_dir, repo, pr_number })
+    try {
+        await readFile(path)
+    } catch {
+        return false
+    }
+    await rm(path, { force: true })
+    return true
 }

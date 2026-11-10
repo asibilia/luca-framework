@@ -44,11 +44,13 @@ A flag forces a home. Never force `--shared` yourself: only pass it when the per
 bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js status <owner/repo> <number>
 ```
 
-It prints `{ "status", "home", "story_head_sha", "pr_head_sha" }`:
+It prints `{ "status", "home", "story_head_sha", "pr_head_sha", "other_copy" }`:
 
 - `fresh`: the story matches the PR's head. Say so and stop, unless you were asked to write it again.
 - `stale`: commits landed after the story was written. Go to step 7 and bring it up to date. (`status` has already taken `review-ready` off a stale PR.)
 - `none` or `broken`: write a new story, steps 4 to 6.
+
+`status` looks in both homes. When both hold a story for this PR, an old copy never hides a fresh one: the copy written for the PR's head is used; when both or neither are, the repo's default home wins (step 2). `other_copy` then names the copy that was not used, and is `null` otherwise. Nothing to do about it: the next `save` to the shared home removes the private copy.
 
 ## 4. Get the code at the PR's head
 
@@ -109,7 +111,7 @@ Fix every problem it prints and check again, until it says the story is valid. T
 bun ~/.claude/skills/luca-pr-prep/scripts/pr-story.js save <story.json> [--shared | --private]
 ```
 
-`save` checks the story again and refuses one that fails, so a broken story is never posted. In the shared home it posts the story (the readable summary on top of the first comment, the data folded under it, more comments when the story is long), replaces the story comments from an earlier run instead of adding new ones, and adds `review-ready`. It refuses when the PR's head moved on while you were writing: bring the story up to date (step 7) and save again. In the private home it writes the file and posts nothing.
+`save` checks the story again and refuses one that fails, so a broken story is never posted. In the shared home it posts the story (the readable summary on top of the first comment, the data folded under it, more comments when the story is long), replaces the story comments from an earlier run instead of adding new ones, and adds `review-ready`. It then removes this PR's private copy from this computer, if there is one, and says so, so the two homes can't drift apart. It refuses when the PR's head moved on while you were writing: bring the story up to date (step 7) and save again. In the private home it writes the file and posts nothing.
 
 Never post story comments or add the label by hand. `save` is the only way in.
 

@@ -34,7 +34,13 @@ There are no grades in a story. Blast radius is a count with the list behind it.
 | **Shared** | Comments on the PR, plus the `review-ready` label | A repo that belongs to the signed-in GitHub user's own account |
 | **Private** | `~/.local/state/luca/stories/<owner>/<repo>/pr-<number>.json` (`LUCA_STORIES_DIR` moves the folder) | Every other repo. Nothing is posted |
 
-`--shared` or `--private` forces a home. The format is the same in both. A reader looks in the private home first, then in the PR's comments.
+`--shared` or `--private` forces a home. The format is the same in both. A reader looks in both homes. When both hold a story for the PR, a stale copy never hides a fresh one:
+
+1. The copy written for the PR's current head is used.
+2. Otherwise a readable copy beats a broken one.
+3. Otherwise the repo's default home wins: shared in your own repo, private everywhere else.
+
+`status` reports the copy that was not used as `other_copy` (`null` when there is only one), and `load` mentions it. Saving to the shared home removes the PR's private copy, so the two can't drift apart. When the PR's comments can't be read (no network, no access), a private copy is still used.
 
 ### A story as comments
 

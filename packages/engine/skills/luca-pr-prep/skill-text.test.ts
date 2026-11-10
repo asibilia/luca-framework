@@ -87,6 +87,7 @@ describe('the luca-pr-prep skill', () => {
             'loose_ends',
             'pr_head_sha',
             'story_head_sha',
+            'other_copy',
         ])
         expect(
             named.filter(
