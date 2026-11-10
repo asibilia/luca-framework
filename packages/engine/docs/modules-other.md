@@ -130,4 +130,22 @@ with a page of its own is listed in the [README](../README.md).
 | `skills/luca-unstick/` | The `/luca-unstick` skill (#504): its `SKILL.md`, and `scripts/stuck-summary.ts`, which prints what is stuck in a run and why, and waits for the engine to take a reply, with its journal reading in `scripts/stuck-records.ts` (including a stuck item's retry history, for `/luca-watch`) and its lines on a stuck item in `scripts/stuck-lines.ts`. See "Getting a stuck run moving". |
 | `skills/luca-watch/` | The `/luca-watch` skill (#706), a **watcher**: its `SKILL.md`, and `scripts/wait-for-change.ts`, which waits up to five minutes for the next record a watcher acts on (the oldest `stuck_reported` or ending after its cursor), a gone engine, or quiet, and prints it as one JSON line. See "Watching a run". |
 | `skills/luca-retro/` | The `/luca-retro` skill (#514): its `SKILL.md`, and `scripts/retro-summary.ts`, which sums up what went wrong in finished runs, from their journals, and the patterns that repeat across them. See "Looking back at a run". |
+| `skills/luca-pr-prep/` | The `/luca-pr-prep` skill (#738): its `SKILL.md`, `references/` (the story format field by field, and an example story), and `scripts/pr-story.js`, the helper that checks, saves, loads, and gives the status of a story. The helper is a bundle of `src/story/`, built by `scripts/build-pr-story.ts`. See [The PR story](pr-story.md). |
 | `skills/luca-spec-check/` | The `/luca-spec-check` skill (#678): its `SKILL.md`, and `scripts/spec-bundle.ts`, which prints a spec, its tickets in order, and the repo's rule files, glossary and ADRs as one bundle for the skill's three fresh readers (Comprehension, Readiness, Codebase). The skill merges their findings into one report and posts it on the spec issue only after a yes. |
+
+## `src/story/`
+
+The PR story (#738). See [The PR story](pr-story.md).
+
+| Module | What it does |
+| --- | --- |
+| `src/story/story-parts.ts` | The Zod schemas for a story's parts: the summary, the map, a stop, a change and its context, and a flag. |
+| `src/story/story-schema.ts` | `StorySchema` and `STORY_SCHEMA_VERSION`; `readStory`, which tells a good story from a newer or a broken one; `storyPositions`. |
+| `src/story/story-render.ts` | The readable summary at the top of the first story comment. |
+| `src/story/story-comments.ts` | A story as PR comments: `packStory`, `unpackStory`, `isStoryComment`, and `planCommentSync` for replacing a story's own comments. |
+| `src/story/story-store.ts` | The private home: one file per PR under the stories folder. |
+| `src/story/story-github.ts` | The shared home through `gh`: reading and posting story comments, the `review-ready` label, and which home a repo gets. |
+| `src/story/story-pick.ts` | The two-homes rule: `findStory` reads both homes, and `pickStory` makes sure a stale copy never hides a fresh one. |
+| `src/story/story-shift.ts`, `story-shift-cli.ts` | Moving a stale story's line numbers to a newer commit (`shiftStory`), and the helper's `shift` command that runs it against `git`. |
+| `src/story/story-cli.ts`, `pr-story-main.ts` | The skill's helper commands, and its entry point with the real `gh` and `git`. |
+| `scripts/build-pr-story.ts`, `scripts/write-story-example.ts` | Build the helper bundle and the example story the skill ships. Both take the skill's folder and file names from `scripts/pr-prep-skill-paths.ts`. |

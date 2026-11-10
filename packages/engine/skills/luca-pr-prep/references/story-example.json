@@ -1,0 +1,201 @@
+{
+    "schema_version": 1,
+    "repo": "acme/site",
+    "pr_number": 12,
+    "pr_url": "https://github.com/acme/site/pull/12",
+    "title": "Retry stuck tickets",
+    "base_ref": "main",
+    "head_ref": "retry-stuck",
+    "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "written_at": "2026-11-10T12:00:00Z",
+    "written_by": "a test",
+    "summary": {
+        "kind": "enhancement",
+        "what_changed": "A stuck ticket is retried before the owner is asked.",
+        "before": "Every stuck ticket waited for the owner.",
+        "after": "Only the third failure waits for the owner.",
+        "feedback_wanted": {
+            "text": "The retry budget.",
+            "source": "guessed"
+        },
+        "counts": {
+            "files_added": 0,
+            "files_changed": 2,
+            "files_deleted": 0,
+            "lines_added": 10,
+            "lines_removed": 2
+        },
+        "review_minutes": 10,
+        "flags": [
+            {
+                "kind": "convention",
+                "rule": "No classes",
+                "rule_source": "AGENTS.md",
+                "path": "src/core/run-ticket.ts",
+                "line": 44,
+                "message": "Adds a class; the repo uses factory functions."
+            }
+        ]
+    },
+    "map": {
+        "entry_path": "src/core/run-ticket.ts",
+        "files": [
+            {
+                "path": "src/core/run-ticket.ts",
+                "status": "modified",
+                "previous_path": null,
+                "role": "Builds one ticket.",
+                "in_walk": true
+            },
+            {
+                "path": "src/config/schema.ts",
+                "status": "modified",
+                "previous_path": null,
+                "role": "The config shape.",
+                "in_walk": false
+            }
+        ],
+        "links": [
+            {
+                "from_path": "src/cli/luca-run.ts",
+                "to_path": "src/core/run-ticket.ts",
+                "kind": "calls",
+                "note": null
+            }
+        ],
+        "architecture_note": "No new modules."
+    },
+    "stops": [
+        {
+            "id": "s1",
+            "kind": "walk",
+            "path": "src/core/run-ticket.ts",
+            "title": "Where a stuck ticket is handled",
+            "why_here": "It is the entry point of the change.",
+            "changes": [
+                {
+                    "id": "c1",
+                    "path": "src/core/run-ticket.ts",
+                    "side": "head",
+                    "start_line": 44,
+                    "end_line": 46,
+                    "symbol": "runTicket",
+                    "title": "Ask autoRetry before the owner",
+                    "how_we_got_here": {
+                        "from_change_id": null,
+                        "text": "The run loop calls runTicket for every ticket."
+                    },
+                    "why_needed": "A stuck ticket used to stop the run and wait for the owner.",
+                    "architecture_note": "None: the call stays inside core.",
+                    "check_this": "Is two retries the right budget?",
+                    "proof": {
+                        "covered": true,
+                        "tests": [
+                            {
+                                "path": "src/core/run-ticket.test.ts",
+                                "line": 12,
+                                "name": "retries a stuck ticket"
+                            }
+                        ],
+                        "note": "One test covers the retry path."
+                    },
+                    "serves": {
+                        "found": true,
+                        "refs": [
+                            {
+                                "label": "#705",
+                                "url": "https://github.com/acme/site/issues/705",
+                                "quote": "Retry a routine stuck once."
+                            }
+                        ],
+                        "note": "The linked issue asks for it."
+                    },
+                    "blast_radius": {
+                        "dependents_total": 2,
+                        "dependents_outside_pr": 1,
+                        "dependents": [
+                            {
+                                "path": "src/cli/luca-run.ts",
+                                "line": 80,
+                                "in_pr": true
+                            },
+                            {
+                                "path": "src/core/resume.ts",
+                                "line": 15,
+                                "in_pr": false
+                            }
+                        ],
+                        "note": "Counted with a search for runTicket( in src."
+                    },
+                    "flags": []
+                }
+            ]
+        },
+        {
+            "id": "s2",
+            "kind": "loose_ends",
+            "path": null,
+            "title": "Loose ends",
+            "why_here": "Config that the walk does not pass through.",
+            "changes": [
+                {
+                    "id": "c2",
+                    "path": "src/config/schema.ts",
+                    "side": "head",
+                    "start_line": 44,
+                    "end_line": 46,
+                    "symbol": "runTicket",
+                    "title": "Ask autoRetry before the owner",
+                    "how_we_got_here": {
+                        "from_change_id": null,
+                        "text": "The run loop calls runTicket for every ticket."
+                    },
+                    "why_needed": "A stuck ticket used to stop the run and wait for the owner.",
+                    "architecture_note": "None: the call stays inside core.",
+                    "check_this": "Is two retries the right budget?",
+                    "proof": {
+                        "covered": true,
+                        "tests": [
+                            {
+                                "path": "src/core/run-ticket.test.ts",
+                                "line": 12,
+                                "name": "retries a stuck ticket"
+                            }
+                        ],
+                        "note": "One test covers the retry path."
+                    },
+                    "serves": {
+                        "found": true,
+                        "refs": [
+                            {
+                                "label": "#705",
+                                "url": "https://github.com/acme/site/issues/705",
+                                "quote": "Retry a routine stuck once."
+                            }
+                        ],
+                        "note": "The linked issue asks for it."
+                    },
+                    "blast_radius": {
+                        "dependents_total": 2,
+                        "dependents_outside_pr": 1,
+                        "dependents": [
+                            {
+                                "path": "src/cli/luca-run.ts",
+                                "line": 80,
+                                "in_pr": true
+                            },
+                            {
+                                "path": "src/core/resume.ts",
+                                "line": 15,
+                                "in_pr": false
+                            }
+                        ],
+                        "note": "Counted with a search for runTicket( in src."
+                    },
+                    "flags": []
+                }
+            ]
+        }
+    ]
+}

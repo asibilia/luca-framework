@@ -229,3 +229,30 @@ _Avoid_: dashboard, statusline
 **Live file**:
 A small file the engine keeps in the run folder with what each agent in a turn is doing now, for the board to show between journal records. Each write replaces it whole; it is never part of the journal and never replayed.
 _Avoid_: status file, live journal
+
+### Reviewing the work
+
+**Story**:
+The written guide to one pull request at one commit: a summary, a map of how the changed files link, and a walk through the change in the order the code runs. The `/luca-pr-prep` skill writes it; a reviewer or a review app reads it.
+_Avoid_: walkthrough, PR summary, annotation
+
+**Stop**:
+One visit to one file on a story's walk, with the changed regions read there. The first stop is the starting point.
+_Avoid_: step, slide, hunk
+
+**Loose ends**:
+A story's last stop: the changes the calls don't reach, such as config, types, and deleted files. It is how no changed file is left out of a story.
+_Avoid_: misc, other files
+
+**Flag**:
+Something in a change that is off, named with the rule it breaks and the line. A story has flags, never scores.
+_Avoid_: score, grade, warning
+
+**Shared home, private home**:
+Where a story is kept. Shared: comments on the pull request, with the `review-ready` label, for the owner's own repos. Private: a file on the owner's computer, with nothing posted, for every other repo.
+_Avoid_: public mode, local mode
+
+**Stale story**:
+A story written for a commit that is no longer the pull request's head. It loses the `review-ready` label and is brought up to date by running the skill again.
+_Avoid_: outdated, expired
+
