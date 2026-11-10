@@ -69,3 +69,18 @@ Tests:
 - `packages/engine/src/story/story-shift.e2e.test.ts`
 - `packages/engine/skills/luca-pr-prep/skill-text.test.ts`
 - `packages/engine/skills/luca-pr-prep/scripts/pr-story-bundle.test.ts`
+
+## Addressing a review
+
+The `/luca-pr-address` skill works through a reviewed pull request: it fetches every finding from the line comments, the review texts and the check run annotations, fixes, asks, defers or declines each one, replies on its thread, and brings the PR's story up to date, never declining or deferring a comment from the review's owner.
+
+Reached by: `/luca-pr-address [PR number or URL]` in Claude Code.
+
+Tests:
+
+- `packages/engine/skills/luca-pr-address/scripts/pr-findings.test.ts`
+- `packages/engine/skills/luca-pr-address/scripts/summary-cover.test.ts`
+- `packages/engine/skills/luca-pr-address/scripts/fetch-findings.test.ts`
+- `packages/engine/skills/luca-pr-address/scripts/fetch-findings-main.test.ts`
+- `packages/engine/skills/luca-pr-address/skill-text.test.ts`
+- `packages/engine/skills/luca-pr-address/workflow-script.test.ts`

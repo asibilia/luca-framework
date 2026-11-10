@@ -59,6 +59,7 @@ Each topic has its own page under `docs/`:
 | [Crash recovery](docs/crash-recovery.md) | Step records, redoing a cut-off step, `--resume`, the config a resume re-reads, Luca's version, and restarts from Paseo. |
 | [The final review](docs/final-review.md) | The five lenses, their fix loop, slow tests, re-reviews, and a stuck final review's replies. |
 | [The PR story](docs/pr-story.md) | The story format, its two homes, story comments, staleness, and the `/luca-pr-prep` helper. |
+| [Addressing a review](docs/pr-address.md) | The `/luca-pr-address` skill: the three channels of findings, its helper, the owner rule, and how it hands a PR back. |
 | [Stuck work](docs/stuck-work.md) | The stuck comment and the owner's replies, opening the PR, `/luca-unstick`, and `/luca-retro`. |
 | [The board and the command line](docs/board-and-command-line.md) | How the journal reaches the board, and `luca-run`'s flags, real runs, and the demo. |
 | [Publishing and setting up](docs/setup.md) | Publishing Luca, `luca upgrade`, `luca setup`, and `luca doctor`. |

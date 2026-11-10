@@ -13,7 +13,7 @@ To add a feature, add a section to its area's page: a heading, one sentence, a `
 ## Pages
 
 - [building.md](building.md): starting a run, building one ticket, the red check, the feature map, the gates, and joins.
-- [reviews-and-shipping.md](reviews-and-shipping.md): the ticket review, the final review, the pull request, and the PR story.
+- [reviews-and-shipping.md](reviews-and-shipping.md): the ticket review, the final review, the pull request, the PR story, and addressing a review.
 - [run-control.md](run-control.md): stuck work, crash recovery, the config, limits, tokens, and looking back.
 - [agents.md](agents.md): agents, their guards and messages, memory, the decision model, and the tracker.
 - [board-and-cli.md](board-and-cli.md): the board, the command line, the publish package, the docs, and repo tooling.

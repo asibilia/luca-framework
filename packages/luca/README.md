@@ -44,6 +44,8 @@ After a run, type `/luca-retro` the same way to look back on it: it reads the ru
 
 To get any pull request ready for review, in any repo, type `/luca-pr-prep [PR number or URL]`: it writes the PR's story, a guide that walks a reviewer through the change in call order, with the why, the proof, and the blast radius of each changed region. In your own repos it posts the story on the PR and adds the `review-ready` label; in anyone else's it saves the story on your computer and posts nothing.
 
+Once a PR has been reviewed, type `/luca-pr-address [PR number or URL]`: it reads every review comment and check alert, fixes what was asked or asks you a question, replies on each thread, runs the repo's checks, pushes, and brings the story up to date. It never declines one of your own comments, and it never merges.
+
 ## Commands
 
 | Command | What it does |
@@ -94,7 +96,7 @@ This is the one package that goes to npm. It's TypeScript source with no build a
 | ------ | ---------- |
 | `engine/` | The engine's source, from [`packages/engine/src`](../engine/src). Both bins point into it. |
 | `board/` | The board plugin's folder, from [`packages/board`](../board): `paseo-plugin.json`, its entry points, its client, server, and shared code, and its own `package.json`, so Paseo can install it as a folder source. |
-| `skills/` | Luca's own Claude Code skills, such as `luca-unstick`, `luca-retro`, `luca-spec-check` and `luca-pr-prep`, from [`packages/engine/skills`](../engine/skills). `luca init` and `luca upgrade` copy every folder in it with a `SKILL.md` to `~/.claude/skills`. |
+| `skills/` | Luca's own Claude Code skills, such as `luca-unstick`, `luca-retro`, `luca-spec-check`, `luca-pr-prep` and `luca-pr-address`, from [`packages/engine/skills`](../engine/skills). `luca init` and `luca upgrade` copy every folder in it with a `SKILL.md` to `~/.claude/skills`. |
 | `LICENSE` | The repo's license. |
 
 Test files and test helpers stay out. The engine and the board stay private workspace packages, and this package lists every package they import at runtime as its own dependency.
