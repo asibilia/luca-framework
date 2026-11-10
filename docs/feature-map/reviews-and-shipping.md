@@ -79,5 +79,8 @@ Reached by: `/luca-pr-address [PR number or URL]` in Claude Code.
 Tests:
 
 - `packages/engine/skills/luca-pr-address/scripts/pr-findings.test.ts`
+- `packages/engine/skills/luca-pr-address/scripts/summary-cover.test.ts`
 - `packages/engine/skills/luca-pr-address/scripts/fetch-findings.test.ts`
+- `packages/engine/skills/luca-pr-address/scripts/fetch-findings-main.test.ts`
 - `packages/engine/skills/luca-pr-address/skill-text.test.ts`
+- `packages/engine/skills/luca-pr-address/workflow-script.test.ts`

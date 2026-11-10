@@ -36,7 +36,25 @@ export type Finding = {
     /** True when the PR's reviewer-owner wrote it: never declined or deferred. */
     from_owner: boolean
     path: string | null
+    /**
+     * The line the finding is on: for a range, its **last** line. `null`
+     * for a finding on a whole file or a whole PR.
+     */
     line: number | null
+    /** The first line of a range; `null` when it is one line, a file, or the PR. */
+    start_line?: number | null
+    /**
+     * What a line or file comment is attached to: one `line`, a `range`
+     * of lines (`start_line` to `line`), or a whole `file`.
+     */
+    kind?: 'line' | 'range' | 'file'
+    /** GitHub's own word for it: `line` (one line or a range) or `file`. */
+    subject_type?: 'line' | 'file'
+    /** Which side of the diff: `RIGHT` is the new file, `LEFT` the old. */
+    side?: string | null
+    start_side?: string | null
+    /** True when the comment holds a suggestion block the reviewer wrote. */
+    has_suggestion?: boolean
     body: string
     html_url: string
     /** The id to reply to; `null` when the finding has no thread. */
@@ -148,6 +166,17 @@ export const reviewCommentFindings = ({
             const thread = (threads.get(comment_id) ?? []).toSorted((a, b) =>
                 a.created_at.localeCompare(b.created_at)
             )
+            // GitHub gives a whole-file comment `line: 1`. It is on no line.
+            const on_file = text(comment.subject_type) === 'file'
+            const line = on_file
+                ? null
+                : (numberOrNull(comment.line) ??
+                  numberOrNull(comment.original_line))
+            const start_line = on_file
+                ? null
+                : (numberOrNull(comment.start_line) ??
+                  numberOrNull(comment.original_start_line))
+            const is_range = start_line !== null && start_line !== line
             return [
                 {
                     id: `rc-${comment_id}`,
@@ -155,9 +184,23 @@ export const reviewCommentFindings = ({
                     author,
                     from_owner: sameLogin({ a: author, b: owner }),
                     path: text(comment.path) || null,
-                    line:
-                        numberOrNull(comment.line) ??
-                        numberOrNull(comment.original_line),
+                    line,
+                    start_line: is_range ? start_line : null,
+                    kind: on_file
+                        ? ('file' as const)
+                        : is_range
+                          ? ('range' as const)
+                          : ('line' as const),
+                    subject_type: on_file
+                        ? ('file' as const)
+                        : ('line' as const),
+                    side: text(comment.side) || null,
+                    start_side: is_range
+                        ? text(comment.start_side) || null
+                        : null,
+                    has_suggestion: /^```suggestion\b/m.test(
+                        text(comment.body)
+                    ),
                     body: text(comment.body),
                     html_url: text(comment.html_url),
                     comment_id,
@@ -172,42 +215,22 @@ export const reviewCommentFindings = ({
 }
 
 /**
- * The last summary this skill posted on the PR: when, and for which head
- * commit (from its hidden first line). Both are `''` when it never did.
- */
-export const lastSummary = (
-    issue_comments: Record<string, unknown>[]
-): { at: string; head_sha: string } =>
-    issue_comments
-        .filter((comment) => text(comment.body).startsWith(SUMMARY_MARKER))
-        .map((comment) => ({
-            at: text(comment.created_at),
-            head_sha:
-                /^<!-- luca-pr-address summary[^>]*\bhead=([0-9a-f]+)/.exec(
-                    text(comment.body)
-                )?.[1] ?? '',
-        }))
-        .reduce(
-            (latest, summary) => (summary.at > latest.at ? summary : latest),
-            {
-                at: '',
-                head_sha: '',
-            }
-        )
-
-/**
  * The reviews that say something in their own text, as findings. A review
  * with an empty body is only a wrapper for its line comments. One counts
- * as answered when a summary comment was posted after it.
+ * as answered when a summary comment lists its id (see
+ * `summary-cover.ts`), never just because a summary came after it: a
+ * review that arrives while a run is working was not read by that run.
+ * `cover.legacy_at` keeps the old "posted after it" rule for summaries
+ * from before the list existed.
  */
 export const reviewBodyFindings = ({
     reviews,
     owner,
-    summary_at,
+    cover,
 }: {
     reviews: Record<string, unknown>[]
     owner: string
-    summary_at: string
+    cover: { ids: Set<string>; legacy_at: string }
 }): Finding[] =>
     reviews.flatMap((review) => {
         const review_id = numberOrNull(review.id)
@@ -216,9 +239,10 @@ export const reviewBodyFindings = ({
         if (review_id === null || body === '' || state === 'PENDING') return []
         const author = loginOf(review.user)
         const submitted_at = text(review.submitted_at)
+        const id = `rv-${review_id}`
         return [
             {
-                id: `rv-${review_id}`,
+                id,
                 source: 'review_body' as const,
                 author,
                 from_owner: sameLogin({ a: author, b: owner }),
@@ -227,7 +251,9 @@ export const reviewBodyFindings = ({
                 body,
                 html_url: text(review.html_url),
                 comment_id: null,
-                has_reply: summary_at !== '' && submitted_at <= summary_at,
+                has_reply:
+                    cover.ids.has(id) ||
+                    (cover.legacy_at !== '' && submitted_at <= cover.legacy_at),
                 anchored_to_head: null,
                 created_at: submitted_at || null,
                 review_state: state,
@@ -261,23 +287,27 @@ export const runsWithAnnotations = (
 
 /**
  * One check run's annotations, as findings. A check has no login to be the
- * owner. `answered` is true when a summary was already posted for this
- * head commit: alerts have no thread, so the summary is their answer.
+ * owner. Alerts have no thread, so a summary is their answer: one is
+ * answered when a summary lists its id, or when `legacy_answered` is true
+ * (a summary from before the list existed was posted for this head).
  */
 export const alertFindings = ({
     run,
     annotations,
-    answered,
+    covered_ids,
+    legacy_answered,
 }: {
     run: Record<string, unknown>
     annotations: Record<string, unknown>[]
-    answered: boolean
+    covered_ids: Set<string>
+    legacy_answered: boolean
 }): Finding[] =>
     annotations.map((annotation) => {
         const path = text(annotation.path)
         const start_line = numberOrNull(annotation.start_line)
+        const id = `alert-${String(run.id)}-${path}-${String(start_line)}`
         return {
-            id: `alert-${String(run.id)}-${path}-${String(start_line)}`,
+            id,
             source: 'alert' as const,
             author: loginOf(run.app),
             from_owner: false,
@@ -287,7 +317,7 @@ export const alertFindings = ({
             body: text(annotation.message),
             html_url: text(annotation.blob_href),
             comment_id: null,
-            has_reply: answered,
+            has_reply: legacy_answered || covered_ids.has(id),
             anchored_to_head: true,
             created_at: text(run.completed_at) || null,
             check: text(run.name),

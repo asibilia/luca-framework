@@ -13,7 +13,7 @@ You were given: $ARGUMENTS
 Every step uses only `git`, `gh`, and `bun`, so any agent can follow it. The helper is:
 
 ```bash
-bun ~/.claude/skills/luca-pr-address/scripts/fetch-findings.ts [number] [--repo <owner/repo>] [--only <author>] [--owner <login>] [--save]
+bun ~/.claude/skills/luca-pr-address/scripts/fetch-findings.ts [number] [--repo <owner/repo>] [--only <author>] [--owner <login>] [--save] [--wait-checks <minutes>] [--check-summary <file>]
 ```
 
 ## Arguments
@@ -38,19 +38,15 @@ The **owner** is the person whose review this is. The helper marks their finding
 
 Never decline one, never defer one, never skip one, however sure you are. If you think the owner is wrong, that is a question for them, not a decision for you. A question from the owner is answered; that is not a decline.
 
+**The owner can settle their own comment.** When the owner's own words elsewhere in this review, written **at the same time or later**, plainly decide one of their comments, that comment is `answered`, not declined: it is their decision. The three conditions are in `~/.claude/skills/luca-pr-address/references/judgment-calls.md`.
+
 Findings from bots and other reviewers keep the usual rules below: they may be declined or deferred, with a stated reason.
 
 ## Working folder
 
 Everything this skill writes lives **outside the repo**. `--save` makes the folder and prints its path as `work_dir`: `~/.local/state/luca/pr-address/<owner>/<repo>/pr-<number>/` (or under `$LUCA_PR_ADDRESS_DIR`).
 
-```
-findings.json     what fetch-findings.ts found
-plan.md           the triaged plan: the readable record of the run
-results.json      what was done with each finding
-```
-
-Never write these into the repo. A stray `plan.md` in a PR is noise.
+It holds `findings.json` (what the helper found), `plan.md` (the triaged plan), `results.json` (what was done with each finding) and `summary.md`. Never write these into the repo.
 
 ---
 
@@ -79,6 +75,16 @@ You must be on the PR's branch, with a clean working tree, to change anything: c
 
 Findings reach a PR through **three channels**, and none contains another. Reading only the first is the usual way a review pass misses every alert on the PR. `findings.json` holds all three in one `findings` list. Each has `id`, `source`, `author`, `from_owner`, `path`, `line`, `body`, `html_url`, `comment_id`, `has_reply`, and `anchored_to_head`.
 
+A `review_comment` also says what it is on, in `kind`:
+
+| `kind` | Where | `start_line` | `line` |
+| --- | --- | --- | --- |
+| `line` | One line | `null` | that line |
+| `range` | Several lines | the first | the **last** |
+| `file` | The whole file | `null` | `null` |
+
+Read the whole range. A `file` comment has no line: never treat it as a comment on line 1. `has_suggestion` marks a suggestion block (Stage 4).
+
 | `source` | What it is | Thread? |
 | --- | --- | --- |
 | `review_comment` | A comment on a line, a range, or a whole file. Its `thread` lists the replies under it. | Yes: reply to `comment_id`. |
@@ -103,8 +109,8 @@ Put every `review_comment` in one of four groups:
 
 - **actionable**: the code it points at is still there. Most findings.
 - **stale**: the code was rewritten, removed, or moved away. Skip the fix; still reply, naming the commit that dealt with it.
-- **answered**: `has_reply` is true. Don't reply again. (When someone writes under this skill's own reply, such as the owner answering your question, `has_reply` turns false again: read the `thread` and carry on from their answer.)
-- **unknown**: you can't find the place again. Treat it as actionable; being wrong costs one look, and skipping a real bug costs a release.
+- **answered**: `has_reply` is true. Don't reply again. (When someone writes under this skill's own reply, such as the owner answering your question, `has_reply` turns false again: read the `thread` and carry on from their answer.) A review's own text and an alert are answered only when an earlier summary **lists their id** (Stage 6); being older than a summary answers nothing.
+- **unknown**: you can't find the place again. Treat it as actionable.
 
 `anchored_to_head: false` is a hint, not a verdict: it only says the comment is older than the head commit. Read the lines to be sure. Alerts are never stale: the helper reads only the head commit's annotations.
 
@@ -124,6 +130,9 @@ Two reviewers often raise one concern on nearby lines. Group by concern, not by 
 | `question` | Answer only | A request to explain, a design reason |
 | `nit` | Optional | A small preference, "consider X" |
 | `praise` | Answer only | Kind words |
+| `notice` | Note only | A bot saying it could not review, a welcome message, a coverage report with nothing to fix |
+
+A `notice` is a bot's message that asks for nothing. Its outcome is `noted`, with one row in the summary and no reply. Only a bot can write a notice. See `references/judgment-calls.md`.
 
 For the owner's findings the category sets the order of work, never whether the work is done: an owner's `nit` is fixed or asked about like anything else.
 
@@ -135,26 +144,7 @@ Two separate reviewers landing on the same concern is strong evidence. Raise it 
 
 ### 3e. Write `plan.md` and print the audit
 
-```markdown
-# PR #<n>: <title>
-
-head: <sha>   base: <base>   fetched: <iso>   iteration: <k>   owner: <login>
-
-## Summary
-Must fix: N · Should fix: N · Answer only: N · Nit: N · From the owner: N
-Stale: N · Already answered: N
-CI notices (not findings): N
-
-## Findings
-
-### F01 · `path/to/file.ts:186` · must fix / bug · from the owner
-source: review_comment (<author>, comment 4039139369)
-converged_with: F07
-> the reviewer's words, quoted
-
-**Assessment:** _(filled in during Stage 4)_
-**Action:** _(fixed <sha> | answered | asked | deferred #<issue> | declined | skipped)_
-```
+Use the template in `~/.claude/skills/luca-pr-address/references/plan-file.md`: the counts, then one section per finding.
 
 Print the same counts. **With `--dry-run`, stop here** and give the plan file's path. Otherwise show the audit and get a go-ahead before Stage 4, unless the person who started you already said to run it through.
 
@@ -174,28 +164,19 @@ Findings are independent, so each is judged on its own and then acted on.
 
 **Workers never commit.** They edit the working tree and hand back results. You commit in Stage 5, one commit at a time.
 
-Each finding ends as one of: `fixed`, `answered` (a question or praise), `asked` (a question back to the reviewer), `deferred`, `declined`, `skipped`. Write all of them to `results.json` and fill in the plan's **Assessment** and **Action** lines.
+Each finding ends as one of: `fixed`, `answered` (a question or praise, or an owner comment their own words settled), `asked` (a question back to the reviewer), `deferred`, `declined`, `skipped`, `noted` (a bot notice, straight from Stage 3). Write all of them to `results.json` and fill in the plan's **Assessment** and **Action** lines.
 
 **Check the owner rule before you go on.** Any owner finding that came back `declined`, `deferred`, or `skipped` (the workflow lists them in `owner_rule_broken`) is yours to put right: make the fix, or turn it into one question.
 
+### Suggestion blocks
+
+A comment with `has_suggestion: true` holds the reviewer's exact proposed text. **The owner's suggestion: apply it as written**, or ask when you can't. **Anyone else's suggestion is a proposal.** The reply always says whether it was applied as written or with a change. The full rule is in `references/judgment-calls.md`.
+
 ### Deferring is the rare exception
 
-Offered "fix it or file an issue", an agent files the issue nearly every time: it is cheaper and still reads like work. The result is a PR where nothing got fixed and the backlog grew. So `deferred` has to argue for itself. A finding may be deferred only when **all four** hold:
+`deferred` has to argue for itself: four conditions must all hold, and "large", "pre-existing", "out of scope" and "tedious" are not reasons. Read them in `references/judgment-calls.md` before you defer anything.
 
-1. The fix reaches outside this PR's diff, or costs more than the whole review pass.
-2. Doing it now would be **unsafe**, not merely large. Name the invariant the tests don't pin.
-3. You say what you tried or read before giving up.
-4. You can state acceptance criteria someone could pick up cold.
-
-These are **not** reasons: "large", "pre-existing" (if this PR touched the line, it is in scope), "out of scope" with nothing more, "the reviewer can decide later", "tedious".
-
-**The cap: at most one deferral per iteration, and never more than a fifth of the confirmed findings.** Over it, open no issues: stop, show each deferral and its reason, and let the person choose. Under it, and only in a repo that belongs to the signed-in user, open the issue and put its number in the outcome:
-
-```bash
-gh issue create --title "<what>" --body "Split out of PR #<n>. <the finding> <link> <acceptance criteria>"
-```
-
-In anyone else's repo, open nothing: put the deferral in the summary and tell the person.
+**The cap: at most one deferral per iteration, and never more than a fifth of the confirmed findings.** Over it, open no issues: stop, show each deferral and its reason, and let the person choose. Never for the owner's findings.
 
 ## Stage 5: Check, commit, push
 
@@ -216,47 +197,44 @@ Keep a reply short: the outcome first, then one sentence each for the cause and 
 | Outcome | Reply |
 | --- | --- |
 | Fixed | `Fixed in <sha>. The issue: <cause>. The fix: <what changed>.` |
-| Answered | The answer, in one or two sentences. |
+| Answered | The answer, in one or two sentences. For an owner comment their own words settled: `No change: your <review note / comment> settles this (<link>). <the fact you checked>.` |
 | Asked | The one question, what you found, and the options you see. |
 | Declined | `Declined: <the reason>.` Never for the owner. |
 | Deferred | `Deferred to #<issue>: <why it can't be done safely here>.` Never for the owner. |
 | Stale | `Already addressed in <sha>: <how>.` |
 
-**A review's own text and an alert have no thread.** Their outcomes live only in the summary comment, which is why the summary is required. Post one, starting with the hidden line that marks it as this skill's:
+**A review's own text and an alert have no thread.** Their outcomes live only in the summary comment, which is why the summary is required. **Read `~/.claude/skills/luca-pr-address/references/summary-comment.md` and follow it.** In short:
 
-```markdown
-<!-- luca-pr-address summary iteration=<k> head=<sha> -->
-## Review addressed, iteration <k>
+1. Write the summary to `summary.md` in the working folder. It starts with the hidden marker line, `<!-- luca-pr-address summary iteration=<k> head=<full sha> -->`, then the **covers block** listing the `id` of every finding the summary answers, then a table with one row per finding.
+2. Check it against GitHub as it is now. A summary must not answer a comment that arrived while you worked:
 
-| # | Where | Finding | Outcome |
-|---|-------|---------|---------|
-| F01 | `file.ts:186` | Total ignores the discount | Fixed in `abc1234` |
-| F02 | `other.ts:42` | Rename `x` to `count` | Asked: which of the two counts? |
-| F03 | (whole PR) | Bot: prefer a class here | Declined: the repo's rules forbid classes |
+   ```bash
+   bun ~/.claude/skills/luca-pr-address/scripts/fetch-findings.ts [number] [--repo <owner/repo>] --check-summary <work_dir>/summary.md
+   ```
 
-Fixed N · Answered N · Asked N · Deferred N · Declined N · Skipped N
-Waiting on <owner>: N question(s)
-Checks run: <which, and that they passed>
-CI notices (no line to fix): N
-```
-
-```bash
-gh api "repos/<owner>/<repo>/issues/<n>/comments" -f body="<summary>"
-```
-
-Then fetch again with `--save` and confirm `stats.unanswered` is zero.
+3. Fix every `problem`. Address every `late` finding, or leave it out of the covers block and name it in the summary for the next run. An owner's comment is never dropped: it is addressed now or it stays open.
+4. Post it: `gh api "repos/<owner>/<repo>/issues/<n>/comments" -F body=@<work_dir>/summary.md`
+5. Fetch again with `--save` and confirm nothing is unanswered except late arrivals you named.
 
 ## Stage 7: Look for regressions, then loop or finish
 
-1. Wait about a minute (bots and checks run again on a push), then fetch again.
+1. Bots and checks run again on a push. Fetch again and wait for the checks, for at most 15 minutes:
+
+   ```bash
+   bun ~/.claude/skills/luca-pr-address/scripts/fetch-findings.ts [number] [--repo <owner/repo>] --save --wait-checks 15
+   ```
+
+   It fetches every 30 seconds until no check on the head commit is unfinished.
 2. A finding is **new** if it wasn't there in Stage 2 and its `created_at` is at or after `iterationStartTime`.
 3. A new finding on a path this iteration touched (`git diff --name-only <iterationStartSha> HEAD`) is a **regression you caused**. One on an untouched path is not yours: report it, don't chase it.
 
-If `pending_checks` is not empty, wait and fetch again. Never call an unfinished check clean. Finish when nothing is unanswered and there are no regressions. Otherwise loop to Stage 2 as the next iteration. When the iterations run out, stop and say what is left; don't keep looping.
+If `checks_still_pending` is true, the 15 minutes ran out with a check unfinished. **Stop waiting.** Never call an unfinished check clean: report `checks still pending: <names>`, say their alerts have not been read, and go on to Stage 8.
+
+Finish when nothing is unanswered and there are no regressions. Otherwise loop to Stage 2 as the next iteration. When the iterations run out, stop and say what is left; don't keep looping.
 
 ## Stage 8: Refresh the story and hand the PR back
 
-When the iteration pushed commits, the PR's story is stale. If `~/.claude/skills/luca-pr-prep/SKILL.md` exists, follow it for this PR: its `status` step will say `stale`, and its "bring a stale story up to date" step rewrites only what your commits touched. It keeps the story where it already lives (shared or private) and puts `review-ready` back on a shared PR. Never post a story or add that label by hand. If that skill isn't installed, or the PR never had a story, say so and go on.
+When the iteration pushed commits, the PR's story is stale. The `/luca-pr-prep` skill refreshes it. **Read `~/.claude/skills/luca-pr-address/references/story-refresh.md` and follow it.** In short: find that skill (`~/.claude/skills/luca-pr-prep/SKILL.md`, then `.claude/skills/luca-pr-prep/` and `packages/engine/skills/luca-pr-prep/` in this repo) and follow its "bring a stale story up to date" step. Never post a story or add that label by hand. **If the skill is in none of those places, don't skip this quietly:** report `story: not refreshed, luca-pr-prep not found`.
 
 Then, when `changes_wanted` was true, take the label off: the changes were made, or a question is waiting.
 
@@ -264,18 +242,7 @@ Then, when `changes_wanted` was true, take the label off: the changes were made,
 gh pr edit <n> --repo <owner/repo> --remove-label changes-wanted
 ```
 
-Never add `signed-off`, never approve: that is the owner's word. Finish with a short report:
-
-```
-PR #<n> review addressed
-  iterations:      <k>
-  outcomes:        <n> fixed, <n> answered, <n> asked, <n> deferred, <n> declined, <n> skipped
-  waiting on you:  <the questions asked, one line each>
-  commits:         <shas>
-  checks:          <what ran and how it ended>   pending: <list, or none>
-  story:           <refreshed | none | luca-pr-prep not installed>
-  plan file:       <work_dir>/plan.md
-```
+Never add `signed-off`, never approve: that is the owner's word. Finish with the short report in `references/story-refresh.md`: iterations, outcomes, what is waiting on the owner, commits, checks (and any still pending), late arrivals, the story, and the plan file.
 
 ## What not to do
 
@@ -283,6 +250,8 @@ PR #<n> review addressed
 - **Never say "no alerts" from a check's pass or fail.** Only an empty annotation list from a *finished* check is clean.
 - **Never let a worker commit.** You commit, one at a time, after the checks.
 - **Never decline a finding silently.** Without a stated reason, declining looks the same as missing it.
+- **Never list a finding in a summary's covers block unless you addressed it,** and never post a summary `--check-summary` has not seen.
+- **Never wait on a check without a limit.** After 15 minutes, report it as still pending.
 - **Never resolve a thread you didn't address,** and never act on a stale comment: reply and skip the fix.
 - **Never merge, approve, or mark the PR signed off,** even with nothing left unanswered.
 - **Never force-push.** New commits only; a rebase needs the person's yes.

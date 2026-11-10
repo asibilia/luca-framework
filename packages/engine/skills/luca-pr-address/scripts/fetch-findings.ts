@@ -5,6 +5,7 @@
  *
  *   bun fetch-findings.ts [PR number] [--repo <owner/repo>] [--only <author>]
  *                         [--owner <login>] [--save]
+ *                         [--wait-checks <minutes>] [--check-summary <file>]
  *
  * - no number: the PR of the current branch.
  * - `--repo`: the PR's repo; default, the repo of the current folder.
@@ -13,6 +14,12 @@
  *   deferred; default, the GitHub user `gh` is signed in as.
  * - `--save`: write the result to `findings.json` in the PR's working
  *   folder and print only the headline (state, counts, the folder).
+ * - `--wait-checks`: while a check on the head commit is unfinished, fetch
+ *   again every 30 seconds, for at most this many minutes. The result
+ *   says `checks_still_pending` when the time ran out.
+ * - `--check-summary`: check a summary comment's text against a fetch made
+ *   right now, before it is posted (see `checkSummary`). It prints
+ *   `{ ready, problems, late }` and exits 0 only when `ready` is true.
  *
  * It reads three channels (line and file comments, review bodies, check
  * run annotations) and prints one JSON object. It never decides whether
@@ -21,7 +28,8 @@
  *
  * It only reads GitHub. The working folder is outside any repo:
  * `$LUCA_PR_ADDRESS_DIR`, or `~/.local/state/luca/pr-address`, then
- * `<owner>/<repo>/pr-<number>`. It exits 0, or 1 with the reason on stderr.
+ * `<owner>/<repo>/pr-<number>`. It exits 0, or 1 with the reason on stderr
+ * (or, for `--check-summary`, with what is not ready on stdout).
  */
 import { mkdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -34,7 +42,6 @@ import {
     flattenPages,
     isCiNotice,
     labelNames,
-    lastSummary,
     matchesOnly,
     pendingChecks,
     prState,
@@ -42,6 +49,7 @@ import {
     reviewCommentFindings,
     runsWithAnnotations,
 } from './pr-findings'
+import { checkSummary, postedSummaries, summaryCover } from './summary-cover'
 
 /** One `gh` call. */
 export type Gh = (call: {
@@ -55,7 +63,14 @@ export type FetchOptions = {
     only: string | null
     owner: string | null
     save: boolean
+    /** Minutes to wait for unfinished checks; `null` is don't wait. */
+    wait_checks: number | null
+    /** A summary file to check before it is posted. */
+    check_summary: string | null
 }
+
+/** How often `--wait-checks` fetches again. */
+export const CHECK_POLL_MS = 30_000
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -68,18 +83,33 @@ export const parseArgs = (argv: string[]): FetchOptions => {
         only: null,
         owner: null,
         save: false,
+        wait_checks: null,
+        check_summary: null,
     }
     const rest = [...argv]
     while (rest.length > 0) {
         const arg = rest.shift() ?? ''
         if (arg === '--save') {
             options.save = true
-        } else if (arg === '--repo' || arg === '--only' || arg === '--owner') {
+        } else if (
+            arg === '--repo' ||
+            arg === '--only' ||
+            arg === '--owner' ||
+            arg === '--check-summary' ||
+            arg === '--wait-checks'
+        ) {
             const value = rest.shift()
             if (value === undefined) throw new Error(`${arg} needs a value`)
             if (arg === '--repo') options.repo = value
             if (arg === '--only') options.only = value
             if (arg === '--owner') options.owner = value
+            if (arg === '--check-summary') options.check_summary = value
+            if (arg === '--wait-checks') {
+                if (!/^\d+$/.test(value)) {
+                    throw new Error('--wait-checks needs a number of minutes')
+                }
+                options.wait_checks = Number(value)
+            }
         } else if (/^\d+$/.test(arg)) {
             options.pr_number = Number(arg)
         } else {
@@ -226,7 +256,7 @@ export const fetchFindings = async ({
         key: 'check_runs',
     })
 
-    const summary = lastSummary(issue_comments)
+    const cover = summaryCover(postedSummaries(issue_comments))
     const annotated = new Set(runsWithAnnotations(runs))
     const alerts = (
         await Promise.all(
@@ -238,7 +268,8 @@ export const fetchFindings = async ({
                 .map(async (check) =>
                     alertFindings({
                         run: check,
-                        answered: summary.head_sha === head_sha,
+                        covered_ids: cover.ids,
+                        legacy_answered: cover.legacy_heads.has(head_sha),
                         annotations: flattenPages({
                             pages: await pages({
                                 gh,
@@ -253,7 +284,7 @@ export const fetchFindings = async ({
 
     const everything = [
         ...reviewCommentFindings({ comments, head_sha, owner }),
-        ...reviewBodyFindings({ reviews, owner, summary_at: summary.at }),
+        ...reviewBodyFindings({ reviews, owner, cover }),
         ...alerts,
     ].filter(
         (finding) =>
@@ -276,7 +307,7 @@ export const fetchFindings = async ({
         owner,
         labels,
         changes_wanted: labels.includes(CHANGES_WANTED_LABEL),
-        last_summary_at: summary.at === '' ? null : summary.at,
+        last_summary_at: cover.last_at === '' ? null : cover.last_at,
         pending_checks: pendingChecks(runs),
         findings,
         ci_notices,
@@ -315,6 +346,7 @@ export const main = async ({
     env,
     out,
     err,
+    sleep,
 }: {
     argv: string[]
     gh: Gh
@@ -322,10 +354,33 @@ export const main = async ({
     env: Record<string, string | undefined>
     out: (line: string) => void
     err: (line: string) => void
+    /** Waits; tests pass one that returns at once. */
+    sleep: (ms: number) => Promise<void>
 }): Promise<number> => {
     try {
         const options = parseArgs(argv)
-        const result = await fetchFindings({ gh, options, now: new Date() })
+        let fetched = await fetchFindings({ gh, options, now: new Date() })
+        let waited_ms = 0
+        const wait_ms = (options.wait_checks ?? 0) * 60_000
+        while (fetched.pending_checks.length > 0 && waited_ms < wait_ms) {
+            await sleep(CHECK_POLL_MS)
+            waited_ms += CHECK_POLL_MS
+            fetched = await fetchFindings({ gh, options, now: new Date() })
+        }
+        const result = {
+            ...fetched,
+            checks_still_pending: fetched.pending_checks.length > 0,
+            waited_seconds: waited_ms / 1000,
+        }
+        if (options.check_summary !== null) {
+            const verdict = checkSummary({
+                summary: await Bun.file(options.check_summary).text(),
+                head_sha: result.head_sha,
+                findings: result.findings,
+            })
+            out(JSON.stringify(verdict, null, 2))
+            return verdict.ready ? 0 : 1
+        }
         if (!options.save) {
             out(JSON.stringify(result, null, 2))
             return 0
@@ -351,6 +406,8 @@ export const main = async ({
                     owner: result.owner,
                     changes_wanted: result.changes_wanted,
                     pending_checks: result.pending_checks,
+                    checks_still_pending: result.checks_still_pending,
+                    waited_seconds: result.waited_seconds,
                     stats: result.stats,
                 },
                 null,
@@ -373,6 +430,7 @@ if (import.meta.main) {
             env: process.env,
             out: (line) => console.log(line),
             err: (line) => console.error(line),
+            sleep: (ms) => Bun.sleep(ms),
         })
     )
 }

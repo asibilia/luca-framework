@@ -1,8 +1,7 @@
 # Stage 4 workflow script
 
 Pass this to the `Workflow` tool as `script`, with the triaged findings as
-`args`. Read it before you use it: the shape below carries weight, it is not
-decoration.
+`args`. Read it before you use it.
 
 ## What to pass as `args`
 
@@ -20,7 +19,12 @@ An actual JSON object, never a JSON string:
       "author": "octocat",
       "from_owner": true,
       "path": "src/cart/total.ts",
+      "kind": "range",
+      "start_line": 70,
       "line": 73,
+      "has_suggestion": false,
+      "created_at": "2026-11-09T10:00:00Z",
+      "html_url": "https://github.com/octo-org/shop/pull/212#discussion_r4039139369",
       "body": "<the reviewer's words>",
       "category": "bug",
       "severity": "must_fix",
@@ -33,10 +37,13 @@ An actual JSON object, never a JSON string:
 ```
 
 Only findings that survived Stage 3 go in. Stale ones, already-answered ones,
-and CI notices stay out: an agent spent on a stale comment is an agent wasted.
-A finding with no file (a review's own text) gets `"path": "(whole PR)"`. If
-`--max-findings` trimmed the list, `log()` what was dropped; a silent cap reads
-like full coverage.
+bot notices (category `notice`), and CI notices stay out: an agent spent on a
+stale comment is an agent wasted. A finding with no file (a review's own text)
+gets `"path": "(whole PR)"`.
+
+Copy `kind`, `start_line`, `line`, `has_suggestion`, `created_at` and
+`html_url` from `findings.json` as they are. A `file` comment has no line:
+never invent `line: 1` for it.
 
 ## Why the phases are shaped this way
 
@@ -68,6 +75,10 @@ script enforces this instead of trusting the prompt: an owner finding judged
 "not real" becomes a question, and any that still comes back declined, deferred
 or skipped is listed in `owner_rule_broken` for the orchestrator to put right.
 
+**The owner can settle their own comment, and a suggestion is exact text.**
+Both rules are in `judgment-calls.md` next to this file. The script checks a
+`settled_by_owner` verdict itself, and a claim that fails becomes a question.
+
 ## The script
 
 ```js
@@ -83,12 +94,13 @@ export const meta = {
 const ASSESS_SCHEMA = {
   type: 'object',
   properties: {
-    verdict: { type: 'string', enum: ['confirmed', 'not_real', 'needs_info'] },
+    verdict: { type: 'string', enum: ['confirmed', 'not_real', 'needs_info', 'settled_by_owner'] },
     severity: { type: 'string', enum: ['must_fix', 'should_fix', 'nit', 'respond_only'] },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
     rationale: { type: 'string', description: 'Why, citing the code you read. One short paragraph.' },
     proposed_fix: { type: 'string', description: 'What to change. Empty when verdict is not_real.' },
     question: { type: 'string', description: 'Only for needs_info: the one question whose answer unblocks this.' },
+    settled_by: { type: 'string', description: 'Only for settled_by_owner: the id of the owner\'s other finding that decides this one.' },
     effort: { type: 'string', enum: ['small', 'medium', 'large'] },
   },
   required: ['verdict', 'severity', 'confidence', 'rationale', 'proposed_fix', 'effort'],
@@ -121,6 +133,27 @@ const repo = args.repo
 const owner = args.owner
 const findings = args.findings
 
+// Where a finding is: one line, a range, a whole file, or the whole PR.
+const where = (f) =>
+  f.kind === 'file' || f.line === null || f.line === undefined
+    ? `${f.path} (the whole ${f.path === '(whole PR)' ? 'PR' : 'file'})`
+    : f.kind === 'range' && f.start_line
+      ? `${f.path}:${f.start_line}-${f.line}`
+      : `${f.path}:${f.line}`
+const lines = (f) =>
+  f.kind === 'file' || f.line === null || f.line === undefined
+    ? 'the whole file'
+    : f.kind === 'range' && f.start_line
+      ? `lines ${f.start_line}-${f.line}`
+      : `line ${f.line}`
+const SUGGESTION = [
+  `It holds a suggestion block: the reviewer's exact proposed text for those`,
+  `lines.`,
+]
+
+// What else the owner wrote in this review.
+const ownerWords = (f) => findings.filter((o) => o.from_owner && o.id !== f.id)
+
 log(`${findings.length} findings across ${new Set(findings.map(f => f.path)).size} files`)
 
 // ---------------------------------------------------------------- Assess
@@ -133,12 +166,13 @@ const assessed = (await parallel(findings.map((f) => () =>
       ``,
       `PR #${pr} in ${repo}`,
       `Finding ${f.id}, reported by ${f.author} (${f.source})`,
-      `Location: ${f.path}:${f.line}`,
+      `Location: ${where(f)}`,
       ``,
       `The finding says:`,
       f.body,
       ``,
-      `Open ${f.path}, read the code around line ${f.line} and enough of its`,
+      ...(f.has_suggestion ? [...SUGGESTION, `Judge that exact text, not only the idea.`, ``] : []),
+      `Open ${f.path}, read ${lines(f)} and enough of the`,
       `callers to judge it. Read the repo's rule files (AGENTS.md, CLAUDE.md,`,
       `or whatever it has) and cite the rule you rely on. Then decide:`,
       ``,
@@ -152,6 +186,21 @@ const assessed = (await parallel(findings.map((f) => () =>
             `${owner} wrote this finding and owns this review. You may NOT answer`,
             `not_real. If you think they are wrong, that is a question for them,`,
             `not a decision for you: answer needs_info and ask.`,
+            ...(ownerWords(f).length === 0
+              ? []
+              : [
+                  ``,
+                  `- settled_by_owner: ${owner}'s OWN words elsewhere in this review`,
+                  `              already decide this comment, so no change and no`,
+                  `              question is needed. Only when their words plainly`,
+                  `              cover this exact point, and you checked the fact`,
+                  `              they hang on. Put that finding's id in "settled_by"`,
+                  `              and say in "rationale" what they said and what you`,
+                  `              checked. If in doubt, ask instead.`,
+                  ``,
+                  `What else ${owner} wrote in this review:`,
+                  ...ownerWords(f).map((o) => `  [${o.id}] ${where(o)}: ${o.body}`),
+                ]),
           ]
         : [
             `- not_real:   the reporter is wrong, or right in general but wrong`,
@@ -174,13 +223,28 @@ if (assessed.length < findings.length) {
   log(`WARNING: ${findings.length - assessed.length} assessments returned nothing and were dropped`)
 }
 
+// The owner settling their own comment is checked, not trusted: the comment
+// that settles it must be another finding of theirs in this run, and not an
+// older one. (ISO timestamps compare as text.)
+const settledBy = (f) => {
+  if (!f.from_owner || f.assessment.verdict !== 'settled_by_owner') return null
+  const by = findings.find((o) => o.id === f.assessment.settled_by && o.from_owner && o.id !== f.id)
+  if (!by) return null
+  if (f.created_at && by.created_at && by.created_at < f.created_at) return null
+  return by
+}
+const settled = assessed.filter((f) => settledBy(f) !== null)
+
 // The owner's findings are never "not real": that verdict becomes a question.
-const needsOwner = (f) => f.from_owner && f.assessment.verdict !== 'confirmed'
+// So does a "settled" claim that did not check out.
+const needsOwner = (f) => f.from_owner && f.assessment.verdict !== 'confirmed' && settledBy(f) === null
 const toAsk = assessed.filter(needsOwner)
 const rejected = assessed.filter((f) => !f.from_owner && f.assessment.verdict === 'not_real')
-const confirmed = assessed.filter((f) => !needsOwner(f) && f.assessment.verdict !== 'not_real')
+const confirmed = assessed.filter((f) =>
+  !needsOwner(f) && settledBy(f) === null && f.assessment.verdict !== 'not_real')
 
-log(`assessed ${assessed.length}: ${confirmed.length} to act on, ${rejected.length} not real, ${toAsk.length} to ask the owner`)
+log(`assessed ${assessed.length}: ${confirmed.length} to act on, ${rejected.length} not real, ` +
+    `${toAsk.length} to ask the owner, ${settled.length} settled by the owner's own words`)
 
 // ------------------------------------------------- regroup: finding -> file
 const byFile = {}
@@ -212,7 +276,7 @@ const acted = (await parallel(groups.map((g) => () =>
       `Findings:`,
       ...g.items.map((f) => [
         ``,
-        `--- ${f.id}, line ${f.line}, ${f.assessment.severity} (${f.assessment.confidence} confidence)${f.from_owner ? ' [FROM THE OWNER]' : ''}`,
+        `--- ${f.id}, ${lines(f)}, ${f.assessment.severity} (${f.assessment.confidence} confidence)${f.from_owner ? ' [FROM THE OWNER]' : ''}${f.has_suggestion ? ' [HAS A SUGGESTION]' : ''}`,
         `Reported by ${f.author}: ${f.body}`,
         `Assessment: ${f.assessment.rationale}`,
         `Proposed fix: ${f.assessment.proposed_fix}`,
@@ -242,6 +306,15 @@ const acted = (await parallel(groups.map((g) => () =>
       `A finding marked [FROM THE OWNER] may only end as fixed, answered or`,
       `asked. Never declined, deferred or skipped: ${owner} owns this review.`,
       `If you can't or shouldn't make the change, ask.`,
+      ``,
+      `A finding marked [HAS A SUGGESTION] holds the reviewer's exact proposed`,
+      `text. From the owner: apply it as written, unless the lines it was made`,
+      `on have changed, or it would break the build or a rule of the repo; then`,
+      `the outcome is asked, with what you found. From anyone else: apply it as`,
+      `written only if it is right as it stands; adapt it if it is nearly right;`,
+      `decline it if it is not. Either way the reply says which: "Applied your`,
+      `suggestion as written." or "Applied with a change: ...". Make the edit in`,
+      `the file yourself.`,
       ``,
       `Filing an issue is not a free action: it costs a real person a real triage`,
       `and it leaves the code exactly as broken as you found it. At most one`,
@@ -303,7 +376,19 @@ const asked = toAsk.map((f) => ({
     : f.assessment.rationale,
 }))
 
-const outcomes = actOutcomes.concat(declined, asked)
+// Settled by the owner's own words: answered, with a link to those words.
+const answered = settled.map((f) => {
+  const by = settledBy(f)
+  return {
+    id: f.id,
+    outcome: 'answered',
+    settled_by: by.id,
+    summary: `Settled by ${owner}'s own comment ${by.id}: ${f.assessment.rationale.split('. ')[0]}`,
+    reply: `No change: your own comment settles this${by.html_url ? ` (${by.html_url})` : ''}. ${f.assessment.rationale}`,
+  }
+})
+
+const outcomes = actOutcomes.concat(declined, asked, answered)
 const filesChanged = Array.from(new Set(acted.flatMap((a) => a.files_changed)))
 const tally = (name) => outcomes.filter((o) => o.outcome === name).length
 
@@ -348,5 +433,5 @@ return {
   why the phases are the fixed pair Assess/Act and not one per finding.
 - `agent()` returns `null` when the user skips it or it dies after retries.
   Every fan-out here is `.filter(Boolean)`-ed, and the drop is logged.
-- `parallel()` never rejects: a thrown thunk becomes `null` in the array. That
-  is why the counts are checked against the input length.
+- `parallel()` never rejects: a thrown thunk becomes `null`, which is why the
+  counts are checked against the input length.

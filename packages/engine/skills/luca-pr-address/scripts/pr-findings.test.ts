@@ -7,7 +7,6 @@ import {
     isAnswered,
     isCiNotice,
     labelNames,
-    lastSummary,
     matchesOnly,
     pendingChecks,
     prState,
@@ -28,6 +27,7 @@ const comment = ({
     commit_id = HEAD,
     at = '2026-11-01T10:00:00Z',
     line = 12,
+    extra = {},
 }: {
     id: number
     login: string
@@ -36,6 +36,7 @@ const comment = ({
     commit_id?: string
     at?: string
     line?: number | null
+    extra?: Record<string, unknown>
 }) => ({
     id,
     user: { login },
@@ -48,6 +49,7 @@ const comment = ({
     original_line: 9,
     html_url: `https://github.test/c/${id}`,
     diff_hunk: '@@ -1 +1 @@',
+    ...extra,
 })
 
 describe('flattenPages', () => {
@@ -122,6 +124,98 @@ describe('reviewCommentFindings', () => {
         expect(finding).toMatchObject({ anchored_to_head: false, line: 9 })
     })
 
+    test('a range keeps both ends, a file comment is on no line, and a suggestion is seen (shapes from a real review)', () => {
+        const [on_line, on_file, on_range, outdated] = reviewCommentFindings({
+            comments: [
+                comment({
+                    id: 4528617360,
+                    login: 'octocat',
+                    body: 'rename this?\n\n```suggestion\nThe `/gh-pr-prep` skill\n```',
+                    line: 57,
+                    extra: {
+                        original_line: 57,
+                        start_line: null,
+                        original_start_line: null,
+                        side: 'RIGHT',
+                        start_side: null,
+                        subject_type: 'line',
+                    },
+                }),
+                comment({
+                    id: 4528628072,
+                    login: 'octocat',
+                    line: 1,
+                    extra: {
+                        original_line: 1,
+                        start_line: null,
+                        original_start_line: null,
+                        side: 'RIGHT',
+                        start_side: null,
+                        subject_type: 'file',
+                    },
+                }),
+                comment({
+                    id: 4528677244,
+                    login: 'octocat',
+                    line: 22,
+                    extra: {
+                        original_line: 23,
+                        start_line: 18,
+                        original_start_line: 16,
+                        side: 'RIGHT',
+                        start_side: 'RIGHT',
+                        subject_type: 'line',
+                    },
+                }),
+                // A range whose lines are no longer in the diff.
+                comment({
+                    id: 9,
+                    login: 'octocat',
+                    line: null,
+                    extra: {
+                        original_line: 23,
+                        start_line: null,
+                        original_start_line: 16,
+                        side: 'RIGHT',
+                        start_side: 'RIGHT',
+                        subject_type: 'line',
+                    },
+                }),
+            ],
+            head_sha: HEAD,
+            owner: 'octocat',
+        })
+        expect(on_line).toMatchObject({
+            kind: 'line',
+            subject_type: 'line',
+            line: 57,
+            start_line: null,
+            side: 'RIGHT',
+            start_side: null,
+            has_suggestion: true,
+        })
+        expect(on_file).toMatchObject({
+            kind: 'file',
+            subject_type: 'file',
+            line: null,
+            start_line: null,
+            has_suggestion: false,
+        })
+        expect(on_range).toMatchObject({
+            kind: 'range',
+            subject_type: 'line',
+            start_line: 18,
+            line: 22,
+            side: 'RIGHT',
+            start_side: 'RIGHT',
+        })
+        expect(outdated).toMatchObject({
+            kind: 'range',
+            start_line: 16,
+            line: 23,
+        })
+    })
+
     test('an answer written under the skill’s own reply opens the thread again', () => {
         const asked = comment({
             id: 2,
@@ -179,28 +273,8 @@ describe('isAnswered', () => {
     })
 })
 
-describe('lastSummary and reviewBodyFindings', () => {
-    const summary = lastSummary([
-        { body: 'just chatting', created_at: '2026-11-03T00:00:00Z' },
-        {
-            body: '<!-- luca-pr-address summary iteration=1 head=aaa111 -->\n## Review addressed',
-            created_at: '2026-11-02T00:00:00Z',
-        },
-        {
-            body: '<!-- luca-pr-address summary iteration=1 head=000 -->',
-            created_at: '2026-11-01T00:00:00Z',
-        },
-    ])
-
-    test('finds the newest summary this skill posted, and the head it covered', () => {
-        expect(summary).toEqual({
-            at: '2026-11-02T00:00:00Z',
-            head_sha: 'aaa111',
-        })
-        expect(lastSummary([])).toEqual({ at: '', head_sha: '' })
-    })
-
-    test('a review with text is a finding, answered once a summary follows it', () => {
+describe('reviewBodyFindings', () => {
+    test('a review with text is a finding, answered when a summary lists it, or when an old summary without a list follows it', () => {
         const review = (
             id: number,
             body: string,
@@ -220,14 +294,31 @@ describe('lastSummary and reviewBodyFindings', () => {
                 review(2, '   ', '2026-11-01T12:00:00Z'),
                 review(3, 'One more thing.', '2026-11-02T12:00:00Z'),
                 review(4, 'not sent yet', '2026-11-02T12:00:00Z', 'PENDING'),
+                review(5, 'Listed by a summary.', '2026-11-03T12:00:00Z'),
             ],
             owner: 'octocat',
-            summary_at: summary.at,
+            cover: {
+                ids: new Set(['rv-5']),
+                legacy_at: '2026-11-02T00:00:00Z',
+            },
         })
         expect(findings.map((f) => [f.id, f.has_reply])).toEqual([
             ['rv-1', true],
             ['rv-3', false],
+            ['rv-5', true],
         ])
+        // With no old summary, only the listed one is answered: being
+        // older than some summary answers nothing.
+        expect(
+            reviewBodyFindings({
+                reviews: [
+                    review(1, 'Early.', '2026-11-01T12:00:00Z'),
+                    review(5, 'Listed.', '2026-11-03T12:00:00Z'),
+                ],
+                owner: 'octocat',
+                cover: { ids: new Set(['rv-5']), legacy_at: '' },
+            }).map((f) => f.has_reply)
+        ).toEqual([false, true])
         expect(findings[0]).toMatchObject({
             source: 'review_body',
             from_owner: true,
@@ -269,7 +360,8 @@ describe('alerts', () => {
         if (run === undefined) throw new Error('no run')
         const findings = alertFindings({
             run,
-            answered: false,
+            covered_ids: new Set<string>(),
+            legacy_answered: false,
             annotations: [
                 {
                     path: 'src/cart.ts',
@@ -310,8 +402,12 @@ describe('alerts', () => {
         })
         expect(findings.map(isCiNotice)).toEqual([false, true, true])
         expect(
-            alertFindings({ run, answered: true, annotations: [{}] })[0]
-                ?.has_reply
+            alertFindings({
+                run,
+                covered_ids: new Set<string>(),
+                legacy_answered: true,
+                annotations: [{}],
+            })[0]?.has_reply
         ).toBe(true)
     })
 })
@@ -329,7 +425,8 @@ describe('filters, counts, and the PR itself', () => {
         }),
         ...alertFindings({
             run: { id: 7, name: 'Quality', app: { slug: 'quality-app' } },
-            answered: false,
+            covered_ids: new Set<string>(),
+            legacy_answered: false,
             annotations: [
                 {
                     path: 'src/b.ts',
