@@ -78,6 +78,8 @@ export default [
             '.cursor/**',
             '.github/**',
             '**/.pi/**',
+            // Built by packages/engine/scripts/build-pr-story.ts.
+            'packages/engine/skills/luca-pr-prep/scripts/pr-story.js',
         ],
     },
 ]

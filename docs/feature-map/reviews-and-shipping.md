@@ -51,3 +51,18 @@ Tests:
 - `packages/engine/src/core/decide-changesets.test.ts`
 - `packages/engine/src/core/run-changeset.e2e.test.ts`
 - `packages/engine/src/core/decide-release-labels.test.ts`
+
+## The PR story
+
+The `/luca-pr-prep` skill writes a pull request's story: a versioned guide that walks a reviewer through the change in call order, checked against one schema, and saved as PR comments with the `review-ready` label in the owner's own repos or as a private file anywhere else.
+
+Reached by: `/luca-pr-prep [PR number or URL]` in Claude Code; `readStory` and `unpackStory` from `@luca/engine` in a reader.
+
+Tests:
+
+- `packages/engine/src/story/story-schema.test.ts`
+- `packages/engine/src/story/story-comments.test.ts`
+- `packages/engine/src/story/story-store.test.ts`
+- `packages/engine/src/story/story-cli.test.ts`
+- `packages/engine/skills/luca-pr-prep/skill-text.test.ts`
+- `packages/engine/skills/luca-pr-prep/scripts/pr-story-bundle.test.ts`
