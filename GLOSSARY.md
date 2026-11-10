@@ -256,3 +256,15 @@ _Avoid_: public mode, local mode
 A story written for a commit that is no longer the pull request's head. It loses the `review-ready` label and is brought up to date by running the skill again.
 _Avoid_: outdated, expired
 
+**Review owner**:
+The person whose review of a pull request is being addressed. The `/luca-pr-address` skill never declines or defers one of their comments: it makes the change or asks them a question.
+_Avoid_: reviewer (any reviewer, bots included), author
+
+**Alert**:
+A check run annotation on a pull request: something a check said about a line, shown in GitHub's Alerts panel. It has no thread, so it is answered in the summary comment.
+_Avoid_: check failure, warning
+
+**Changes wanted**:
+The review owner's verdict that a pull request needs more work, carried by the `changes-wanted` label where GitHub won't let them request changes on their own PR. `/luca-pr-address` starts from it and takes it off when it is done.
+_Avoid_: rejected, blocked
+
