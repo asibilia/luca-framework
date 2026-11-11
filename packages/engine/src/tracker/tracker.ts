@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+import type { StoryHome } from '../story/story-pick'
+import type { Story } from '../story/story-schema'
+
 /** One GitHub-style issue as the engine sees it: a spec, a ticket, or a blocker. */
 export const TrackerIssueSchema = z.object({
     number: z.number().int().positive(),
@@ -111,7 +114,50 @@ export type Tracker = {
      * a run reads a spec's tickets and blockers from.
      */
     issueLinks: () => Promise<{ sub_issues: boolean; dependencies: boolean }>
+    /** The `owner/name` of the repo the tracker is bound to. */
+    readonly repo: string
+    /**
+     * Which home a story for the tracker's repo goes to (#742): `shared`
+     * only when the repo belongs to the signed-in GitHub user's own account,
+     * `private` otherwise and when the user can't be read.
+     */
+    storyHome: () => Promise<StoryHome>
+    /**
+     * Saves a story to its home, picked as `storyHome` picks it (#742). The
+     * shared home refuses a story whose `head_sha` is not the PR's head
+     * (`head_moved`). Throws a `TrackerError` for any other failure, and for
+     * a story whose `repo` is not the tracker's.
+     */
+    saveStory: (args: { story: Story }) => Promise<TrackerStorySave>
 }
+
+/** What `saveStory` answers. */
+export type TrackerStorySave =
+    | {
+          status: 'saved'
+          home: StoryHome
+          /** How many story comments the PR now has; 0 for the private home. */
+          comments: number
+      }
+    | { status: 'head_moved'; pr_head_sha: string }
+
+/**
+ * The error a tracker throws for a story whose `repo` is not its own.
+ *
+ * @example
+ * otherRepoStoryError({ story_repo: 'some-org/other', repo: 'octocat/hello-world' }).message
+ * // 'The story is for some-org/other, but this tracker is bound to octocat/hello-world.'
+ */
+export const otherRepoStoryError = ({
+    story_repo,
+    repo,
+}: {
+    story_repo: string
+    repo: string
+}): TrackerError =>
+    new TrackerError(
+        `The story is for ${story_repo}, but this tracker is bound to ${repo}.`
+    )
 
 /**
  * A tracker call that failed, such as a `gh` command that exited non-zero.

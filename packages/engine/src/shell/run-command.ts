@@ -227,6 +227,7 @@ export const runCommand = async ({
     timeout_ms,
     env,
     pipe_grace_ms,
+    input,
 }: {
     cmd: string[]
     cwd: string
@@ -239,13 +240,15 @@ export const runCommand = async ({
      * `PIPE_GRACE_MS`. Tests of that wait pass a short one (#580).
      */
     pipe_grace_ms?: number
+    /** Text written to the command's stdin. Left out, stdin is ignored. */
+    input?: string
 }): Promise<CommandResult> => {
     stopCommandsOnExit()
     const proc = Bun.spawn({
         cmd,
         cwd,
         env: env === undefined ? undefined : { ...process.env, ...env },
-        stdin: 'ignore',
+        stdin: input === undefined ? 'ignore' : new TextEncoder().encode(input),
         stdout: 'pipe',
         stderr: 'pipe',
         // Its own process group, so a timeout can kill all it started.

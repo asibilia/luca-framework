@@ -1,18 +1,17 @@
 import { readFile, writeFile } from 'node:fs/promises'
 
 import {
-    addReadyLabel,
     defaultStoryHome,
-    postSharedStory,
     prNow,
     removeReadyLabel,
     REVIEW_READY_LABEL,
     type Gh,
 } from './story-github'
 import { findStory, type OtherCopy, type StoryHome } from './story-pick'
+import { saveStoryWith } from './story-save'
 import { readStory, STORY_SCHEMA_VERSION } from './story-schema'
 import { runShift, type Git } from './story-shift-cli'
-import { removePrivateStory, savePrivateStory, storiesDir } from './story-store'
+import { privateStoryPath, storiesDir } from './story-store'
 
 /**
  * The `/luca-pr-prep` skill's helper (#738). The skill runs it as one
@@ -118,36 +117,32 @@ const save = async ({ cli, args }: { cli: StoryCliEnv; args: string[] }) => {
     if (path === undefined) return usage({ cli })
     const story = await storyFromFile({ path, err: cli.err })
     if (story === null) return 1
-    const { gh } = cli
-    const { repo, pr_number } = story
-    const home =
-        forcedHome({ flags }) ?? (await defaultStoryHome({ gh, repo })).home
-    if (home === 'private') {
-        const saved = await savePrivateStory({
-            stories_dir: storiesDir(cli),
-            story,
-        })
-        cli.out(`Saved privately: ${saved}. Nothing was posted.`)
-        return 0
-    }
-    const pr = await prNow({ gh, repo, pr_number })
-    if (pr.head_sha !== story.head_sha) {
+    const stories_dir = storiesDir(cli)
+    const saved = await saveStoryWith({
+        gh: cli.gh,
+        story,
+        stories_dir,
+        home: forcedHome({ flags }) ?? undefined,
+    })
+    if (saved.status === 'head_moved') {
         cli.err(
-            `Not posted: the story is for ${story.head_sha.slice(0, 9)} but the PR's head is now ${pr.head_sha.slice(0, 9)}. Bring the story up to date first.`
+            `Not posted: the story is for ${saved.story_head_sha.slice(0, 9)} but the PR's head is now ${saved.pr_head_sha.slice(0, 9)}. Bring the story up to date first.`
         )
         return 1
     }
-    const posted = await postSharedStory({ gh, story })
-    await addReadyLabel({ gh, repo, pr_number })
+    if (saved.home === 'private') {
+        const path = privateStoryPath({
+            stories_dir,
+            repo: story.repo,
+            pr_number: story.pr_number,
+        })
+        cli.out(`Saved privately: ${path}. Nothing was posted.`)
+        return 0
+    }
     cli.out(
-        `Posted on ${story.pr_url}: ${posted.updated} comments updated, ${posted.created} created, ${posted.deleted} deleted. Label ${REVIEW_READY_LABEL} added.`
+        `Posted on ${story.pr_url}: ${saved.updated} comments updated, ${saved.created} created, ${saved.deleted} deleted. Label ${REVIEW_READY_LABEL} added.`
     )
-    const removed = await removePrivateStory({
-        stories_dir: storiesDir(cli),
-        repo,
-        pr_number,
-    })
-    if (removed) {
+    if (saved.removed_private) {
         cli.out(
             'Removed the private copy on this computer, so it cannot hide the posted story.'
         )
