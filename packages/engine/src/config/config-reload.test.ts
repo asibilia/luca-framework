@@ -88,6 +88,23 @@ describe('the fields a resume reloads', () => {
         expect(FROZEN_FIELDS).not.toContain('auto_retry')
     })
 
+    test('pr_story is reloaded, not frozen (#743)', () => {
+        expect(RELOADED_FIELDS).toContain('pr_story')
+        expect(FROZEN_FIELDS).not.toContain('pr_story')
+    })
+
+    test('pr_story is true when left out, and false when the config says so (#743)', () => {
+        expect(
+            EngineConfigSchema.parse({ checks: { test: 'bun test' } }).pr_story
+        ).toBe(true)
+        expect(
+            EngineConfigSchema.parse({
+                checks: { test: 'bun test' },
+                pr_story: false,
+            }).pr_story
+        ).toBe(false)
+    })
+
     test('leftover_allow is reloaded, not frozen (#520)', () => {
         expect(RELOADED_FIELDS).toContain('leftover_allow')
         expect(FROZEN_FIELDS).not.toContain('leftover_allow')

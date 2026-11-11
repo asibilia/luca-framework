@@ -205,6 +205,10 @@ describe('the result', () => {
         })
     })
 
+    test('the story-writer gets 80 turns (#743)', () => {
+        expect(MAX_TURNS['story-writer']).toBe(80)
+    })
+
     test('the rules lens gets 100 turns, as many as the integration lens', () => {
         expect(MAX_TURNS['rules-lens']).toBe(100)
         expect(MAX_TURNS['rules-lens']).toBe(MAX_TURNS['integration-lens'])

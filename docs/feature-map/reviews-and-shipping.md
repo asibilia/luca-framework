@@ -72,6 +72,17 @@ Tests:
 - `packages/engine/skills/luca-pr-prep/skill-text.test.ts`
 - `packages/engine/skills/luca-pr-prep/scripts/pr-story-bundle.test.ts`
 
+## A run's own PR story
+
+A run that opens its pull request writes that pull request's story: a read-only story-writer reads the run branch with a prompt of the pull request, its changed files, the capped diff and the rule files; the engine fills in what it knows, checks the story with the story schema, writes `story.json` to the run folder and saves it through the tracker. A refused story goes back to the same session; after three failed tries, or a save the tracker refuses, the story is skipped and the run ends as it would have. `pr_story: false` turns it off.
+
+Reached by: every run that opens its pull request, unless the config sets `pr_story` to `false`.
+
+Tests:
+
+- `packages/engine/src/core/run-story.e2e.test.ts`
+- `packages/engine/src/core/run-story-tries.e2e.test.ts`
+
 ## Addressing a review
 
 The `/luca-pr-address` skill works through a reviewed pull request: it fetches every finding from the line comments, the review texts and the check run annotations, fixes, asks, defers or declines each one, replies on its thread, and brings the PR's story up to date, never declining or deferring a comment from the review's owner.

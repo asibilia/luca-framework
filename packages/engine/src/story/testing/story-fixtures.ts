@@ -154,6 +154,52 @@ export const story = (): Story => ({
     ],
 })
 
+/** The parts of a story only a reader of the code writes (#743). */
+export type StoryAnswer = {
+    summary: Record<string, unknown>
+    map: unknown
+    stops: unknown[]
+}
+
+const servesNothing = (change: StoryChange): StoryChange => ({
+    ...change,
+    serves: {
+        found: false,
+        refs: [],
+        note: 'It serves nothing the spec or tickets asked for.',
+    },
+})
+
+/**
+ * A story-writer's valid answer (#743): the fixture story's summary (with
+ * counts that are wrong on purpose, and `author` as its feedback's source),
+ * map and stops, with changes that serve nothing.
+ */
+export const storyAnswer = (): StoryAnswer => {
+    const base = story()
+    return {
+        summary: {
+            ...base.summary,
+            feedback_wanted: {
+                text: 'Whether an empty list should sum to zero.',
+                source: 'author',
+            },
+            counts: {
+                files_added: 9,
+                files_changed: 9,
+                files_deleted: 9,
+                lines_added: 999,
+                lines_removed: 999,
+            },
+        },
+        map: base.map,
+        stops: base.stops.map((stop) => ({
+            ...stop,
+            changes: stop.changes.map(servesNothing),
+        })),
+    }
+}
+
 /**
  * A valid story with `walk_stops` walk stops, each in its own file, to
  * make one that is too long for a single comment. Its titles hold text

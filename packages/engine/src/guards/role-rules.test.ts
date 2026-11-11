@@ -16,6 +16,10 @@ describe('guardRoleOf', () => {
         expect(guardRoleOf({ role: 'implementer' })).toBe('implementer')
         expect(guardRoleOf({ role: 'ticket-reviewer' })).toBe('reviewer')
     })
+
+    test('the story-writer plays by the learner’s rules (#743)', () => {
+        expect(guardRoleOf({ role: 'story-writer' })).toBe('learner')
+    })
 })
 
 describe('mayWrite', () => {

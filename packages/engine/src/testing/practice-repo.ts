@@ -22,6 +22,7 @@ import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 import type { EngineClock } from '../limits/limit-wait'
 import type { MemoryClient } from '../memory/memory-client'
+import { storyAnswer } from '../story/testing/story-fixtures'
 import {
     createInMemoryTracker,
     type InMemoryTracker,
@@ -201,7 +202,19 @@ const withCleanLenses = (turns: ScriptedTurn[]): ScriptedTurn[] => [
     ...CLEAN_LENS_TURNS(10),
     ...CLEAN_LENS_TURNS(10),
     EMPTY_LEARNER_TURN(10),
+    VALID_STORY_TURN(10),
 ]
+
+/**
+ * A story-writer that answers with a valid story, for spec `spec_number`
+ * (#743). Practice runs fall back on it for a story-writer the turns don't
+ * script, so a run that opens its PR saves a story.
+ */
+export const VALID_STORY_TURN = (spec_number: number): ScriptedTurn => ({
+    role: 'story-writer',
+    ticket: spec_number,
+    result: storyAnswer(),
+})
 
 /**
  * The latest `ticket_stuck` in a run's records, with its ticket, or `null`.
