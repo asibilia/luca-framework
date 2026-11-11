@@ -82,6 +82,7 @@ Tests:
 
 - `packages/engine/src/core/run-story.e2e.test.ts`
 - `packages/engine/src/core/run-story-tries.e2e.test.ts`
+- `packages/engine/src/core/run-story-type-change.e2e.test.ts`
 
 ## Addressing a review
 

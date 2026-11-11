@@ -96,6 +96,8 @@ export const diffOps: Pick<
                 '--src-prefix=a/',
                 '--dst-prefix=b/',
                 '--diff-algorithm=myers',
+                // A submodule always gets its `diff --git` line, whatever `diff.submodule` says.
+                '--submodule=short',
                 from,
                 to,
             ],

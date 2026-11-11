@@ -219,7 +219,7 @@ export type GitAdapter = {
     /**
      * The diff from `from` to `to` as git prints it, renames found with
      * `-M`, three lines of context, set so that git config can't change the
-     * text (#743).
+     * text (#743). A file↔symlink type change is two `diff --git` parts.
      */
     diffText: (args: {
         cwd: string

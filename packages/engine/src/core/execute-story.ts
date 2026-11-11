@@ -11,6 +11,7 @@ import { followUpModel, runTurn } from './agent-turn'
 import { need, type BuildContext } from './build-context'
 import type { StoryAction } from './decide-story'
 import { isBinary, type StoryDiffFile } from './story-diff'
+import { diffFiles } from './story-diff-files'
 import { storyPrompt } from './story-prompt'
 import { storyStateOf, type StoryState } from './story-state'
 
@@ -58,23 +59,11 @@ const readRunDiff = async ({
         b: head_sha,
     })
     const range = { cwd, from: base_sha, to: head_sha }
-    const changed = await git.changedFiles(range)
-    const counts = await git.lineCounts(range)
-    const parts = (await git.diffText(range))
-        .split(/^(?=diff --git )/m)
-        .filter((part) => part !== '')
-    // All three come from git's one diff order.
-    if (parts.length !== changed.length || counts.length !== changed.length) {
-        throw new Error(
-            `git listed ${changed.length} changed files, ${counts.length} line counts and ${parts.length} diff parts between ${base_sha} and ${head_sha}.`
-        )
-    }
-    const files = changed.map((file, at) => ({
-        ...file,
-        added: counts[at]?.added ?? null,
-        removed: counts[at]?.removed ?? null,
-        part: parts[at] ?? '',
-    }))
+    const files = diffFiles({
+        changed: await git.changedFiles(range),
+        counts: await git.lineCounts(range),
+        text: await git.diffText(range),
+    })
     return { head_sha, base_sha, files }
 }
 
