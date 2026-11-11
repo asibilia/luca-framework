@@ -9,6 +9,7 @@ import {
     CLEAN_LENS_TURNS,
     HAPPY_TURNS,
     runPractice,
+    VALID_STORY_TURN,
 } from '../testing/practice-repo'
 
 /**
@@ -102,6 +103,7 @@ describe('agent messages, end to end', () => {
                     },
                 },
                 ...CLEAN_LENS_TURNS(10),
+                VALID_STORY_TURN(10),
             ],
         })
         const { action, records } = await runPractice({
@@ -199,12 +201,14 @@ describe('agent messages, end to end', () => {
 
         // The reviewer has no messaging: it can't send, and gets nothing.
         expect(reviewerGot).toEqual([null])
-        // (The final review's five lenses, spec #10's, get nothing either.)
+        // (The final review's five lenses, spec #10's, get nothing either,
+        // and nor does the story-writer, #743.)
         expect(launcher.launches().map(({ delivered }) => delivered)).toEqual([
             [],
             [implementerGot[0] ?? ''],
             [],
             ...Array.from({ length: 5 }, () => []),
+            [],
         ])
 
         // The implementer's prompt names its address; the reviewer's names none.

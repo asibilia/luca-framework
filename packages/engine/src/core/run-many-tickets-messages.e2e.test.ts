@@ -263,7 +263,10 @@ describe('agent messages and run notes across tickets building at once', () => {
             ({ kind, ticket, role }) =>
                 kind === 'launch' &&
                 ticket !== 11 &&
-                !(ticket === 12 && role === 'test-writer')
+                !(ticket === 12 && role === 'test-writer') &&
+                // The story-writer's prompt has fixed sections and no run
+                // notes (#743).
+                role !== 'story-writer'
         )
         expect(later.length).toBeGreaterThan(0)
         for (const call of later) expect(call.prompt).toContain(line)

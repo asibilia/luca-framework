@@ -471,13 +471,22 @@ describe('the final review, end to end', () => {
     test("the fresh pass's blocker gets one fix round and a re-check, then the PR opens with it at the top and its nit with the nits", () => {
         expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
         const fixers = run.launches.filter(
-            ({ ticket, role }) => ticket === 10 && !role.endsWith('-lens')
+            ({ ticket, role }) =>
+                ticket === 10 &&
+                !role.endsWith('-lens') &&
+                role !== 'story-writer'
         )
         expect(fixers.map(({ kind, role }) => `${kind} ${role}`)).toEqual([
             'launch test-writer',
             'launch implementer',
             'launch implementer',
         ])
+        // The PR's story is written once, after the PR opens (#743).
+        expect(
+            run.launches
+                .filter(({ role }) => role === 'story-writer')
+                .map(({ kind }) => kind)
+        ).toEqual(['launch'])
         expect(fixers[2]?.prompt).toContain('security-S2')
         expect(fixers[2]?.prompt).not.toContain('simplification-N2')
         const fixes = commitsOf(run.records).filter(

@@ -7,6 +7,7 @@ import {
     PRACTICE_SPEC_NUMBER,
     practiceSpec,
     sumTicket,
+    VALID_STORY_TURN,
 } from './practice-repo'
 
 import type { ScriptedTurn } from '../agents/scripted-launcher'
@@ -122,12 +123,13 @@ const DEMO_LEARNER_TURN: ScriptedTurn = {
 
 /**
  * The demo's scripted turns: ticket #11 (sum), then ticket #12 (average),
- * then the learner.
+ * then the learner, then the story-writer (#743).
  */
 export const DEMO_TURNS: ScriptedTurn[] = [
     ...HAPPY_TURNS,
     ...SECOND_TICKET_TURNS,
     DEMO_LEARNER_TURN,
+    VALID_STORY_TURN(PRACTICE_SPEC_NUMBER),
 ]
 
 /**
