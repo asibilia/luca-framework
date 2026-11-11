@@ -64,6 +64,8 @@ Tests:
 - `packages/engine/src/story/story-comments.test.ts`
 - `packages/engine/src/story/story-store.test.ts`
 - `packages/engine/src/story/story-cli.test.ts`
+- `packages/engine/src/tracker/github-tracker-story.test.ts`
+- `packages/engine/src/tracker/in-memory-tracker.test.ts`
 - `packages/engine/src/story/story-exports.test.ts`
 - `packages/engine/src/story/story-shift.test.ts`
 - `packages/engine/src/story/story-shift.e2e.test.ts`
