@@ -2,7 +2,15 @@
 
 A **story** is the written guide to one pull request at one commit (#738, part of #735). It says what changed and why, maps how the changed files link, and walks the change one **stop** at a time in the order the code runs, from a marked starting point. For every changed region it carries the context a reviewer needs: how the walk got there, why the change was needed, what it means for the architecture, the one thing to check, the test that proves it, the ask it serves, its counted blast radius, and any flags.
 
-The `/luca-pr-prep` skill writes a story. A review app (#739) reads it. Luca's own runs will write one for every PR they open (#741).
+The `/luca-pr-prep` skill writes a story. A review app (#739) reads it. Luca's own runs write one for every PR they open (#741): see "A run's own story" below.
+
+## A run's own story
+
+Once a run's PR is open, and before the run branch's worktree is removed, the engine starts a **story-writer** (#743): a fresh agent on the locked pick (Opus) at `high` effort, with 80 turns, that plays by the learner's guard (Read, Grep, Glob and the read-only helper; no shell, it writes nothing). Its instructions carry `story-format.md` word for word, after a short opening that wins where the two disagree (`agents/story-writer-instructions.ts`).
+
+Its prompt is pure code (`core/story-prompt.ts`): `## Pull request` (its number, URL, title, base branch, base and head commits), `## Changed files` (one line per file, in path order), `## Diff` (git's own text, capped at 150,000 characters by `core/story-diff.ts`: smallest files whole first, the rest left out with their hunk headers and line counts) and `## Rule files`. It answers with the story's `summary` (without `counts`), `map` and `stops`. The engine fills in every other field from the PR, the tracker's `repo` and git (`head_sha` the run branch's tip, `base_sha` its merge base with `origin/<base>`, `summary.counts` from git, `written_at` the answer's `agent_finished` time), sets the feedback's source to `guessed`, and reads the whole story with `readStory`. A valid story goes to `story.json` in the run folder and is saved through the tracker (`saveStory`) ──> `story_saved`.
+
+A story that fails the read is journaled as `story_refused` and goes back to the same session with every problem; a turn with no result gets a fresh story-writer, whose prompt ends with `## Problems with the last try`. After 3 failed tries, a `head_moved` save or a refused save, the engine journals `story_skipped` and the run ends as it would have: a story never makes a run stuck. `pr_story: false` in `.luca/config.json` turns the step off.
 
 ## The format is a contract
 

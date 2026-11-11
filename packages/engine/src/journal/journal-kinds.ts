@@ -97,6 +97,9 @@ export const JournalKindSchema = z.enum([
     'repo_wait_ps_failed',
     'network_wait_started',
     'network_wait_ended',
+    'story_refused',
+    'story_saved',
+    'story_skipped',
     'run_ended',
 ])
 

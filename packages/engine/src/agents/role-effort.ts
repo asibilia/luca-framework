@@ -30,6 +30,8 @@ export const ROLE_EFFORT: Record<AgentRole, EffortLevel> = {
     'security-lens': REVIEW_EFFORT,
     'integration-lens': REVIEW_EFFORT,
     'rules-lens': REVIEW_EFFORT,
+    // No config key (#743): it always runs at high.
+    'story-writer': 'high',
 }
 
 /**

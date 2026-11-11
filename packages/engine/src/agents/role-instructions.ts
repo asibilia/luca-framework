@@ -13,6 +13,7 @@ import {
 import { LEARNER, LEARNER_RULES } from './learner-instructions'
 import { LENS, REVIEWER } from './reviewer-instructions'
 import { lensOf, type AgentRole } from './role-results'
+import { STORY_WRITER, storyFormat } from './story-writer-instructions'
 import { IMPLEMENTER, TEST_WRITER } from './writer-instructions'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -53,6 +54,16 @@ export const roleInstructions = ({
     // The learner has no shell and no agent messages, and its rules differ.
     if (role === 'learner')
         return [LEARNER, HELPERS, SANDBOX, LEARNER_RULES].join('\n\n')
+    // The story-writer (#743) has no shell either, and carries the
+    // skill's field guide word for word.
+    if (role === 'story-writer')
+        return [
+            STORY_WRITER,
+            storyFormat().trim(),
+            HELPERS,
+            SANDBOX,
+            COMMON,
+        ].join('\n\n')
     const lens = lensOf({ role })
     const task =
         lens !== null

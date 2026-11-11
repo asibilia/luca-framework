@@ -31,6 +31,7 @@ import {
 } from './run-state'
 import { sharedFailuresAfter } from './shared-failure-replay'
 import { crashesAfter } from './step-records'
+import { isStoryRecord } from './story-records'
 import { applyTicketRecord, reusedBaselineAfter } from './ticket-replay'
 
 import { withConfigChanges } from '../config/config-reload'
@@ -128,6 +129,14 @@ const applyKind = ({
                   plan: planAfter({ plan: state.plan, record: learnerRecord }),
               }
             : { ...next, memory }
+    }
+    // The story-writer's turns and the story's records (#743) change no
+    // step here: the story step reads them itself (`storyStateOf`). A
+    // session's readings still count for the plan.
+    if (isStoryRecord(record)) {
+        return record.kind === 'agent_session'
+            ? { ...next, plan: planAfter({ plan: state.plan, record }) }
+            : next
     }
     const finalRecord = finalRecordOf({ state, record })
     if (finalRecord !== null) {
@@ -328,6 +337,11 @@ const applyKind = ({
             return next
         // Only a join's redo reads it (see `openJoin`).
         case 'join_started':
+            return next
+        // The story step reads them itself (see `isStoryRecord` above).
+        case 'story_refused':
+        case 'story_saved':
+        case 'story_skipped':
             return next
         // Only a redo of `save_memories` reads them (see `execute-memory.ts`).
         case 'memory_write_started':

@@ -1,0 +1,67 @@
+import { z } from 'zod'
+
+import { ENTRY_FIELDS } from './entry-fields'
+
+/**
+ * The journal entries of the PR's story (#743): a story the engine's
+ * checks refused, and the step's two checkpoints, a saved story and a
+ * skipped one. All with `ticket: null`.
+ */
+
+/**
+ * The story the story-writer answered failed the engine's checks; its
+ * `agent_finished` comes just before. `problems` are the problem lines,
+ * as the story schema's reader gives them. One failed try.
+ */
+export const StoryRefusedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('story_refused'),
+    content: z.object({ problems: z.array(z.string()) }),
+})
+
+/** Where a story was saved (#742). */
+export const StoryHomeSchema = z.enum(['shared', 'private'])
+
+/**
+ * The story was saved to its home, for the PR's head `head_sha`.
+ * `comments` is how many story comments the PR now has (0 for the private
+ * home). A checkpoint: after it, nothing more is done for the story.
+ */
+export const StorySavedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('story_saved'),
+    content: z.object({
+        home: StoryHomeSchema,
+        head_sha: z.string(),
+        comments: z.number().int().min(0),
+    }),
+})
+
+/**
+ * Why a story was skipped: the last try failed a check (`story_invalid`),
+ * gave no result or the engine failed to run the story-writer
+ * (`agent_failed`), the PR's head moved (`head_moved`), or the tracker
+ * refused the save (`save_failed`).
+ */
+export const StorySkipReasonSchema = z.enum([
+    'story_invalid',
+    'agent_failed',
+    'head_moved',
+    'save_failed',
+])
+
+export type StorySkipReason = z.infer<typeof StorySkipReasonSchema>
+
+/**
+ * The story was skipped, and the run ends as it would have. `detail` is
+ * one text: the problem lines, the last error, or the PR's head. A
+ * checkpoint: after it, nothing more is tried for the story.
+ */
+export const StorySkippedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('story_skipped'),
+    content: z.object({
+        reason: StorySkipReasonSchema,
+        detail: z.string(),
+    }),
+})

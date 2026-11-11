@@ -20,4 +20,6 @@ export const MAX_TURNS: Record<AgentRole, number> = {
     'integration-lens': 100,
     'rules-lens': 100,
     learner: 40,
+    // It reads the whole PR's code to walk it (#743).
+    'story-writer': 80,
 }

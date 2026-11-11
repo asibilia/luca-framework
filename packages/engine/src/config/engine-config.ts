@@ -27,6 +27,7 @@ export {
     modelsOf,
     prepareConcurrencyOf,
     prepareTimeoutOf,
+    prStoryOf,
     testTimeoutOf,
 } from './config-fields'
 export {

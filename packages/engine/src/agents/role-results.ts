@@ -30,9 +30,9 @@ export type LensRole = (typeof LENS_ROLES)[number]
 
 /**
  * The roles an agent can play: the ticket roles while a ticket is built, one
- * reviewer role per lens in the final review, and the learner at the end of
- * a run (#370). The final review's fixers are the test-writer and the
- * implementer.
+ * reviewer role per lens in the final review, the learner at the end of
+ * a run (#370), and the story-writer once the run's PR is open (#743). The
+ * final review's fixers are the test-writer and the implementer.
  */
 export const AgentRoleSchema = z.enum([
     'test-writer',
@@ -40,6 +40,7 @@ export const AgentRoleSchema = z.enum([
     'ticket-reviewer',
     ...LENS_ROLES,
     'learner',
+    'story-writer',
 ])
 
 export type AgentRole = z.infer<typeof AgentRoleSchema>
@@ -370,6 +371,20 @@ export const LearnerResultSchema = z.object({
 
 export type LearnerResult = z.infer<typeof LearnerResultSchema>
 
+/**
+ * The story-writer's result (#743): the parts of a PR's story only a reader
+ * of the code writes. Loose on purpose, so a wrong field inside is named by
+ * the story schema's own reader (`readStory`), not lost in a failed turn.
+ * Any other top-level key is dropped.
+ */
+export const StoryWriterResultSchema = z.object({
+    summary: z.record(z.string(), z.unknown()),
+    map: z.record(z.string(), z.unknown()),
+    stops: z.array(z.unknown()),
+})
+
+export type StoryWriterResult = z.infer<typeof StoryWriterResultSchema>
+
 const lensResult = <Role extends LensRole>(role: Role) =>
     z.object({ role: z.literal(role), result: LensReviewResultSchema })
 
@@ -396,6 +411,10 @@ export const RoleResultSchema = z.discriminatedUnion('role', [
     }),
     lensResult('rules-lens'),
     z.object({ role: z.literal('learner'), result: LearnerResultSchema }),
+    z.object({
+        role: z.literal('story-writer'),
+        result: StoryWriterResultSchema,
+    }),
 ])
 
 export type RoleResult = z.infer<typeof RoleResultSchema>

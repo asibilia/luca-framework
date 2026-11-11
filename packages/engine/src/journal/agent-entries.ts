@@ -65,6 +65,18 @@ export const AgentFinishedEntrySchema = z.object({
         RoleResultSchema.options[6].extend(SESSION_FIELDS),
         RoleResultSchema.options[7].extend(SESSION_FIELDS),
         RoleResultSchema.options[8].extend(SESSION_FIELDS),
+        // The story-writer's (#743): read with each part defaulted, so a
+        // record always reads; the launcher already held the answer to
+        // `StoryWriterResultSchema`.
+        z.object({
+            role: z.literal('story-writer'),
+            result: z.object({
+                summary: z.record(z.string(), z.unknown()).default({}),
+                map: z.record(z.string(), z.unknown()).default({}),
+                stops: z.array(z.unknown()).default([]),
+            }),
+            ...SESSION_FIELDS,
+        }),
     ]),
 })
 

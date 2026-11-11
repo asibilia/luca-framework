@@ -75,6 +75,8 @@ const ROLE_TASKS: Record<AgentRole, string> = {
     learner:
         "Read this run's journal digest below and propose only durable lessons that will help future runs. " +
         "Pick each one's type, and list the ids of the shown memories that actually helped. Write nothing.",
+    'story-writer':
+        "Write the review story of this run's pull request: its summary, its map, and its walk, from the code at its head. Write nothing.",
 }
 
 /**

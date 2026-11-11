@@ -34,6 +34,17 @@ import { recordsFrom } from '../testing/intake-fixtures'
 import { REFACTOR_LABEL } from '../tracker/tracker'
 
 /**
+ * The PR's story turned off (#743), as `pr_story: false` reloads it: these
+ * older tests are about what follows the PR with no story step between.
+ */
+const STORY_OFF: JournalEntry = {
+    kind: 'config_reloaded',
+    ticket: null,
+    role: null,
+    content: { changes: [{ field: 'pr_story', from: true, to: false }] },
+}
+
+/**
  * The decision steps for building a ticket: the usual path from the run
  * branch to the PR, and a refactor ticket's path. The fix loops, the empty
  * new tests, the failures, and the run notes are in
@@ -286,7 +297,7 @@ describe('decision step: building a ticket', () => {
     })
 
     test('a run with its PR opened removes its worktrees, then is done', () => {
-        const opened = [...stepsUpTo(13), pullRequestOpened()]
+        const opened = [...stepsUpTo(13), STORY_OFF, pullRequestOpened()]
 
         expect(decideAfter(opened)).toEqual({
             type: 'remove_worktrees',

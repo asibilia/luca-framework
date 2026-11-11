@@ -194,6 +194,18 @@ describe('the network wait at the PR step', () => {
                     ...built(),
                     ...lensRound({ round: 1 }),
                     finalReviewPassed(),
+                    // The PR's story turned off (#743): these tests are
+                    // about the PR step, and the worktrees go right after.
+                    {
+                        kind: 'config_reloaded',
+                        ticket: null,
+                        role: null,
+                        content: {
+                            changes: [
+                                { field: 'pr_story', from: true, to: false },
+                            ],
+                        },
+                    },
                 ],
             }),
         ]) {

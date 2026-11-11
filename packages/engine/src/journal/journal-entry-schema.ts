@@ -115,6 +115,11 @@ import {
     TicketWaitingEntrySchema,
 } from './run-entries'
 import {
+    StoryRefusedEntrySchema,
+    StorySavedEntrySchema,
+    StorySkippedEntrySchema,
+} from './story-entries'
+import {
     AutoRetriedEntrySchema,
     CommentReadEntrySchema,
     ReplyIgnoredEntrySchema,
@@ -233,6 +238,9 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     RepoWaitPsFailedEntrySchema,
     NetworkWaitStartedEntrySchema,
     NetworkWaitEndedEntrySchema,
+    StoryRefusedEntrySchema,
+    StorySavedEntrySchema,
+    StorySkippedEntrySchema,
     RunEndedEntrySchema,
 ])
 

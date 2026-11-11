@@ -1,3 +1,5 @@
+import { storyStateOf } from './story-state'
+
 import type { AgentLauncher } from '../agents/agent-launcher'
 import type { AgentRole } from '../agents/role-results'
 import type { Journal } from '../journal/journal'
@@ -63,12 +65,21 @@ type FailedTurn = { role: AgentRole; session_id: string | null }
  * - the final review's fixers until the round's fix commit;
  * - a test-writer's or implementer's failed turn, until its next turn.
  *
+ * - the story-writer's latest session, while the PR's story step is open
+ *   (#743): from its first start until `story_saved` or `story_skipped`.
+ *
  * Nothing else is ever followed up: reviewers, lenses, and the learner get
  * a fresh agent. A stuck, skipped, or already-done ticket, the stuck final
  * review, and a stopped run (by the owner, billing, or crashes) keep no
  * session.
  */
-const reachableSessions = ({ state }: { state: RunState }): Set<string> => {
+const reachableSessions = ({
+    state,
+    records,
+}: {
+    state: RunState
+    records: JournalRecord[]
+}): Set<string> => {
     const reachable = new Set<string>()
     if (
         state.stop !== null ||
@@ -118,6 +129,8 @@ const reachableSessions = ({ state }: { state: RunState }): Set<string> => {
         keep(review.sessions['test-writer'])
         keep(review.sessions.implementer)
     }
+    const story = storyStateOf({ records })
+    if (story.began && !story.done) keep(story.session)
     return reachable
 }
 
@@ -140,7 +153,10 @@ export const finishedSessions = ({
 }): KnownSession[] => {
     const open = openSessionsIn({ records })
     if (open.length === 0) return []
-    const reachable = reachableSessions({ state: replayRun({ records }) })
+    const reachable = reachableSessions({
+        state: replayRun({ records }),
+        records,
+    })
     return open.filter(
         ({ session_id }) =>
             !reachable.has(session_id) && !busy.includes(session_id)

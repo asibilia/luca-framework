@@ -52,6 +52,11 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/execute-final-review.ts` | Carries out a final review step on the run branch's worktree (reading the rule files for the rules lens), and `shipFinalReview`, the seam for a `ship` reply (#366). |
 | `src/core/decide-memory.ts` | Memory's half of the decision step: the recall points (a search before the step that needs it, then its memories in the prompt), and the learner, its saves, and the spec comment at the end of a run. |
 | `src/core/execute-memory.ts` | Carries out memory's steps: searches, the learner's turn, saves (update a similar memory or add one), feedback, and the spec comment. |
+| `src/core/decide-story.ts` | The PR's story's half of the decision step (#743): once the PR is open and before the worktrees go, the story-writer, the save, or the skip. |
+| `src/core/story-state.ts` | Pure: where the story step stands, from the journal: its pending answer, failed tries, the session a follow-up can reach, and its checkpoints. |
+| `src/core/story-prompt.ts` | Pure: the story-writer's prompt (its sections) and the follow-up to a refused story. |
+| `src/core/story-diff.ts` | Pure: the PR's diff as the prompt holds it, in path order, capped at 150,000 characters. |
+| `src/core/execute-story.ts` | Carries out the story's steps: the story-writer's turn, the story filled in, checked, written to `story.json` and saved, or skipped. |
 | `src/core/learner-digest.ts` | Pure: the learner's prompt, a capped digest of the journal. |
 | `src/core/memory-text.ts` | Memory's texts: prompt sections, queries, the PR's "New memories", and the spec comment. |
 

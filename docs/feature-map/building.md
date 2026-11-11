@@ -232,6 +232,7 @@ Reached by: any run with more than one ticket.
 Tests:
 
 - `packages/engine/src/core/decide-many-tickets.test.ts`
+- `packages/engine/src/core/decide-many-tickets-clash.test.ts`
 - `packages/engine/src/core/run-many-tickets.e2e.test.ts`
 - `packages/engine/src/core/run-ticket-waits.e2e.test.ts`
 - `packages/engine/src/core/decide-baseline-reuse.test.ts`

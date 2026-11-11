@@ -12,6 +12,7 @@ import {
     IntegrationLensResultSchema,
     LearnerResultSchema,
     LensReviewResultSchema,
+    StoryWriterResultSchema,
     TestWriterResultSchema,
     TicketReviewResultSchema,
     type AgentRole,
@@ -133,6 +134,7 @@ const RESULT_SCHEMAS: Record<AgentRole, z.ZodType> = {
     'integration-lens': IntegrationLensResultSchema,
     'rules-lens': LensReviewResultSchema,
     learner: LearnerResultSchema,
+    'story-writer': StoryWriterResultSchema,
 }
 
 /** A role's result schema as JSON Schema, for the SDK's structured output. */

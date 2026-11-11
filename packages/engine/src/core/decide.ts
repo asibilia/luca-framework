@@ -9,6 +9,7 @@ import {
     type RepoWaitRun,
 } from './decide-repo-wait'
 import { decideRunBudget, type RunBudgetAction } from './decide-run-budget'
+import { decideStory, type StoryAction } from './decide-story'
 import { decideUsage, type UsageAction } from './decide-usage'
 import { decideUsageLine, type UsageLineAction } from './decide-usage-line'
 import { startedWaits } from './decide-waits'
@@ -49,6 +50,8 @@ export type EngineAction =
     | BuildAction
     /** Memory's recall points, the learner, and its saves (#370). */
     | MemoryAction
+    /** The PR's story, once the PR is open (#743). */
+    | StoryAction
     /** The run ended at intake. */
     | { type: 'done'; outcome: 'refused' | 'nothing_to_do' }
 
@@ -146,7 +149,12 @@ export const decideNext = ({
     const budget = decideRunBudget({ state, records, spec_number })
     if (budget !== null) return alone(budget)
     const { steps, waits } = decideBuildPlan({ state, spec_number })
-    const build = decideMemory({ state, records, spec_number, build: steps })
+    // Once the PR is open, its story comes before the worktrees go (#743).
+    const story = decideStory({ state, records })
+    const build =
+        story === null
+            ? decideMemory({ state, records, spec_number, build: steps })
+            : [story]
     const pause = decideUsageLine({
         state,
         records,
