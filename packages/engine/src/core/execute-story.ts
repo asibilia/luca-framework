@@ -10,9 +10,11 @@ import { basename, join } from 'node:path'
 import { followUpModel, runTurn } from './agent-turn'
 import { need, type BuildContext } from './build-context'
 import type { StoryAction } from './decide-story'
+import { nothingLeftOpen, runAsks, runUnsure } from './story-asks'
 import { isBinary, type StoryDiffFile } from './story-diff'
 import { diffFiles } from './story-diff-files'
 import { storyPrompt } from './story-prompt'
+import { servesProblems } from './story-serves'
 import { storyStateOf, type StoryState } from './story-state'
 
 import { roleEffort } from '../agents/role-effort'
@@ -90,9 +92,9 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * The whole story: the answer's summary, map and stops, with every field
- * the engine knows filled in over whatever the answer held. With no
- * section of what the run was unsure about, the feedback's source is
- * `guessed`.
+ * the engine knows filled in over whatever the answer held. When the run
+ * left nothing open, the feedback's source is `guessed` (#745); else the
+ * answer's is kept.
  */
 const storyValue = ({
     answer,
@@ -106,6 +108,7 @@ const storyValue = ({
     const opened = openedOf(context.journal.read())
     const { summary, map, stops } = answer.result
     const wanted = summary.feedback_wanted
+    const guessed = nothingLeftOpen(runUnsure({ state: context.state }))
     return {
         schema_version: STORY_SCHEMA_VERSION,
         repo: context.tracker.repo,
@@ -120,7 +123,7 @@ const storyValue = ({
         written_by: `Luca run ${basename(context.run_dir)}, story-writer`,
         summary: {
             ...summary,
-            ...(isPlainObject(wanted)
+            ...(guessed && isPlainObject(wanted)
                 ? { feedback_wanted: { ...wanted, source: 'guessed' } }
                 : {}),
             counts: countsOf(diff.files),
@@ -194,6 +197,8 @@ const launchStoryWriter = async ({
             head_sha: diff.head_sha,
         },
         files: diff.files,
+        asks: runAsks({ state }),
+        unsure: runUnsure({ state }),
         rule_files: config.rule_files,
         problems: action.problems,
     })
@@ -261,19 +266,21 @@ const saveStory = async ({
     const read = readStory({
         value: storyValue({ answer, context, diff }),
     })
-    if (read.status !== 'ok') {
+    // The serves refs are checked only on a story the schema read took.
+    const problems =
+        read.status === 'ok'
+            ? servesProblems({ story: read.story, asks: runAsks({ state }) })
+            : read.status === 'invalid'
+              ? read.problems
+              : [
+                    `schema_version: ${read.schema_version} is newer than this engine reads`,
+                ]
+    if (read.status !== 'ok' || problems.length > 0) {
         journal.append({
             kind: 'story_refused',
             ticket: null,
             role: null,
-            content: {
-                problems:
-                    read.status === 'invalid'
-                        ? read.problems
-                        : [
-                              `schema_version: ${read.schema_version} is newer than this engine reads`,
-                          ],
-            },
+            content: { problems },
         })
         return
     }

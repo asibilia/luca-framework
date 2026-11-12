@@ -276,7 +276,7 @@ export const openFinalFindingsText = ({
 }): string => findingList(findings)
 
 /** Each open finding as a PR line, with its lens, severity, and file. */
-const openFindingLines = ({
+export const openFindingLines = ({
     findings,
 }: {
     findings: FinalFinding[]

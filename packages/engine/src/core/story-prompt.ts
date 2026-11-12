@@ -1,7 +1,13 @@
 /**
  * The story-writer's prompt and follow-up (#743), from the opened PR, its
- * diff, and the repo's rule files. Pure.
+ * diff, the run's asks, and the repo's rule files. Pure.
  */
+import {
+    asksBody,
+    unsureBody,
+    type RunAsks,
+    type RunUnsure,
+} from './story-asks'
 import { inPathOrder, storyDiff, type StoryDiffFile } from './story-diff'
 
 /** The opened PR as the story-writer's prompt names it. */
@@ -34,22 +40,27 @@ const changedFileLines = (files: StoryDiffFile[]): string =>
 
 /**
  * The story-writer's prompt: the PR, its changed files, its capped diff,
- * and the rule files, each a section under its own heading, one blank line
- * between them, ending with one newline. `problems`, the latest refusal's
- * problem lines, add one last section.
+ * the run's asks, what the run was unsure about (#745), and the rule
+ * files, each a section under its own heading, one blank line between
+ * them, ending with one newline. `problems`, the latest refusal's problem
+ * lines, add one last section.
  *
  * @example
- * storyPrompt({ pull_request, files, rule_files: ['AGENTS.md'], problems: null })
+ * storyPrompt({ pull_request, files, asks, unsure, rule_files: ['AGENTS.md'], problems: null })
  * // '## Pull request\n\nNumber: 812\n...'
  */
 export const storyPrompt = ({
     pull_request,
     files,
+    asks,
+    unsure,
     rule_files,
     problems,
 }: {
     pull_request: StoryPullRequest
     files: StoryDiffFile[]
+    asks: RunAsks
+    unsure: RunUnsure
     rule_files: string[]
     problems: string[] | null
 }): string => {
@@ -70,6 +81,8 @@ export const storyPrompt = ({
         // The diff part ends with a newline; the blank line after it is
         // the one between sections.
         section('## Diff', storyDiff({ files }).replace(/\n$/, '')),
+        section("## The run's asks", asksBody(asks)),
+        section('## What the run was unsure about', unsureBody(unsure)),
         section(
             '## Rule files',
             rule_files.length === 0
