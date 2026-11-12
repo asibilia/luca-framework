@@ -1,5 +1,11 @@
 # @luca/board
 
+## 14.0.0-alpha.36
+
+### Minor Changes
+
+- c36d97e: Every run that opens a pull request now writes the PR's review story too: in your own repos it is posted on the PR with the `review-ready` label, in any other repo it is saved on your computer, and set `pr_story: false` in `.luca/config.json` to turn it off (#741).
+
 ## 14.0.0-alpha.35
 
 ### Patch Changes

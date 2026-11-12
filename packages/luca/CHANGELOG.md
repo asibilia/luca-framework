@@ -1,5 +1,9 @@
 # @alecsibilia/luca
 
+## 14.0.0-alpha.36
+
+No changes in this release.
+
 ## 14.0.0-alpha.35
 
 No changes in this release.
