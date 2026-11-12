@@ -56,6 +56,7 @@ const openedOf = (run: StoryRun) => {
 
 describe('a run that opens its pull request writes and saves its story', () => {
     // The diff adds the test file, modifies src/index.ts, deletes docs/old.md.
+    // No agent journals an assumption and no finding is left open (#745).
     const happy = shareStoryRun({
         files: { 'docs/old.md': 'Old notes.\nMore old notes.\n' },
         build: (practice) =>
@@ -70,7 +71,7 @@ describe('a run that opens its pull request writes and saves its story', () => {
                                 "from './index'"
                             ),
                         },
-                        result: TEST_WRITER_RESULT,
+                        result: { ...TEST_WRITER_RESULT, assumptions: [] },
                     },
                     {
                         role: 'implementer',
@@ -158,6 +159,16 @@ describe('a run that opens its pull request writes and saves its story', () => {
         expect(savedStory(happy()).summary.feedback_wanted.source).toBe(
             'guessed'
         )
+    })
+
+    test('with no open finding and no assumption, what the run was unsure about reads Nothing was left open., and the author source is saved as guessed with no story_refused', () => {
+        const run = happy()
+
+        expect(
+            sectionOf(storyPrompt(run), '## What the run was unsure about')
+        ).toBe('Nothing was left open.')
+        expect(savedStory(run).summary.feedback_wanted.source).toBe('guessed')
+        expect(recordsOf(run.records, 'story_refused')).toEqual([])
     })
 
     test('written_by names the run and the story-writer, and written_at is the time of the story-writer’s agent_finished', () => {

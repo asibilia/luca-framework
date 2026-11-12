@@ -196,6 +196,13 @@ describe("the story-writer's instructions (#743)", () => {
         expect(keys.filter((key) => !named.has(key))).toEqual([])
     })
 
+    test('name both forms a serves label may take, "spec #12" and "ticket #14, AC2" (#745)', () => {
+        const text = storyWriter()
+
+        expect(text).toContain('spec #12')
+        expect(text).toContain('ticket #14, AC2')
+    })
+
     test('the story-writer is not a routed role and runs at high effort with no config key', () => {
         expect([...ROUTED_ROLES]).toEqual([
             'test-writer',

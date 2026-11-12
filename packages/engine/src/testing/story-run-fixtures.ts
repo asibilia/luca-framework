@@ -12,6 +12,7 @@ import { readStory } from '../story/story-schema'
 import {
     story,
     storyAnswer,
+    storyChange,
     type StoryAnswer,
 } from '../story/testing/story-fixtures'
 
@@ -228,6 +229,75 @@ export const tagsAfterPullRequest = (
         )
         .filter((tag) => keep.includes(tag))
 }
+
+/** The in-memory issue URLs of the practice spec #10 and its tickets (#745). */
+export const SPEC_URL = 'https://github.com/acme/app/issues/10'
+export const T11_URL = 'https://github.com/acme/app/issues/11'
+export const T12_URL = 'https://github.com/acme/app/issues/12'
+
+/** The ends of two of the serves check's problem lines (#745). */
+export const NOT_IN_FORM = 'is not in the form "spec #12" or "ticket #14, AC2"'
+export const NOT_THIS_RUN = "does not point at this run's spec or tickets"
+
+/** One serves reference of a story change. */
+export type ServesRef = {
+    label: string
+    url: string | null
+    quote: string | null
+}
+
+/**
+ * A valid answer whose loose ends hold one change per entry, in this order,
+ * each serving these refs, with the feedback's source `source` (#745).
+ */
+export const answerServing = ({
+    changes,
+    source = 'author',
+}: {
+    changes: { id: string; refs: ServesRef[] }[]
+    source?: 'author' | 'guessed'
+}): StoryAnswer => {
+    const answer = storyAnswer()
+    return {
+        ...answer,
+        summary: {
+            ...answer.summary,
+            feedback_wanted: { text: 'Whether sum overflows.', source },
+        },
+        stops: [
+            answer.stops[0],
+            {
+                id: 's2',
+                kind: 'loose_ends',
+                path: null,
+                title: 'Loose ends',
+                why_here: 'Config that the walk does not pass through.',
+                changes: changes.map(({ id, refs }) => ({
+                    ...storyChange({ id, path: 'src/config/schema.ts' }),
+                    serves: {
+                        found: true,
+                        refs,
+                        note: 'The run asked for it.',
+                    },
+                })),
+            },
+        ],
+    }
+}
+
+/** An answer with one change, `c3`, serving one ref. */
+export const c3Serving = (ref: ServesRef): StoryAnswer =>
+    answerServing({ changes: [{ id: 'c3', refs: [ref] }] })
+
+/** The problem lines of each `story_refused`, in order. */
+export const refusedProblems = (records: JournalRecord[]): string[][] =>
+    records.flatMap((record) =>
+        record.kind === 'story_refused' ? [record.content.problems] : []
+    )
+
+/** The lines of the story-writer's `at`-th call's prompt. */
+export const callLines = (run: StoryRun, at: number): string[] =>
+    (storyWriterCalls(run.launches)[at]?.prompt ?? '').split('\n')
 
 /** The records of `kind`, as plain objects for `toMatchObject`. */
 export const recordsOf = (
