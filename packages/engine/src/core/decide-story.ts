@@ -6,10 +6,8 @@
  */
 import { MAX_ENGINE_FAILURES, MAX_FIX_ROUNDS } from './loop-caps'
 import { storyFollowUp } from './story-prompt'
-import { storyStateOf } from './story-state'
 
 import { prStoryOf } from '../config/engine-config'
-import type { JournalRecord } from '../journal/journal-record'
 import type { RunState } from '../journal/replay'
 import type { StorySkipReason } from '../journal/story-entries'
 
@@ -59,22 +57,19 @@ export const isStoryAction = <Action extends { type: string }>(
  * `story_skipped`) reached. A skip is reported once, right after it.
  *
  * @example
- * decideStory({ state, records }) // { type: 'launch_story_writer', problems: null }
+ * decideStory({ state }) // { type: 'launch_story_writer', problems: null }
  */
 export const decideStory = ({
     state,
-    records,
 }: {
     state: RunState
-    records: JournalRecord[]
 }): StoryAction | null => {
-    const { config, pull_request, run_branch, stop } = state
+    const { config, pull_request, run_branch, stop, story } = state
     if (config === null || !prStoryOf({ config })) return null
     if (pull_request === null || stop !== null || run_branch === null) {
         return null
     }
     if (state.removed_worktrees.includes(run_branch.path)) return null
-    const story = storyStateOf({ records })
     if (story.skipped !== null && !story.reported) {
         return {
             type: 'report_story_skip',

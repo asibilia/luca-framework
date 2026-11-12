@@ -13,6 +13,7 @@ import {
     rateLimitReading,
     replyReceived,
     runBranchCreated,
+    storyOff,
     stuckReported,
     ticketBuilt,
     ticketRetried,
@@ -29,17 +30,6 @@ import { recordsFrom } from '../testing/intake-fixtures'
  * The decision step's usage records: a ticket's, then the run's once its
  * PR is open. Split from `decide-limits.test.ts`.
  */
-
-/**
- * The PR's story turned off (#743), as `pr_story: false` reloads it: these
- * older tests are about what follows the PR with no story step between.
- */
-const STORY_OFF: JournalEntry = {
-    kind: 'config_reloaded',
-    ticket: null,
-    role: null,
-    content: { changes: [{ field: 'pr_story', from: true, to: false }] },
-}
 
 /** A session whose one reading puts these windows at these fractions. */
 const readingSession = ({
@@ -150,7 +140,7 @@ describe('decision step: usage', () => {
             runBranchCreated(),
             ...built,
             usageRecorded(ticketUsage),
-            STORY_OFF,
+            storyOff(),
             PR_OPENED,
         ]
         const paths = [ticketPath(11), RUN_BRANCH_PATH]

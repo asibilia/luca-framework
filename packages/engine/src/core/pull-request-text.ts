@@ -133,6 +133,28 @@ export const assumptionLines = ({
 ]
 
 /**
+ * How the PR body lists the final review's `open` findings: as shipped
+ * while stuck (with what it was stuck on), as left open by its fresh pass,
+ * or not at all (`null`). The one rule for the body and for the story's
+ * prompt (#745).
+ */
+const openFindingsListing = ({
+    review,
+    open,
+}: {
+    review: FinalReviewState
+    open: unknown[]
+}):
+    | { kind: 'shipped'; stuck: NonNullable<FinalReviewState['stuck']> }
+    | { kind: 'fresh' }
+    | null =>
+    review.shipped && review.stuck !== null
+        ? { kind: 'shipped', stuck: review.stuck }
+        : review.fresh_started && open.length > 0
+          ? { kind: 'fresh' }
+          : null
+
+/**
  * The lines of the PR body's Open findings section, in order: the final
  * review's open findings when it was shipped while stuck, or when its
  * fresh pass left some open. Empty when the body has no such lines.
@@ -143,10 +165,9 @@ export const openFindingsLines = ({
     final_review: FinalReviewState
 }): string[] => {
     const { open } = finalPullRequestFindings({ review: final_review })
-    const listed =
-        (final_review.shipped && final_review.stuck !== null) ||
-        (final_review.fresh_started && open.length > 0)
-    return listed ? openFindingLines({ findings: open }) : []
+    return openFindingsListing({ review: final_review, open }) === null
+        ? []
+        : openFindingLines({ findings: open })
 }
 
 /**
@@ -259,16 +280,17 @@ export const pullRequestText = ({
             })
         ),
     ]
+    const listing = openFindingsListing({ review, open: findings.open })
     const shipped =
-        review.shipped && review.stuck !== null
-            ? shippedFindingsSection({
-                  findings: findings.open,
-                  stuck: review.stuck,
-                  edits: review.shipped_edits,
-              })
-            : review.fresh_started && findings.open.length > 0
-              ? freshFindingsSection({ findings: findings.open })
-              : ''
+        listing === null
+            ? ''
+            : listing.kind === 'shipped'
+              ? shippedFindingsSection({
+                    findings: findings.open,
+                    stuck: listing.stuck,
+                    edits: review.shipped_edits,
+                })
+              : freshFindingsSection({ findings: findings.open })
     const body = [
         shipped,
         `Built by the Luca engine from spec #${spec.number}.`,

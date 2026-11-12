@@ -150,7 +150,7 @@ export const decideNext = ({
     if (budget !== null) return alone(budget)
     const { steps, waits } = decideBuildPlan({ state, spec_number })
     // Once the PR is open, its story comes before the worktrees go (#743).
-    const story = decideStory({ state, records })
+    const story = decideStory({ state })
     const build =
         story === null
             ? decideMemory({ state, records, spec_number, build: steps })

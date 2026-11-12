@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 import { ENTRY_FIELDS } from './entry-fields'
 
+import { StoryHomeSchema } from '../story/story-home'
+
 /**
  * The journal entries of the PR's story (#743): a story the engine's
  * checks refused, the step's two checkpoints, a saved story and a
@@ -19,11 +21,8 @@ export const StoryRefusedEntrySchema = z.object({
     content: z.object({ problems: z.array(z.string()) }),
 })
 
-/** Where a story was saved (#742). */
-export const StoryHomeSchema = z.enum(['shared', 'private'])
-
 /**
- * The story was saved to its home, for the PR's head `head_sha`.
+ * The story was saved to its home (#742), for the PR's head `head_sha`.
  * `comments` is how many story comments the PR now has (0 for the private
  * home). A checkpoint: after it, nothing more is done for the story.
  */

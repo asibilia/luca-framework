@@ -15,12 +15,12 @@ import { isBinary, type StoryDiffFile } from './story-diff'
 import { diffFiles } from './story-diff-files'
 import { storyPrompt } from './story-prompt'
 import { servesProblems } from './story-serves'
-import { storyStateOf, type StoryState } from './story-state'
 
 import { roleEffort } from '../agents/role-effort'
 import type { GitAdapter } from '../git/git-adapter'
 import { LOCKED_PICK } from '../jev/model-pick'
 import type { JournalRecord } from '../journal/journal-record'
+import type { StoryState } from '../journal/replay'
 import { readStory, STORY_SCHEMA_VERSION } from '../story/story-schema'
 import { postCommentOnce } from '../tracker/post-comment-once'
 import { isTrackerNetworkFailure, TrackerError } from '../tracker/tracker'
@@ -254,7 +254,7 @@ const saveStory = async ({
 }): Promise<void> => {
     const { journal, tracker, state } = context
     const answer = need({
-        value: storyStateOf({ records: journal.read() }).answer,
+        value: state.story.answer,
         what: "story-writer's answer",
     })
     const worktree = need({ value: state.run_branch, what: 'run branch' })

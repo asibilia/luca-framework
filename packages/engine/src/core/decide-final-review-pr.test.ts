@@ -10,6 +10,7 @@ import {
     intakePassed,
     pullRequestOpened,
     RUN_BRANCH_PATH,
+    storyOff,
     ticketPath,
     withInstalls,
     worktreesRemoved,
@@ -35,17 +36,6 @@ import {
     TICKET,
 } from '../testing/final-review-steps'
 import { recordsFrom } from '../testing/intake-fixtures'
-
-/**
- * The PR's story turned off (#743), as `pr_story: false` reloads it: these
- * older tests are about what follows the PR with no story step between.
- */
-const STORY_OFF: JournalEntry = {
-    kind: 'config_reloaded',
-    ticket: null,
-    role: null,
-    content: { changes: [{ field: 'pr_story', from: true, to: false }] },
-}
 
 /**
  * Seam 1, the final review's end: a stuck final review, its `ship`, and
@@ -96,12 +86,11 @@ describe('decision step: a stuck final review', () => {
         expect(pr.body.split('security-S1 Sum trusts its input')).toHaveLength(
             2
         )
-        expect(stepAfter([...shipped, STORY_OFF, pullRequestOpened()])).toEqual(
-            {
-                type: 'remove_worktrees',
-                paths: [RUN_BRANCH_PATH],
-            }
-        )
+        const opened = [...shipped, storyOff(), pullRequestOpened()]
+        expect(stepAfter(opened)).toEqual({
+            type: 'remove_worktrees',
+            paths: [RUN_BRANCH_PATH],
+        })
     })
 
     test('a ship reply to a fresh pass stuck on a failed lens lists the findings of the lenses that finished it', () => {

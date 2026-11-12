@@ -116,10 +116,13 @@ describe('every role and its sandbox (#646)', () => {
     })
 })
 
-/** Every role's Rules for every agent section; the learner gets none. */
+/**
+ * Every role's Rules for every agent section; the learner and the
+ * story-writer (#743), whose results hold no assumptions, get none.
+ */
 const commonRules = (): string[] =>
     AgentRoleSchema.options
-        .filter((role) => role !== 'learner')
+        .filter((role) => role !== 'learner' && role !== 'story-writer')
         .map(
             (role) =>
                 sectionOf({

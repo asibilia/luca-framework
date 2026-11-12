@@ -35,6 +35,7 @@ import {
     RUN_BRANCH,
     RUN_BRANCH_PATH,
     runBranchCreated,
+    storyOff,
     testsWritten,
     ticketApproved,
     ticketBuilt,
@@ -46,17 +47,6 @@ import {
 } from '../testing/build-fixtures'
 import { finalReviewClean } from '../testing/final-review-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
-
-/**
- * The PR's story turned off (#743), as `pr_story: false` reloads it: these
- * older tests are about what follows the PR with no story step between.
- */
-const STORY_OFF: JournalEntry = {
-    kind: 'config_reloaded',
-    ticket: null,
-    role: null,
-    content: { changes: [{ field: 'pr_story', from: true, to: false }] },
-}
 
 /**
  * Seam 1 for many tickets in one run: the decision step returns every action
@@ -232,7 +222,7 @@ describe('decision step: cleaning up worktrees', () => {
         runBranchCreated(),
         ...ticketBuilt({ ticket: 11 }),
         ...ticketBuilt({ ticket: 12 }),
-        STORY_OFF,
+        storyOff(),
         pullRequestOpened(),
     ]
 

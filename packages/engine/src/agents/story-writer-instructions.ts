@@ -51,6 +51,15 @@ The field guide below was written for a writer with a shell. Where this part and
 
 Your result (structured output): \`summary\` (without \`counts\`), \`map\` and \`stops\`, as the guide describes them.`
 
+/**
+ * The story-writer's own rules, in place of the writers' and reviewers'
+ * (whose results it doesn't share), as the learner has its own.
+ */
+export const STORY_WRITER_RULES = `## Rules for the story-writer
+- Plain code (the engine) drives this run. It fills in the fields it knows, checks your story, and saves it.
+- Never create, edit, or delete a file. The network is off.
+- Finish by giving your structured result. A turn without one counts as failed.`
+
 let format: string | null = null
 
 /** The skill's field guide, read once. */

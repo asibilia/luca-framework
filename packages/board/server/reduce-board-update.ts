@@ -21,6 +21,12 @@ export const DETAIL_MAX = 2000
 /** The learner's role (#370): its records have no ticket. */
 export const LEARNER = 'learner'
 
+/**
+ * The story-writer's role (#743): it writes the opened PR's story. Its
+ * records have no ticket, and are never the final review's.
+ */
+export const STORY_WRITER = 'story-writer'
+
 export const withLearner = ({
     state,
     learner,

@@ -13,7 +13,11 @@ import {
 import { LEARNER, LEARNER_RULES } from './learner-instructions'
 import { LENS, REVIEWER } from './reviewer-instructions'
 import { lensOf, type AgentRole } from './role-results'
-import { STORY_WRITER, storyFormat } from './story-writer-instructions'
+import {
+    STORY_WRITER,
+    STORY_WRITER_RULES,
+    storyFormat,
+} from './story-writer-instructions'
 import { IMPLEMENTER, TEST_WRITER } from './writer-instructions'
 
 import type { EngineConfig } from '../config/engine-config'
@@ -28,8 +32,8 @@ import { canMessage } from '../messages/agent-messages'
  * and implementers with messaging are told how agent messages work;
  * reviewers aren't. Each final review lens gets its own focus; the
  * integration lens also gives the PR's Summary picture and Merge Danger
- * (#513). The learner (#370) gets its own task and rules: no shell,
- * nothing written. Every role is told about its read-only helpers (#627),
+ * (#513). The learner (#370) and the story-writer (#743) get their own
+ * task and rules: no shell, nothing written. Every role is told about its read-only helpers (#627),
  * and what its sandbox blocks (#540). The writers, as final review fixers
  * too, are told where the repo's rule files are (#646).
  *
@@ -54,15 +58,15 @@ export const roleInstructions = ({
     // The learner has no shell and no agent messages, and its rules differ.
     if (role === 'learner')
         return [LEARNER, HELPERS, SANDBOX, LEARNER_RULES].join('\n\n')
-    // The story-writer (#743) has no shell either, and carries the
-    // skill's field guide word for word.
+    // The story-writer (#743) has no shell either, carries the skill's
+    // field guide word for word, and has rules of its own.
     if (role === 'story-writer')
         return [
             STORY_WRITER,
             storyFormat().trim(),
             HELPERS,
             SANDBOX,
-            COMMON,
+            STORY_WRITER_RULES,
         ].join('\n\n')
     const lens = lensOf({ role })
     const task =

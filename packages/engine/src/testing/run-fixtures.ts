@@ -1,7 +1,7 @@
 /**
  * Journal entry builders for a run's scaffolding: its config and tickets, its
  * branch and worktrees, the installs and baseline tests, and the end of the
- * run (worktrees removed, the PR opened).
+ * run (worktrees removed, the PR's story turned off, the PR opened).
  */
 import { SPEC_OWNER } from './intake-fixtures'
 
@@ -207,6 +207,17 @@ export const worktreesRemoved = ({
     ticket: null,
     role: null,
     content: { paths },
+})
+
+/**
+ * The PR's story turned off (#743), as `pr_story: false` reloads it, for
+ * older tests about what follows the PR with no story step between.
+ */
+export const storyOff = (): JournalEntry => ({
+    kind: 'config_reloaded',
+    ticket: null,
+    role: null,
+    content: { changes: [{ field: 'pr_story', from: true, to: false }] },
 })
 
 /** The run's one PR, #99, opened from the run branch. */

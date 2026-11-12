@@ -196,6 +196,23 @@ describe("the story-writer's instructions (#743)", () => {
         expect(keys.filter((key) => !named.has(key))).toEqual([])
     })
 
+    test('ask only for what its result holds: never "assumptions" or "run_notes", and no rules written for the writers and reviewers', () => {
+        const text = storyWriter()
+
+        expect(text).not.toContain('run_notes')
+        expect(text).not.toContain('"assumptions"')
+        expect(text).not.toContain('## Rules for every agent')
+        expect(text).not.toContain('package manifest')
+    })
+
+    test('have rules of their own: never create, edit or delete a file, the network is off, and finish with the structured result', () => {
+        const text = storyWriter()
+
+        expect(text).toContain('Never create, edit, or delete a file.')
+        expect(text).toMatch(/network is off/)
+        expect(text).toMatch(/Finish by giving your structured result\./)
+    })
+
     test('name both forms a serves label may take, "spec #12" and "ticket #14, AC2" (#745)', () => {
         const text = storyWriter()
 

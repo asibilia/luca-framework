@@ -31,7 +31,7 @@ import {
 } from './run-state'
 import { sharedFailuresAfter } from './shared-failure-replay'
 import { crashesAfter } from './step-records'
-import { isStoryRecord } from './story-records'
+import { isStoryRecord, storyAfter } from './story-replay'
 import { applyTicketRecord, reusedBaselineAfter } from './ticket-replay'
 
 import { withConfigChanges } from '../config/config-reload'
@@ -73,6 +73,8 @@ export { EMPTY_FINAL_REVIEW } from './final-review-state'
 export type { PlanState } from './plan-replay'
 export type { LearnerState, MemoryState } from './memory-replay'
 export { EMPTY_MEMORY } from './memory-replay'
+export type { StoryState } from './story-replay'
+export { EMPTY_STORY } from './story-replay'
 export { finalPullRequestFindings, namespacedId } from './final-review-round'
 export { isFinalKey } from './final-review-replay'
 export { handoffRole } from './agent-turn-replay'
@@ -97,6 +99,9 @@ const applyKind = ({
         ...state,
         last_seq: record.seq,
         crashes: crashesAfter({ crashes: state.crashes, record }),
+        // The story step (#743) reads its own records and a few run-level
+        // ones (a closed or gone session, a resume, its report's end).
+        story: storyAfter({ story: state.story, record }),
     }
     // A follow-up found its session gone (#521): only the session is
     // forgotten (see `closedSessionsAfter`), so its fix round goes to a
@@ -130,8 +135,8 @@ const applyKind = ({
               }
             : { ...next, memory }
     }
-    // The story-writer's turns and the story's records (#743) change no
-    // step here: the story step reads them itself (`storyStateOf`). A
+    // The story-writer's turns and the story's records (#743) change only
+    // the story step (in `base` above), never the final review's. A
     // session's readings still count for the plan.
     if (isStoryRecord(record)) {
         return record.kind === 'agent_session'
@@ -338,7 +343,8 @@ const applyKind = ({
         // Only a join's redo reads it (see `openJoin`).
         case 'join_started':
             return next
-        // The story step reads them itself (see `isStoryRecord` above).
+        // Taken above with the story-writer's turns (`isStoryRecord`): they
+        // change only `story`, in `base`.
         case 'story_refused':
         case 'story_saved':
         case 'story_skipped':

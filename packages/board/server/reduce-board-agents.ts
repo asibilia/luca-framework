@@ -1,12 +1,14 @@
 /**
  * An agent's turn on a ticket or the final review: its start, how it
- * finished, and how it failed.
+ * finished, and how it failed. The learner's and the story-writer's turns
+ * are neither.
  */
 import type { BoardRecord } from './board-vocabulary'
 import { agentStarted } from './reduce-board-agent-start'
 import { countFindings, failureText, roleWords } from './reduce-board-text'
 import {
     LEARNER,
+    STORY_WRITER,
     finalTried,
     updateTicket,
     withLearner,
@@ -118,6 +120,9 @@ export const applyAgentKind = ({
     record: AgentRecord
 }): BoardState => {
     const { ticket } = record
+    // The story-writer (#743) has no ticket and is no final review agent;
+    // the board doesn't show the PR's story, so its turns change nothing.
+    if (record.content.role === STORY_WRITER) return state
     switch (record.kind) {
         case 'agent_started':
             // The learner (#370) has no ticket and is no final review agent.

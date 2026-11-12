@@ -8,6 +8,7 @@ import type { JournalRecord, RunStuckReason } from './journal-record'
 import { EMPTY_MEMORY, type MemoryState } from './memory-replay'
 import type { PlanState } from './plan-replay'
 import type { CrashCounts } from './step-records'
+import { EMPTY_STORY, type StoryState } from './story-replay'
 import type {
     ReplayedGates,
     ReplayedInstall,
@@ -169,6 +170,8 @@ export type RunState = {
     repo_wait: RepoWaitState
     /** Memory's recalls, the learner, and the saves (#370). */
     memory: MemoryState
+    /** The PR's story step (#743): its answer, tries, session, and checkpoints. */
+    story: StoryState
     /**
      * Crashes in a row per scheduler key (`run_resumed`), until a step under
      * the key ends. A ticket's `retry`, or the final review's, clears its own.
@@ -220,6 +223,7 @@ export const EMPTY_STATE: RunState = {
     auto_retried: { tickets: [], final_review: false, run: false },
     repo_wait: { status: 'none', since: null },
     memory: EMPTY_MEMORY,
+    story: EMPTY_STORY,
     crashes: {},
     crash_stopped: null,
     last_seq: 0,

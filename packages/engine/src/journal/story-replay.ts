@@ -1,11 +1,12 @@
 /**
- * Where the PR's story step stands (#743), read from the journal: its
- * pending answer, its failed tries, the session a follow-up can reach, and
- * whether a checkpoint ended it. Pure.
+ * The PR's story step as replay rebuilds it (#743): its state shape, which
+ * records are the story step's, and the step after each record. Story
+ * records have `ticket: null`; they never count as the final review's.
  */
+import type { JournalRecord } from './journal-record'
+import type { StorySkipReason } from './story-entries'
+
 import type { StoryWriterResult } from '../agents/role-results'
-import type { JournalRecord } from '../journal/journal-record'
-import type { StorySkipReason } from '../journal/story-entries'
 
 /** The story step's state. */
 export type StoryState = {
@@ -46,6 +47,7 @@ export type StoryState = {
     reported: boolean
 }
 
+/** A run before any story record. */
 export const EMPTY_STORY: StoryState = {
     began: false,
     done: false,
@@ -60,15 +62,44 @@ export const EMPTY_STORY: StoryState = {
     reported: false,
 }
 
-const isStoryWriter = (record: JournalRecord): boolean =>
-    'content' in record &&
-    typeof record.content === 'object' &&
-    record.content !== null &&
-    'role' in record.content &&
-    record.content.role === 'story-writer'
+/** The story's own record kinds. */
+const STORY_KINDS: ReadonlySet<JournalRecord['kind']> = new Set([
+    'story_refused',
+    'story_saved',
+    'story_skipped',
+    'story_skip_reported',
+])
 
-/** The story step after one record. */
-const storyAfter = ({
+/**
+ * Whether a record is the story step's: one of the story's own kinds, or
+ * a story-writer's agent turn record. Replay keeps them out of the final
+ * review's.
+ *
+ * @example
+ * isStoryRecord({ kind: 'story_saved', ... }) // true
+ */
+export const isStoryRecord = (record: JournalRecord): boolean => {
+    if (STORY_KINDS.has(record.kind)) return true
+    switch (record.kind) {
+        case 'agent_started':
+        case 'agent_finished':
+        case 'agent_failed':
+        case 'agent_session':
+            return record.content.role === 'story-writer'
+        default:
+            return false
+    }
+}
+
+/**
+ * The story step after one record: its own records, and the few run-level
+ * ones it watches (a closed session, a resume, the report step's end).
+ * Any other record leaves it as it is.
+ *
+ * @example
+ * storyAfter({ story: EMPTY_STORY, record }).failed_tries // 1 after a story_refused
+ */
+export const storyAfter = ({
     story,
     record,
 }: {
@@ -77,7 +108,9 @@ const storyAfter = ({
 }): StoryState => {
     switch (record.kind) {
         case 'agent_started':
-            return isStoryWriter(record) ? { ...story, began: true } : story
+            return record.content.role === 'story-writer'
+                ? { ...story, began: true }
+                : story
         case 'agent_finished':
             if (record.content.role !== 'story-writer') return story
             return {
@@ -146,19 +179,3 @@ const storyAfter = ({
             return story
     }
 }
-
-/**
- * The story step's state from a run's records.
- *
- * @example
- * storyStateOf({ records: journal.read() }).failed_tries // 1
- */
-export const storyStateOf = ({
-    records,
-}: {
-    records: JournalRecord[]
-}): StoryState =>
-    records.reduce(
-        (story, record) => storyAfter({ story, record }),
-        EMPTY_STORY
-    )
