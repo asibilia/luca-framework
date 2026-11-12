@@ -86,6 +86,7 @@ Tests:
 - `packages/engine/src/core/run-story-skip-report.e2e.test.ts`
 - `packages/engine/src/core/run-story-asks.e2e.test.ts`
 - `packages/engine/src/core/run-story-serves.e2e.test.ts`
+- `packages/engine/src/core/run-story-crashes.e2e.test.ts`
 
 ## Addressing a review
 
