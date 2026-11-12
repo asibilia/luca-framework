@@ -2,7 +2,24 @@
 
 A **story** is the written guide to one pull request at one commit (#738, part of #735). It says what changed and why, maps how the changed files link, and walks the change one **stop** at a time in the order the code runs, from a marked starting point. For every changed region it carries the context a reviewer needs: how the walk got there, why the change was needed, what it means for the architecture, the one thing to check, the test that proves it, the ask it serves, its counted blast radius, and any flags.
 
-The `/luca-pr-prep` skill writes a story. A review app (#739) reads it. Luca's own runs will write one for every PR they open (#741).
+The `/luca-pr-prep` skill writes a story. A review app (#739) reads it. Luca's own runs write one for every PR they open (#741): see "A run's own story" below.
+
+## A run's own story
+
+Once a run's PR is open, and before the run branch's worktree is removed, the engine starts a **story-writer** (#743): a fresh agent on the locked pick (Opus) at `high` effort, with 80 turns, that plays by the learner's guard (Read, Grep, Glob and the read-only helper; no shell, it writes nothing). Its instructions carry `story-format.md` word for word, after a short opening that wins where the two disagree (`agents/story-writer-instructions.ts`).
+
+Its prompt is pure code (`core/story-prompt.ts`), in this order:
+
+- `## Pull request`: its number, URL, title, base branch, base and head commits.
+- `## Changed files`: one line per file, in path order (`diffFiles` in `git/git-diff.ts` joins git's three reads into one entry per file).
+- `## Diff`: git's own text, capped at 150,000 characters by `core/story-diff.ts`: smallest files whole first, the rest left out with their hunk headers and line counts.
+- `## The run's asks` (#745): the spec's number, URL, title and body (between lines of `~~~~~~`), then each ticket the run built (not skipped, not already done) with its URL and every acceptance criterion (`AC1: ...`), all from the run's intake snapshot (`core/story-asks.ts`).
+- `## What the run was unsure about` (#745): `Open findings:` and `Assumptions agents made:`, the same lines as the PR body's `## Open findings` and `## Assumptions` sections (`openFindingsLines`, `assumptionLines` in `core/pull-request-text.ts`), or `Nothing was left open.`
+- `## Rule files`.
+
+It answers with the story's `summary` (without `counts`), `map` and `stops`. The engine fills in every other field from the PR, the tracker's `repo` and git (`head_sha` the run branch's tip, `base_sha` its merge base with `origin/<base>`, `summary.counts` from git, `written_at` the answer's `agent_finished` time). It keeps the answer's `summary.feedback_wanted.source` (`author` when the text comes from what the run was unsure about), except when nothing was left open: then it sets it to `guessed`, and never fails a try over it. It reads the whole story with `readStory`, and only a story that read calls `ok` has its serves refs checked (`servesProblems`, `core/story-serves.ts`): each label is exactly `spec #12` or `ticket #14, AC2`, names the run's spec or a ticket it built (and a criterion that ticket has), carries that issue's URL, and for a ticket quotes that criterion's text. A valid story goes to `story.json` in the run folder and is saved through the tracker (`saveStory`) ──> `story_saved`.
+
+A story that fails the read or the serves check is journaled as `story_refused` and goes back to the same session with every problem (the reader's lines, or one line per failing serves ref, in story order); a turn with no result gets a fresh story-writer, whose prompt ends with `## Problems with the last try`. After 3 failed tries, a `head_moved` save or a refused save, the engine journals `story_skipped` and the run ends as it would have: a story never makes a run stuck. The next step, `report_story_skip` (#744), tells the owner: in the shared home it posts one comment on the PR (``Luca could not write the review story for this pull request (<reason>). Run `/luca-pr-prep <number>` to write it.``), once even across a crash, then journals `story_skip_reported` with the comment's id (null when the tracker refused the comment); in the private home it posts and journals nothing. `pr_story: false` in `.luca/config.json` turns the step off.
 
 ## The format is a contract
 

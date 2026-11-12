@@ -11,7 +11,7 @@ import type { EngineConfig } from '../config/engine-config'
 import { createGitAdapter } from '../git/git-adapter'
 import { createJournal, runJournalPath, type Journal } from '../journal/journal'
 import type { EngineClock } from '../limits/limit-wait'
-import { intakePassed, withInstalls } from '../testing/build-fixtures'
+import { intakePassed, storyOff, withInstalls } from '../testing/build-fixtures'
 import { finalReviewPassed, lensRound } from '../testing/final-review-fixtures'
 import { built, TICKET } from '../testing/final-review-steps'
 import { specIssue, ticketIssue } from '../testing/intake-fixtures'
@@ -194,6 +194,9 @@ describe('the network wait at the PR step', () => {
                     ...built(),
                     ...lensRound({ round: 1 }),
                     finalReviewPassed(),
+                    // The PR's story turned off (#743): these tests are
+                    // about the PR step, and the worktrees go right after.
+                    storyOff(),
                 ],
             }),
         ]) {

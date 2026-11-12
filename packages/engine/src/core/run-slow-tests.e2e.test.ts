@@ -223,7 +223,11 @@ describe('slow tests that fail at the final review and get fixed, end to end', (
         ).toMatchObject({ command: SLOW_TEST, ok: true })
 
         const fixers = run.launches.filter(
-            ({ ticket, role }) => ticket === 10 && !role.endsWith('-lens')
+            ({ ticket, role }) =>
+                ticket === 10 &&
+                !role.endsWith('-lens') &&
+                // The PR's story is not a fix (#743).
+                role !== 'story-writer'
         )
         expect(fixers.map(({ kind, role }) => `${kind} ${role}`)).toEqual([
             'launch implementer',

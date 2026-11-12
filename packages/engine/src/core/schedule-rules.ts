@@ -114,6 +114,7 @@ export const WAIT_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
 export const SLOW_ACTIONS: ReadonlySet<EngineAction['type']> = new Set([
     ...AGENT_ACTIONS,
     'launch_learner',
+    'launch_story_writer',
     'install_dependencies',
     'run_baseline_tests',
     'run_red_check',
@@ -187,7 +188,12 @@ export const redosFirst = ({
 }
 
 /** The session a follow-up goes to, if the action is one. */
-export const followUpSessionOf = (action: EngineAction): string[] =>
-    action.type === 'follow_up_agent' || action.type === 'follow_up_final_fixer'
+export const followUpSessionOf = (action: EngineAction): string[] => {
+    if (action.type === 'launch_story_writer') {
+        return 'session_id' in action ? [action.session_id] : []
+    }
+    return action.type === 'follow_up_agent' ||
+        action.type === 'follow_up_final_fixer'
         ? [action.session_id]
         : []
+}

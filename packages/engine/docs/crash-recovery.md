@@ -70,8 +70,9 @@ cap `test_concurrency` (#544), the test time
 limit `test_timeout_ms` (#542), the fast test speed limit
 `test_case_timeout_ms` (#580), the leftover scan's `leftover_allow`
 (#520), including one added or removed, `auto_retry` (#705; left out,
-`true`, so it is never `null`), and warm builds' `build_cache_paths` (#721;
-left out, `[]`). So a repo that swaps a slow `prepare` for a fast cached one
+`true`, so it is never `null`), warm builds' `build_cache_paths` (#721;
+left out, `[]`), and the PR's story's `pr_story` (#743; left out, `true`;
+turned off after the story step began, the step just stops). So a repo that swaps a slow `prepare` for a fast cached one
 gets it in its runs that are going, without losing their work. Right after
 the resume's `engine_resumed`, and before its first step, it journals
 `config_reloaded { changes: [{ field, from, to }] }` (`null` for a field

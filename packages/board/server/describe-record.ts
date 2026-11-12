@@ -26,6 +26,7 @@ import {
     runReasonText,
     roleWords,
     shortSha,
+    STORY_WRITER,
     testsSentBackText,
 } from './reduce-board'
 
@@ -149,12 +150,25 @@ export const describeRecord = ({
                     tone: 'info',
                 })
             }
+            // The story-writer (#743) is no final review agent.
+            if (record.content.role === STORY_WRITER) {
+                return event({
+                    text: "The story-writer writes the pull request's review story.",
+                    tone: 'info',
+                })
+            }
             return record.ticket === null
                 ? finalStartedText({ record })
                 : startedText({ before, after, record })
         case 'agent_finished':
             if (record.content.role === LEARNER) {
                 return learnerFinishedText({ record })
+            }
+            if (record.content.role === STORY_WRITER) {
+                return event({
+                    text: 'The story-writer answered; the engine checks and saves its story.',
+                    tone: 'info',
+                })
             }
             return record.ticket === null
                 ? finalFinishedText({ record })
@@ -164,9 +178,11 @@ export const describeRecord = ({
             const who =
                 role === LEARNER
                     ? 'The learner'
-                    : record.ticket === null
-                      ? `Final review: the ${roleWords({ role })}`
-                      : `${at}the ${role}`
+                    : role === STORY_WRITER
+                      ? 'The story-writer'
+                      : record.ticket === null
+                        ? `Final review: the ${roleWords({ role })}`
+                        : `${at}the ${role}`
             return event({
                 text: `${who} ${failureText({ failure })}: ${error.split('\n')[0] ?? ''}`,
                 tone: failure === 'engine' ? 'warning' : 'danger',

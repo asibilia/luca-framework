@@ -64,6 +64,8 @@ const STOPS: EngineAction['type'][] = [
     'launch_final_fixer',
     'run_final_slow_tests',
     'pass_final_review',
+    // The PR's story's agent (#743), like every other agent's turn.
+    'launch_story_writer',
     'remove_worktrees',
 ]
 

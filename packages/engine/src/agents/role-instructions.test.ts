@@ -1,10 +1,27 @@
-import { describe, expect, test } from 'bun:test'
+import { join } from 'node:path'
 
+import { describe, expect, test } from 'bun:test'
+import { z } from 'zod'
+
+import { ROLE_EFFORT } from './role-effort'
 import { roleInstructions } from './role-instructions'
 import { AgentRoleSchema } from './role-results'
 
-import { EngineConfigSchema, TestResultsSchema } from '../config/engine-config'
+import {
+    EngineConfigSchema,
+    modelsOf,
+    TestResultsSchema,
+} from '../config/engine-config'
+import { ROUTED_ROLES } from '../config/engine-config-schema'
 import { checkToolCall, guardRoleOf, isWriter } from '../guards/role-rules'
+import {
+    StoryChangeSchema,
+    StoryFlagSchema,
+    StoryMapSchema,
+    StoryStopSchema,
+    StorySummarySchema,
+} from '../story/story-parts'
+import { StorySchema } from '../story/story-schema'
 import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
 
 describe('instructions with several test commands', () => {
@@ -114,6 +131,115 @@ describe("the learner's instructions", () => {
         expect(learner()).toMatch(
             /Your result \(structured output\):[^\n]*scope/
         )
+    })
+})
+
+describe("the story-writer's instructions (#743)", () => {
+    const ROOT = join(import.meta.dir, '../../../..')
+    const FORMAT = join(
+        ROOT,
+        'packages/engine/skills/luca-pr-prep/references/story-format.md'
+    )
+    const storyWriter = () =>
+        roleInstructions({
+            role: 'story-writer',
+            may_edit_tests: false,
+            config: PRACTICE_ENGINE_CONFIG,
+        })
+
+    /** Every key of a schema, at any depth. */
+    const keysOf = (schema: z.ZodType): string[] => {
+        const json = z.toJSONSchema(schema, { io: 'input' })
+        const walk = (value: unknown): string[] => {
+            if (Array.isArray(value)) return value.flatMap(walk)
+            if (typeof value !== 'object' || value === null) return []
+            return Object.entries(value).flatMap(([key, inner]) =>
+                key === 'properties' &&
+                typeof inner === 'object' &&
+                inner !== null
+                    ? [...Object.keys(inner), ...walk(inner)]
+                    : walk(inner)
+            )
+        }
+        return [...new Set(walk(json))]
+    }
+
+    test('carry the skill’s field guide word for word, after the sentence "You have no shell."', async () => {
+        const format = await Bun.file(FORMAT).text()
+        const text = storyWriter()
+
+        const at = text.indexOf(format.trim())
+        expect(at).toBeGreaterThan(-1)
+        expect(text.indexOf('You have no shell.')).toBeGreaterThan(-1)
+        expect(text.indexOf('You have no shell.')).toBeLessThan(at)
+    })
+
+    test('name every key of the story schema, at any depth, in the field guide they carry', async () => {
+        const format = await Bun.file(FORMAT).text()
+        const text = storyWriter()
+        const guide = text.slice(text.indexOf(format.trim()))
+        const named = new Set(
+            [...guide.matchAll(/`([^`\n]+)`/g)].flatMap(
+                (match) => match[1]?.match(/[a-z0-9_]+/g) ?? []
+            )
+        )
+        const keys = [
+            StorySchema,
+            StorySummarySchema,
+            StoryMapSchema,
+            StoryStopSchema,
+            StoryChangeSchema,
+            StoryFlagSchema,
+        ].flatMap(keysOf)
+
+        expect(keys.length).toBeGreaterThan(20)
+        expect(keys.filter((key) => !named.has(key))).toEqual([])
+    })
+
+    test('ask only for what its result holds: never "assumptions" or "run_notes", and no rules written for the writers and reviewers', () => {
+        const text = storyWriter()
+
+        expect(text).not.toContain('run_notes')
+        expect(text).not.toContain('"assumptions"')
+        expect(text).not.toContain('## Rules for every agent')
+        expect(text).not.toContain('package manifest')
+    })
+
+    test('have rules of their own: never create, edit or delete a file, the network is off, and finish with the structured result', () => {
+        const text = storyWriter()
+
+        expect(text).toContain('Never create, edit, or delete a file.')
+        expect(text).toMatch(/network is off/)
+        expect(text).toMatch(/Finish by giving your structured result\./)
+    })
+
+    test('name both forms a serves label may take, "spec #12" and "ticket #14, AC2" (#745)', () => {
+        const text = storyWriter()
+
+        expect(text).toContain('spec #12')
+        expect(text).toContain('ticket #14, AC2')
+    })
+
+    test('the story-writer is not a routed role and runs at high effort with no config key', () => {
+        expect([...ROUTED_ROLES]).toEqual([
+            'test-writer',
+            'implementer',
+            'learner',
+        ])
+        expect(ROLE_EFFORT['story-writer']).toBe('high')
+        const config = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+        })
+        expect(Object.keys(modelsOf({ config }).effort)).toEqual([
+            'test-writer',
+            'implementer',
+            'learner',
+        ])
+    })
+
+    test('the glossary has a Story-writer entry', async () => {
+        const glossary = await Bun.file(join(ROOT, 'GLOSSARY.md')).text()
+        expect(glossary).toMatch(/^\*\*Story-writer\*\*:/m)
     })
 })
 

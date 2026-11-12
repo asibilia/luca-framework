@@ -23,6 +23,7 @@ import {
     RUN_BRANCH_PATH,
     runBranchCreated,
     SESSIONS,
+    storyOff,
     testsWritten,
     ticketPath,
     ticketWorktreeCreated,
@@ -286,7 +287,7 @@ describe('decision step: building a ticket', () => {
     })
 
     test('a run with its PR opened removes its worktrees, then is done', () => {
-        const opened = [...stepsUpTo(13), pullRequestOpened()]
+        const opened = [...stepsUpTo(13), storyOff(), pullRequestOpened()]
 
         expect(decideAfter(opened)).toEqual({
             type: 'remove_worktrees',

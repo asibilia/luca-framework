@@ -2,13 +2,18 @@ import cloneDeep from 'lodash/cloneDeep'
 import uniq from 'lodash/uniq'
 
 import {
+    otherRepoStoryError,
     TrackerIssueSchema,
     type OpenedPullRequest,
     type PullRequestRequest,
     type Tracker,
     type TrackerComment,
     type TrackerIssue,
+    type TrackerStorySave,
 } from './tracker'
+
+import type { StoryHome } from '../story/story-pick'
+import type { Story } from '../story/story-schema'
 
 /** A pull request the in-memory tracker opened. */
 export type InMemoryPullRequest = PullRequestRequest & OpenedPullRequest
@@ -32,6 +37,22 @@ export type InMemoryTracker = Tracker & {
         number: number
         changes: Partial<Omit<TrackerIssue, 'number'>>
     }) => void
+    /** Every saved story, one per pull request, with the home it went to. */
+    savedStories: () => InMemorySavedStory[]
+    /**
+     * Sets the answer of the next `saveStory` only: a `head_moved` answer,
+     * or an error to throw. A save answered this way keeps no story.
+     */
+    nextStorySave: (
+        answer: Extract<TrackerStorySave, { status: 'head_moved' }> | Error
+    ) => void
+}
+
+/** A story the in-memory tracker saved. */
+export type InMemorySavedStory = {
+    story: Story
+    home: StoryHome
+    pr_number: number
 }
 
 /**
@@ -50,6 +71,8 @@ export const createInMemoryTracker = ({
     engine_login,
     repo_labels = [],
     issue_links = { sub_issues: true, dependencies: true },
+    repo = 'luca-test/practice',
+    story_home = 'shared',
 }: {
     issues: TrackerIssue[]
     /** Sub-ticket numbers per spec number. */
@@ -60,6 +83,10 @@ export const createInMemoryTracker = ({
     repo_labels?: string[]
     /** Whether the repo has sub-issues and dependencies. Defaults to both. */
     issue_links?: { sub_issues: boolean; dependencies: boolean }
+    /** The `owner/name` the tracker is bound to. Defaults to `luca-test/practice`. */
+    repo?: string
+    /** The home every story goes to. Defaults to `shared`. */
+    story_home?: StoryHome
 }): InMemoryTracker => {
     const store = new Map(
         issues.map((issue) => [issue.number, cloneDeep(issue)])
@@ -68,6 +95,8 @@ export const createInMemoryTracker = ({
     const comments = new Map<number, TrackerComment[]>()
     let lastCommentId = 0
     const pulls: InMemoryPullRequest[] = []
+    let stories: InMemorySavedStory[] = []
+    let waiting: Parameters<InMemoryTracker['nextStorySave']>[0] | null = null
 
     const find = (number: number): TrackerIssue => {
         const issue = store.get(number)
@@ -154,6 +183,32 @@ export const createInMemoryTracker = ({
             labels.push(name)
         },
         issueLinks: async () => ({ ...issue_links }),
+        repo,
+        storyHome: async () => story_home,
+        // No comment is posted and no label added here.
+        saveStory: async ({ story }) => {
+            if (story.repo !== repo) {
+                throw otherRepoStoryError({ story_repo: story.repo, repo })
+            }
+            const answer = waiting
+            waiting = null
+            if (answer instanceof Error) throw answer
+            if (answer !== null) return { ...answer }
+            const { pr_number } = story
+            stories = [
+                ...stories.filter((each) => each.pr_number !== pr_number),
+                { story: cloneDeep(story), home: story_home, pr_number },
+            ]
+            return {
+                status: 'saved',
+                home: story_home,
+                comments: story_home === 'shared' ? 1 : 0,
+            }
+        },
+        savedStories: () => cloneDeep(stories),
+        nextStorySave: (answer) => {
+            waiting = answer
+        },
         pullRequests: () => cloneDeep(pulls),
         commentsOn: ({ number }) =>
             (comments.get(number) ?? []).map(({ body }) => body),

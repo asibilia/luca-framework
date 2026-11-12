@@ -100,6 +100,20 @@ with memory on (#370), before the PR:
 open_pull_request         tracker: re-read the spec's sub-issues, save pull-request.md, reuse an open PR
                           from the run branch or open one, then post what didn't fit as PR comments ──> pull_request_opened
                           (gh pr create failed: ──> run_stuck (reason pull_request_failed); see "Opening the PR")
+with pr_story on (the default, #743), the PR's story:
+  launch_story_writer       a fresh read-only story-writer in the run branch's worktree: the PR, its changed
+                            files, the capped diff, the run's asks (the spec, each built ticket's criteria), what
+                            the run was unsure about (the PR body's open findings and assumptions), the rule files
+                            ──> agent_started, agent_finished (role story-writer)
+                            (a refused story goes back to the same session, with every problem)
+  save_story                fill in what the engine knows (the feedback's source is guessed when nothing was left
+                            open), check it with readStory, then check its serves refs against the run's spec and
+                            built tickets, write story.json, save it through the tracker
+                            ──> story_refused, or story_saved, or story_skipped (head_moved, save_failed)
+  skip_story                after 3 failed tries (or 3 engine failures in a row) ──> story_skipped
+                            (story_invalid, agent_failed); the run is never stuck on its story
+  report_story_skip         after story_skipped, shared home only: one skip comment on the PR (posted once)
+                            ──> story_skip_reported; private home: nothing
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
 with no ticket pushed, but some already done (#484):

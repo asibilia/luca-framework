@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os'
 
 import { describe, expect, test } from 'bun:test'
 
-import { runShell, timedOutLine } from './run-command'
+import { runCommand, runShell, timedOutLine } from './run-command'
 
 /**
  * A command that runs past its time limit is really stopped (#485): the
@@ -168,6 +168,30 @@ describe('runShell', () => {
             'Timed out after 0.3 seconds, so the engine stopped it and everything it started. To give it longer, raise `test_timeout_ms`.\n'
         )
     }, 30_000)
+})
+
+describe('runCommand', () => {
+    test('writes its input to the command on stdin, and with none stdin is ignored', async () => {
+        const fed = await runCommand({
+            cmd: ['cat'],
+            cwd: tmpdir(),
+            input: 'hello',
+        })
+        const unfed = await runCommand({
+            cmd: ['cat'],
+            cwd: tmpdir(),
+            timeout_ms: 5_000,
+        })
+
+        expect(fed.stdout).toBe('hello')
+        expect(fed.exit_code).toBe(0)
+        expect(unfed).toEqual({
+            exit_code: 0,
+            stdout: '',
+            stderr: '',
+            timed_out: false,
+        })
+    }, 20_000)
 })
 
 describe('timedOutLine', () => {

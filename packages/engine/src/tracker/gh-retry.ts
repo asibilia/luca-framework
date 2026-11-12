@@ -17,9 +17,12 @@ import {
 /**
  * Runs `gh` with `args` and collects its output. Never throws on a non-zero
  * exit. The GitHub tracker makes every call through one, so tests can fake
- * `gh`.
+ * `gh`. `input`, when given, is written to `gh`'s stdin.
  */
-export type GhRunner = (args: string[]) => Promise<
+export type GhRunner = (
+    args: string[],
+    options?: { input?: string }
+) => Promise<
     Pick<CommandResult, 'exit_code' | 'stdout' | 'stderr'> & {
         timed_out?: boolean
     }
@@ -47,11 +50,12 @@ export const realRetryDeps: GhRetryDeps = {
 /** The real `gh`, on the `PATH`, run in `cwd` (default: the engine's). */
 export const realGh =
     ({ cwd }: { cwd?: string } = {}): GhRunner =>
-    (args) =>
+    (args, options) =>
         runCommand({
             cmd: ['gh', ...args],
             cwd: cwd ?? process.cwd(),
             timeout_ms: GH_TIMEOUT_MS,
+            input: options?.input,
         })
 
 /** A failed `gh` call likely to pass on a second try. */
@@ -100,8 +104,11 @@ const TRANSIENT_STDERR = [
 
 const NOT_FOUND = /HTTP 404\b/
 
-/** A failed `gh` call as a `TrackerError`, in `gh`'s own words. */
-const ghError = ({
+/**
+ * A failed `gh` call as a `TrackerError`, in `gh`'s own words. A timeout or
+ * an unreachable GitHub is a `NetworkGhError`.
+ */
+export const ghError = ({
     args,
     result,
 }: {

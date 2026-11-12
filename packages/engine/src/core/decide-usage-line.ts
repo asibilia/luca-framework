@@ -50,6 +50,7 @@ const AGENT_STEPS: ReadonlySet<string> = new Set([
     'launch_final_fixer',
     'follow_up_final_fixer',
     'launch_learner',
+    'launch_story_writer',
 ])
 
 const isoAt = (ms: number): string => new Date(ms).toISOString()

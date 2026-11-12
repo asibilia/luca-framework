@@ -10,6 +10,7 @@ import {
     intakePassed,
     pullRequestOpened,
     RUN_BRANCH_PATH,
+    storyOff,
     ticketPath,
     withInstalls,
     worktreesRemoved,
@@ -85,7 +86,8 @@ describe('decision step: a stuck final review', () => {
         expect(pr.body.split('security-S1 Sum trusts its input')).toHaveLength(
             2
         )
-        expect(stepAfter([...shipped, pullRequestOpened()])).toEqual({
+        const opened = [...shipped, storyOff(), pullRequestOpened()]
+        expect(stepAfter(opened)).toEqual({
             type: 'remove_worktrees',
             paths: [RUN_BRANCH_PATH],
         })

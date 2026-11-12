@@ -237,7 +237,10 @@ describe('effort per role, end to end (#659)', () => {
                   ]
                 : []
         )
-        /** Medium for the ticket's writers and the learner; xhigh for the rest. */
+        /**
+         * Medium for the ticket's writers and the learner; high for the
+         * story-writer (#743); xhigh for the rest.
+         */
         const expected = ({
             role,
             ticket,
@@ -245,12 +248,15 @@ describe('effort per role, end to end (#659)', () => {
             role: string
             ticket: number | null
         }) =>
-            role === 'learner' ||
-            (ticket === 11 &&
-                (role === 'test-writer' || role === 'implementer'))
-                ? 'medium'
-                : 'xhigh'
+            role === 'story-writer'
+                ? 'high'
+                : role === 'learner' ||
+                    (ticket === 11 &&
+                        (role === 'test-writer' || role === 'implementer'))
+                  ? 'medium'
+                  : 'xhigh'
 
+        expect(starts.some(({ role }) => role === 'story-writer')).toBe(true)
         expect(starts.filter(({ follow_up }) => follow_up)).toHaveLength(2)
         expect(starts.map(({ effort }) => effort)).toEqual(
             starts.map((start) => expected(start))

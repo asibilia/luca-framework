@@ -417,6 +417,12 @@ export const EngineConfigSchema = z.object({
      * written before it may lack it (`buildCachePathsOf`).
      */
     build_cache_paths: z.array(BuildCachePathSchema).default([]).optional(),
+    /**
+     * Whether a run that opens its pull request writes the PR's story
+     * (#743). Left out, `true`; a config written before it may lack it
+     * (`prStoryOf`).
+     */
+    pr_story: z.boolean().default(true).optional(),
 })
 
 export type EngineConfig = z.infer<typeof EngineConfigSchema>

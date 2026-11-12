@@ -105,6 +105,16 @@ export const autoRetryOf = ({ config }: { config: EngineConfig }): boolean =>
     config.auto_retry ?? true
 
 /**
+ * Whether a run that opens its pull request writes the PR's story (#743):
+ * the config's `pr_story`, else `true`.
+ *
+ * @example
+ * prStoryOf({ config: { ...config, pr_story: false } }) // false
+ */
+export const prStoryOf = ({ config }: { config: EngineConfig }): boolean =>
+    config.pr_story ?? true
+
+/**
  * The repo's build-cache paths and globs (#721): the config's
  * `build_cache_paths`, else none.
  *

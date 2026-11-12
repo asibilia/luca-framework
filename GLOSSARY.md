@@ -233,8 +233,12 @@ _Avoid_: status file, live journal
 ### Reviewing the work
 
 **Story**:
-The written guide to one pull request at one commit: a summary, a map of how the changed files link, and a walk through the change in the order the code runs. The `/luca-pr-prep` skill writes it; a reviewer or a review app reads it.
+The written guide to one pull request at one commit: a summary, a map of how the changed files link, and a walk through the change in the order the code runs. The `/luca-pr-prep` skill writes it, and so does a run's story-writer for the pull request the run opened; a reviewer or a review app reads it.
 _Avoid_: walkthrough, PR summary, annotation
+
+**Story-writer**:
+The role that writes the story for the pull request a run opened. It runs once, after the pull request opens, and reads but never writes.
+_Avoid_: storyteller, annotator
 
 **Stop**:
 One visit to one file on a story's walk, with the changed regions read there. The first stop is the starting point.

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import type { DecisionModelClient, DecisionModelReply } from './clef-client'
 import type { JevAnswer, JevQuestion } from './jev-schemas'
 import type { JevShadow } from './jev-shadow'
+import { LOCKED_PICK } from './model-pick'
 
 import { LENS_ROLES, lensRole, type LensName } from '../agents/role-results'
 import type { ScriptedTurn } from '../agents/scripted-launcher'
@@ -316,6 +317,34 @@ describe('model floors with a sure decision model (#603)', () => {
         expect(new Set(launched.map(({ model }) => model))).toEqual(
             new Set(['opus'])
         )
+    })
+
+    test('the story-writer launches on the locked pick at high effort, and no agent_model ask is made for it (#743)', () => {
+        const run = routed()
+
+        const launched = run.launches.filter(
+            ({ kind, role }) => kind === 'launch' && role === 'story-writer'
+        )
+        expect(launched.length).toBeGreaterThan(0)
+        for (const launch of launched) {
+            expect(launch).toMatchObject({
+                model: LOCKED_PICK.model,
+                effort: 'high',
+            })
+        }
+        const started = starts(run.records).filter(
+            ({ role }) => role === 'story-writer'
+        )
+        expect(started.length).toBeGreaterThan(0)
+        for (const start of started) {
+            expect(start).toMatchObject({
+                model: LOCKED_PICK.model,
+                model_reason: 'locked',
+            })
+        }
+        expect(
+            modelAsks(run.records).filter(({ role }) => role === 'story-writer')
+        ).toEqual([])
     })
 
     test('an answer the ask did not offer runs opus, with reason unsure', () => {

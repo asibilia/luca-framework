@@ -89,6 +89,10 @@ type TicketRecord = Exclude<
             | 'prepare_made'
             | 'build_cache_copied'
             | 'build_cache_skipped'
+            | 'story_refused'
+            | 'story_saved'
+            | 'story_skipped'
+            | 'story_skip_reported'
     }
 >
 

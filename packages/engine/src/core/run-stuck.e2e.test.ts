@@ -249,7 +249,13 @@ describe('stuck work reaches the spec owner, end to end', () => {
             launches
                 .map(({ role }) => role)
                 .filter((role) => !role.endsWith('-lens'))
-        ).toEqual(['test-writer', 'implementer', 'ticket-reviewer'])
+        ).toEqual([
+            'test-writer',
+            'implementer',
+            'ticket-reviewer',
+            // The PR's story (#743).
+            'story-writer',
+        ])
         expect(launches[1]?.may_edit_tests).toBe(true)
     }, 60_000)
 

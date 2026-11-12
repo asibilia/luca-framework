@@ -5,6 +5,7 @@ import {
     prNow,
     type Gh,
 } from './story-github'
+import type { StoryHome } from './story-home'
 import { loadPrivateStory } from './story-store'
 
 /**
@@ -12,8 +13,8 @@ import { loadPrivateStory } from './story-store'
  * (`shared`) and the private store on this computer (`private`).
  */
 
-/** Where a story lives. */
-export type StoryHome = 'shared' | 'private'
+/** Where a story lives, from `StoryHomeSchema`. */
+export type { StoryHome }
 
 /** One home's answer for a PR, and the commit its story was written for. */
 export type StoryCopy = {

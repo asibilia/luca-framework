@@ -1,4 +1,5 @@
 import { commitOps } from './git-commits'
+import { diffOps } from './git-diff'
 import { joinOps } from './git-join'
 import { readOps } from './git-read'
 import { createWorktreeOps } from './git-worktrees'
@@ -7,6 +8,34 @@ import { createWorktreeOps } from './git-worktrees'
 export type FileChange = {
     path: string
     change: 'added' | 'modified' | 'deleted'
+}
+
+/**
+ * One file a diff between two commits changed (#743): renames as
+ * `git diff -M` finds them, by their new path.
+ */
+export type ChangedFile = {
+    status: 'added' | 'modified' | 'deleted' | 'renamed'
+    path: string
+    /** A rename's old path; `null` for every other file. */
+    previous_path: string | null
+}
+
+/** One file's line counts in a diff; `null` for a binary file. */
+export type FileLineCount = {
+    path: string
+    added: number | null
+    removed: number | null
+}
+
+/**
+ * One changed file of a diff with its line counts (`null` for a binary
+ * file) and its part of the diff's text, from its `diff --git` line (#743).
+ */
+export type DiffFile = ChangedFile & {
+    added: number | null
+    removed: number | null
+    part: string
 }
 
 /** A commit the engine made. */
@@ -195,6 +224,30 @@ export type GitAdapter = {
     lastCommit: (args: {
         cwd: string
     }) => Promise<EngineCommit & { message: string }>
+    /** The merge base of commits `a` and `b` (#743). */
+    mergeBase: (args: { cwd: string; a: string; b: string }) => Promise<string>
+    /**
+     * The diff from `from` to `to` as git prints it, renames found with
+     * `-M`, three lines of context, set so that git config can't change the
+     * text (#743). A file↔symlink type change is two `diff --git` parts.
+     */
+    diffText: (args: {
+        cwd: string
+        from: string
+        to: string
+    }) => Promise<string>
+    /** The files changed from `from` to `to`, in git's diff order (#743). */
+    changedFiles: (args: {
+        cwd: string
+        from: string
+        to: string
+    }) => Promise<ChangedFile[]>
+    /** Each changed file's line counts, in git's diff order (#743). */
+    lineCounts: (args: {
+        cwd: string
+        from: string
+        to: string
+    }) => Promise<FileLineCount[]>
 }
 
 /**
@@ -226,6 +279,7 @@ export const createGitAdapter = ({
     const raw: GitAdapter = {
         ...createWorktreeOps({ repo_root }),
         ...readOps,
+        ...diffOps,
         ...commitOps,
         ...joinOps,
     }
@@ -260,5 +314,9 @@ export const createGitAdapter = ({
         head: serial(raw.head),
         commitOnBase: serial(raw.commitOnBase),
         lastCommit: serial(raw.lastCommit),
+        mergeBase: serial(raw.mergeBase),
+        diffText: serial(raw.diffText),
+        changedFiles: serial(raw.changedFiles),
+        lineCounts: serial(raw.lineCounts),
     }
 }

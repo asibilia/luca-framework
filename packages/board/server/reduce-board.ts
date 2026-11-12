@@ -71,7 +71,7 @@ export {
     shortSha,
     testsSentBackText,
 } from './reduce-board-text'
-export { LEARNER } from './reduce-board-update'
+export { LEARNER, STORY_WRITER } from './reduce-board-update'
 
 /** Record kinds that don't mean the engine moved on after a stop. */
 const QUIET_KINDS = new Set([

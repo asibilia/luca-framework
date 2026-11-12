@@ -119,6 +119,7 @@ Reached by: any run that meets a plan limit; the board shows a limit-wait banner
 Tests:
 
 - `packages/engine/src/core/decide-limits.test.ts`
+- `packages/engine/src/core/decide-limits-usage.test.ts`
 - `packages/engine/src/core/decide-plan-readings.test.ts`
 - `packages/engine/src/core/limit-wait.e2e.test.ts`
 - `packages/engine/src/core/run-limit-many-tickets.e2e.test.ts`

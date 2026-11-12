@@ -8,6 +8,7 @@ import {
     type GhRetryDeps,
     type GhRunner,
 } from './gh-retry'
+import { gitHubStoryOperations } from './github-tracker-story'
 import {
     labelDefinition,
     OpenedPullRequestSchema,
@@ -104,12 +105,16 @@ export const createGitHubTracker = ({
     gh,
     sleep,
     log,
+    stories_dir,
 }: {
     repo: string
     gh?: GhRunner
+    /** The private stories folder. Defaults to `storiesDir`'s answer. */
+    stories_dir?: string
 } & Partial<GhRetryDeps>): Tracker => {
+    const run = gh ?? realGh()
     const calls = createGhCalls({
-        run: gh ?? realGh(),
+        run,
         sleep: sleep ?? realRetryDeps.sleep,
         log: log ?? realRetryDeps.log,
     })
@@ -286,6 +291,8 @@ export const createGitHubTracker = ({
     }
 
     return {
+        repo,
+        ...gitHubStoryOperations({ repo, run, stories_dir }),
         readIssue,
         readSpec: async ({ spec_number }) => {
             const spec = await readIssue({ number: spec_number })

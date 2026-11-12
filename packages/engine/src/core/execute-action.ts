@@ -7,6 +7,7 @@ import { basename, dirname } from 'node:path'
 import type { EngineAction } from './decide'
 import { isFinalReviewAction } from './decide-final-review'
 import { isMemoryAction } from './decide-memory'
+import { isStoryAction } from './decide-story'
 import { executeAlreadyDoneAction } from './execute-already-done'
 import {
     buildContext,
@@ -25,6 +26,7 @@ import {
     executeRepoWaitAction,
     type GoingRunsReader,
 } from './execute-repo-wait'
+import { executeStoryAction } from './execute-story'
 import { executeStuckAction } from './execute-stuck'
 import { executePlanAction, executeUsageLineAction } from './execute-waits'
 
@@ -250,6 +252,17 @@ export const executeAction = async ({
                 throw new Error(
                     `The engine needs a git adapter and an agent launcher to ${action.type}.`
                 )
+            }
+            if (isStoryAction(action)) {
+                return executeStoryAction({
+                    action,
+                    context: buildContext({
+                        journal,
+                        tracker,
+                        step: tried,
+                        ...build,
+                    }),
+                })
             }
             if (isFinalReviewAction(action)) {
                 return executeFinalReviewAction({

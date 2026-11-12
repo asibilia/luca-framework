@@ -36,6 +36,7 @@ The modules split out of `src/agents/role-instructions.ts`. It re-exports them.
 | `src/agents/writer-instructions.ts` | The test-writer's and implementer's tasks. |
 | `src/agents/reviewer-instructions.ts` | The ticket reviewer's and each lens's tasks. |
 | `src/agents/learner-instructions.ts` | The learner's task and rules. |
+| `src/agents/story-writer-instructions.ts` | The story-writer's opening (#743), and the `/luca-pr-prep` skill's field guide it carries word for word. |
 
 ## claude-launcher modules
 

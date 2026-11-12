@@ -3,7 +3,7 @@ import omit from 'lodash/omit'
 import reduce from 'lodash/reduce'
 import { z } from 'zod'
 
-import { autoRetryOf, buildCachePathsOf } from './config-fields'
+import { autoRetryOf, buildCachePathsOf, prStoryOf } from './config-fields'
 import type { EngineConfig } from './engine-config'
 
 /**
@@ -35,6 +35,8 @@ import type { EngineConfig } from './engine-config'
  * - `build_cache_paths`: the build caches cloned into each new ticket
  *   worktree (#721). Each new worktree reads it then, so a new value counts
  *   from the next ticket started.
+ * - `pr_story`: whether the run writes its PR's story (#743). Turned off
+ *   on a resume after the story step began, the step just stops.
  */
 export const RELOADED_FIELDS = [
     'prepare',
@@ -46,6 +48,7 @@ export const RELOADED_FIELDS = [
     'leftover_allow',
     'auto_retry',
     'build_cache_paths',
+    'pr_story',
 ] as const
 
 /**
@@ -151,6 +154,12 @@ export const ConfigChangeSchema = z.discriminatedUnion('field', [
         from: z.array(z.string().min(1)),
         to: z.array(z.string().min(1)),
     }),
+    // Never left out: a config without it reads as `true`.
+    z.object({
+        field: z.literal('pr_story'),
+        from: z.boolean(),
+        to: z.boolean(),
+    }),
 ])
 
 export type ConfigChange = z.infer<typeof ConfigChangeSchema>
@@ -217,6 +226,11 @@ export const configChanges = ({
             from: buildCachePathsOf({ config: current }),
             to: buildCachePathsOf({ config: next }),
         },
+        {
+            field: 'pr_story',
+            from: prStoryOf({ config: current }),
+            to: prStoryOf({ config: next }),
+        },
     ]
     return all.filter(({ from, to }) => !isEqual(from, to))
 }
@@ -261,6 +275,8 @@ const applyChange = ({
             return { ...config, auto_retry: change.to }
         case 'build_cache_paths':
             return { ...config, build_cache_paths: change.to }
+        case 'pr_story':
+            return { ...config, pr_story: change.to }
     }
 }
 

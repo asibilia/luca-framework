@@ -224,6 +224,8 @@ describe('a ticket whose work is already done', () => {
             'test-writer #12',
             'implementer #12',
             'ticket-reviewer #12',
+            // The PR's story, launched with the spec's number (#743).
+            'story-writer #10',
         ])
         const [pull] = tracker.pullRequests()
         expect(pull?.body).toContain(

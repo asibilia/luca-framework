@@ -93,6 +93,10 @@ describe('one ticket, end to end, with scripted agents', () => {
             'gates_run',
             'run_branch_pushed',
             'pull_request_opened',
+            // The story-writer writes the PR's story (#743).
+            'agent_started',
+            'agent_finished',
+            'story_saved',
             'worktrees_removed',
         ])
         const find = <K extends (typeof records)[number]['kind']>(kind: K) =>

@@ -3,7 +3,9 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { createHarness, type Harness } from './testing/board-harness'
 import {
     agentFailed,
+    agentFinished,
     agentSession,
+    agentStarted,
     engineFinalFixerTurn,
     engineFinalFixesLanded,
     engineFinalReviewStarted,
@@ -332,5 +334,87 @@ describe('the final review as the engine journals it', () => {
                     'You replied `ship`: the PR opens with the open findings listed at the top.',
             },
         })
+    })
+})
+
+describe("the story-writer's records (#743)", () => {
+    /** A story-writer record: no ticket, role `story-writer`. */
+    const storyWriter = (record: Entry): Entry => ({ ...record, ticket: null })
+
+    test("a story-writer's ticket-less start, failed turn and answer are not the final review's: its tried list and lenses stay as they were, and the feed says The story-writer, never Final review", async () => {
+        const { run_id, token, reply } = await runWith({
+            entries: [
+                ...allTickets(),
+                ...firstRound(),
+                finalReviewFixing({ round: 1 }),
+                ...engineFinalFixerTurn({
+                    role: 'implementer',
+                    responses: [
+                        {
+                            finding_id: 'security-S1',
+                            response: 'fixed',
+                            reason: '',
+                        },
+                    ],
+                }),
+                ...engineFinalFixesLanded({ round: 1 }),
+                engineFinalReviewStarted({ round: 2, lenses: ['security'] }),
+                ...engineLensTurn({ lens: 'security', round: 2 }),
+                finalReviewPassed(),
+                pullRequestOpened({
+                    number: 7,
+                    url: 'https://github.com/acme/app/pull/7',
+                }),
+            ],
+        })
+        const before = await harness.state()
+        const rowsBefore = eventTexts().length
+
+        await harness.send({
+            run_id,
+            token,
+            first_seq: reply.next_seq,
+            entries: [
+                storyWriter(
+                    agentStarted({ ticket: null, role: 'story-writer' })
+                ),
+                storyWriter(
+                    agentFailed({
+                        ticket: 0,
+                        role: 'story-writer',
+                        error: 'No structured output.',
+                        failure: 'result',
+                    })
+                ),
+                storyWriter(
+                    agentStarted({ ticket: null, role: 'story-writer' })
+                ),
+                storyWriter(
+                    agentFinished({
+                        ticket: 0,
+                        role: 'story-writer',
+                        result: { summary: {}, map: {}, stops: [] },
+                    })
+                ),
+            ],
+        })
+        const after = await harness.state()
+
+        expect(after.final_review).toEqual(before.final_review)
+        expect(after.final_review.tried).toEqual(before.final_review.tried)
+        expect(after.tickets).toEqual(before.tickets)
+
+        const added = eventTexts().slice(rowsBefore)
+        expect(added.length).toBeGreaterThanOrEqual(3)
+        expect(
+            eventTexts().filter((text) => text.includes('story-writer'))
+        ).toEqual(added)
+        for (const text of added) {
+            expect(text.startsWith('The story-writer')).toBe(true)
+            expect(text.startsWith('Final review:')).toBe(false)
+        }
+        expect(added).toContain(
+            'The story-writer gave no usable result: No structured output.'
+        )
     })
 })

@@ -26,6 +26,7 @@ import {
     HAPPY_TURNS,
     makePracticeRepo,
     practiceTracker,
+    VALID_STORY_TURN,
 } from '../testing/practice-repo'
 
 /**
@@ -54,7 +55,9 @@ describe('luca-run --spec, on one happy run', () => {
     let repo = ''
     let file = ''
     const recorder = recordingBoard()
-    const claude = fakeClaudeLauncher({ turns: HAPPY_TURNS })
+    const claude = fakeClaudeLauncher({
+        turns: [...HAPPY_TURNS, VALID_STORY_TURN(10)],
+    })
     let first: RunEnd
     let second: RunEnd
     let closedAfterFirst = 0
@@ -115,6 +118,8 @@ describe('luca-run --spec, on one happy run', () => {
             'test-writer',
             'implementer',
             'ticket-reviewer',
+            // The PR's story, after the PR opens (#743).
+            'story-writer',
         ])
         // The final review's five lenses run at once, in any order.
         expect(
@@ -123,12 +128,26 @@ describe('luca-run --spec, on one happy run', () => {
         expect(closedAfterFirst).toBe(1)
         expect(recorder.kinds()).toContain('agent_finished')
         // The run's ending (#706) is checked in `run-ended.e2e.test.ts`.
+        const kinds = recorder.kinds()
         expect(
-            recorder
-                .kinds()
-                .filter((kind) => kind !== 'run_ended')
-                .slice(-2)
-        ).toEqual(['pull_request_opened', 'worktrees_removed'])
+            kinds
+                .slice(kinds.lastIndexOf('pull_request_opened'))
+                .filter((kind) =>
+                    [
+                        'pull_request_opened',
+                        'agent_started',
+                        'agent_finished',
+                        'story_saved',
+                        'worktrees_removed',
+                    ].includes(kind)
+                )
+        ).toEqual([
+            'pull_request_opened',
+            'agent_started',
+            'agent_finished',
+            'story_saved',
+            'worktrees_removed',
+        ])
         expect(recorder.endings()).toEqual([first])
     })
 

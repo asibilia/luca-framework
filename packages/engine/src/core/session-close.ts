@@ -61,7 +61,9 @@ type FailedTurn = { role: AgentRole; session_id: string | null }
  * - a ticket's implementer until the green commit, or a review fix round's
  *   until its fix commit (the gates' loop);
  * - the final review's fixers until the round's fix commit;
- * - a test-writer's or implementer's failed turn, until its next turn.
+ * - a test-writer's or implementer's failed turn, until its next turn;
+ * - the story-writer's latest session, while the PR's story step is open
+ *   (#743): from its first start until `story_saved` or `story_skipped`.
  *
  * Nothing else is ever followed up: reviewers, lenses, and the learner get
  * a fresh agent. A stuck, skipped, or already-done ticket, the stuck final
@@ -118,6 +120,8 @@ const reachableSessions = ({ state }: { state: RunState }): Set<string> => {
         keep(review.sessions['test-writer'])
         keep(review.sessions.implementer)
     }
+    const { story } = state
+    if (story.began && !story.done) keep(story.session)
     return reachable
 }
 
