@@ -2,11 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import type { Journal } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
-import {
-    happyTurns,
-    practiceSpec,
-    sumTicket,
-} from '../testing/practice-repo'
+import { happyTurns, practiceSpec, sumTicket } from '../testing/practice-repo'
 import {
     invalidAnswer,
     recordsOf,
@@ -47,7 +43,9 @@ const prNumberOf = (records: JournalRecord[]): number => {
     return opened.content.number
 }
 
-const skipComments = (run: { tracker: InMemoryTracker; records: JournalRecord[] }) =>
+type RunWithTracker = { tracker: InMemoryTracker; records: JournalRecord[] }
+
+const skipComments = (run: RunWithTracker) =>
     run.tracker
         .commentsOn({ number: prNumberOf(run.records) })
         .filter((body) => body.startsWith(COMMENT_START))
@@ -270,10 +268,7 @@ describe('a crash after story_skipped, before the skip comment', () => {
                     return base.saveStory(args)
                 },
                 comment: async (args) => {
-                    if (
-                        !crashed &&
-                        args.body.startsWith(COMMENT_START)
-                    ) {
+                    if (!crashed && args.body.startsWith(COMMENT_START)) {
                         crashed = true
                         throw new Error('The engine crashed.')
                     }
@@ -309,17 +304,22 @@ describe('a crash after story_skipped, before the skip comment', () => {
 
         // The resume went on to report the skip.
         expect(reportedOf(run.records)).toHaveLength(1)
-        const all = storyWriterRecords(run.records)
+        // The first run closes the story-writer's session right after the
+        // checkpoint, so session closes are left out of the comparison.
+        const all = storyWriterRecords(run.records).filter(
+            ({ kind }) => kind !== 'agent_session_closed'
+        )
         const before = storyWriterRecords(
             run.records.slice(
                 0,
                 run.records.findIndex(({ kind }) => kind === 'story_skipped')
             )
-        )
+        ).filter(({ kind }) => kind !== 'agent_session_closed')
         expect(all).toEqual(before)
-        expect(run.launches.filter(({ role }) => role === 'story-writer')).toEqual(
-            []
+        const launched = run.launches.filter(
+            ({ role }) => role === 'story-writer'
         )
+        expect(launched).toEqual([])
     })
 })
 
