@@ -54,8 +54,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/core/execute-memory.ts` | Carries out memory's steps: searches, the learner's turn, saves (update a similar memory or add one), feedback, and the spec comment. |
 | `src/core/decide-story.ts` | The PR's story's half of the decision step (#743): once the PR is open and before the worktrees go, the story-writer, the save, the skip, or the skip's report (#744). It reads where the step stands from `state.story` (`journal/story-replay.ts`). |
 | `src/core/story-prompt.ts` | Pure: the story-writer's prompt (its sections) and the follow-up to a refused story. |
-| `src/core/story-diff.ts` | Pure: the PR's diff as the prompt holds it, in path order, capped at 150,000 characters. |
-| `src/core/story-diff-files.ts` | Pure: git's three reads of the run branch's diff (changed files, line counts, the diff's text) joined into one entry per changed file. |
+| `src/core/story-diff.ts` | Pure: the PR's diff as the prompt holds it, in path order, capped at 150,000 characters. It takes the per-file entries `diffFiles` (`git/git-diff.ts`) gives and knows nothing of git's `diff --git` headers. |
 | `src/core/story-asks.ts` | Pure (#745): the run's asks (its spec and the tickets it built, from the intake snapshot) and what it was unsure about (the PR body's open findings and assumptions), as prompt sections; and whether nothing was left open, for the feedback's source. |
 | `src/core/story-serves.ts` | Pure (#745): `servesProblems`, the check of a story's serves refs against the run's spec and built tickets, one problem line per failing ref. |
 | `src/core/execute-story.ts` | Carries out the story's steps: the story-writer's turn, the story filled in, checked (`readStory`, then the serves refs), written to `story.json` and saved, or skipped, and a skip reported. |

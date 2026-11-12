@@ -5,22 +5,16 @@
 import sortBy from 'lodash/sortBy'
 import sumBy from 'lodash/sumBy'
 
+import type { DiffFile } from '../git/git-adapter'
+
 /** The most characters the diff part of the story-writer's prompt holds. */
 export const STORY_DIFF_CAP = 150_000
 
-/** One changed file of the PR, with its diff part and line counts. */
-export type StoryDiffFile = {
-    status: 'added' | 'modified' | 'deleted' | 'renamed'
-    /** A rename's new path. */
-    path: string
-    /** A rename's old path, else `null`. */
-    previous_path: string | null
-    /** Its lines added and removed; `null` for a binary file. */
-    added: number | null
-    removed: number | null
-    /** Its part of git's diff, from its `diff --git` line. */
-    part: string
-}
+/**
+ * One changed file of the PR, with its diff part and line counts, as the
+ * git module's `diffFiles` gives it.
+ */
+export type StoryDiffFile = DiffFile
 
 /**
  * Plain code-unit order (JavaScript's `<`), not a locale order.

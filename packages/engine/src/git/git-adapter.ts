@@ -28,6 +28,16 @@ export type FileLineCount = {
     removed: number | null
 }
 
+/**
+ * One changed file of a diff with its line counts (`null` for a binary
+ * file) and its part of the diff's text, from its `diff --git` line (#743).
+ */
+export type DiffFile = ChangedFile & {
+    added: number | null
+    removed: number | null
+    part: string
+}
+
 /** A commit the engine made. */
 export type EngineCommit = { sha: string; files: string[] }
 

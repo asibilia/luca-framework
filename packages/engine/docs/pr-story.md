@@ -11,7 +11,7 @@ Once a run's PR is open, and before the run branch's worktree is removed, the en
 Its prompt is pure code (`core/story-prompt.ts`), in this order:
 
 - `## Pull request`: its number, URL, title, base branch, base and head commits.
-- `## Changed files`: one line per file, in path order (`core/story-diff-files.ts` joins git's three reads into one entry per file).
+- `## Changed files`: one line per file, in path order (`diffFiles` in `git/git-diff.ts` joins git's three reads into one entry per file).
 - `## Diff`: git's own text, capped at 150,000 characters by `core/story-diff.ts`: smallest files whole first, the rest left out with their hunk headers and line counts.
 - `## The run's asks` (#745): the spec's number, URL, title and body (between lines of `~~~~~~`), then each ticket the run built (not skipped, not already done) with its URL and every acceptance criterion (`AC1: ...`), all from the run's intake snapshot (`core/story-asks.ts`).
 - `## What the run was unsure about` (#745): `Open findings:` and `Assumptions agents made:`, the same lines as the PR body's `## Open findings` and `## Assumptions` sections (`openFindingsLines`, `assumptionLines` in `core/pull-request-text.ts`), or `Nothing was left open.`
