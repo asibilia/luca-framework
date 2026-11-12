@@ -342,6 +342,7 @@ const applyKind = ({
         case 'story_refused':
         case 'story_saved':
         case 'story_skipped':
+        case 'story_skip_reported':
             return next
         // Only a redo of `save_memories` reads them (see `execute-memory.ts`).
         case 'memory_write_started':

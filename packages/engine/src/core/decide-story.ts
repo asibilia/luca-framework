@@ -29,11 +29,17 @@ export type StoryAction =
     | { type: 'save_story' }
     /** Give the story up: journal `story_skipped`. */
     | { type: 'skip_story'; reason: StorySkipReason; detail: string }
+    /**
+     * Tell the owner the story was skipped (#744): in the shared home, one
+     * comment on PR `number`, then `story_skip_reported`.
+     */
+    | { type: 'report_story_skip'; number: number; reason: StorySkipReason }
 
 const STORY_ACTION_TYPES: ReadonlySet<string> = new Set<StoryAction['type']>([
     'launch_story_writer',
     'save_story',
     'skip_story',
+    'report_story_skip',
 ])
 
 /**
@@ -50,7 +56,7 @@ export const isStoryAction = <Action extends { type: string }>(
  * The story step's next action, or `null` when there is none: no PR open
  * yet, a `stop`, the story turned off (`pr_story`), the run branch's
  * worktree already removed, or a checkpoint (`story_saved`,
- * `story_skipped`) reached.
+ * `story_skipped`) reached. A skip is reported once, right after it.
  *
  * @example
  * decideStory({ state, records }) // { type: 'launch_story_writer', problems: null }
@@ -69,6 +75,13 @@ export const decideStory = ({
     }
     if (state.removed_worktrees.includes(run_branch.path)) return null
     const story = storyStateOf({ records })
+    if (story.skipped !== null && !story.reported) {
+        return {
+            type: 'report_story_skip',
+            number: pull_request.number,
+            reason: story.skipped,
+        }
+    }
     if (story.done) return null
     if (story.answer !== null) return { type: 'save_story' }
     const failed = story.last_failure

@@ -118,6 +118,7 @@ import {
     StoryRefusedEntrySchema,
     StorySavedEntrySchema,
     StorySkippedEntrySchema,
+    StorySkipReportedEntrySchema,
 } from './story-entries'
 import {
     AutoRetriedEntrySchema,
@@ -241,6 +242,7 @@ export const JournalEntrySchema = z.discriminatedUnion('kind', [
     StoryRefusedEntrySchema,
     StorySavedEntrySchema,
     StorySkippedEntrySchema,
+    StorySkipReportedEntrySchema,
     RunEndedEntrySchema,
 ])
 

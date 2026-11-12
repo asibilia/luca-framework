@@ -21,7 +21,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/journal/final-review-state.ts` | `FinalReviewState`'s shape and empty value. |
 | `src/journal/plan-replay.ts` | Replays the plan: rate limits hit, limit and usage-line waits, billing stops. |
 | `src/journal/memory-replay.ts` | Replays memory and the learner's own records. |
-| `src/journal/story-entries.ts` | The PR's story's entries (#743): `story_refused`, `story_saved`, `story_skipped`. |
+| `src/journal/story-entries.ts` | The PR's story's entries (#743): `story_refused`, `story_saved`, `story_skipped`, and `story_skip_reported` (#744). |
 | `src/journal/story-records.ts` | Which records are the story step's, so replay keeps them out of the final review's. |
 | `src/journal/agent-turn-replay.ts` | Reads of an agent turn shared by ticket and final review replay (assumptions, bad test, sessions, declined findings). |
 | `src/journal/ticket-replay.ts` | Replays a ticket's own records, a rebase, and a reused baseline. |

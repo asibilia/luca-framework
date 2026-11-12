@@ -100,6 +100,7 @@ export const JournalKindSchema = z.enum([
     'story_refused',
     'story_saved',
     'story_skipped',
+    'story_skip_reported',
     'run_ended',
 ])
 

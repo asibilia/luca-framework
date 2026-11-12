@@ -10,6 +10,7 @@ export const STORY_KINDS: ReadonlySet<JournalRecord['kind']> = new Set([
     'story_refused',
     'story_saved',
     'story_skipped',
+    'story_skip_reported',
 ])
 
 /**

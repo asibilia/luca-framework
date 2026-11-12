@@ -4,8 +4,8 @@ import { ENTRY_FIELDS } from './entry-fields'
 
 /**
  * The journal entries of the PR's story (#743): a story the engine's
- * checks refused, and the step's two checkpoints, a saved story and a
- * skipped one. All with `ticket: null`.
+ * checks refused, the step's two checkpoints, a saved story and a
+ * skipped one, and the report of a skip (#744). All with `ticket: null`.
  */
 
 /**
@@ -64,4 +64,15 @@ export const StorySkippedEntrySchema = z.object({
         reason: StorySkipReasonSchema,
         detail: z.string(),
     }),
+})
+
+/**
+ * The owner was told on the PR that its story was skipped (#744), in the
+ * shared home only. `comment_id` is the skip comment's id, or `null` when
+ * the tracker refused the comment. The report step's checkpoint.
+ */
+export const StorySkipReportedEntrySchema = z.object({
+    ...ENTRY_FIELDS,
+    kind: z.literal('story_skip_reported'),
+    content: z.object({ comment_id: z.number().int().nullable() }),
 })

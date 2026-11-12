@@ -3,7 +3,7 @@
  * follows it up with a refusal's problems), builds the story from its
  * answer and what the engine knows, checks it with the story schema's
  * reader, writes `story.json` to the run folder, and saves it through the
- * tracker; or journals the skip.
+ * tracker; or journals the skip, and tells the owner of it (#744).
  */
 import { basename, join } from 'node:path'
 
@@ -20,6 +20,7 @@ import type { GitAdapter } from '../git/git-adapter'
 import { LOCKED_PICK } from '../jev/model-pick'
 import type { JournalRecord } from '../journal/journal-record'
 import { readStory, STORY_SCHEMA_VERSION } from '../story/story-schema'
+import { postCommentOnce } from '../tracker/post-comment-once'
 import { isTrackerNetworkFailure, TrackerError } from '../tracker/tracker'
 
 const ROLE = 'story-writer'
@@ -316,6 +317,49 @@ const saveStory = async ({
 }
 
 /**
+ * Tells the owner a story was skipped (#744). In the shared home, posts one
+ * comment on the PR, once (a redo adopts the one its first try posted), then
+ * journals `story_skip_reported`; a comment the tracker refuses is journaled
+ * with no id. In the private home it posts and journals nothing: the
+ * `story_skipped` record is the report.
+ */
+const reportStorySkip = async ({
+    action,
+    context,
+}: {
+    action: Extract<StoryAction, { type: 'report_story_skip' }>
+    context: BuildContext
+}): Promise<void> => {
+    const { journal, tracker, step } = context
+    if ((await tracker.storyHome()) !== 'shared') return
+    const body = `Luca could not write the review story for this pull request (${action.reason}). Run \`/luca-pr-prep ${action.number}\` to write it.`
+    const comment_id = await postCommentOnce({
+        tracker,
+        number: action.number,
+        body,
+        step,
+        n: 0,
+    }).then(
+        ({ id }) => id,
+        (error: unknown) => {
+            if (
+                isTrackerNetworkFailure(error) ||
+                !(error instanceof TrackerError)
+            ) {
+                throw error
+            }
+            return null
+        }
+    )
+    journal.append({
+        kind: 'story_skip_reported',
+        ticket: null,
+        role: null,
+        content: { comment_id },
+    })
+}
+
+/**
  * Carries out one of the story step's actions and journals what happened.
  * The story-writer runs in the run branch's worktree with the same turn
  * machinery as every agent; the launcher is handed the spec's number as
@@ -341,5 +385,7 @@ export const executeStoryAction = async ({
                 content: { reason: action.reason, detail: action.detail },
             })
             return
+        case 'report_story_skip':
+            return reportStorySkip({ action, context })
     }
 }

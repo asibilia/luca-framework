@@ -92,6 +92,7 @@ type TicketRecord = Exclude<
             | 'story_refused'
             | 'story_saved'
             | 'story_skipped'
+            | 'story_skip_reported'
     }
 >
 

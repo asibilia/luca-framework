@@ -37,6 +37,13 @@ export type StoryState = {
     follow_up: string | null
     /** The story-writer's latest session. */
     session: string | null
+    /** The reason in `story_skipped`, once the story was skipped (#744). */
+    skipped: StorySkipReason | null
+    /**
+     * The skip was reported: `story_skip_reported`, or the report step
+     * ended without one (the private home posts nothing).
+     */
+    reported: boolean
 }
 
 export const EMPTY_STORY: StoryState = {
@@ -49,6 +56,8 @@ export const EMPTY_STORY: StoryState = {
     last_failure: null,
     follow_up: null,
     session: null,
+    skipped: null,
+    reported: false,
 }
 
 const isStoryWriter = (record: JournalRecord): boolean =>
@@ -118,8 +127,21 @@ const storyAfter = ({
         case 'run_resumed':
             return { ...story, follow_up: null }
         case 'story_saved':
-        case 'story_skipped':
             return { ...story, began: true, done: true, answer: null }
+        case 'story_skipped':
+            return {
+                ...story,
+                began: true,
+                done: true,
+                answer: null,
+                skipped: record.content.reason,
+            }
+        case 'story_skip_reported':
+            return { ...story, reported: true }
+        case 'step_ended':
+            return record.content.step === 'report_story_skip'
+                ? { ...story, reported: true }
+                : story
         default:
             return story
     }

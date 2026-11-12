@@ -109,6 +109,8 @@ with pr_story on (the default, #743), the PR's story:
                             (head_moved, save_failed)
   skip_story                after 3 failed tries (or 3 engine failures in a row) ──> story_skipped
                             (story_invalid, agent_failed); the run is never stuck on its story
+  report_story_skip         after story_skipped, shared home only: one skip comment on the PR (posted once)
+                            ──> story_skip_reported; private home: nothing
 remove_worktrees          git: every ticket's and the run branch's worktree ──> worktrees_removed
 done (pr_opened)
 with no ticket pushed, but some already done (#484):
