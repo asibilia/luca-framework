@@ -1,5 +1,16 @@
 # @luca/engine
 
+## 14.0.0-alpha.36
+
+### Minor Changes
+
+- c36d97e: Every run that opens a pull request now writes the PR's review story too: in your own repos it is posted on the PR with the `review-ready` label, in any other repo it is saved on your computer, and set `pr_story: false` in `.luca/config.json` to turn it off (#741).
+
+### Patch Changes
+
+- 66abcae: New `/luca-pr-address` skill, installed by `luca init` and `luca upgrade`: it addresses a pull request's review. It fetches every finding (line and file comments, each review's own text, and check run annotations), judges each one independently, then fixes it, asks about it, defers it or declines it, and replies on its thread. Comments from the review's owner are never declined or deferred: the agent fixes them or asks a question. It runs the repo's own checks, commits, pushes, posts one summary comment, and ends by refreshing the PR's story so it is `review-ready` again. A summary answers only the findings it lists, so a comment that arrives while a run is working stays open; the helper checks each summary before it is posted, keeps a comment's range and whether it is on a whole file, and waits for checks for a bounded time. It never merges and never force-pushes (#740).
+- bb9bf7e: New `/luca-pr-prep` skill, installed by `luca init` and `luca upgrade`: it writes a pull request's story, a guide that walks a reviewer through the change in call order with the why, the proof, and the counted blast radius of every changed region. The story's format is one versioned schema (`StorySchema`, exported from the engine). In your own repos the story is posted as PR comments with the `review-ready` label; in any other repo it is saved on your computer and nothing is posted. A reader looks in both places, and an old copy in one never hides a fresh story in the other; `findStory` and `pickStory` are exported so every reader follows that rule. When new commits land, the helper's `shift` command moves the story's line numbers to the new commit and lists what the commits edited, so a kept change never points at the wrong lines (#738).
+
 ## 14.0.0-alpha.35
 
 ### Patch Changes
