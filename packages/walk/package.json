@@ -1,0 +1,66 @@
+{
+    "name": "luca-walk",
+    "displayName": "Luca Walk",
+    "description": "Walk a pull request's story in full-file diffs and send one GitHub review.",
+    "version": "0.1.0",
+    "private": true,
+    "publisher": "luca",
+    "main": "./dist/extension.js",
+    "engines": {
+        "vscode": "^1.104.0"
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "scripts": {
+        "build": "bun build src/extension.ts --target node --format cjs --external vscode --outfile dist/extension.js",
+        "package": "bun run build && vsce package --no-dependencies --allow-missing-repository --skip-license --out luca-walk.vsix",
+        "test": "bun test"
+    },
+    "contributes": {
+        "commands": [
+            { "command": "lucaWalk.openPullRequest", "title": "Open pull request", "category": "Luca Walk" },
+            { "command": "lucaWalk.openFromList", "title": "Open a review-ready pull request", "category": "Luca Walk" },
+            { "command": "lucaWalk.showSummary", "title": "Show the summary", "category": "Luca Walk" },
+            { "command": "lucaWalk.showMap", "title": "Show the map", "category": "Luca Walk" },
+            { "command": "lucaWalk.startWalk", "title": "Start the walk", "category": "Luca Walk" },
+            { "command": "lucaWalk.nextStop", "title": "Next stop", "category": "Luca Walk" },
+            { "command": "lucaWalk.previousStop", "title": "Previous stop", "category": "Luca Walk" },
+            { "command": "lucaWalk.nextChange", "title": "Next change in this file", "category": "Luca Walk" },
+            { "command": "lucaWalk.previousChange", "title": "Previous change in this file", "category": "Luca Walk" },
+            { "command": "lucaWalk.backToWalk", "title": "Back to the walk", "category": "Luca Walk" },
+            { "command": "lucaWalk.suggestChange", "title": "Suggest a change", "category": "Luca Walk" },
+            { "command": "lucaWalk.commentOnFile", "title": "Comment on this file", "category": "Luca Walk" },
+            { "command": "lucaWalk.commentOnPullRequest", "title": "Comment on the pull request", "category": "Luca Walk" },
+            { "command": "lucaWalk.toggleLooksGood", "title": "This file looks good", "category": "Luca Walk" },
+            { "command": "lucaWalk.sendReview", "title": "Send the review", "category": "Luca Walk" },
+            { "command": "lucaWalk.writeStory", "title": "Write the story", "category": "Luca Walk" },
+            { "command": "lucaWalk.reloadStory", "title": "Reload the story", "category": "Luca Walk" }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                { "id": "lucaWalk", "title": "Luca Walk", "icon": "media/walk.svg" }
+            ],
+            "secondarySidebar": [
+                { "id": "lucaWalkContext", "title": "Luca Walk", "icon": "media/walk.svg" }
+            ]
+        },
+        "views": {
+            "lucaWalk": [
+                { "id": "lucaWalk.stops", "name": "Stops" }
+            ],
+            "lucaWalkContext": [
+                { "type": "webview", "id": "lucaWalk.context", "name": "Context" }
+            ]
+        }
+    },
+    "dependencies": {
+        "zod": "catalog:"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "@types/vscode": "~1.104.0",
+        "@vscode/vsce": "^3.6.0",
+        "typescript": "catalog:"
+    }
+}

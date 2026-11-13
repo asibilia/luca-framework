@@ -21,6 +21,7 @@ const config: CommitConfig = {
     ],
     scopes: [
         { value: 'engine', label: 'Luca v1 engine (packages/engine)' },
+        { value: 'walk', label: 'Luca Walk, the VS Code app (packages/walk)' },
         { value: 'config', label: 'Configuration' },
         { value: 'docs', label: 'Documentation' },
         { value: 'repo', label: 'Repository & Tooling' },

@@ -322,6 +322,7 @@ type(scope): description
 | -------- | ------------------------------------- |
 | `engine` | `packages/engine` changes             |
 | `board`  | `packages/board` changes              |
+| `walk`   | `packages/walk` changes (Luca Walk)   |
 | `repo`   | Repo-wide changes (docs, config, CI)  |
 
 ---
