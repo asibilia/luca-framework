@@ -1,4 +1,5 @@
 import type { PullRequestRef } from './pull-request-ref'
+import { isSignedIn } from './signed-in'
 import type { WalkBadge } from './walk-host'
 
 /**
@@ -36,8 +37,9 @@ export const notYourRepoBadge = ({
 const shellWord = (text: string): string => `'${text.replaceAll("'", `'\\''`)}'`
 
 /**
- * The command that writes the story of `ref` in a repo that isn't yours,
- * for the owner to copy and run. It starts `claude` in a new empty folder,
+ * The command that writes the story of `ref` anywhere but the owner's own
+ * pull request in their own repo (`storyPlace`), for the owner to copy
+ * and run. It starts `claude` in a new empty folder,
  * never in the checkout: the checkout holds the pull request author's
  * `.claude/settings.json` hooks, `.mcp.json` and `CLAUDE.md`, which
  * `claude` loads from the folder it starts in. `/luca-pr-prep` reads the
@@ -60,3 +62,41 @@ export const storyCommand = ({
     const prompt = `/luca-pr-prep ${url} --private Read the code with git -C ${checkout}, which holds the commits of this pull request.`
     return `cd "$(mktemp -d)" && claude ${shellWord(prompt)}`
 }
+
+/**
+ * Where `Write the story` runs `claude` (#766): in a terminal in the
+ * checkout only on the signed-in user's own pull request in their own
+ * repo, where the checkout's Claude settings are their own. Anywhere else
+ * (and when gh can't say who is signed in) the command to copy runs it in
+ * a new empty folder, and `why` says why, in a few plain words.
+ *
+ * @param author - The pull request's author; null when unknown.
+ * @example
+ * storyPlace({ login: 'octocat', your_repo: true, author: 'hubot' })
+ * // { kind: 'command', why: "This pull request isn't yours, so the story command runs outside its checkout." }
+ */
+export const storyPlace = ({
+    login,
+    your_repo,
+    author,
+}: {
+    login: string | null
+    your_repo: boolean
+    author: string | null
+}): { kind: 'terminal' } | { kind: 'command'; why: string } =>
+    login === null
+        ? {
+              kind: 'command',
+              why: 'Luca Walk could not read who is signed in to GitHub, so the story command runs outside the checkout.',
+          }
+        : !your_repo
+          ? {
+                kind: 'command',
+                why: "This repo isn't yours, so the story command runs outside its checkout.",
+            }
+          : !isSignedIn({ author, login })
+            ? {
+                  kind: 'command',
+                  why: "This pull request isn't yours, so the story command runs outside its checkout.",
+              }
+            : { kind: 'terminal' }

@@ -129,6 +129,8 @@ export type Shown = {
     login: string | null
     /** The repo is the signed-in user's own (#766, `isOwnRepo`). */
     your_repo: boolean
+    /** The pull request's author; null when it could not be read. */
+    author: string | null
     loaded: Loaded
     /**
      * GitHub's head, which the checkout is at, and the diff's base, for
@@ -276,6 +278,7 @@ export const loadPullRequest = async ({
         checkout,
         login,
         your_repo: isOwnRepo({ repo, login }),
+        author: pull?.author.login ?? null,
         loaded,
         head,
         story_requested: false,

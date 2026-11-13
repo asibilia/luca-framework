@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import { reviewRecordLine } from './review-record'
-import { htmlButtons, htmlText } from './testing/html-text'
+import { htmlButtons, htmlLines, htmlText } from './testing/html-text'
 import type { PretendReview } from './testing/pretend-github'
 import {
     makeSendRepo,
@@ -103,6 +103,81 @@ describe('writing the story in a repo that is not yours (#766)', () => {
             'Reload the story'
         )
     })
+})
+
+describe('the Write the story terminal only on your own pull request in your own repo (#766)', () => {
+    const WRITE = 'Write the story'
+    const REPO_WHY =
+        "This repo isn't yours, so the story command runs outside its checkout."
+    const PULL_WHY =
+        "This pull request isn't yours, so the story command runs outside its checkout."
+    const LOGIN_WHY =
+        'Luca Walk could not read who is signed in to GitHub, so the story command runs outside the checkout.'
+
+    test('your own pull request in your own repo: the button starts the terminal in the checkout', async () => {
+        const made_repo = await makeRepo('octocat/hello-world')
+        const made = await openSendApp(made_repo, {
+            author: 'Octocat',
+            story: null,
+        })
+
+        expect(htmlButtons({ html: made.summary() })).toContain(WRITE)
+        expect(htmlButtons({ html: made.summary() })).not.toContain(COPY)
+        await made.press('write_story')
+
+        expect(made.host.terminals).toHaveLength(1)
+        expect(made.host.terminals[0]?.cwd).toBe(made_repo.checkout)
+    })
+
+    for (const { name, repo_name, author, user_unreadable, why } of [
+        {
+            name: 'your own pull request in a repo that is not yours',
+            repo_name: NOT_YOURS,
+            author: 'octocat',
+            user_unreadable: false,
+            why: REPO_WHY,
+        },
+        {
+            name: "someone else's pull request in your own repo",
+            repo_name: 'octocat/hello-world',
+            author: 'hubot',
+            user_unreadable: false,
+            why: PULL_WHY,
+        },
+        {
+            name: "someone else's pull request in a repo that is not yours",
+            repo_name: NOT_YOURS,
+            author: 'hubot',
+            user_unreadable: false,
+            why: REPO_WHY,
+        },
+        {
+            name: 'your own pull request when gh cannot say who is signed in',
+            repo_name: 'octocat/hello-world',
+            author: 'octocat',
+            user_unreadable: true,
+            why: LOGIN_WHY,
+        },
+    ]) {
+        test(`${name}: the command to copy, saying why, and a stale Write the story button copies it too`, async () => {
+            const made_repo = await makeRepo(repo_name)
+            const made = await openSendApp(made_repo, {
+                author,
+                user_unreadable,
+                story: null,
+            })
+            const command = `cd "$(mktemp -d)" && claude '/luca-pr-prep https://github.com/${repo_name}/pull/12 --private Read the code with git -C ${made_repo.checkout}, which holds the commits of this pull request.'`
+
+            expect(htmlButtons({ html: made.summary() })).toContain(COPY)
+            expect(htmlButtons({ html: made.summary() })).not.toContain(WRITE)
+            expect(htmlLines({ html: made.summary() })).toContain(why)
+            expect(htmlText({ html: made.summary() })).toContain(command)
+            await made.press('write_story')
+
+            expect(made.host.terminals).toEqual([])
+            expect(made.host.clipboard).toBe(command)
+        })
+    }
 })
 
 describe('the review record in a repo that is not yours (#766)', () => {

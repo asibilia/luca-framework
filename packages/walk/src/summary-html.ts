@@ -84,18 +84,27 @@ const summaryBody = ({ story }: { story: Story }): string => {
 
 const WRITE = button({ id: 'write_story', label: 'Write the story' })
 
+/** The command shown instead of `Write the story`, and why. */
+type StoryCommand = { command: string; why: string }
+
 /**
- * Where `Write the story` would be: the button, or, in a repo that isn't
- * yours (#766), the command to copy and its Copy button.
+ * Where `Write the story` would be: the button, or, anywhere but the
+ * owner's own pull request in their own repo (#766), why not, the command
+ * to copy and its Copy button.
  */
-const writePart = ({ story_command }: { story_command: string | null }) =>
+const writePart = ({
+    story_command,
+}: {
+    story_command: StoryCommand | null
+}) =>
     story_command === null
         ? WRITE
         : [
+              paragraph({ text: story_command.why }),
               paragraph({
                   text: "To write the story, run this in a terminal. It starts Claude outside this checkout, so this repo's Claude settings are never loaded:",
               }),
-              `<pre><code>${escapeHtml({ text: story_command })}</code></pre>`,
+              `<pre><code>${escapeHtml({ text: story_command.command })}</code></pre>`,
               button({ id: 'copy_story_command', label: 'Copy the command' }),
           ].join('\n')
 const BROWSE = button({ id: 'browse_diff', label: 'Browse the diff' })
@@ -196,8 +205,8 @@ export const summaryHtml = ({
     replies?: Reply[]
     /** What changed since the owner's last review; null on a first visit. */
     visit_note?: string | null
-    /** The command shown instead of `Write the story`; null for the button. */
-    story_command?: string | null
+    /** The command shown instead of `Write the story`, and why; null for the button. */
+    story_command?: StoryCommand | null
     /** Why a story on the pull request is not used (#766); null when none is left out. */
     story_note?: string | null
 }): string => {

@@ -281,6 +281,6 @@ What Luca Walk keeps after every review it sends: the commit reviewed and the fi
 _Avoid_: review marker, review state
 
 **Your repo**:
-A repo whose owner is the signed-in GitHub user's own account. An organization's repo is not, even one the owner runs, and no repo is when `gh` can't say who is signed in. It is the one rule behind a story's default home and what Luca Walk does on GitHub: in a repo that isn't yours it changes no labels, posts no review record, and offers a command to copy instead of starting `claude` in the checkout.
+A repo whose owner is the signed-in GitHub user's own account. An organization's repo is not, even one the owner runs, and no repo is when `gh` can't say who is signed in. It is the one rule behind a story's default home and what Luca Walk does on GitHub: in a repo that isn't yours it changes no labels and posts no review record. Luca Walk starts `claude` in the checkout only on your own pull request in your repo; anywhere else it offers a command to copy that starts `claude` in a new empty folder.
 _Avoid_: owned repo, my repo, trusted repo
 

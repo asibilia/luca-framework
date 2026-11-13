@@ -12,7 +12,7 @@ import {
     type Shown,
 } from './load-pull-request'
 import { mapHtml } from './map-html'
-import { notYourRepoBadge, storyCommand } from './not-your-repo'
+import { notYourRepoBadge, storyCommand, storyPlace } from './not-your-repo'
 import {
     checkoutRefOf,
     githubRepoOf,
@@ -111,6 +111,28 @@ export const createWalkApp = ({
 
     const error = (text: string) => host.showMessage({ kind: 'error', text })
 
+    /**
+     * The command shown instead of `Write the story`, and why; null on the
+     * owner's own pull request in their own repo, where the button starts
+     * a terminal in the checkout.
+     */
+    const storyCommandOf = (now: Shown) => {
+        const place = storyPlace({
+            login: now.login,
+            your_repo: now.your_repo,
+            author: now.author,
+        })
+        return place.kind === 'terminal'
+            ? null
+            : {
+                  command: storyCommand({
+                      ref: now.ref,
+                      checkout: now.checkout,
+                  }),
+                  why: place.why,
+              }
+    }
+
     const showSummary = async (now: Shown) => {
         await host.showPanel({
             id: 'summary',
@@ -122,9 +144,7 @@ export const createWalkApp = ({
                 replies: now.replies,
                 visit_note: visitNote({ visit: now.visit }),
                 story_note: now.story_note,
-                story_command: now.your_repo
-                    ? null
-                    : storyCommand({ ref: now.ref, checkout: now.checkout }),
+                story_command: storyCommandOf(now),
             }),
         })
     }
@@ -267,12 +287,14 @@ export const createWalkApp = ({
     }
 
     /**
-     * `Write the story`: in your repo, `claude` runs `/luca-pr-prep` in a
-     * terminal in the checkout; in a repo that isn't yours (#766), the
-     * command that runs it outside the checkout is copied instead.
+     * `Write the story`: on your own pull request in your own repo,
+     * `claude` runs `/luca-pr-prep` in a terminal in the checkout;
+     * anywhere else (#766), the command that runs it outside the checkout
+     * is copied instead. The only place Luca Walk starts a terminal.
      */
     const writeStory = async (now: Shown) => {
-        if (now.your_repo) {
+        const shown_command = storyCommandOf(now)
+        if (shown_command === null) {
             const url = `https://github.com/${now.ref.repo}/pull/${now.ref.number}`
             await host.startTerminal({
                 name: 'Luca: write the story',
@@ -280,9 +302,7 @@ export const createWalkApp = ({
                 command: `claude "/luca-pr-prep ${url}"`,
             })
         } else {
-            await host.copyText({
-                text: storyCommand({ ref: now.ref, checkout: now.checkout }),
-            })
+            await host.copyText({ text: shown_command.command })
             await host.showMessage({
                 kind: 'info',
                 text: `Copied the command that writes the story of #${now.ref.number}. Run it in a terminal, then press Reload the story.`,
