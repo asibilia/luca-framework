@@ -46,6 +46,16 @@ Tests:
 - `packages/walk/src/review-ready-list.test.ts`
 - `packages/walk/src/review-ready-list.e2e.test.ts`
 
+## Browsing without a story
+
+`Browse the diff` (the Summary panel's button, for no story, a stale or broken story, or a newer format) makes one stop per changed file, in path order, from the diff between the merge base of `origin/<base branch>` and the head. Each stop opens its diff at the file's first hunk, the Context view says there is no story, and Next and Back work.
+
+Reached by: the Summary panel's `Browse the diff` button.
+
+Tests:
+
+- `packages/walk/src/browse-diff.test.ts`
+
 ## The walk
 
 `Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file.
