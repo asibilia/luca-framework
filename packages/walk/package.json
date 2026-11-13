@@ -35,7 +35,11 @@
             { "command": "lucaWalk.toggleLooksGood", "title": "This file looks good", "category": "Luca Walk" },
             { "command": "lucaWalk.sendReview", "title": "Send the review", "category": "Luca Walk" },
             { "command": "lucaWalk.writeStory", "title": "Write the story", "category": "Luca Walk" },
-            { "command": "lucaWalk.reloadStory", "title": "Reload the story", "category": "Luca Walk" }
+            { "command": "lucaWalk.reloadStory", "title": "Reload the story", "category": "Luca Walk" },
+            { "command": "lucaWalk.saveDraft", "title": "Save draft", "category": "Luca Walk" },
+            { "command": "lucaWalk.editDraft", "title": "Edit", "category": "Luca Walk" },
+            { "command": "lucaWalk.deleteDraft", "title": "Delete", "category": "Luca Walk" },
+            { "command": "lucaWalk.saveDraftEdit", "title": "Save", "category": "Luca Walk" }
         ],
         "viewsContainers": {
             "activitybar": [
@@ -51,6 +55,24 @@
             ],
             "lucaWalkContext": [
                 { "type": "webview", "id": "lucaWalk.context", "name": "Context" }
+            ]
+        },
+        "menus": {
+            "commandPalette": [
+                { "command": "lucaWalk.saveDraft", "when": "false" },
+                { "command": "lucaWalk.editDraft", "when": "false" },
+                { "command": "lucaWalk.deleteDraft", "when": "false" },
+                { "command": "lucaWalk.saveDraftEdit", "when": "false" }
+            ],
+            "comments/commentThread/context": [
+                { "command": "lucaWalk.saveDraft", "group": "inline", "when": "commentController == lucaWalk && commentThreadIsEmpty" }
+            ],
+            "comments/comment/title": [
+                { "command": "lucaWalk.editDraft", "group": "inline@1", "when": "commentController == lucaWalk && comment == draft" },
+                { "command": "lucaWalk.deleteDraft", "group": "inline@2", "when": "commentController == lucaWalk && comment == draft" }
+            ],
+            "comments/comment/context": [
+                { "command": "lucaWalk.saveDraftEdit", "group": "inline", "when": "commentController == lucaWalk && comment == draft" }
             ]
         }
     },

@@ -34,6 +34,8 @@ export type WalkThread = {
     label: string
     read_only: boolean
     comments: { author: string; body: string }[]
+    /** The draft a `Draft` thread shows, so VS Code can edit or delete it. */
+    draft_id?: string
 }
 
 export type WalkHost = {

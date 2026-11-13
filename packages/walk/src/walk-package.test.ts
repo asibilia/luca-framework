@@ -61,6 +61,12 @@ const ManifestSchema = z.object({
         ),
         viewsContainers: z.record(z.string(), z.array(ContainerSchema)),
         views: z.record(z.string(), z.array(ViewSchema)),
+        menus: z.record(
+            z.string(),
+            z.array(
+                z.object({ command: z.string(), when: z.string().optional() })
+            )
+        ),
     }),
 })
 
@@ -93,7 +99,13 @@ describe('the @luca/walk package (#753)', () => {
 
     test('the manifest contributes the 17 commands, the Stops and Context views, and onStartupFinished', async () => {
         const manifest = await readManifest()
-        const commands = manifest.contributes.commands
+        const declared = manifest.contributes.commands
+        const hidden = new Set(
+            (manifest.contributes.menus.commandPalette ?? [])
+                .filter(({ when }) => when === 'false')
+                .map(({ command }) => command)
+        )
+        const commands = declared.filter(({ command }) => !hidden.has(command))
 
         expect(
             commands.map(({ command, title }) => [command, title]).toSorted()
@@ -101,6 +113,11 @@ describe('the @luca/walk package (#753)', () => {
         expect(commands.every(({ category }) => category === 'Luca Walk')).toBe(
             true
         )
+        const declaredIds = new Set(declared.map(({ command }) => command))
+        const referenced = Object.values(manifest.contributes.menus)
+            .flat()
+            .map(({ command }) => command)
+        expect(referenced.filter((id) => !declaredIds.has(id))).toEqual([])
         expect(
             viewsUnder(manifest, 'activitybar').map(({ id }) => id)
         ).toContain('lucaWalk.stops')

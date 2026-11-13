@@ -20,6 +20,7 @@ const DraftCommentSchema = z.object({
     end_line: z.number().int().positive().nullable(),
     body: z.string(),
 })
+export type DraftComment = z.infer<typeof DraftCommentSchema>
 
 /** Where the owner is in the walk. */
 export const WalkPlaceSchema = z.object({
@@ -93,6 +94,35 @@ export const saveDrafts = async ({
     await rename(temporary, path)
 }
 
+/** The last update of each drafts file, so updates run one at a time. */
+const updating = new Map<string, Promise<unknown>>()
+
+/**
+ * Reads the pull request's drafts, changes them with `change` and saves
+ * them, one update at a time per file, so no update loses another's.
+ * Answers the drafts as saved.
+ */
+export const updateDrafts = ({
+    walk_dir,
+    ref,
+    change,
+}: {
+    walk_dir: string
+    ref: PullRequestRef
+    change: (drafts: Drafts) => Drafts
+}): Promise<Drafts> => {
+    const path = draftsPath({ walk_dir, ref })
+    const update = (updating.get(path) ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(async () => {
+            const drafts = change(await readDrafts({ walk_dir, ref }))
+            await saveDrafts({ walk_dir, ref, drafts })
+            return drafts
+        })
+    updating.set(path, update)
+    return update
+}
+
 /** Keeps `walk` as the owner's place, leaving the rest of the drafts as they are. */
 export const saveWalkPlace = async ({
     walk_dir,
@@ -103,6 +133,9 @@ export const saveWalkPlace = async ({
     ref: PullRequestRef
     walk: WalkPlace
 }): Promise<void> => {
-    const drafts = await readDrafts({ walk_dir, ref })
-    await saveDrafts({ walk_dir, ref, drafts: { ...drafts, walk } })
+    await updateDrafts({
+        walk_dir,
+        ref,
+        change: (drafts) => ({ ...drafts, walk }),
+    })
 }

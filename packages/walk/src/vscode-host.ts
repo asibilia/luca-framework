@@ -71,15 +71,56 @@ const contextView = ({
     }
 }
 
-const commentThreads = () => {
+/** What the owner did to a draft in a comment thread. */
+export type DraftEvents = {
+    onDraftAdded: (added: {
+        uri: string
+        start_line: number
+        end_line: number
+        body: string
+    }) => void
+    onDraftEdited: (edited: { draft_id: string; body: string }) => void
+    onDraftDeleted: (deleted: { draft_id: string }) => void
+}
+
+/** The thread menu commands; registered here, placed by the manifest's menus. */
+const SAVE_DRAFT = 'lucaWalk.saveDraft'
+const EDIT_DRAFT = 'lucaWalk.editDraft'
+const SAVE_DRAFT_EDIT = 'lucaWalk.saveDraftEdit'
+const DELETE_DRAFT = 'lucaWalk.deleteDraft'
+
+/** A shown comment, with the draft it is, when it is one. */
+type ShownComment = vscode.Comment & { draft_id: string | null }
+
+const commentThreads = ({
+    events,
+    context,
+}: {
+    events: DraftEvents
+    context: vscode.ExtensionContext
+}) => {
     const controller = vscode.comments.createCommentController(
         'lucaWalk',
         'Luca Walk'
     )
+    controller.commentingRangeProvider = {
+        provideCommentingRanges: (document) => [
+            new vscode.Range(0, 0, Math.max(document.lineCount - 1, 0), 0),
+        ],
+    }
     let shown: vscode.CommentThread[] = []
     const show = (threads: WalkThread[]) => {
         for (const thread of shown) thread.dispose()
         shown = threads.map((thread) => {
+            const comments: ShownComment[] = thread.comments.map(
+                ({ author, body }) => ({
+                    author: { name: author },
+                    body: new vscode.MarkdownString(body),
+                    mode: vscode.CommentMode.Preview,
+                    contextValue: thread.draft_id === undefined ? '' : 'draft',
+                    draft_id: thread.draft_id ?? null,
+                })
+            )
             const made = controller.createCommentThread(
                 vscode.Uri.parse(thread.uri),
                 new vscode.Range(
@@ -88,18 +129,57 @@ const commentThreads = () => {
                     thread.end_line - 1,
                     0
                 ),
-                thread.comments.map(({ author, body }) => ({
-                    author: { name: author },
-                    body: new vscode.MarkdownString(body),
-                    mode: vscode.CommentMode.Preview,
-                }))
+                comments
             )
             made.label = thread.label
-            made.canReply = !thread.read_only
+            made.canReply = false
+            made.contextValue = thread.read_only ? '' : 'draft'
             return made
         })
     }
-    return { controller, show }
+    const bodyOf = (body: string | vscode.MarkdownString) =>
+        typeof body === 'string' ? body : body.value
+    context.subscriptions.push(
+        controller,
+        vscode.commands.registerCommand(
+            SAVE_DRAFT,
+            ({ thread, text }: vscode.CommentReply) => {
+                const range = thread.range
+                thread.dispose()
+                if (range === undefined) return
+                events.onDraftAdded({
+                    uri: thread.uri.toString(),
+                    start_line: range.start.line + 1,
+                    end_line: range.end.line + 1,
+                    body: text,
+                })
+            }
+        ),
+        vscode.commands.registerCommand(EDIT_DRAFT, (comment: ShownComment) => {
+            comment.mode = vscode.CommentMode.Editing
+            for (const thread of shown) {
+                if (thread.comments.includes(comment)) {
+                    thread.comments = [...thread.comments]
+                }
+            }
+        }),
+        vscode.commands.registerCommand(
+            SAVE_DRAFT_EDIT,
+            (comment: ShownComment) => {
+                const { draft_id } = comment
+                if (draft_id === null) return
+                events.onDraftEdited({ draft_id, body: bodyOf(comment.body) })
+            }
+        ),
+        vscode.commands.registerCommand(
+            DELETE_DRAFT,
+            (comment: ShownComment) => {
+                const { draft_id } = comment
+                if (draft_id !== null) events.onDraftDeleted({ draft_id })
+            }
+        )
+    )
+    return { show }
 }
 
 /**
@@ -111,15 +191,17 @@ export const createVscodeHost = ({
     context,
     onPanelMessage,
     onStopPicked,
+    draft_events,
 }: {
     context: vscode.ExtensionContext
     onPanelMessage: (event: PanelMessage) => void
     onStopPicked: (picked: { stop_id: string }) => void
+    draft_events: DraftEvents
 }): WalkHost => {
     const panels = new Map<string, vscode.WebviewPanel>()
     const stops = stopsView()
     const contextBox = contextView({ onPanelMessage })
-    const threads = commentThreads()
+    const threads = commentThreads({ events: draft_events, context })
     const stopsTree = vscode.window.createTreeView('lucaWalk.stops', {
         treeDataProvider: stops.provider,
     })
@@ -131,8 +213,7 @@ export const createVscodeHost = ({
         vscode.window.registerWebviewViewProvider(
             'lucaWalk.context',
             contextBox.provider
-        ),
-        threads.controller
+        )
     )
 
     return {

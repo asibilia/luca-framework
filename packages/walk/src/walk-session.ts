@@ -28,12 +28,15 @@ export const createWalkSession = async ({
     ref,
     checkout,
     story,
+    looksGood,
 }: {
     host: WalkHost
     walk_dir: string
     ref: PullRequestRef
     checkout: string
     story: Story
+    /** Whether the owner marked the file `path` as looking good. */
+    looksGood: (path: string) => boolean
 }) => {
     const { stops } = story
     const stopOf = (id: string | null) =>
@@ -63,16 +66,25 @@ export const createWalkSession = async ({
         return saving
     }
 
+    /** A stop looks good when every file it changes was marked so. */
+    const stopLooksGood = (stop: StoryStop) =>
+        stop.changes.length > 0 &&
+        stop.changes.every(({ path }) => looksGood(path))
+
     const showStops = () =>
         host.showStops({
             items: stops.map((stop, at) => ({
                 label: `${at + 1}. ${stop.title}`,
-                description:
+                description: [
                     stop.id === place.current_stop_id
                         ? 'current'
                         : place.done_stop_ids.includes(stop.id)
                           ? 'done'
                           : '',
+                    stopLooksGood(stop) ? 'looks good' : '',
+                ]
+                    .filter((part) => part !== '')
+                    .join(' · '),
                 stop_id: stop.id,
             })),
         })

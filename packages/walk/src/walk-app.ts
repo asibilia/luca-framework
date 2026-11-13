@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { createBrowseSession } from './browse-session'
 import { prepareCheckout } from './checkout'
+import { createFeedback, type Feedback } from './feedback'
 import { mapHtml } from './map-html'
 import {
     checkoutPath,
@@ -77,6 +78,17 @@ type Shown = {
     story_requested: boolean
     /** The walk through the story, when it was written for the head. */
     walk: WalkSession | null
+    /** The owner's unsent feedback on it. */
+    feedback: Feedback
+}
+
+/** The feedback commands, by what they ask of the feedback. */
+const FEEDBACK_STEPS: Record<string, (feedback: Feedback) => Promise<void>> = {
+    'lucaWalk.suggestChange': (feedback) => feedback.suggestChange(),
+    'lucaWalk.commentOnFile': (feedback) => feedback.commentOnFile(),
+    'lucaWalk.commentOnPullRequest': (feedback) =>
+        feedback.commentOnPullRequest(),
+    'lucaWalk.toggleLooksGood': (feedback) => feedback.toggleLooksGood(),
 }
 
 /** The walk commands, by what they ask of the walk. */
@@ -144,12 +156,26 @@ export const createWalkApp = ({
             loaded = { status: 'failed', message: messageOf(thrown) }
         }
         const checkout = checkoutPath({ walk_dir, ref })
-        const walkable =
-            loaded.status === 'found' &&
-            loaded.found.status === 'ok' &&
-            loaded.found.story.head_sha === loaded.head_sha
+        const story =
+            loaded.status === 'found' && loaded.found.status === 'ok'
                 ? loaded.found.story
                 : null
+        const walkable =
+            story !== null &&
+            loaded.status === 'found' &&
+            story.head_sha === loaded.head_sha
+                ? story
+                : null
+        const feedback = await createFeedback({
+            host,
+            walk_dir,
+            ref,
+            checkout,
+            base_sha: story?.base_sha ?? null,
+            onApprovedChanged: async () => {
+                await shown?.walk?.showStops()
+            },
+        })
         const walk =
             walkable === null
                 ? null
@@ -159,9 +185,18 @@ export const createWalkApp = ({
                       ref,
                       checkout,
                       story: walkable,
+                      looksGood: feedback.looksGood,
                   })
-        shown = { ref, checkout, loaded, story_requested: false, walk }
+        shown = {
+            ref,
+            checkout,
+            loaded,
+            story_requested: false,
+            walk,
+            feedback,
+        }
         await showSummary(shown)
+        await feedback.showThreads()
         if (walk !== null) await walk.showStops()
     }
 
@@ -356,7 +391,33 @@ export const createWalkApp = ({
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
             const step = WALK_STEPS[command]
             if (step !== undefined) return walkStep(now, step)
+            const feedbackStep = FEEDBACK_STEPS[command]
+            if (feedbackStep !== undefined) return feedbackStep(now.feedback)
             return notBuilt()
+        },
+
+        /** A comment typed in VS Code's comment box. */
+        draftCommentAdded: async (added: {
+            uri: string
+            start_line: number
+            end_line: number
+            body: string
+        }) => {
+            if (shown === null) {
+                await error('Open a pull request first.')
+                return
+            }
+            await shown.feedback.draftAdded(added)
+        },
+
+        /** A draft's body was edited in its thread. */
+        draftEdited: async (edited: { draft_id: string; body: string }) => {
+            await shown?.feedback.draftEdited(edited)
+        },
+
+        /** A draft was deleted from its thread. */
+        draftDeleted: async (deleted: { draft_id: string }) => {
+            await shown?.feedback.draftDeleted(deleted)
         },
 
         /** VS Code started the extension: load the checkout the window shows. */

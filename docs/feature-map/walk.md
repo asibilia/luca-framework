@@ -85,3 +85,13 @@ Reached by: `Luca Walk: Show the map`, and the Summary panel's `Show the map` bu
 Tests:
 
 - `packages/walk/src/map.test.ts`
+
+## Feedback kept until it is sent
+
+Comments on lines (either side of the diff), suggested changes, file comments, pull request comments and "this file looks good" marks are shown as `Draft` threads and kept at once in the pull request's drafts file, so a new window finds them again. A draft can be edited or deleted before it is sent.
+
+Reached by: the comment controller's comment box, `Luca Walk: Suggest a change`, `Comment on this file`, `Comment on the pull request` and `This file looks good`.
+
+Tests:
+
+- `packages/walk/src/draft-feedback.test.ts`

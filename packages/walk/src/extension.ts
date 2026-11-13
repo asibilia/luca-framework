@@ -26,6 +26,17 @@ export const activate = (context: vscode.ExtensionContext): void => {
         onStopPicked: (picked) => {
             void app?.stopPicked(picked)
         },
+        draft_events: {
+            onDraftAdded: (added) => {
+                void app?.draftCommentAdded(added)
+            },
+            onDraftEdited: (edited) => {
+                void app?.draftEdited(edited)
+            },
+            onDraftDeleted: (deleted) => {
+                void app?.draftDeleted(deleted)
+            },
+        },
     })
     const env = process.env
     const made = createWalkApp({
