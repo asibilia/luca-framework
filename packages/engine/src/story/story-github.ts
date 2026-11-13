@@ -236,6 +236,31 @@ export const removeReadyLabel = async ({
 }
 
 /**
+ * Whether `repo` is the signed-in user's own: its owner is `login`, in
+ * any case. An organization's repo is not, and no repo is when the login
+ * is unknown (null or empty). `defaultStoryHome` and Luca Walk both use
+ * this one rule.
+ *
+ * @example
+ * isOwnRepo({ repo: 'octocat/hello-world', login: 'Octocat' }) // true
+ * isOwnRepo({ repo: 'acme/site', login: 'octocat' }) // false
+ */
+export const isOwnRepo = ({
+    repo,
+    login,
+}: {
+    repo: string
+    login: string | null
+}): boolean => {
+    const owner = repo.split('/')[0] ?? ''
+    return (
+        login !== null &&
+        login !== '' &&
+        owner.toLowerCase() === login.toLowerCase()
+    )
+}
+
+/**
  * Which home a story for this repo goes to when no flag says: `shared`
  * when the repo belongs to the signed-in GitHub user's own account,
  * `private` for every other repo (an organization's, a stranger's), and
@@ -248,13 +273,12 @@ export const defaultStoryHome = async ({
     gh: Gh
     repo: string
 }): Promise<{ home: 'shared' | 'private'; why: string }> => {
-    const owner = repo.split('/')[0] ?? ''
     const user = await gh({ args: ['api', 'user', '--jq', '.login'] })
     const login = user.stdout.trim()
     if (!user.ok || login === '') {
         return { home: 'private', why: 'gh could not say who is signed in' }
     }
-    return owner.toLowerCase() === login.toLowerCase()
+    return isOwnRepo({ repo, login })
         ? { home: 'shared', why: `${repo} belongs to ${login}` }
         : { home: 'private', why: `${repo} does not belong to ${login}` }
 }

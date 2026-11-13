@@ -16,6 +16,7 @@ test('the engine exports the story schema, the two-homes rule, and the line move
         'findStory',
         'pickStory',
         'defaultStoryHome',
+        'isOwnRepo',
         'loadSharedStory',
         'postSharedStory',
         'prNow',
@@ -30,4 +31,20 @@ test('the engine exports the story schema, the two-homes rule, and the line move
         expect(typeof engine[name]).toBe('function')
     }
     expect(engine.REVIEW_READY_LABEL).toBe('review-ready')
+})
+
+/**
+ * "Your repo" (#766): the one rule the engine's default home and Luca
+ * Walk share. An organization's repo is never yours, and neither is any
+ * repo when the signed-in user is unknown.
+ */
+test("isOwnRepo: a repo is yours only when its owner is the signed-in user's login, in any case", () => {
+    expect(engine.isOwnRepo({ repo: 'Octocat/hello', login: 'octocat' })).toBe(
+        true
+    )
+    expect(engine.isOwnRepo({ repo: 'acme/site', login: 'octocat' })).toBe(
+        false
+    )
+    expect(engine.isOwnRepo({ repo: 'octocat/hello', login: null })).toBe(false)
+    expect(engine.isOwnRepo({ repo: 'octocat/hello', login: '' })).toBe(false)
 })

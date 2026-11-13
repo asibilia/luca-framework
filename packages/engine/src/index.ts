@@ -325,6 +325,7 @@ export {
 } from './story/story-comments'
 export {
     defaultStoryHome,
+    isOwnRepo,
     loadSharedStory,
     postSharedStory,
     prNow,
