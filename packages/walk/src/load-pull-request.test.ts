@@ -4,6 +4,9 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { contextHtml, notInWalkHtml } from './context-html'
+import { mapHtml } from './map-html'
+import { summaryHtml } from './summary-html'
 import { createFakeHost } from './testing/fake-host'
 import {
     htmlButtons,
@@ -17,6 +20,7 @@ import {
 } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
 import { createWalkApp } from './walk-app'
+import { page } from './webview-html'
 
 import { packStory, unpackStory } from '../../engine/src/story/story-comments'
 import type { Story } from '../../engine/src/story/story-schema'
@@ -62,6 +66,15 @@ const walkStory = (): Story => ({
     pr_url: URL,
     head_sha: HEAD,
 })
+
+/** Expects `html`'s CSP to let only scripts with a nonce run. */
+const expectNonceOnly = ({ html }: { html: string }) => {
+    const sources = scriptSources({ html }) ?? []
+    expect(sources.length).toBeGreaterThan(0)
+    for (const source of sources) {
+        expect(source).toMatch(/^'nonce-[A-Za-z0-9+/=_-]+'$/)
+    }
+}
 
 /** The fixture story with its summary changed. */
 const withSummary = (summary: Partial<Story['summary']>): Story => {
@@ -386,12 +399,38 @@ describe('loading a pull request in its checkout (#753)', () => {
         )
 
         expect(pages.length).toBeGreaterThanOrEqual(4)
-        for (const html of pages) {
-            const sources = scriptSources({ html }) ?? []
-            expect(sources.length).toBeGreaterThan(0)
-            for (const source of sources) {
-                expect(source).toMatch(/^'nonce-[A-Za-z0-9+/=_-]+'$/)
-            }
-        }
+        for (const html of pages) expectNonceOnly({ html })
+    })
+
+    test('the Map, the Context view, the browse page and a failed Summary have the same Content-Security-Policy', () => {
+        const kept = walkStory()
+        const pages = [
+            mapHtml({ story: kept }),
+            contextHtml({
+                story: kept,
+                cursor: {
+                    path: 'src/core/run-ticket.ts',
+                    side: 'head',
+                    line: 45,
+                },
+            }),
+            contextHtml({
+                story: kept,
+                cursor: {
+                    path: 'src/core/run-ticket.ts',
+                    side: 'head',
+                    line: 1,
+                },
+            }),
+            notInWalkHtml(),
+            page({ title: 'Context', body: '' }),
+            summaryHtml({
+                pr_number: 12,
+                loaded: { status: 'failed', message: BAD_GATEWAY },
+                story_requested: false,
+            }),
+        ]
+
+        for (const html of pages) expectNonceOnly({ html })
     })
 })

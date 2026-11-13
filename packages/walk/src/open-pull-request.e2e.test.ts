@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import {
     mkdir,
     mkdtemp,
@@ -36,6 +37,11 @@ setDefaultTimeout(30_000)
 const REPO = 'octocat/hello-world'
 const URL_12 = 'https://github.com/octocat/hello-world/pull/12'
 const NOT_COMMITTED = 'The checkout for #12 has changes that are not committed.'
+/** A manifest with a dependency, so the checkout has something to install. */
+const PACKAGE_JSON =
+    '{ "name": "hello", "dependencies": { "zod": "^4.0.0" } }\n'
+/** Words of a command that installs or runs a package manager. */
+const INSTALLING = ['install', 'bun', 'bunx', 'npm', 'npx', 'yarn', 'pnpm']
 
 let dir = ''
 let origin = ''
@@ -76,6 +82,7 @@ beforeEach(async () => {
     await git(origin, 'init', '-q', '-b', 'main')
     await writeFile(join(origin, 'README.md'), 'hello\n')
     await writeFile(join(origin, 'src.ts'), 'export const a = 1\n')
+    await writeFile(join(origin, 'package.json'), PACKAGE_JSON)
     await commitAll(origin, 'first')
     await git(origin, 'branch', 'feature')
     first_head = await movePullHead('export const a = 2\n')
@@ -112,10 +119,14 @@ const setUp = ({ workspace_folder }: { workspace_folder: string | null }) => {
         ],
     })
     const host = createFakeHost({ workspace_folder })
+    const git_calls: string[][] = []
     const app = createWalkApp({
         host,
         gh: github.gh,
-        git: testGit,
+        git: (call) => {
+            git_calls.push([...call.args])
+            return testGit(call)
+        },
         walk_dir,
         stories_dir: join(dir, 'stories'),
         remote_url: ({ repo }: { repo: string }) =>
@@ -133,7 +144,7 @@ const setUp = ({ workspace_folder }: { workspace_folder: string | null }) => {
     }
     /** `Reload the story`, as after `Write the story` or a restart. */
     const reload = () => app.run({ command: 'lucaWalk.reloadStory', args: [] })
-    return { host, open, moveHead, reload }
+    return { host, open, moveHead, reload, github, git_calls }
 }
 
 /** Expects the checkout of #12: a detached worktree of Luca Walk's clone at `head`. */
@@ -205,6 +216,26 @@ describe('opening a pull request into its own checkout (#753)', () => {
         expect(errors.some(({ text }) => text.startsWith(NOT_COMMITTED))).toBe(
             true
         )
+    })
+
+    test('nothing is installed in the checkout: no terminal, no package manager, no node_modules', async () => {
+        const { host, open, github, git_calls } = setUp({
+            workspace_folder: null,
+        })
+
+        await open(URL_12)
+
+        await expectCheckoutAt(first_head)
+        expect(await readFile(join(checkout, 'package.json'), 'utf8')).toBe(
+            PACKAGE_JSON
+        )
+        expect(host.terminals).toEqual([])
+        const words = [
+            ...git_calls.flat(),
+            ...github.state.calls.flatMap((call) => call.split(' ')),
+        ]
+        expect(words.filter((word) => INSTALLING.includes(word))).toEqual([])
+        expect(existsSync(join(checkout, 'node_modules'))).toBe(false)
     })
 
     test("the window's own clone stays on main with no changed files", async () => {

@@ -18,7 +18,7 @@ Every command is under `Luca Walk:` in the command palette. There are no default
 
 ## Workspace Trust
 
-Luca Walk works in VS Code's Restricted Mode, so it never needs you to trust a pull request's code. Each pull request opens as its own folder, and VS Code asks whether to trust it. Keep a checkout of someone else's pull request in Restricted Mode: trusting it lets that pull request's `.vscode/tasks.json`, workspace settings and other extensions run its author's code. Never trust the `checkouts` folder itself (`~/.local/state/luca/walk/checkouts`), because that trusts every pull request opened under it.
+Luca Walk works in VS Code's Restricted Mode, so it never needs you to trust a pull request's code. Each pull request opens as its own folder, and VS Code asks whether to trust it. Keep a checkout of someone else's pull request in Restricted Mode: trusting it lets that pull request's `.vscode/tasks.json`, workspace settings and other extensions run its author's code. Never trust the `checkouts` folder itself (`~/.local/state/luca/walk/checkouts`), because that trusts every pull request opened under it. "Write the story" starts `claude` inside the pull request's checkout, and that checkout holds the pull request author's `.claude/settings.json` hooks, `.mcp.json` and `CLAUDE.md`. `claude` can load them, and hooks run commands. Only use it on pull requests you trust.
 
 ## How it is built
 

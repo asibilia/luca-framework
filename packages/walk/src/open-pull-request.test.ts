@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { walkDir } from './pull-request-ref'
 import { createFakeHost } from './testing/fake-host'
 import { createPretendGitHub } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
@@ -61,5 +62,23 @@ describe('opening a pull request by an answer that names none (#753)', () => {
             text: 'That is not a pull request number or URL.',
         })
         expect(host.folders).toEqual([])
+    })
+})
+
+describe("Luca Walk's folder (#753)", () => {
+    test('with LUCA_WALK_DIR unset or empty it is ~/.local/state/luca/walk', () => {
+        const home = join(dir, 'home')
+        const fallback = join(home, '.local', 'state', 'luca', 'walk')
+
+        expect(walkDir({ home, env: {} })).toBe(fallback)
+        expect(walkDir({ home, env: { LUCA_WALK_DIR: '' } })).toBe(fallback)
+    })
+
+    test('with LUCA_WALK_DIR set it is that folder', () => {
+        const chosen = join(dir, 'chosen')
+
+        expect(
+            walkDir({ home: join(dir, 'home'), env: { LUCA_WALK_DIR: chosen } })
+        ).toBe(chosen)
     })
 })

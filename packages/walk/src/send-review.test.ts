@@ -27,6 +27,13 @@ import { REPLY_MARKER } from '../../engine/skills/luca-pr-address/scripts/pr-fin
 
 let repo: SendRepo
 
+/** A gh call that reads or changes labels: `gh label`, `--add-label`, `--remove-label`, or a labels API. */
+const LABEL_CALL = /^label |--add-label|--remove-label|\/labels\b/
+
+/** The gh calls the app made that touch labels. */
+const labelCalls = (made: { github: { state: { calls: string[] } } }) =>
+    made.github.state.calls.filter((call) => LABEL_CALL.test(call))
+
 beforeEach(async () => {
     repo = await makeSendRepo()
 })
@@ -51,6 +58,7 @@ describe('the verdict and the labels (#761)', () => {
         expect(made.submitted()[0]?.event).toBe('COMMENT')
         expect(made.labels_now()).toContain(SIGNED_OFF)
         expect(made.labels_now()).not.toContain(CHANGES_WANTED)
+        expect(labelCalls(made)).not.toEqual([])
     })
 
     test('Changes wanted on my own pull request labelled signed-off swaps the label', async () => {
@@ -74,6 +82,7 @@ describe('the verdict and the labels (#761)', () => {
 
         expect(made.submitted().map(({ event }) => event)).toEqual(['APPROVE'])
         expect(made.labels_now()).toEqual(['review-ready'])
+        expect(labelCalls(made)).toEqual([])
     })
 
     test('Changes wanted on a pull request by hubot submits REQUEST_CHANGES and changes no label', async () => {
@@ -89,6 +98,7 @@ describe('the verdict and the labels (#761)', () => {
             'REQUEST_CHANGES',
         ])
         expect(made.labels_now()).toEqual(['review-ready'])
+        expect(labelCalls(made)).toEqual([])
     })
 
     test('Just comments submits COMMENT and changes no label', async () => {

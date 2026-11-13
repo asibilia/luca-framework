@@ -31,7 +31,7 @@ export type ReviewRecord = z.infer<typeof ReviewRecordSchema>
  *
  * @example
  * reviewRecordLine({ record: { schema_version: 1, commit: 'abc', approved_files: ['a-b.ts'] } })
- * // '<!-- luca-walk review {"schema_version":1,"commit":"abc","approved_files":["a-b.ts"]} -->'
+ * // '<!-- luca-walk review {"schema_version":1,"commit":"abc","approved_files":["a\\u002db.ts"]} -->'
  */
 export const reviewRecordLine = ({
     record,

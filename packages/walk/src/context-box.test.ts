@@ -391,4 +391,27 @@ describe('the context box (#757)', () => {
 
         expect(host.opened_urls).toEqual([ISSUE_URL])
     })
+
+    test('a link that is not http or https is never opened', async () => {
+        const { app, host } = await openContext()
+        const refused = [
+            'file:///etc/passwd',
+            'javascript:alert(1)',
+            'command:workbench.action.terminal.new',
+            'vscode://file/etc/passwd',
+        ]
+
+        for (const url of refused) {
+            await app.panelMessage({
+                panel: 'context',
+                message: { type: 'open_link', url },
+            })
+        }
+        await app.panelMessage({
+            panel: 'context',
+            message: { type: 'open_link', url: ISSUE_URL },
+        })
+
+        expect(host.opened_urls).toEqual([ISSUE_URL])
+    })
 })

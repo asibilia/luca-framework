@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
-
 import { describe, expect, test } from 'bun:test'
 
 import {
@@ -9,15 +6,29 @@ import {
     reviewRecordLine,
 } from './review-record'
 
+import { reviewBodyFindings } from '../../engine/skills/luca-pr-address/scripts/pr-findings'
+
 /**
  * The review record's text (#762, spec #752 section 12): the hidden line
  * at the end of every review Luca Walk sends, and reading it back.
  */
 
-const PR_FINDINGS = join(
-    import.meta.dir,
-    '../../engine/skills/luca-pr-address/scripts/pr-findings.ts'
-)
+/** `/luca-pr-address`'s review findings of one submitted review with `body`. */
+const findingsOf = (body: string) =>
+    reviewBodyFindings({
+        reviews: [
+            {
+                id: 7,
+                body,
+                state: 'COMMENTED',
+                user: { login: 'octocat' },
+                submitted_at: '2026-11-12T10:00:00Z',
+                html_url: 'https://github.com/octocat/hello-world/pull/12',
+            },
+        ],
+        owner: 'octocat',
+        cover: { ids: new Set(), legacy_at: '' },
+    })
 
 const RECORD = {
     schema_version: 1 as const,
@@ -45,13 +56,17 @@ describe('the review record line (#762)', () => {
         expect(read?.approved_files).toEqual(RECORD.approved_files)
     })
 
-    test("pr-findings.ts keeps a literal copy of REVIEW_RECORD_MARKER's text", async () => {
-        const source = await readFile(PR_FINDINGS, 'utf8')
+    test('/luca-pr-address finds nothing in a review that is only a record line', () => {
+        const line = reviewRecordLine({ record: RECORD })
 
-        const copies = ["'", '"', '`'].filter((quote) =>
-            source.includes(`${quote}${REVIEW_RECORD_MARKER}${quote}`)
-        )
+        expect(findingsOf(line)).toEqual([])
+    })
 
-        expect(copies).not.toEqual([])
+    test("/luca-pr-address finds a review's text without its record line", () => {
+        const line = reviewRecordLine({ record: RECORD })
+
+        const findings = findingsOf(`Rename the helper.\n\n${line}`)
+
+        expect(findings.map(({ body }) => body)).toEqual(['Rename the helper.'])
     })
 })

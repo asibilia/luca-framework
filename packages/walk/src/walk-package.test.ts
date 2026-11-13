@@ -70,6 +70,11 @@ const ManifestSchema = z.object({
     }),
 })
 
+const ChangesetConfigSchema = z.object({
+    fixed: z.array(z.array(z.string())),
+    linked: z.array(z.array(z.string())),
+})
+
 const readManifest = async () =>
     ManifestSchema.parse(
         JSON.parse(await readFile(join(PACKAGE, 'package.json'), 'utf8'))
@@ -142,5 +147,24 @@ describe('the @luca/walk package (#753)', () => {
 
         expect(entry).not.toBeNull()
         expect(entry).toContain('commit')
+    })
+
+    test("luca-walk is in no fixed or linked group of the changesets' config", async () => {
+        const name = z
+            .object({ name: z.string() })
+            .parse(
+                JSON.parse(
+                    await readFile(join(PACKAGE, 'package.json'), 'utf8')
+                )
+            ).name
+        const config = ChangesetConfigSchema.parse(
+            JSON.parse(
+                await readFile(join(ROOT, '.changeset', 'config.json'), 'utf8')
+            )
+        )
+
+        expect(name).toBe('luca-walk')
+        expect(config.fixed.flat()).not.toContain(name)
+        expect(config.linked.flat()).not.toContain(name)
     })
 })
