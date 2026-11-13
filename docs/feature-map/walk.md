@@ -105,3 +105,14 @@ Reached by: the comment controller's comment box, `Luca Walk: Suggest a change`,
 Tests:
 
 - `packages/walk/src/draft-feedback.test.ts`
+
+## Sending one review
+
+`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text, a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record.
+
+Reached by: `Luca Walk: Send the review`.
+
+Tests:
+
+- `packages/walk/src/send-review.test.ts`
+- `packages/walk/src/send-review-outcome.test.ts`
