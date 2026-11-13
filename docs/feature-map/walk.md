@@ -88,7 +88,7 @@ Tests:
 
 ## Review threads and /luca-pr-address's replies
 
-On loading, the review threads already on the pull request are shown read-only in the checkout's files, labelled `On GitHub` (a file thread on line 1); a reply with `/luca-pr-address`'s reply marker shows as `luca-pr-address`. The Summary panel lists the agent's summary comments under `Replies from /luca-pr-address:`, newest first.
+On loading, the review threads already on the pull request are shown read-only in the checkout's files, labelled `On GitHub` (a file thread on line 1); a reply with `/luca-pr-address`'s reply marker shows as `luca-pr-address` when the signed-in user wrote it. The Summary panel lists the agent's summary comments under `Replies from /luca-pr-address:`, newest first.
 
 Reached by: opening a pull request that has review threads or `/luca-pr-address` comments.
 
@@ -108,7 +108,7 @@ Tests:
 
 ## Sending one review
 
-`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record. With no story, or a stale one, the drafts are checked and quoted against the merge base of `origin/<base branch>` and the head, the commit the plain diff shows. A send reads GitHub's head again and stops, keeping every draft, when it moved or when a line comment was written at another head; a send GitHub took but whose answer was lost is found by its record and never posted twice; and `Just comments` with no comments sends nothing.
+`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request (`Just comments` listed first, and a real verdict confirmed), `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own in their own repo, and a plain `COMMENT` with no label on the owner's own in a repo that isn't theirs. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and in the owner's own repo the review's text ends with the review record. With no story, or a stale one, the drafts are checked and quoted against the merge base of `origin/<base branch>` and the head, the commit the plain diff shows. A send reads GitHub's head again and stops, keeping every draft, when it moved or when a line comment was written at another head; a send GitHub took but whose answer was lost is found by its record and never posted twice; and `Just comments` with no comments sends nothing.
 
 Reached by: `Luca Walk: Send the review`.
 
@@ -120,7 +120,7 @@ Tests:
 
 ## Remembering what was reviewed
 
-After a send, the review record (the commit sent at and the files that looked good) is kept in `reviewed/` under Luca Walk's folder and written as the review's hidden last line, with every hyphen escaped. With no local record, the newest review by the signed-in user that holds one is read; a record that fails its schema counts as none. A second visit walks only the stops whose files changed since the record's commit (browsing the plain diff too), starts from a fresh place rather than the one kept before that review, keeps the "looks good" marks of unchanged files, and the summary says what changed, that nothing did, or that the commit is gone from the history. `/luca-pr-address` leaves the record line out of its findings.
+After a send, the review record (the commit sent at and the files that looked good) is kept in `reviewed/` under Luca Walk's folder and, in the owner's own repo, written as the review's hidden last line, with every hyphen escaped. The local record wins over one on GitHub. With no local record, the newest review by the signed-in user that holds one is read; a record that fails its schema counts as none. A second visit walks only the stops whose files changed since the record's commit (browsing the plain diff too), starts from a fresh place rather than the one kept before that review, keeps the "looks good" marks of unchanged files, and the summary says what changed, that nothing did, or that the commit is gone from the history. `/luca-pr-address` leaves the record line out of its findings.
 
 Reached by: `Luca Walk: Send the review`, then opening the pull request again after new commits.
 
@@ -129,3 +129,16 @@ Tests:
 - `packages/walk/src/second-visit.test.ts`
 - `packages/walk/src/review-record.test.ts`
 - `packages/engine/skills/luca-pr-address/scripts/pr-findings.test.ts`
+
+## Repos and pull requests that aren't yours
+
+"Your repo" is one whose owner is the signed-in user's own account (the engine's `isOwnRepo`; an organization's repo is not, and no repo is when `gh` can't say who is signed in). In a repo that isn't yours, a `Not your repo` badge shows in the status bar, `Send the review` creates and changes no labels, the review record is kept only on this computer, and a send in progress (the pending review's id and its drafts' fingerprints) is kept under `sending/` so a retry after GitHub took the review never posts it twice, while a pending review left with no record of it stops the send. `Write the story` copies a command that starts `claude` in a new empty folder instead of starting it in the checkout. On someone else's pull request, `Just comments` comes first and `Signed off` or `Changes wanted` asks before it approves or requests changes. Everywhere, a shared story is used only when the signed-in user wrote its comments (a note says when someone else's is left out), and only the signed-in user's comments show as `luca-pr-address`.
+
+Reached by: opening a pull request in an organization's or someone else's repo, or by someone else, then `Luca Walk: Send the review` or `Write the story`.
+
+Tests:
+
+- `packages/walk/src/not-your-repo-send.test.ts`
+- `packages/walk/src/not-your-repo-load.test.ts`
+- `packages/walk/src/send-in-progress.test.ts`
+- `packages/walk/src/whose-comments.test.ts`

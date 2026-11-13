@@ -253,7 +253,7 @@ Something in a change that is off, named with the rule it breaks and the line. A
 _Avoid_: score, grade, warning
 
 **Shared home, private home**:
-Where a story is kept. Shared: comments on the pull request, with the `review-ready` label, for the owner's own repos. Private: a file on the owner's computer, with nothing posted, for every other repo.
+Where a story is kept. Shared: comments on the pull request, with the `review-ready` label, for the owner's own repos (see **Your repo**). Private: a file on the owner's computer, with nothing posted, for every other repo. Luca Walk walks a shared story only when the signed-in user wrote its comments; a private story is always theirs.
 _Avoid_: public mode, local mode
 
 **Stale story**:
@@ -277,6 +277,10 @@ The VS Code extension the owner reviews a pull request in. It reads the pull req
 _Avoid_: review tool, viewer, luca-review
 
 **Review record**:
-The hidden line at the end of every review Luca Walk sends, naming the commit reviewed and the files that looked good, so the next visit walks only what changed.
+What Luca Walk keeps after every review it sends: the commit reviewed and the files that looked good, so the next visit walks only what changed. It is always kept on the owner's computer, and in the owner's own repos it is also the hidden last line of the review.
 _Avoid_: review marker, review state
+
+**Your repo**:
+A repo whose owner is the signed-in GitHub user's own account. An organization's repo is not, even one the owner runs, and no repo is when `gh` can't say who is signed in. It is the one rule behind a story's default home and what Luca Walk does on GitHub: in a repo that isn't yours it changes no labels, posts no review record, and offers a command to copy instead of starting `claude` in the checkout.
+_Avoid_: owned repo, my repo, trusted repo
 
