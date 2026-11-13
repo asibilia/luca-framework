@@ -15,6 +15,7 @@ import {
     saveReviewRecord,
     type ReviewRecord,
 } from './review-record'
+import { sendStopper } from './send-checks'
 import type { WalkGit, WalkHost } from './walk-host'
 
 import type { Gh } from '../../engine/src/story/story-github'
@@ -54,6 +55,8 @@ type Outcome =
     | { kind: 'sent'; plan: ReviewPlan; sent: DraftComment[]; own: boolean }
     /** A review GitHub already took holds the drafts `sent`. */
     | { kind: 'already'; sent: DraftComment[]; own: boolean }
+    /** Nothing was posted, for the reason in `text`. */
+    | { kind: 'stopped'; text: string }
 
 const CreatedSchema = z.object({ id: z.number().int(), node_id: z.string() })
 
@@ -256,20 +259,28 @@ export const sendReview = async ({
 
     /**
      * Sends the review (#752, section 11, "How it is posted"): the drafts
-     * a review GitHub already took holds, when there is one; null when a
-     * review the owner started on GitHub is in the way.
+     * a review GitHub already took holds, when there is one; stopped when
+     * GitHub's head moved, a line comment was written at another head, or
+     * a review the owner started on GitHub is in the way.
      */
-    const attempt = async (): Promise<Outcome | null> => {
+    const attempt = async (): Promise<Outcome> => {
         const { login, reviews: own_reviews } = await ownReviews({ gh, ref })
         const own = author === login
         const already = alreadySent({ comments, own_reviews, head_sha })
         if (already.length > 0) return { kind: 'already', sent: already, own }
+        const stopper = await sendStopper({ gh, ref, head_sha, comments })
+        if (stopper !== null) return { kind: 'stopped', text: stopper }
         const pending = own_reviews.filter(
             (review) => review.state === 'PENDING'
         )
         const ours = (body: string | null) =>
             (body ?? '').includes(REVIEW_RECORD_MARKER)
-        if (pending.some((review) => !ours(review.body))) return null
+        if (pending.some((review) => !ours(review.body))) {
+            return {
+                kind: 'stopped',
+                text: `You have a review on #${ref.number} that you started on GitHub and did not send. Send or delete it on GitHub, then try again.`,
+            }
+        }
         for (const left of pending) {
             const deleted = await gh({
                 args: ['api', '-X', 'DELETE', `${reviews}/${left.id}`],
@@ -284,7 +295,7 @@ export const sendReview = async ({
         }
     }
 
-    let sent: Outcome | null
+    let sent: Outcome
     try {
         sent = await attempt()
     } catch (thrown) {
@@ -299,10 +310,8 @@ export const sendReview = async ({
         )
         return
     }
-    if (sent === null) {
-        await error(
-            `You have a review on #${ref.number} that you started on GitHub and did not send. Send or delete it on GitHub, then try again.`
-        )
+    if (sent.kind === 'stopped') {
+        await error(sent.text)
         return
     }
     await feedback.clearSent({ ids: sent.sent.map(({ id }) => id) })

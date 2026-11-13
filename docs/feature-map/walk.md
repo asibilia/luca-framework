@@ -58,7 +58,7 @@ Tests:
 
 ## The walk
 
-`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file.
+`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file. A stop whose path leaves the checkout (a `..` part, an absolute path, or a symlink out) is refused, never opened.
 
 Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next stop`, `Previous stop`, `Next change in this file`, `Previous change in this file`, `Back to the walk`, and the Stops view.
 
@@ -98,7 +98,7 @@ Tests:
 
 ## Feedback kept until it is sent
 
-Comments on lines (either side of the diff), suggested changes, file comments, pull request comments and "this file looks good" marks are shown as `Draft` threads and kept at once in the pull request's drafts file, so a new window finds them again. A draft can be edited or deleted before it is sent.
+Comments on lines (either side of the diff), suggested changes, file comments, pull request comments and "this file looks good" marks are shown as `Draft` threads and kept at once in the pull request's drafts file, so a new window finds them again. A draft can be edited or deleted before it is sent. Each draft keeps the head it was written or last edited at. A drafts file that can't be read is moved aside as `pr-<number>.corrupt-<time>.json`, never written over, and the owner is told where.
 
 Reached by: the comment controller's comment box, `Luca Walk: Suggest a change`, `Comment on this file`, `Comment on the pull request` and `This file looks good`.
 
@@ -108,7 +108,7 @@ Tests:
 
 ## Sending one review
 
-`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record. With no story, or a stale one, the drafts are checked and quoted against the merge base of `origin/<base branch>` and the head, the commit the plain diff shows.
+`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record. With no story, or a stale one, the drafts are checked and quoted against the merge base of `origin/<base branch>` and the head, the commit the plain diff shows. A send reads GitHub's head again and stops, keeping every draft, when it moved or when a line comment was written at another head; a send GitHub took but whose answer was lost is found by its record and never posted twice; and `Just comments` with no comments sends nothing.
 
 Reached by: `Luca Walk: Send the review`.
 
@@ -116,6 +116,7 @@ Tests:
 
 - `packages/walk/src/send-review.test.ts`
 - `packages/walk/src/send-review-outcome.test.ts`
+- `packages/walk/src/send-review-head.test.ts`
 
 ## Remembering what was reviewed
 

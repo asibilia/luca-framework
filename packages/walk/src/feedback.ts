@@ -36,6 +36,7 @@ export const createFeedback = async ({
     ref,
     checkout,
     base_sha,
+    head_sha,
     github_threads,
     onApprovedChanged,
 }: {
@@ -46,6 +47,8 @@ export const createFeedback = async ({
     ref: PullRequestRef
     checkout: string
     base_sha: string | null
+    /** The head the pull request was loaded at, kept with each draft; null when unknown. */
+    head_sha: string | null
     github_threads: GitHubThread[]
     onApprovedChanged: () => Promise<void>
 }) => {
@@ -117,10 +120,13 @@ export const createFeedback = async ({
         })
     }
 
-    const keep = async (comment: Omit<DraftComment, 'id'>) => {
+    const keep = async (comment: Omit<DraftComment, 'id' | 'commit'>) => {
         await update((now) => ({
             ...now,
-            comments: [...now.comments, { id: randomUUID(), ...comment }],
+            comments: [
+                ...now.comments,
+                { id: randomUUID(), ...comment, commit: head_sha ?? undefined },
+            ],
         }))
         await showThreads()
     }
@@ -233,8 +239,16 @@ export const createFeedback = async ({
         }) => {
             await update((now) => ({
                 ...now,
+                // An edit is the owner checking the draft where it is
+                // shown now, so it is kept at this head.
                 comments: now.comments.map((comment) =>
-                    comment.id === draft_id ? { ...comment, body } : comment
+                    comment.id === draft_id
+                        ? {
+                              ...comment,
+                              body,
+                              commit: head_sha ?? comment.commit,
+                          }
+                        : comment
                 ),
             }))
             await showThreads()

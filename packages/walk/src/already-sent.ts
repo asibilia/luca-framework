@@ -40,9 +40,10 @@ export const draftFingerprint = ({
 
 /**
  * The drafts in `comments` that a review GitHub already took holds: a
- * submitted review by the signed-in user (`own_reviews` are theirs), on
- * `head_sha`, whose review record is for `head_sha` and lists the draft's
- * fingerprint. Empty when there is none.
+ * submitted review by the signed-in user (`own_reviews` are theirs) whose
+ * review record is for the commit the review is on, that commit is the
+ * one the draft was written at (`head_sha` when that is unknown), and the
+ * record lists the draft's fingerprint. Empty when there is none.
  */
 export const alreadySent = ({
     comments,
@@ -53,17 +54,20 @@ export const alreadySent = ({
     own_reviews: OwnReview[]
     head_sha: string
 }): DraftComment[] => {
-    const sent = new Set(
-        own_reviews
-            .filter(
-                (review) =>
-                    review.state !== 'PENDING' && review.commit_id === head_sha
-            )
-            .map((review) => readReviewRecord({ text: review.body ?? '' }))
-            .filter((record) => record?.commit === head_sha)
-            .flatMap((record) => record?.sent_drafts ?? [])
-    )
-    return comments.filter((comment) => sent.has(draftFingerprint({ comment })))
+    const taken = own_reviews.flatMap((review) => {
+        if (review.state === 'PENDING') return []
+        const record = readReviewRecord({ text: review.body ?? '' })
+        if (record === null || record.commit !== review.commit_id) return []
+        return [{ commit: record.commit, sent: record.sent_drafts ?? [] }]
+    })
+    return comments.filter((comment) => {
+        const commit = comment.commit ?? head_sha
+        const fingerprint = draftFingerprint({ comment })
+        return taken.some(
+            (review) =>
+                review.commit === commit && review.sent.includes(fingerprint)
+        )
+    })
 }
 
 /**

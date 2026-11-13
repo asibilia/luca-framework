@@ -224,6 +224,7 @@ export const loadPullRequest = async ({
         ref,
         checkout,
         base_sha: base?.ok ? base.sha : null,
+        head_sha: head?.sha ?? null,
         github_threads,
         onApprovedChanged: async () => {
             await shown?.walk?.showStops()

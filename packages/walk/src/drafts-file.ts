@@ -20,6 +20,12 @@ const DraftCommentSchema = z.object({
     start_line: z.number().int().positive().nullable(),
     end_line: z.number().int().positive().nullable(),
     body: z.string(),
+    /**
+     * The pull request's head the draft was written (or last edited) at,
+     * so its lines are never posted against a head they weren't written
+     * for. Absent in older files, or when the head wasn't known: unknown.
+     */
+    commit: CommitIdSchema.optional().catch(undefined),
 })
 export type DraftComment = z.infer<typeof DraftCommentSchema>
 
