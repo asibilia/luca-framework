@@ -1,4 +1,11 @@
-import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import {
+    mkdtemp,
+    readdir,
+    readFile,
+    realpath,
+    rm,
+    writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -340,5 +347,40 @@ describe('feedback kept until it is sent (#760)', () => {
         expect(
             second.host.stops[0]?.description.endsWith(' · looks good')
         ).toBe(true)
+    })
+
+    test('a drafts file that cannot be read is moved aside, never written over, and the owner is told where', async () => {
+        const first = await openApp()
+        await first.app.draftCommentAdded({
+            uri: aUri(),
+            start_line: 3,
+            end_line: 3,
+            body: 'Keep me',
+        })
+        const broken = (await readFile(draftsFile(), 'utf8')).slice(0, -20)
+        await writeFile(draftsFile(), broken)
+
+        const second = await openApp()
+        await second.app.draftCommentAdded({
+            uri: aUri(),
+            start_line: 4,
+            end_line: 4,
+            body: 'A new one',
+        })
+
+        const folder = join(walk_dir, 'drafts/octocat/hello-world')
+        const aside = (await readdir(folder)).filter((name) =>
+            /^pr-12\.corrupt-.+\.json$/.test(name)
+        )
+        expect(aside).toHaveLength(1)
+        const moved = join(folder, aside[0] ?? '')
+        expect(await readFile(moved, 'utf8')).toBe(broken)
+        expect(second.host.messages).toContainEqual({
+            kind: 'error',
+            text: `The drafts file of #12 could not be read, so it was moved to ${moved}. Luca Walk started a new one.`,
+        })
+        expect((await readSaved()).comments.map(({ body }) => body)).toEqual([
+            'A new one',
+        ])
     })
 })

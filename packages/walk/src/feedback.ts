@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import {
-    readDrafts,
+    readDraftsFile,
     updateDrafts,
     type DraftComment,
     type Drafts,
@@ -49,9 +49,17 @@ export const createFeedback = async ({
     github_threads: GitHubThread[]
     onApprovedChanged: () => Promise<void>
 }) => {
-    let drafts: Drafts = await readDrafts({ walk_dir, ref })
-
     const error = (text: string) => host.showMessage({ kind: 'error', text })
+
+    /** Tells the owner where a drafts file that couldn't be read went. */
+    const setAside = (aside: string) =>
+        error(
+            `The drafts file of #${ref.number} could not be read, so it was moved to ${aside}. Luca Walk started a new one.`
+        )
+
+    const read = await readDraftsFile({ walk_dir, ref })
+    if (read.set_aside !== null) await setAside(read.set_aside)
+    let drafts: Drafts = read.drafts
 
     const threadOf = (comment: DraftComment): WalkThread | null => {
         if (comment.path === null) return null
@@ -101,7 +109,12 @@ export const createFeedback = async ({
         })
 
     const update = async (change: (now: Drafts) => Drafts) => {
-        drafts = await updateDrafts({ walk_dir, ref, change })
+        drafts = await updateDrafts({
+            walk_dir,
+            ref,
+            change,
+            onSetAside: setAside,
+        })
     }
 
     const keep = async (comment: Omit<DraftComment, 'id'>) => {
