@@ -327,6 +327,39 @@ describe('reviewBodyFindings', () => {
             review_state: 'COMMENTED',
         })
     })
+
+    /** A Luca Walk review record line, as its review text ends. */
+    const RECORD_LINE =
+        '<!-- luca-walk review {"schema_version":1,"commit":"abc1234","approved_files":["src/my\\u002dfile.ts"]} -->'
+
+    const sent = (id: number, body: string) => ({
+        id,
+        body,
+        state: 'COMMENTED',
+        submitted_at: '2026-11-10T12:00:00Z',
+        user: { login: 'octocat' },
+        html_url: `https://github.test/r/${id}`,
+    })
+
+    test("a review's Luca Walk record line is left out of its finding's body", () => {
+        const findings = reviewBodyFindings({
+            reviews: [sent(7, `Looks close.\n\n${RECORD_LINE}`)],
+            owner: 'octocat',
+            cover: { ids: new Set(), legacy_at: '' },
+        })
+
+        expect(findings.map(({ body }) => body)).toEqual(['Looks close.'])
+    })
+
+    test('a review whose text is only a Luca Walk record line gives no finding', () => {
+        expect(
+            reviewBodyFindings({
+                reviews: [sent(8, RECORD_LINE)],
+                owner: 'octocat',
+                cover: { ids: new Set(), legacy_at: '' },
+            })
+        ).toEqual([])
+    })
 })
 
 describe('alerts', () => {

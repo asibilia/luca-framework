@@ -25,6 +25,22 @@ export const SUMMARY_MARKER = '<!-- luca-pr-address summary'
  */
 export const REPLY_MARKER = '<!-- luca-pr-address reply -->'
 
+/**
+ * The text Luca Walk's review record line starts with: the hidden line at
+ * the end of every review Luca Walk sends. It is not a finding. A copy of
+ * `REVIEW_RECORD_MARKER` in `packages/walk/src/review-record.ts`, kept as
+ * a literal because skill scripts import nothing; a test there fails when
+ * the two differ.
+ */
+export const REVIEW_RECORD_MARKER = '<!-- luca-walk review '
+
+/** A review's text without Luca Walk's review record line. */
+const withoutReviewRecord = (body: string): string =>
+    body
+        .split('\n')
+        .filter((line) => !line.trimStart().startsWith(REVIEW_RECORD_MARKER))
+        .join('\n')
+
 /** The label a reviewer's "changes wanted" verdict is carried by. */
 export const CHANGES_WANTED_LABEL = 'changes-wanted'
 
@@ -234,7 +250,7 @@ export const reviewBodyFindings = ({
 }): Finding[] =>
     reviews.flatMap((review) => {
         const review_id = numberOrNull(review.id)
-        const body = text(review.body).trim()
+        const body = withoutReviewRecord(text(review.body)).trim()
         const state = text(review.state)
         if (review_id === null || body === '' || state === 'PENDING') return []
         const author = loginOf(review.user)

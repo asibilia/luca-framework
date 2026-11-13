@@ -272,3 +272,11 @@ _Avoid_: check failure, warning
 The review owner's verdict that a pull request needs more work, carried by the `changes-wanted` label where GitHub won't let them request changes on their own PR. `/luca-pr-address` starts from it and takes it off when it is done.
 _Avoid_: rejected, blocked
 
+**Luca Walk**:
+The VS Code extension the owner reviews a pull request in. It reads the pull request's story, walks its stops in full-file diffs, and sends the owner's feedback as one GitHub review.
+_Avoid_: review tool, viewer, luca-review
+
+**Review record**:
+The hidden line at the end of every review Luca Walk sends, naming the commit reviewed and the files that looked good, so the next visit walks only what changed.
+_Avoid_: review marker, review state
+
