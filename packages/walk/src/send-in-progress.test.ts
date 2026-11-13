@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { draftFingerprint } from './already-sent'
 import { REVIEW_RECORD_MARKER } from './review-record'
+import { KEPT_SENDS, readSendProgress, saveSendProgress } from './send-progress'
 import {
     makeSendRepo,
     openSendApp,
@@ -17,7 +18,8 @@ import {
  * Never posting twice in a repo that isn't yours (#766, after #767): the
  * review's text holds no record line there, so the send in progress is
  * kept on this computer (`sending/` under Luca Walk's folder) from the
- * moment the pending review is made until the send is done.
+ * moment the pending review is made, and kept after the send, so another
+ * window still holding the drafts it took never posts them again.
  */
 
 let repo: SendRepo
@@ -40,7 +42,7 @@ const ALREADY = {
 }
 
 describe('a send GitHub took though gh failed, in a repo that is not yours (#766)', () => {
-    test('the retry posts nothing again, clears the drafts, says so, and forgets the send in progress', async () => {
+    test('the retry posts nothing again, clears the drafts, says so, and keeps the send in progress', async () => {
         const made = await openSendApp(repo, { author: 'hubot' })
         await made.lineDraft(10, 10, 'Name this')
         await made.prDraft('Looks right')
@@ -59,7 +61,7 @@ describe('a send GitHub took though gh failed, in a repo that is not yours (#766
         expect(made.reviews_now()).toHaveLength(1)
         expect((await readSaved(repo)).comments).toEqual([])
         expect(made.host.messages.at(-1)).toEqual(ALREADY)
-        expect(await readdir(sendingDir())).toEqual([])
+        expect(await readdir(sendingDir())).toEqual(['pr-12.json'])
     })
 
     test('a comment added or edited after it stays saved, and the next send posts it', async () => {
@@ -94,6 +96,67 @@ describe('a send GitHub took though gh failed, in a repo that is not yours (#766
     })
 })
 
+describe('two windows on the same pull request in a repo that is not yours (#766)', () => {
+    test('a second window still holding drafts the first one sent posts nothing again', async () => {
+        const first = await openSendApp(repo, { author: 'hubot' })
+        await first.prDraft('Looks right')
+        const second = await openSendApp(repo, {
+            author: 'hubot',
+            github: first.github,
+        })
+        await first.send('Just comments')
+        expect(first.submitted()).toHaveLength(1)
+
+        await second.send('Just comments')
+
+        expect(first.submitted()).toHaveLength(1)
+        expect(second.host.messages.at(-1)).toEqual(ALREADY)
+        expect((await readSaved(repo)).comments).toEqual([])
+    })
+
+    test('it posts nothing again after the first window sent more reviews since', async () => {
+        const first = await openSendApp(repo, { author: 'hubot' })
+        await first.prDraft('Looks right')
+        const second = await openSendApp(repo, {
+            author: 'hubot',
+            github: first.github,
+        })
+        await first.send('Just comments')
+        await first.prDraft('One more thing')
+        await first.send('Just comments')
+        await first.prDraft('And another')
+        await first.send('Just comments')
+        expect(first.submitted()).toHaveLength(3)
+
+        await second.send('Just comments')
+
+        expect(first.submitted()).toHaveLength(3)
+        expect(second.host.messages.at(-1)).toEqual(ALREADY)
+    })
+})
+
+describe('the sends in progress file (#766)', () => {
+    test(`keeps the last ${KEPT_SENDS} sends, newest first`, async () => {
+        const ref = { repo: 'acme/site', number: 12 }
+        for (const review_id of Array.from(
+            { length: KEPT_SENDS + 1 },
+            (_, at) => at + 1
+        )) {
+            await saveSendProgress({
+                walk_dir: repo.walk_dir,
+                ref,
+                send: { review_id, commit: repo.head_sha, sent_drafts: [] },
+            })
+        }
+
+        const kept = await readSendProgress({ walk_dir: repo.walk_dir, ref })
+
+        expect(kept.map(({ review_id }) => review_id)).toEqual(
+            Array.from({ length: KEPT_SENDS }, (_, at) => KEPT_SENDS + 1 - at)
+        )
+    })
+})
+
 describe("the app's own pending review in a repo that is not yours (#766)", () => {
     test('a pending review the send in progress names is deleted, not taken for one started on GitHub, and one review is sent', async () => {
         const made = await openSendApp(repo, {
@@ -106,9 +169,13 @@ describe("the app's own pending review in a repo that is not yours (#766)", () =
             join(sendingDir(), 'pr-12.json'),
             JSON.stringify({
                 schema_version: 1,
-                review_id: 77,
-                commit: repo.head_sha,
-                sent_drafts: ['0123456789abcdef'],
+                sends: [
+                    {
+                        review_id: 77,
+                        commit: repo.head_sha,
+                        sent_drafts: ['0123456789abcdef'],
+                    },
+                ],
             })
         )
 
@@ -128,12 +195,16 @@ describe("the app's own pending review in a repo that is not yours (#766)", () =
             join(sendingDir(), 'pr-12.json'),
             JSON.stringify({
                 schema_version: 1,
-                review_id: 404,
-                commit: repo.head_sha,
-                sent_drafts:
-                    draft === undefined
-                        ? []
-                        : [draftFingerprint({ comment: draft })],
+                sends: [
+                    {
+                        review_id: 404,
+                        commit: repo.head_sha,
+                        sent_drafts:
+                            draft === undefined
+                                ? []
+                                : [draftFingerprint({ comment: draft })],
+                    },
+                ],
             })
         )
 

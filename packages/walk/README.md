@@ -27,7 +27,7 @@ Luca Walk works in VS Code's Restricted Mode, so it never needs you to trust a p
 
 ## Repos that aren't yours
 
-A `Not your repo` badge in the status bar says when the open pull request's repo isn't yours. There, `Send the review` changes no labels (on your own pull request every verdict goes as a plain comment review), and the review record is not posted in the review's text: it is kept on this computer only, under `reviewed/` in Luca Walk's folder, and a send in progress is kept under `sending/` until it is done, so a retried send is never posted twice. On anyone else's pull request, `Just comments` comes first in the verdict list, and `Signed off` or `Changes wanted` asks you to confirm before it approves or requests changes on GitHub.
+A `Not your repo` badge in the status bar says when the open pull request's repo isn't yours. There, `Send the review` changes no labels (on your own pull request every verdict goes as a plain comment review), and the review record is not posted in the review's text: it is kept on this computer only, under `reviewed/` in Luca Walk's folder, and each send in progress is kept under `sending/` (the last 20 sends), so a retried send, or a send from a second window still holding the same comments, is never posted twice. On anyone else's pull request, `Just comments` comes first in the verdict list, and `Signed off` or `Changes wanted` asks you to confirm before it approves or requests changes on GitHub.
 
 Everywhere, a story posted as comments is used only when you wrote those comments, and a comment shows as `luca-pr-address` only when it holds the agent's marker and you wrote it.
 

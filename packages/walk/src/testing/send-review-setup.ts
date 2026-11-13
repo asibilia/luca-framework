@@ -7,6 +7,7 @@ import { createFakeHost } from './fake-host'
 import {
     createPretendGitHub,
     type PretendComment,
+    type PretendGitHub,
     type PretendReview,
     type PretendThread,
 } from './pretend-github'
@@ -138,6 +139,8 @@ export const pendingReview = (body: string): PretendReview => ({
  *
  * @param story - The commits its private story was written for: the
  *   repo's base and head when left out, none when null.
+ * @param github - The pretend GitHub to open it on, to open a second
+ *   window on the same pull request; a new one when left out.
  */
 export const openSendApp = async (
     repo: SendRepo,
@@ -150,6 +153,7 @@ export const openSendApp = async (
         comments = [],
         threads = [],
         user_unreadable = false,
+        github: shared = null,
     }: {
         author?: string
         labels?: string[]
@@ -161,6 +165,7 @@ export const openSendApp = async (
         threads?: PretendThread[]
         /** gh can't say who is signed in when the pull request is opened. */
         user_unreadable?: boolean
+        github?: PretendGitHub | null
     } = {}
 ) => {
     const repo_name = repo.repo_name
@@ -181,29 +186,31 @@ export const openSendApp = async (
             }),
         })
     }
-    const github = createPretendGitHub({
-        login: 'octocat',
-        labels: { [repo_name]: repo_labels },
-        pulls: [
-            {
-                repo: repo_name,
-                number: 12,
-                title: 'Retry stuck tickets',
-                author,
-                base_ref: 'main',
-                head_sha: repo.head_sha,
-                state: 'OPEN',
-                labels,
-                comments,
-                threads,
-                reviews,
-                diff_hunks: [
-                    { path: 'src/a.ts', side: 'RIGHT', ...HUNK },
-                    { path: 'src/a.ts', side: 'LEFT', ...HUNK },
-                ],
-            },
-        ],
-    })
+    const github =
+        shared ??
+        createPretendGitHub({
+            login: 'octocat',
+            labels: { [repo_name]: repo_labels },
+            pulls: [
+                {
+                    repo: repo_name,
+                    number: 12,
+                    title: 'Retry stuck tickets',
+                    author,
+                    base_ref: 'main',
+                    head_sha: repo.head_sha,
+                    state: 'OPEN',
+                    labels,
+                    comments,
+                    threads,
+                    reviews,
+                    diff_hunks: [
+                        { path: 'src/a.ts', side: 'RIGHT', ...HUNK },
+                        { path: 'src/a.ts', side: 'LEFT', ...HUNK },
+                    ],
+                },
+            ],
+        })
     if (user_unreadable) {
         github.failNext({ step: 'read_user', error: 'gh: not logged in' })
     }

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 import type { DraftComment } from './drafts-file'
 import { readReviewRecord, type OwnReview } from './review-record'
-import type { SendProgress } from './send-progress'
+import type { SendInProgress } from './send-progress'
 
 /**
  * Never posting a review twice (#752, section 11): a send GitHub took but
@@ -43,8 +43,8 @@ export const draftFingerprint = ({
 /**
  * The drafts in `comments` that a review GitHub already took holds: a
  * submitted review by the signed-in user (`own_reviews` are theirs) whose
- * review record (in its text, or `progress`, the send in progress kept
- * for it on this computer) is for the commit the review is on, that
+ * review record (in its text, or in `progress`, the sends in progress
+ * kept on this computer) is for the commit the review is on, that
  * commit is the one the draft was written at (`head_sha` when that is
  * unknown), and the record lists the draft's fingerprint. Empty when
  * there is none.
@@ -58,14 +58,13 @@ export const alreadySent = ({
     comments: DraftComment[]
     own_reviews: OwnReview[]
     head_sha: string
-    progress: SendProgress | null
+    progress: SendInProgress[]
 }): DraftComment[] => {
     const taken = own_reviews.flatMap((review) => {
         if (review.state === 'PENDING') return []
         const record =
-            progress !== null && review.id === progress.review_id
-                ? progress
-                : readReviewRecord({ text: review.body ?? '' })
+            progress.find(({ review_id }) => review_id === review.id) ??
+            readReviewRecord({ text: review.body ?? '' })
         if (record === null || record.commit !== review.commit_id) return []
         return [{ commit: record.commit, sent: record.sent_drafts ?? [] }]
     })

@@ -16,11 +16,7 @@ import {
     type ReviewRecord,
 } from './review-record'
 import { sendStopper } from './send-checks'
-import {
-    clearSendProgress,
-    readSendProgress,
-    saveSendProgress,
-} from './send-progress'
+import { readSendProgress, saveSendProgress } from './send-progress'
 import { isSignedIn, readLogin } from './signed-in'
 import type { WalkGit, WalkHost } from './walk-host'
 
@@ -298,12 +294,7 @@ export const sendReview = async ({
             await saveSendProgress({
                 walk_dir,
                 ref,
-                progress: {
-                    schema_version: 1,
-                    review_id: id,
-                    commit: head_sha,
-                    sent_drafts,
-                },
+                send: { review_id: id, commit: head_sha, sent_drafts },
             })
         }
 
@@ -354,7 +345,7 @@ export const sendReview = async ({
         )
         const ours = (review: { id: number; body: string | null }) =>
             (review.body ?? '').includes(REVIEW_RECORD_MARKER) ||
-            review.id === progress?.review_id
+            progress.some(({ review_id }) => review_id === review.id)
         if (pending.some((review) => !ours(review))) {
             return {
                 kind: 'stopped',
@@ -392,8 +383,9 @@ export const sendReview = async ({
     await feedback.clearSent({ ids: sent.sent.map(({ id }) => id) })
     // In your repo the review's text holds the record too, so a failed
     // write loses nothing; elsewhere the next visit walks it all again.
+    // The send in progress is kept: another window may still hold drafts
+    // this send took, and finds them by it.
     await saveReviewRecord({ walk_dir, ref, record }).catch(() => undefined)
-    await clearSendProgress({ walk_dir, ref }).catch(() => undefined)
     if (labels !== null) {
         const refused = await swapLabels({
             gh,
