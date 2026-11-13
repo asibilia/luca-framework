@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { checkoutAtHead } from './checkout'
+import { CommitIdSchema } from './commit-id'
 import { createFeedback, type Feedback } from './feedback'
 import { readAgentSummaries, readGitHubThreads } from './github-conversation'
 import { checkoutPath, type PullRequestRef } from './pull-request-ref'
@@ -60,7 +61,24 @@ export const readPullView = async ({
         ],
     })
     if (!view.ok) throw new Error(view.stderr.trim() || 'gh failed')
-    return PullViewSchema.parse(JSON.parse(view.stdout))
+    let read: unknown
+    try {
+        read = JSON.parse(view.stdout)
+    } catch {
+        throw new Error(`gh answered something else: ${view.stdout.trim()}`)
+    }
+    const parsed = PullViewSchema.safeParse(read)
+    if (!parsed.success) {
+        throw new Error(`gh answered something else: ${view.stdout.trim()}`)
+    }
+    // The head is given to git: never anything but a commit id.
+    const head = parsed.data.headRefOid
+    if (!CommitIdSchema.safeParse(head).success) {
+        throw new Error(
+            `GitHub gave "${head}" as the head of #${ref.number}, which is not a commit id.`
+        )
+    }
+    return parsed.data
 }
 
 /**

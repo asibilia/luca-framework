@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 
 import { z } from 'zod'
 
+import { CommitIdSchema } from './commit-id'
 import type { PullRequestRef } from './pull-request-ref'
 
 import type { Gh } from '../../engine/src/story/story-github'
@@ -20,7 +21,7 @@ const RECORD_END = ' -->'
 
 export const ReviewRecordSchema = z.object({
     schema_version: z.literal(1),
-    commit: z.string().min(1),
+    commit: CommitIdSchema,
     approved_files: z.array(z.string().min(1)),
     /**
      * The fingerprints of the drafts the review holds (`draftFingerprint`

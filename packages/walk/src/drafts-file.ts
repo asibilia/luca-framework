@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 
 import { z } from 'zod'
 
+import { CommitIdSchema } from './commit-id'
 import type { PullRequestRef } from './pull-request-ref'
 
 /**
@@ -42,10 +43,13 @@ export const DraftsSchema = z.object({
      */
     approved_checked: z
         .object({
-            record_commit: z.string().min(1),
-            head_sha: z.string().min(1),
+            record_commit: CommitIdSchema,
+            head_sha: CommitIdSchema,
         })
-        .optional(),
+        .optional()
+        // A check that isn't commit ids is dropped, never given to git:
+        // the marks are checked again against the last review.
+        .catch(undefined),
     walk: WalkPlaceSchema,
     /**
      * The last review's commit the walk's place was kept under (#752,

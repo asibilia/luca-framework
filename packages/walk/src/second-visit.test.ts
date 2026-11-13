@@ -107,6 +107,18 @@ describe('reading the record from GitHub (#762)', () => {
     })
 })
 
+describe('a record whose commit is not a commit id (#752)', () => {
+    test('counts as none and never reaches git: the whole walk is shown', async () => {
+        const repo = await visitRepo(['src/b.ts'])
+        await writeLocalRecord(repo, recordAt('--output=pwned'))
+
+        const { descriptions, summary } = await openVisitApp(repo)
+
+        expect(descriptions()).toEqual(['', '', ''])
+        expect(htmlText({ html: summary() })).not.toContain('last review')
+    })
+})
+
 describe('a second visit walks only what changed (#762)', () => {
     test('with only src/b.ts changed since C1, only its stop is to walk and Start goes to it', async () => {
         const repo = await visitRepo(['src/b.ts'])
