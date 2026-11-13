@@ -61,10 +61,16 @@ beforeEach(async () => {
     base_sha = made.base_sha
     head_sha = made.head_sha
     // origin/main moved on past the merge base, so the two differ.
-    await testGit({ args: ['checkout', '-q', '-b', 'side', base_sha], cwd: checkout })
+    await testGit({
+        args: ['checkout', '-q', '-b', 'side', base_sha],
+        cwd: checkout,
+    })
     await writeFile(join(checkout, 'moved-on.txt'), 'main moved on\n')
     await testGit({ args: ['add', '-A'], cwd: checkout })
-    await testGit({ args: ['commit', '-q', '-m', 'main moved on'], cwd: checkout })
+    await testGit({
+        args: ['commit', '-q', '-m', 'main moved on'],
+        cwd: checkout,
+    })
     main_tip = (
         await testGit({ args: ['rev-parse', 'HEAD'], cwd: checkout })
     ).stdout.trim()
@@ -72,7 +78,10 @@ beforeEach(async () => {
         args: ['update-ref', 'refs/remotes/origin/main', main_tip],
         cwd: checkout,
     })
-    await testGit({ args: ['checkout', '-q', '--detach', head_sha], cwd: checkout })
+    await testGit({
+        args: ['checkout', '-q', '--detach', head_sha],
+        cwd: checkout,
+    })
 })
 
 afterEach(async () => {
@@ -228,7 +237,10 @@ describe('browsing a pull request without a story (#759)', () => {
     test('Browse the diff works for a stale story and for a story of schema version 2', async () => {
         const stale = await openBrowse({ story_head: 'a'.repeat(40) })
         await stale.browse()
-        const newer = await openBrowse({ story_head: head_sha, version_two: true })
+        const newer = await openBrowse({
+            story_head: head_sha,
+            version_two: true,
+        })
         await newer.browse()
 
         const labels = ['1. README.md', '2. src/a.ts', '3. src/c.ts']
