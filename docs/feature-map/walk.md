@@ -12,6 +12,17 @@ Tests:
 
 - `packages/walk/src/walk-package.test.ts`
 
+## Building and installing
+
+`bun run build` bundles the extension into `dist/extension.js` (CommonJS for VS Code's Node, requiring only `vscode` and Node's own modules), `bun run package` writes `luca-walk.vsix`, git ignores both, and the README says how to install it in the `Luca Walk` profile.
+
+Reached by: `bun run build` and `bun run package` in `packages/walk`, then `code --profile "Luca Walk" --install-extension packages/walk/luca-walk.vsix`.
+
+Tests:
+
+- `packages/walk/src/walk-install.test.ts`
+- `packages/walk/src/walk-build.e2e.test.ts`
+
 ## Opening a pull request and its summary
 
 `Open pull request` reads a number or a URL, makes Luca Walk's own clone and a checkout of the pull request's head under its folder (never moving a checkout with changes), opens it, and shows the story's summary, or why there is none, on the Summary panel.
