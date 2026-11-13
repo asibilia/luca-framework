@@ -44,3 +44,13 @@ Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next 
 Tests:
 
 - `packages/walk/src/walk-stops.test.ts`
+
+## The context box
+
+On every cursor move, the Context view shows the story's context for the change under the cursor (where it sits, how we got here, why, architecture, check this, proof, serves, blast radius, flags), the stop's changes when the cursor is on none, or that the file is not part of the walk. Everything is escaped, and links open in the browser.
+
+Reached by: moving the cursor in a file of the pull request, with the Context view open.
+
+Tests:
+
+- `packages/walk/src/context-box.test.ts`
