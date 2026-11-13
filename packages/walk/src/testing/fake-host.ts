@@ -6,8 +6,8 @@
  *
  * Questions (input boxes and quick picks) are answered from `answers`, a
  * queue the test fills: a text answers an input box, a quick pick is
- * answered with the label of the item to pick, and `null` (or an empty
- * queue) is a cancel.
+ * answered with the label of the item to pick, a modal question with the
+ * label of its button, and `null` (or an empty queue) is a cancel.
  */
 
 export type FakeEditor = { uri: string; start_line: number; end_line: number }
@@ -41,6 +41,8 @@ export type FakeThread = {
     comments: { author: string; body: string }[]
 }
 
+export type FakeBadge = { text: string; tooltip: string }
+
 export type FakeHost = {
     /** The window's workspace folder; the test sets it. */
     workspace_folder: string | null
@@ -65,6 +67,12 @@ export type FakeHost = {
     terminals: FakeTerminal[]
     threads: FakeThread[]
     opened_urls: string[]
+    /** The text of every modal question the app asked, in order. */
+    confirms: string[]
+    /** The status bar badge shown now, or null. */
+    badge: FakeBadge | null
+    /** What the app last put on the clipboard. */
+    clipboard: string
 
     workspaceFolder: () => Promise<string | null>
     activeEditor: () => Promise<FakeEditor | null>
@@ -88,6 +96,10 @@ export type FakeHost = {
     startTerminal: (terminal: FakeTerminal) => Promise<void>
     showThreads: (shown: { threads: FakeThread[] }) => Promise<void>
     openUrl: (link: { url: string }) => Promise<void>
+    /** A modal question: yes when the next answer is `confirm_label`. */
+    confirm: (ask: { text: string; confirm_label: string }) => Promise<boolean>
+    showBadge: (badge: FakeBadge | null) => Promise<void>
+    copyText: (copy: { text: string }) => Promise<void>
 }
 
 /**
@@ -122,6 +134,9 @@ export const createFakeHost = ({
         terminals: [],
         threads: [],
         opened_urls: [],
+        confirms: [],
+        badge: null,
+        clipboard: '',
 
         workspaceFolder: async () => host.workspace_folder,
         activeEditor: async () => host.active_editor,
@@ -168,6 +183,16 @@ export const createFakeHost = ({
         },
         openUrl: async ({ url }) => {
             host.opened_urls.push(url)
+        },
+        confirm: async ({ text, confirm_label }) => {
+            host.confirms.push(text)
+            return next() === confirm_label
+        },
+        showBadge: async (badge) => {
+            host.badge = badge === null ? null : { ...badge }
+        },
+        copyText: async ({ text }) => {
+            host.clipboard = text
         },
     }
     return host

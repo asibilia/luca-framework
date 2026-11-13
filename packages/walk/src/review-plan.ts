@@ -20,7 +20,7 @@ export type GitHubLineComment = {
 }
 
 export type ReviewPlan = {
-    /** The review's text, ending with the review record line. */
+    /** The review's text, ending with the review record line, when there is one. */
     body: string
     comments: GitHubLineComment[]
     file_threads: { path: string; body: string }[]
@@ -59,6 +59,7 @@ export const planReview = async ({
     head_sha,
     base_sha,
     record_line,
+    empty_text,
     quote_all,
     readLines,
 }: {
@@ -67,7 +68,10 @@ export const planReview = async ({
     repo: string
     head_sha: string
     base_sha: string
-    record_line: string
+    /** The review record line; null in a repo that isn't yours (#766). */
+    record_line: string | null
+    /** The text when the review would have none. */
+    empty_text: string
     quote_all: boolean
     readLines: ReadLines
 }): Promise<ReviewPlan> => {
@@ -165,8 +169,13 @@ export const planReview = async ({
         if (file !== null) file_threads.push({ path: file.path, body: quote })
         else text.push(quote)
     }
+    const parts = [
+        ...pr_text,
+        ...text,
+        ...(record_line === null ? [] : [record_line]),
+    ]
     return {
-        body: [...pr_text, ...text, record_line].join('\n\n'),
+        body: parts.length === 0 ? empty_text : parts.join('\n\n'),
         comments: accepted,
         file_threads,
         outside,

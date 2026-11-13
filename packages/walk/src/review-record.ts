@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { CommitIdSchema } from './commit-id'
 import type { PullRequestRef } from './pull-request-ref'
+import { isSignedIn } from './signed-in'
 
 import type { Gh } from '../../engine/src/story/story-github'
 
@@ -122,19 +123,18 @@ const ReviewListSchema = z.array(
 export type OwnReview = z.infer<typeof ReviewListSchema>[number][number]
 
 /**
- * The signed-in user's login and their reviews on `ref`, pending ones
- * too; throws gh's error.
+ * The reviews on `ref` by the signed-in user, `login`, pending ones too;
+ * throws gh's error.
  */
 export const ownReviews = async ({
     gh,
     ref,
+    login,
 }: {
     gh: Gh
     ref: PullRequestRef
-}): Promise<{ login: string; reviews: OwnReview[] }> => {
-    const user = await gh({ args: ['api', 'user', '--jq', '.login'] })
-    if (!user.ok) throw new Error(user.stderr.trim() || 'gh failed')
-    const login = user.stdout.trim()
+    login: string
+}): Promise<OwnReview[]> => {
     const listed = await gh({
         args: [
             'api',
@@ -150,23 +150,30 @@ export const ownReviews = async ({
     } catch {
         throw new Error(`gh answered something else: ${listed.stdout.trim()}`)
     }
-    return {
-        login,
-        reviews: pages.flat().filter((review) => review.user?.login === login),
-    }
+    return pages
+        .flat()
+        .filter((review) =>
+            isSignedIn({ author: review.user?.login ?? null, login })
+        )
 }
 
-/** The record in the signed-in user's newest submitted review that holds one. */
+/**
+ * The record in the newest submitted review by the signed-in user,
+ * `login`, that holds one; none when the login is unknown.
+ */
 const recordOnGitHub = async ({
     gh,
     ref,
+    login,
 }: {
     gh: Gh
     ref: PullRequestRef
+    login: string | null
 }): Promise<ReviewRecord | null> => {
-    const own = await ownReviews({ gh, ref }).catch(() => null)
+    if (login === null) return null
+    const own = await ownReviews({ gh, ref, login }).catch(() => null)
     if (own === null) return null
-    const newest = own.reviews
+    const newest = own
         .filter(
             (review) =>
                 review.state !== 'PENDING' &&
@@ -184,20 +191,25 @@ const recordOnGitHub = async ({
 
 /**
  * The record of the owner's last review of `ref`: the local one, else the
- * one in their newest review on GitHub. Null when there is none.
+ * one in their newest review on GitHub (by `login`, the signed-in user).
+ * Null when there is none. The local record wins: it is written after
+ * every send, in every repo, while a repo that isn't yours (#766) gets no
+ * record line, so an older line on GitHub may be out of date.
  */
 export const readLastReview = async ({
     walk_dir,
     gh,
     ref,
+    login,
 }: {
     walk_dir: string
     gh: Gh
     ref: PullRequestRef
+    login: string | null
 }): Promise<ReviewRecord | null> => {
     const local = await readFile(recordPath({ walk_dir, ref }), 'utf8').then(
         parseRecord,
         () => null
     )
-    return local ?? (await recordOnGitHub({ gh, ref }))
+    return local ?? (await recordOnGitHub({ gh, ref, login }))
 }

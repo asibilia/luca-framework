@@ -71,28 +71,28 @@ describe('the verdict and the labels (#761)', () => {
         expect(made.labels_now()).not.toContain(SIGNED_OFF)
     })
 
-    test('Signed off on a pull request by hubot submits APPROVE and changes no label', async () => {
+    test('Signed off on a pull request by hubot, confirmed, submits APPROVE and changes no label', async () => {
         const made = await openSendApp(repo, {
             author: 'hubot',
             labels: ['review-ready'],
         })
         await made.prDraft('Thanks')
 
-        await made.send('Signed off')
+        await made.send('Signed off', 'Approve')
 
         expect(made.submitted().map(({ event }) => event)).toEqual(['APPROVE'])
         expect(made.labels_now()).toEqual(['review-ready'])
         expect(labelCalls(made)).toEqual([])
     })
 
-    test('Changes wanted on a pull request by hubot submits REQUEST_CHANGES and changes no label', async () => {
+    test('Changes wanted on a pull request by hubot, confirmed, submits REQUEST_CHANGES and changes no label', async () => {
         const made = await openSendApp(repo, {
             author: 'hubot',
             labels: ['review-ready'],
         })
         await made.prDraft('Not yet')
 
-        await made.send('Changes wanted')
+        await made.send('Changes wanted', 'Request changes')
 
         expect(made.submitted().map(({ event }) => event)).toEqual([
             'REQUEST_CHANGES',

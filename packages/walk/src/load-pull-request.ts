@@ -12,6 +12,7 @@ import {
     readVisit,
     type Visit,
 } from './second-visit'
+import { readLogin } from './signed-in'
 import type { Loaded } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
 import { createWalkSession, type WalkSession } from './walk-session'
@@ -159,6 +160,7 @@ export const loadPullRequest = async ({
 }): Promise<Shown> => {
     const { repo, number: pr_number } = ref
     const checkout = checkoutPath({ walk_dir, ref })
+    const login = await readLogin({ gh })
     let loaded: Loaded
     /** The pull request, once the checkout is at its head. */
     let pull: PullView | null = null
@@ -200,6 +202,7 @@ export const loadPullRequest = async ({
                   ref,
                   checkout,
                   head_sha: loaded.head_sha,
+                  login,
               }).catch(() => first)
             : first,
         pull === null

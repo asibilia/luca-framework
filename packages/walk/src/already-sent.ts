@@ -2,12 +2,14 @@ import { createHash } from 'node:crypto'
 
 import type { DraftComment } from './drafts-file'
 import { readReviewRecord, type OwnReview } from './review-record'
+import type { SendProgress } from './send-progress'
 
 /**
  * Never posting a review twice (#752, section 11): a send GitHub took but
  * whose answer was lost (gh reported an error, or VS Code stopped before
  * the drafts were cleared) is found again on the next send, by the
- * fingerprints of its drafts in its review record.
+ * fingerprints of its drafts in its review record, or, in a repo that
+ * isn't yours (#766), in the send in progress kept on this computer.
  */
 
 /**
@@ -41,22 +43,29 @@ export const draftFingerprint = ({
 /**
  * The drafts in `comments` that a review GitHub already took holds: a
  * submitted review by the signed-in user (`own_reviews` are theirs) whose
- * review record is for the commit the review is on, that commit is the
- * one the draft was written at (`head_sha` when that is unknown), and the
- * record lists the draft's fingerprint. Empty when there is none.
+ * review record (in its text, or `progress`, the send in progress kept
+ * for it on this computer) is for the commit the review is on, that
+ * commit is the one the draft was written at (`head_sha` when that is
+ * unknown), and the record lists the draft's fingerprint. Empty when
+ * there is none.
  */
 export const alreadySent = ({
     comments,
     own_reviews,
     head_sha,
+    progress,
 }: {
     comments: DraftComment[]
     own_reviews: OwnReview[]
     head_sha: string
+    progress: SendProgress | null
 }): DraftComment[] => {
     const taken = own_reviews.flatMap((review) => {
         if (review.state === 'PENDING') return []
-        const record = readReviewRecord({ text: review.body ?? '' })
+        const record =
+            progress !== null && review.id === progress.review_id
+                ? progress
+                : readReviewRecord({ text: review.body ?? '' })
         if (record === null || record.commit !== review.commit_id) return []
         return [{ commit: record.commit, sent: record.sent_drafts ?? [] }]
     })

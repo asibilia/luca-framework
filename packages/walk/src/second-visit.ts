@@ -35,6 +35,7 @@ export const readVisit = async ({
     ref,
     checkout,
     head_sha,
+    login,
 }: {
     walk_dir: string
     gh: Gh
@@ -42,8 +43,10 @@ export const readVisit = async ({
     ref: PullRequestRef
     checkout: string
     head_sha: string
+    /** The signed-in user; null when unknown. */
+    login: string | null
 }): Promise<Visit> => {
-    const record = await readLastReview({ walk_dir, gh, ref })
+    const record = await readLastReview({ walk_dir, gh, ref, login })
     if (record === null) return { kind: 'first' }
     const { commit, approved_files } = record
     if (commit === head_sha) return { kind: 'same', commit, approved_files }

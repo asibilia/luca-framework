@@ -27,6 +27,9 @@ export type WalkMessage = { kind: 'info' | 'error'; text: string }
 
 export type WalkTerminal = { name: string; cwd: string; command: string }
 
+/** A small always-visible label (#766), with the words shown on hover. */
+export type WalkBadge = { text: string; tooltip: string }
+
 export type WalkThread = {
     uri: string
     start_line: number
@@ -64,6 +67,15 @@ export type WalkHost = {
     startTerminal: (terminal: WalkTerminal) => Promise<void>
     showThreads: (shown: { threads: WalkThread[] }) => Promise<void>
     openUrl: (link: { url: string }) => Promise<void>
+    /**
+     * A modal question (#766): true only when the owner clicked
+     * `confirm_label`; false when they cancelled.
+     */
+    confirm: (ask: { text: string; confirm_label: string }) => Promise<boolean>
+    /** Shows `badge` in the status bar, or hides it when null (#766). */
+    showBadge: (badge: WalkBadge | null) => Promise<void>
+    /** Puts `text` on the clipboard (#766). */
+    copyText: (copy: { text: string }) => Promise<void>
 }
 
 /** One `git` call in `cwd`. Never throws: a failure answers `ok` false. */

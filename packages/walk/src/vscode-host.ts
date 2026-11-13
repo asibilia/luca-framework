@@ -205,8 +205,12 @@ export const createVscodeHost = ({
     const stopsTree = vscode.window.createTreeView('lucaWalk.stops', {
         treeDataProvider: stops.provider,
     })
+    const badge = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left
+    )
     context.subscriptions.push(
         stopsTree,
+        badge,
         vscode.commands.registerCommand(PICK_STOP_COMMAND, (stop_id: string) =>
             onStopPicked({ stop_id })
         ),
@@ -306,6 +310,24 @@ export const createVscodeHost = ({
         showThreads: async ({ threads: next }) => threads.show(next),
         openUrl: async ({ url }) => {
             await vscode.env.openExternal(vscode.Uri.parse(url))
+        },
+        confirm: async ({ text, confirm_label }) =>
+            (await vscode.window.showWarningMessage(
+                text,
+                { modal: true },
+                confirm_label
+            )) === confirm_label,
+        showBadge: async (shown) => {
+            if (shown === null) {
+                badge.hide()
+                return
+            }
+            badge.text = shown.text
+            badge.tooltip = shown.tooltip
+            badge.show()
+        },
+        copyText: async ({ text }) => {
+            await vscode.env.clipboard.writeText(text)
         },
     }
 }
