@@ -8,6 +8,7 @@ import {
     readAnswer,
     type PullRequestRef,
 } from './pull-request-ref'
+import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
 import { summaryHtml, type Loaded } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
 
@@ -210,6 +211,30 @@ export const createWalkApp = ({
         await host.openFolder({ path: prepared.path })
     }
 
+    const openFromList = async () => {
+        let items: ReviewReadyItem[]
+        try {
+            items = await reviewReadyItems({ gh, stories_dir })
+        } catch (thrown) {
+            await error(
+                `Luca Walk could not list the pull requests: ${messageOf(thrown)}`
+            )
+            return
+        }
+        if (items.length === 0) {
+            await host.showMessage({
+                kind: 'info',
+                text: 'No open pull requests are ready to review.',
+            })
+            return
+        }
+        const picked = await host.pick({
+            placeholder: 'Pull request to review',
+            items,
+        })
+        if (picked !== null) await openPullRequest(picked.ref)
+    }
+
     const writeStory = async (now: Shown) => {
         const url = `https://github.com/${now.ref.repo}/pull/${now.ref.number}`
         await host.startTerminal({
@@ -232,7 +257,7 @@ export const createWalkApp = ({
                 if (ref !== null) await openPullRequest(ref)
                 return
             }
-            if (command === 'lucaWalk.openFromList') return notBuilt()
+            if (command === 'lucaWalk.openFromList') return openFromList()
             const now = shown
             if (now === null) {
                 await error('Open a pull request first.')
