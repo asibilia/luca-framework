@@ -8,6 +8,7 @@ import {
     type DraftComment,
     type Drafts,
 } from './drafts-file'
+import type { GitHubThread } from './github-conversation'
 import type { PullRequestRef } from './pull-request-ref'
 import type { WalkHost, WalkThread } from './walk-host'
 import { baseUri, checkoutFileUri, documentOf } from './walk-uris'
@@ -19,6 +20,7 @@ import { baseUri, checkoutFileUri, documentOf } from './walk-uris'
  */
 
 const DRAFT_LABEL = 'Draft'
+const GITHUB_LABEL = 'On GitHub'
 const DRAFT_AUTHOR = 'You'
 const FENCE = '```'
 
@@ -35,6 +37,7 @@ export const createFeedback = async ({
     ref,
     checkout,
     base_sha,
+    github_threads,
     onApprovedChanged,
 }: {
     host: WalkHost
@@ -42,6 +45,7 @@ export const createFeedback = async ({
     ref: PullRequestRef
     checkout: string
     base_sha: string | null
+    github_threads: GitHubThread[]
     onApprovedChanged: () => Promise<void>
 }) => {
     let drafts: Drafts = await readDrafts({ walk_dir, ref })
@@ -69,12 +73,31 @@ export const createFeedback = async ({
         }
     }
 
+    /** A thread already on GitHub, shown read-only where it was left. */
+    const githubThreadOf = (thread: GitHubThread): WalkThread | null => {
+        const uri =
+            thread.side === 'base'
+                ? shown_base_sha === null
+                    ? null
+                    : baseUri({ path: thread.path, sha: shown_base_sha })
+                : checkoutFileUri({ checkout, path: thread.path })
+        if (uri === null) return null
+        return {
+            uri,
+            start_line: thread.start_line,
+            end_line: thread.end_line,
+            label: GITHUB_LABEL,
+            read_only: true,
+            comments: thread.comments,
+        }
+    }
+
     const showThreads = () =>
         host.showThreads({
-            threads: drafts.comments.flatMap((comment) => {
-                const thread = threadOf(comment)
-                return thread === null ? [] : [thread]
-            }),
+            threads: [
+                ...github_threads.map(githubThreadOf),
+                ...drafts.comments.map(threadOf),
+            ].filter((thread) => thread !== null),
         })
 
     const update = async (change: (now: Drafts) => Drafts) => {

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createBrowseSession } from './browse-session'
 import { prepareCheckout } from './checkout'
 import { createFeedback, type Feedback } from './feedback'
+import { readAgentSummaries, readGitHubThreads } from './github-conversation'
 import { mapHtml } from './map-html'
 import {
     checkoutPath,
@@ -76,6 +77,8 @@ type Shown = {
     checkout: string
     loaded: Loaded
     story_requested: boolean
+    /** `/luca-pr-address`'s summaries on it, newest first. */
+    replies: string[]
     /** The walk through the story, when it was written for the head. */
     walk: WalkSession | null
     /** The owner's unsent feedback on it. */
@@ -136,6 +139,7 @@ export const createWalkApp = ({
                 pr_number: now.ref.number,
                 loaded: now.loaded,
                 story_requested: now.story_requested,
+                replies: now.replies,
             }),
         })
     }
@@ -166,12 +170,17 @@ export const createWalkApp = ({
             story.head_sha === loaded.head_sha
                 ? story
                 : null
+        const [github_threads, replies] = await Promise.all([
+            readGitHubThreads({ gh, ref }).catch(() => []),
+            readAgentSummaries({ gh, ref }).catch(() => []),
+        ])
         const feedback = await createFeedback({
             host,
             walk_dir,
             ref,
             checkout,
             base_sha: story?.base_sha ?? null,
+            github_threads,
             onApprovedChanged: async () => {
                 await shown?.walk?.showStops()
             },
@@ -192,6 +201,7 @@ export const createWalkApp = ({
             checkout,
             loaded,
             story_requested: false,
+            replies,
             walk,
             feedback,
         }

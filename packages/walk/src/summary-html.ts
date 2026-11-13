@@ -118,6 +118,22 @@ const foundBody = ({
     return [...said, WRITE, BROWSE].join('\n')
 }
 
+/** `/luca-pr-address`'s summaries, newest first; empty when there are none. */
+const repliesBody = ({ replies }: { replies: string[] }): string =>
+    replies.length === 0
+        ? ''
+        : [
+              `<h2>${escapeHtml({ text: 'Replies from /luca-pr-address:' })}</h2>`,
+              ...replies.map(
+                  (reply) =>
+                      `<div>${reply
+                          .split('\n')
+                          .filter((line) => line.trim() !== '')
+                          .map((text) => paragraph({ text }))
+                          .join('')}</div>`
+              ),
+          ].join('\n')
+
 /**
  * The Summary panel's HTML for pull request `pr_number`.
  *
@@ -127,10 +143,13 @@ export const summaryHtml = ({
     pr_number,
     loaded,
     story_requested,
+    replies = [],
 }: {
     pr_number: number
     loaded: Loaded
     story_requested: boolean
+    /** `/luca-pr-address`'s summaries, newest first, without their markers. */
+    replies?: string[]
 }): string => {
     const title = `Summary of #${pr_number}`
     if (loaded.status === 'failed') {
@@ -144,6 +163,12 @@ export const summaryHtml = ({
     const body = foundBody(loaded)
     return page({
         title,
-        body: story_requested ? `${body}\n${RELOAD}` : body,
+        body: [
+            body,
+            ...(story_requested ? [RELOAD] : []),
+            repliesBody({ replies }),
+        ]
+            .filter((part) => part !== '')
+            .join('\n'),
     })
 }
