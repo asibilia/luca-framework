@@ -86,6 +86,16 @@ Tests:
 
 - `packages/walk/src/map.test.ts`
 
+## Review threads and /luca-pr-address's replies
+
+On loading, the review threads already on the pull request are shown read-only in the checkout's files, labelled `On GitHub` (a file thread on line 1); a reply with `/luca-pr-address`'s reply marker shows as `luca-pr-address`. The Summary panel lists the agent's summary comments under `Replies from /luca-pr-address:`, newest first.
+
+Reached by: opening a pull request that has review threads or `/luca-pr-address` comments.
+
+Tests:
+
+- `packages/walk/src/review-threads.test.ts`
+
 ## Feedback kept until it is sent
 
 Comments on lines (either side of the diff), suggested changes, file comments, pull request comments and "this file looks good" marks are shown as `Draft` threads and kept at once in the pull request's drafts file, so a new window finds them again. A draft can be edited or deleted before it is sent.

@@ -28,7 +28,24 @@ export type PretendStep =
 
 export type PretendComment = { id: number; body: string; author?: string }
 
+/** One comment in a review thread. */
+export type PretendThreadComment = { author: string; body: string }
+
+/**
+ * A review thread on a pull request. `line` is null for a file thread or
+ * when the line is gone; `side` is GitHub's `diffSide`.
+ */
+export type PretendThread = {
+    path: string
+    subject_type: 'LINE' | 'FILE'
+    line: number | null
+    side: 'LEFT' | 'RIGHT'
+    comments: PretendThreadComment[]
+}
+
 export type PretendPull = {
+    /** The pull request's review threads. None when left out. */
+    threads?: PretendThread[]
     repo: string
     number: number
     title: string
@@ -147,6 +164,52 @@ export const createPretendGitHub = ({
                         },
                     }))
                 )
+            )
+        }
+
+        if (
+            args[0] === 'api' &&
+            args[1] === 'graphql' &&
+            call.includes('reviewThreads')
+        ) {
+            const variable = (name: string) =>
+                args
+                    .find((arg) => arg.startsWith(`${name}=`))
+                    ?.slice(name.length + 1) ?? ''
+            const found = find({
+                repo: `${variable('owner')}/${variable('name')}`,
+                number: Number(variable('number')),
+            })
+            if (found === null) return no('HTTP 404: Not Found')
+            const nodes = (found.threads ?? []).map((thread) => ({
+                path: thread.path,
+                subjectType: thread.subject_type,
+                line: thread.line,
+                originalLine: thread.line,
+                diffSide: thread.side,
+                comments: {
+                    nodes: thread.comments.map(({ author, body }) => ({
+                        author: { login: author },
+                        body,
+                    })),
+                },
+            }))
+            return ok(
+                JSON.stringify({
+                    data: {
+                        repository: {
+                            pullRequest: {
+                                reviewThreads: {
+                                    nodes,
+                                    pageInfo: {
+                                        hasNextPage: false,
+                                        endCursor: null,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                })
             )
         }
 
