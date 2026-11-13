@@ -75,3 +75,13 @@ Reached by: moving the cursor in a file of the pull request, with the Context vi
 Tests:
 
 - `packages/walk/src/context-box.test.ts`
+
+## The map
+
+`Show the map` opens the Map panel: one box per file on the story's map (marked `start here`, `new`, `deleted`, `renamed from`, `loose end`), the links between files, and the architecture note. Clicking a box goes to the first stop with a change in that file.
+
+Reached by: `Luca Walk: Show the map`, and the Summary panel's `Show the map` button.
+
+Tests:
+
+- `packages/walk/src/map.test.ts`

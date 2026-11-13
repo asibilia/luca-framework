@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { createBrowseSession } from './browse-session'
 import { prepareCheckout } from './checkout'
+import { mapHtml } from './map-html'
 import {
     checkoutPath,
     checkoutRefOf,
@@ -65,6 +66,7 @@ const PanelMessageSchema = z.discriminatedUnion('type', [
         type: z.literal('open_link'),
         url: z.url({ protocol: /^https?$/ }),
     }),
+    z.object({ type: z.literal('open_file'), path: z.string() }),
 ])
 
 /** The pull request on screen. */
@@ -316,6 +318,21 @@ export const createWalkApp = ({
         await browse.backToWalk()
     }
 
+    const showMap = (now: Shown) =>
+        walkStep(now, async (walk) => {
+            if (walk.story === null) {
+                await error(
+                    `#${now.ref.number} has no story, so it has no map. Use "Write the story" for a guided walk.`
+                )
+                return
+            }
+            await host.showPanel({
+                id: 'map',
+                title: `Map of #${now.ref.number}`,
+                html: mapHtml({ story: walk.story }),
+            })
+        })
+
     const notBuilt = () =>
         host.showMessage({ kind: 'info', text: 'Not built yet.' })
 
@@ -334,6 +351,7 @@ export const createWalkApp = ({
                 return
             }
             if (command === 'lucaWalk.showSummary') return showSummary(now)
+            if (command === 'lucaWalk.showMap') return showMap(now)
             if (command === 'lucaWalk.writeStory') return writeStory(now)
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
             const step = WALK_STEPS[command]
@@ -349,7 +367,7 @@ export const createWalkApp = ({
             if (ref !== null) await load(ref)
         },
 
-        /** A message from a webview: a button was pressed or a link clicked. */
+        /** A message from a webview: a button, a link or a map box was clicked. */
         panelMessage: async ({
             message,
         }: {
@@ -364,8 +382,13 @@ export const createWalkApp = ({
             }
             const now = shown
             if (now === null) return
+            if (parsed.data.type === 'open_file') {
+                const { path } = parsed.data
+                return walkStep(now, (walk) => walk.goToFile({ path }))
+            }
             const { id } = parsed.data
             if (id === 'write_story') return writeStory(now)
+            if (id === 'show_map') return showMap(now)
             if (id === 'reload_story') return load(now.ref)
             if (id === 'browse_diff') return browseDiff(now)
             if (id === 'start_walk') {

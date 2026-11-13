@@ -52,6 +52,11 @@ document.addEventListener('click', (event) => {
     const pressed = target ? target.closest('[data-id]') : null
     if (pressed) {
         vscode.postMessage({ type: 'button', id: pressed.getAttribute('data-id') })
+        return
+    }
+    const file = target ? target.closest('[data-path]') : null
+    if (file) {
+        vscode.postMessage({ type: 'open_file', path: file.getAttribute('data-path') })
     }
 })
 `

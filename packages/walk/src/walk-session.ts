@@ -102,7 +102,11 @@ export const createWalkSession = async ({
         cursors.set(cursorKey(change), change.start_line)
     }
 
-    const goToStop = async (stop: StoryStop) => {
+    /** Goes to `stop`, at `first` (the stop's first change by default). */
+    const goToStop = async (
+        stop: StoryStop,
+        first: StoryChange | undefined = stop.changes[0]
+    ) => {
         const left = place.current_stop_id
         const done =
             left === null ||
@@ -110,7 +114,6 @@ export const createWalkSession = async ({
             place.done_stop_ids.includes(left)
                 ? place.done_stop_ids
                 : [...place.done_stop_ids, left]
-        const [first] = stop.changes
         place = {
             current_stop_id: stop.id,
             done_stop_ids: done,
@@ -232,6 +235,21 @@ export const createWalkSession = async ({
         pickStop: async ({ stop_id }: { stop_id: string }) => {
             const stop = stopOf(stop_id)
             if (stop !== null) await goToStop(stop)
+        },
+
+        /** The story this walk goes through (null when browsing the plain diff). */
+        story: story as Story | null,
+
+        /** Goes to the first stop with a change in the file at `path`. */
+        goToFile: async ({ path }: { path: string }) => {
+            const stop = stops.find(({ changes }) =>
+                changes.some((change) => change.path === path)
+            )
+            if (stop === undefined) return
+            await goToStop(
+                stop,
+                stop.changes.find((change) => change.path === path)
+            )
         },
 
         /**

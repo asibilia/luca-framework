@@ -231,6 +231,12 @@ export const createBrowseSession = async ({
             const file = fileOf(stop_id)
             if (file !== null) await goToFile(file)
         },
+        /** The plain diff has no story, so no map. */
+        story: null,
+        goToFile: async ({ path }: { path: string }) => {
+            const file = fileOf(path)
+            if (file !== null) await goToFile(file)
+        },
         cursorMoved: async () => undefined,
     }
 }
