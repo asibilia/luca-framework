@@ -12,6 +12,9 @@ type PanelMessage = { panel: string; message: unknown }
 
 const WEBVIEW_OPTIONS = { enableScripts: true }
 
+/** Runs on a click or Enter on a stop; registered, never contributed. */
+const PICK_STOP_COMMAND = 'lucaWalk.pickStop'
+
 const stopsView = () => {
     let items: WalkStopItem[] = []
     const changed = new vscode.EventEmitter<void>()
@@ -22,6 +25,11 @@ const stopsView = () => {
             const tree = new vscode.TreeItem(item.label)
             tree.description = item.description
             tree.id = item.stop_id
+            tree.command = {
+                command: PICK_STOP_COMMAND,
+                title: item.label,
+                arguments: [item.stop_id],
+            }
             return tree
         },
     }
@@ -102,18 +110,24 @@ const commentThreads = () => {
 export const createVscodeHost = ({
     context,
     onPanelMessage,
+    onStopPicked,
 }: {
     context: vscode.ExtensionContext
     onPanelMessage: (event: PanelMessage) => void
+    onStopPicked: (picked: { stop_id: string }) => void
 }): WalkHost => {
     const panels = new Map<string, vscode.WebviewPanel>()
     const stops = stopsView()
     const contextBox = contextView({ onPanelMessage })
     const threads = commentThreads()
+    const stopsTree = vscode.window.createTreeView('lucaWalk.stops', {
+        treeDataProvider: stops.provider,
+    })
     context.subscriptions.push(
-        vscode.window.createTreeView('lucaWalk.stops', {
-            treeDataProvider: stops.provider,
-        }),
+        stopsTree,
+        vscode.commands.registerCommand(PICK_STOP_COMMAND, (stop_id: string) =>
+            onStopPicked({ stop_id })
+        ),
         vscode.window.registerWebviewViewProvider(
             'lucaWalk.context',
             contextBox.provider

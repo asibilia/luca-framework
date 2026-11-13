@@ -11,6 +11,8 @@ import {
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
 import { summaryHtml, type Loaded } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
+import { createWalkSession, type WalkSession } from './walk-session'
+import { readBaseUri } from './walk-uris'
 
 import type { Gh } from '../../engine/src/story/story-github'
 import { prNow } from '../../engine/src/story/story-github'
@@ -67,6 +69,18 @@ type Shown = {
     checkout: string
     loaded: Loaded
     story_requested: boolean
+    /** The walk through the story, when it was written for the head. */
+    walk: WalkSession | null
+}
+
+/** The walk commands, by what they ask of the walk. */
+const WALK_STEPS: Record<string, (walk: WalkSession) => Promise<void>> = {
+    'lucaWalk.startWalk': (walk) => walk.start(),
+    'lucaWalk.nextStop': (walk) => walk.nextStop(),
+    'lucaWalk.previousStop': (walk) => walk.previousStop(),
+    'lucaWalk.nextChange': (walk) => walk.nextChange(),
+    'lucaWalk.previousChange': (walk) => walk.previousChange(),
+    'lucaWalk.backToWalk': (walk) => walk.backToWalk(),
 }
 
 /**
@@ -123,13 +137,39 @@ export const createWalkApp = ({
         } catch (thrown) {
             loaded = { status: 'failed', message: messageOf(thrown) }
         }
-        shown = {
-            ref,
-            checkout: checkoutPath({ walk_dir, ref }),
-            loaded,
-            story_requested: false,
-        }
+        const checkout = checkoutPath({ walk_dir, ref })
+        const walkable =
+            loaded.status === 'found' &&
+            loaded.found.status === 'ok' &&
+            loaded.found.story.head_sha === loaded.head_sha
+                ? loaded.found.story
+                : null
+        const walk =
+            walkable === null
+                ? null
+                : await createWalkSession({
+                      host,
+                      walk_dir,
+                      ref,
+                      checkout,
+                      story: walkable,
+                  })
+        shown = { ref, checkout, loaded, story_requested: false, walk }
         await showSummary(shown)
+        if (walk !== null) await walk.showStops()
+    }
+
+    const walkStep = async (
+        now: Shown,
+        step: (walk: WalkSession) => Promise<void>
+    ) => {
+        if (now.walk === null) {
+            await error(
+                `#${now.ref.number} has no story to walk. Use "Browse the diff" to read the plain diff.`
+            )
+            return
+        }
+        await step(now.walk)
     }
 
     /** The pull request the owner named, or null after telling them why not. */
@@ -266,6 +306,8 @@ export const createWalkApp = ({
             if (command === 'lucaWalk.showSummary') return showSummary(now)
             if (command === 'lucaWalk.writeStory') return writeStory(now)
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
+            const step = WALK_STEPS[command]
+            if (step !== undefined) return walkStep(now, step)
             return notBuilt()
         },
 
@@ -290,7 +332,31 @@ export const createWalkApp = ({
             const { id } = parsed.data
             if (id === 'write_story') return writeStory(now)
             if (id === 'reload_story') return load(now.ref)
+            if (id === 'start_walk') {
+                return walkStep(now, (walk) => walk.start())
+            }
             return notBuilt()
+        },
+
+        /** A stop was clicked in the Stops view. */
+        stopPicked: async ({ stop_id }: { stop_id: string }) => {
+            await shown?.walk?.pickStop({ stop_id })
+        },
+
+        /** The cursor moved to `line` (1-based) of the document `uri`. */
+        cursorMoved: async ({ uri, line }: { uri: string; line: number }) => {
+            await shown?.walk?.cursorMoved({ uri, line })
+        },
+
+        /** The text of a `luca-walk-base` document: the file at its commit. */
+        baseDocumentText: async ({ uri }: { uri: string }): Promise<string> => {
+            const base = readBaseUri({ uri })
+            if (base === null || base.sha === null || shown === null) return ''
+            const read = await git({
+                args: ['show', `${base.sha}:${base.path}`],
+                cwd: shown.checkout,
+            })
+            return read.ok ? read.stdout : ''
         },
     }
 }

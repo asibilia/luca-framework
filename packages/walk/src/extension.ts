@@ -6,6 +6,7 @@ import { githubRemoteUrl, walkDir } from './pull-request-ref'
 import { realGh, realGit } from './run-command'
 import { createVscodeHost } from './vscode-host'
 import { createWalkApp, WALK_COMMANDS, type WalkApp } from './walk-app'
+import { BASE_SCHEME } from './walk-uris'
 
 import { storiesDir } from '../../engine/src/story/story-store'
 
@@ -21,6 +22,9 @@ export const activate = (context: vscode.ExtensionContext): void => {
         context,
         onPanelMessage: (event) => {
             void app?.panelMessage(event)
+        },
+        onStopPicked: (picked) => {
+            void app?.stopPicked(picked)
         },
     })
     const env = process.env
@@ -40,6 +44,22 @@ export const activate = (context: vscode.ExtensionContext): void => {
             )
         )
     }
+    context.subscriptions.push(
+        vscode.workspace.registerTextDocumentContentProvider(BASE_SCHEME, {
+            provideTextDocumentContent: (uri) =>
+                made.baseDocumentText({ uri: uri.toString() }),
+        }),
+        vscode.window.onDidChangeTextEditorSelection(
+            ({ textEditor, selections }) => {
+                const [selection] = selections
+                if (selection === undefined) return
+                void made.cursorMoved({
+                    uri: textEditor.document.uri.toString(),
+                    line: selection.active.line + 1,
+                })
+            }
+        )
+    )
     void made.activated()
 }
 

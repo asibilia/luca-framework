@@ -34,3 +34,13 @@ Tests:
 
 - `packages/walk/src/review-ready-list.test.ts`
 - `packages/walk/src/review-ready-list.e2e.test.ts`
+
+## The walk
+
+`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file.
+
+Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next stop`, `Previous stop`, `Next change in this file`, `Previous change in this file`, `Back to the walk`, and the Stops view.
+
+Tests:
+
+- `packages/walk/src/walk-stops.test.ts`
