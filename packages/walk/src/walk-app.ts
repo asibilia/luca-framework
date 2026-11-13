@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { createBrowseSession } from './browse-session'
 import { prepareCheckout } from './checkout'
 import {
     checkoutPath,
@@ -208,7 +209,10 @@ export const createWalkApp = ({
         return { repo, number: read.number }
     }
 
-    const openPullRequest = async (ref: PullRequestRef) => {
+    /** The pull request as `gh pr view` reads it, or null after showing why not. */
+    const readPull = async (
+        ref: PullRequestRef
+    ): Promise<z.infer<typeof PullViewSchema> | null> => {
         const view = await gh({
             args: [
                 'pr',
@@ -224,17 +228,21 @@ export const createWalkApp = ({
             await error(
                 `Luca Walk could not read #${ref.number}: ${view.stderr.trim() || 'gh failed'}`
             )
-            return
+            return null
         }
-        let pull: z.infer<typeof PullViewSchema>
         try {
-            pull = PullViewSchema.parse(JSON.parse(view.stdout))
+            return PullViewSchema.parse(JSON.parse(view.stdout))
         } catch (thrown) {
             await error(
                 `Luca Walk could not read #${ref.number}: ${messageOf(thrown)}`
             )
-            return
+            return null
         }
+    }
+
+    const openPullRequest = async (ref: PullRequestRef) => {
+        const pull = await readPull(ref)
+        if (pull === null) return
         const prepared = await prepareCheckout({
             git,
             walk_dir,
@@ -289,6 +297,25 @@ export const createWalkApp = ({
         await showSummary(now)
     }
 
+    /** `Browse the diff`: one stop per changed file, at the first one. */
+    const browseDiff = async (now: Shown) => {
+        const pull = await readPull(now.ref)
+        if (pull === null) return
+        const browse = await createBrowseSession({
+            host,
+            git,
+            walk_dir,
+            ref: now.ref,
+            checkout: now.checkout,
+            base_ref: pull.baseRefName,
+            head_sha: pull.headRefOid,
+        })
+        if (browse === null) return
+        now.walk = browse
+        await browse.showStops()
+        await browse.backToWalk()
+    }
+
     const notBuilt = () =>
         host.showMessage({ kind: 'info', text: 'Not built yet.' })
 
@@ -340,6 +367,7 @@ export const createWalkApp = ({
             const { id } = parsed.data
             if (id === 'write_story') return writeStory(now)
             if (id === 'reload_story') return load(now.ref)
+            if (id === 'browse_diff') return browseDiff(now)
             if (id === 'start_walk') {
                 return walkStep(now, (walk) => walk.start())
             }
