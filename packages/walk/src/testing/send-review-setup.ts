@@ -149,6 +149,7 @@ export const openSendApp = async (
         story = { base_sha: repo.base_sha, head_sha: repo.head_sha },
         comments = [],
         threads = [],
+        user_unreadable = false,
     }: {
         author?: string
         labels?: string[]
@@ -158,6 +159,8 @@ export const openSendApp = async (
         /** The pull request's conversation comments. */
         comments?: PretendComment[]
         threads?: PretendThread[]
+        /** gh can't say who is signed in when the pull request is opened. */
+        user_unreadable?: boolean
     } = {}
 ) => {
     const repo_name = repo.repo_name
@@ -201,6 +204,9 @@ export const openSendApp = async (
             },
         ],
     })
+    if (user_unreadable) {
+        github.failNext({ step: 'read_user', error: 'gh: not logged in' })
+    }
     const host = createFakeHost({ workspace_folder: repo.checkout })
     const app = createWalkApp({
         host,

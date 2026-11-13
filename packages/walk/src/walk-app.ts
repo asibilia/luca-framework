@@ -12,6 +12,7 @@ import {
     type Shown,
 } from './load-pull-request'
 import { mapHtml } from './map-html'
+import { notYourRepoBadge, storyCommand } from './not-your-repo'
 import {
     checkoutRefOf,
     githubRepoOf,
@@ -120,6 +121,10 @@ export const createWalkApp = ({
                 story_requested: now.story_requested,
                 replies: now.replies,
                 visit_note: visitNote({ visit: now.visit }),
+                story_note: now.story_note,
+                story_command: now.your_repo
+                    ? null
+                    : storyCommand({ ref: now.ref, checkout: now.checkout }),
             }),
         })
     }
@@ -135,6 +140,11 @@ export const createWalkApp = ({
             ref,
         })
         shown = now
+        await host.showBadge(
+            now.your_repo
+                ? null
+                : notYourRepoBadge({ repo: ref.repo, login: now.login })
+        )
         await showSummary(now)
         await now.feedback.showThreads()
         if (now.walk !== null) await now.walk.showStops()
@@ -256,13 +266,28 @@ export const createWalkApp = ({
         if (picked !== null) await openPullRequest(picked.ref)
     }
 
+    /**
+     * `Write the story`: in your repo, `claude` runs `/luca-pr-prep` in a
+     * terminal in the checkout; in a repo that isn't yours (#766), the
+     * command that runs it outside the checkout is copied instead.
+     */
     const writeStory = async (now: Shown) => {
-        const url = `https://github.com/${now.ref.repo}/pull/${now.ref.number}`
-        await host.startTerminal({
-            name: 'Luca: write the story',
-            cwd: now.checkout,
-            command: `claude "/luca-pr-prep ${url}"`,
-        })
+        if (now.your_repo) {
+            const url = `https://github.com/${now.ref.repo}/pull/${now.ref.number}`
+            await host.startTerminal({
+                name: 'Luca: write the story',
+                cwd: now.checkout,
+                command: `claude "/luca-pr-prep ${url}"`,
+            })
+        } else {
+            await host.copyText({
+                text: storyCommand({ ref: now.ref, checkout: now.checkout }),
+            })
+            await host.showMessage({
+                kind: 'info',
+                text: `Copied the command that writes the story of #${now.ref.number}. Run it in a terminal, then press Reload the story.`,
+            })
+        }
         now.story_requested = true
         await showSummary(now)
     }
@@ -410,7 +435,9 @@ export const createWalkApp = ({
                 })
             }
             const { id } = parsed.data
-            if (id === 'write_story') return writeStory(now)
+            if (id === 'write_story' || id === 'copy_story_command') {
+                return writeStory(now)
+            }
             if (id === 'show_map') return showMap(now)
             if (id === 'reload_story') return load(now.ref)
             if (id === 'browse_diff') return browseDiff(now)
