@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -9,6 +9,7 @@ import { createFakeHost, type FakeHost } from './testing/fake-host'
 import { createPretendGitHub } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
 import {
+    commitSymlink,
     makeCheckoutRepo,
     storyOf,
     type FileAt,
@@ -428,6 +429,58 @@ describe('walking the stops (#756)', () => {
             current_stop_id: 's2',
             done_stop_ids: ['s1'],
             last_change_id: 'c2-0',
+        })
+    })
+})
+
+describe('a stop whose file is outside the checkout (#752)', () => {
+    const refused = (path: string) =>
+        `The story's stop "Out" names ${path}, which is outside the checkout of #12, so Luca Walk will not open it.`
+
+    test('a path with .. is refused, never opened', async () => {
+        const { host, run } = await openWalk({
+            stops: [
+                {
+                    id: 'o1',
+                    title: 'Out',
+                    changes: [{ id: 'o1-0', path: '../../secret.ts', line: 1 }],
+                },
+            ],
+        })
+
+        await run('lucaWalk.startWalk')
+
+        expect(host.diffs).toEqual([])
+        expect(host.messages).toContainEqual({
+            kind: 'error',
+            text: refused('../../secret.ts'),
+        })
+    })
+
+    test('a symlink that leads out of the checkout is refused, never opened', async () => {
+        const outside = join(dir, 'secret.ts')
+        await writeFile(outside, 'secret\n')
+        head_sha = await commitSymlink({
+            folder: checkout,
+            path: 'src/link.ts',
+            target: outside,
+        })
+        const { host, run } = await openWalk({
+            stops: [
+                {
+                    id: 'o1',
+                    title: 'Out',
+                    changes: [{ id: 'o1-0', path: 'src/link.ts', line: 1 }],
+                },
+            ],
+        })
+
+        await run('lucaWalk.startWalk')
+
+        expect(host.diffs).toEqual([])
+        expect(host.messages).toContainEqual({
+            kind: 'error',
+            text: refused('src/link.ts'),
         })
     })
 })

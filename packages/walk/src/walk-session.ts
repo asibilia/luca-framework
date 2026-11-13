@@ -1,3 +1,4 @@
+import { isPlainRepoPath, staysInCheckout } from './checkout-path'
 import { contextHtml, notInWalkHtml } from './context-html'
 import type { PullRequestRef } from './pull-request-ref'
 import type { WalkHost } from './walk-host'
@@ -90,14 +91,27 @@ export const createWalkSession = async ({
             status === 'renamed' && file?.previous_path
                 ? file.previous_path
                 : change.path
+        const deleted = status === 'deleted'
+        const kept_in =
+            isPlainRepoPath({ path: base_path }) &&
+            (deleted
+                ? isPlainRepoPath({ path: change.path })
+                : await staysInCheckout({ checkout, path: change.path }))
+        if (!kept_in) {
+            const stop = stops.find(({ changes }) => changes.includes(change))
+            await host.showMessage({
+                kind: 'error',
+                text: `The story's stop "${stop?.title ?? ''}" names ${isPlainRepoPath({ path: base_path }) ? change.path : base_path}, which is outside the checkout of #${ref.number}, so Luca Walk will not open it.`,
+            })
+            return
+        }
         const base_uri = baseUri({
             path: base_path,
             sha: status === 'added' ? null : story.base_sha,
         })
-        const head_uri =
-            status === 'deleted'
-                ? baseUri({ path: change.path, sha: null })
-                : checkoutFileUri({ checkout, path: change.path })
+        const head_uri = deleted
+            ? baseUri({ path: change.path, sha: null })
+            : checkoutFileUri({ checkout, path: change.path })
         await host.openDiff({
             title: `${change.path} (#${ref.number})`,
             base_uri,
