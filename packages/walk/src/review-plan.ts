@@ -71,6 +71,8 @@ export const planReview = async ({
     quote_all: boolean
     readLines: ReadLines
 }): Promise<ReviewPlan> => {
+    // Pull request comments go first, then comments outside the diff.
+    const pr_text: string[] = []
     const text: string[] = []
     const accepted: GitHubLineComment[] = []
     const file_threads: { path: string; body: string }[] = []
@@ -110,7 +112,7 @@ export const planReview = async ({
         const body = withoutReplyMarker(comment.body)
         const { path, side, start_line, end_line } = comment
         if (comment.kind === 'pull_request' || path === null) {
-            text.push(body)
+            pr_text.push(body)
             continue
         }
         if (
@@ -156,7 +158,7 @@ export const planReview = async ({
         else text.push(quote)
     }
     return {
-        body: [...text, record_line].join('\n\n'),
+        body: [...pr_text, ...text, record_line].join('\n\n'),
         comments: accepted,
         file_threads,
         outside,

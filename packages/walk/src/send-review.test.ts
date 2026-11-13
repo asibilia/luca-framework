@@ -218,6 +218,22 @@ describe('what goes in the review (#761)', () => {
         )
     })
 
+    test('pull request comments come before quoted comments in the review text', async () => {
+        const made = await openSendApp(repo)
+        await made.elsewhereDraft('Move this too')
+        await made.prDraft('Good direction')
+
+        await made.send('Just comments')
+
+        const body = made.submitted()[0]?.body ?? ''
+        const pr_at = body.indexOf('Good direction')
+        const quoted_at = body.indexOf(
+            outsideStart(repo, '3', 'src/elsewhere.ts')
+        )
+        expect(pr_at).toBeGreaterThanOrEqual(0)
+        expect(quoted_at).toBeGreaterThan(pr_at)
+    })
+
     test('a 422 at the create step sends every line and range draft as quoted text', async () => {
         const made = await openSendApp(repo)
         await made.lineDraft(10, 10, 'Name this')
