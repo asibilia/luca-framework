@@ -17,3 +17,4 @@ To add a feature, add a section to its area's page: a heading, one sentence, a `
 - [run-control.md](run-control.md): stuck work, crash recovery, the config, limits, tokens, and looking back.
 - [agents.md](agents.md): agents, their guards and messages, memory, the decision model, and the tracker.
 - [board-and-cli.md](board-and-cli.md): the board, the command line, the publish package, the docs, and repo tooling.
+- [walk.md](walk.md): Luca Walk, the VS Code extension that walks a pull request's story and sends one review.
