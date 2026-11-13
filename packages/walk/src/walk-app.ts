@@ -58,10 +58,13 @@ const PullViewSchema = z.object({
     url: z.string(),
 })
 
-const PanelMessageSchema = z.object({
-    type: z.literal('button'),
-    id: z.string(),
-})
+const PanelMessageSchema = z.discriminatedUnion('type', [
+    z.object({ type: z.literal('button'), id: z.string() }),
+    z.object({
+        type: z.literal('open_link'),
+        url: z.url({ protocol: /^https?$/ }),
+    }),
+])
 
 /** The pull request on screen. */
 type Shown = {
@@ -319,7 +322,7 @@ export const createWalkApp = ({
             if (ref !== null) await load(ref)
         },
 
-        /** A message from a webview: a button was pressed. */
+        /** A message from a webview: a button was pressed or a link clicked. */
         panelMessage: async ({
             message,
         }: {
@@ -327,8 +330,13 @@ export const createWalkApp = ({
             message: unknown
         }) => {
             const parsed = PanelMessageSchema.safeParse(message)
+            if (!parsed.success) return
+            if (parsed.data.type === 'open_link') {
+                await host.openUrl({ url: parsed.data.url })
+                return
+            }
             const now = shown
-            if (!parsed.success || now === null) return
+            if (now === null) return
             const { id } = parsed.data
             if (id === 'write_story') return writeStory(now)
             if (id === 'reload_story') return load(now.ref)

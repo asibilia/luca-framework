@@ -1,3 +1,4 @@
+import { contextHtml, notInWalkHtml } from './context-html'
 import { readDrafts, saveWalkPlace, type WalkPlace } from './drafts-file'
 import type { PullRequestRef } from './pull-request-ref'
 import type { WalkHost } from './walk-host'
@@ -233,11 +234,24 @@ export const createWalkSession = async ({
             if (stop !== null) await goToStop(stop)
         },
 
-        /** The cursor moved: on a change of the current stop, it is the last change. */
+        /**
+         * The cursor moved: the Context view shows the story's context
+         * there, and on a change of the current stop it is the last change.
+         */
         cursorMoved: async ({ uri, line }: { uri: string; line: number }) => {
             const document = documentOf({ checkout, uri })
-            if (document === null) return
+            if (document === null) {
+                // A file outside the checkout is not part of the walk; the
+                // empty side of an added or deleted file says nothing.
+                if (uri.startsWith('file:')) {
+                    await host.showContext({ html: notInWalkHtml() })
+                }
+                return
+            }
             cursors.set(cursorKey(document), line)
+            await host.showContext({
+                html: contextHtml({ story, cursor: { ...document, line } }),
+            })
             const stop = stopOf(place.current_stop_id)
             if (stop === null) return
             const under = stop.changes.find(

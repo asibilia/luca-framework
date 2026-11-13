@@ -35,10 +35,20 @@ export const paragraph = ({ text }: { text: string }) =>
 export const labelled = ({ label, text }: { label: string; text: string }) =>
     `<p><strong>${escapeHtml({ text: label })}</strong> ${escapeHtml({ text })}</p>`
 
+/** A link that sends `{ type: 'open_link', url }` to the app. */
+export const link = ({ url, text }: { url: string; text: string }) =>
+    `<a href="${escapeHtml({ text: url })}" data-url="${escapeHtml({ text: url })}">${escapeHtml({ text })}</a>`
+
 const SCRIPT = `
 const vscode = acquireVsCodeApi()
 document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null
+    const linked = target ? target.closest('[data-url]') : null
+    if (linked) {
+        event.preventDefault()
+        vscode.postMessage({ type: 'open_link', url: linked.getAttribute('data-url') })
+        return
+    }
     const pressed = target ? target.closest('[data-id]') : null
     if (pressed) {
         vscode.postMessage({ type: 'button', id: pressed.getAttribute('data-id') })
