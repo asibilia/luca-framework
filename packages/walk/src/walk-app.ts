@@ -13,6 +13,7 @@ import {
     type PullRequestRef,
 } from './pull-request-ref'
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
+import { sendReview } from './send-review'
 import { summaryHtml, type Loaded } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
 import { createWalkSession, type WalkSession } from './walk-session'
@@ -380,6 +381,27 @@ export const createWalkApp = ({
             })
         })
 
+    const send = async (now: Shown) => {
+        const pull = await readPull(now.ref)
+        if (pull === null) return
+        const { loaded } = now
+        await sendReview({
+            host,
+            gh,
+            git,
+            ref: now.ref,
+            checkout: now.checkout,
+            feedback: now.feedback,
+            author: pull.author.login,
+            base_ref: pull.baseRefName,
+            head_sha: pull.headRefOid,
+            story_base_sha:
+                loaded.status === 'found' && loaded.found.status === 'ok'
+                    ? loaded.found.story.base_sha
+                    : null,
+        })
+    }
+
     const notBuilt = () =>
         host.showMessage({ kind: 'info', text: 'Not built yet.' })
 
@@ -401,6 +423,7 @@ export const createWalkApp = ({
             if (command === 'lucaWalk.showMap') return showMap(now)
             if (command === 'lucaWalk.writeStory') return writeStory(now)
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
+            if (command === 'lucaWalk.sendReview') return send(now)
             const step = WALK_STEPS[command]
             if (step !== undefined) return walkStep(now, step)
             const feedbackStep = FEEDBACK_STEPS[command]

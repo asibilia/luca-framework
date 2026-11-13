@@ -142,6 +142,21 @@ export const createFeedback = async ({
         /** Whether the owner marked `path` as looking good. */
         looksGood: (path: string) => drafts.approved_files.includes(path),
 
+        /** The unsent comments, in the order they were made. */
+        comments: () => drafts.comments,
+
+        /** The files the owner marked as looking good. */
+        approvedFiles: () => drafts.approved_files,
+
+        /** Clears the comments `ids` once a review took them. */
+        clearSent: async ({ ids }: { ids: string[] }) => {
+            await update((now) => ({
+                ...now,
+                comments: now.comments.filter(({ id }) => !ids.includes(id)),
+            }))
+            await showThreads()
+        },
+
         /** A comment typed in VS Code's comment box on `uri`. */
         draftAdded: async ({
             uri,
