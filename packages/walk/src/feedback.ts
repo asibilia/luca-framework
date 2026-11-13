@@ -45,6 +45,7 @@ export const createFeedback = async ({
     onApprovedChanged: () => Promise<void>
 }) => {
     let drafts: Drafts = await readDrafts({ walk_dir, ref })
+    let shown_base_sha = base_sha
 
     const error = (text: string) => host.showMessage({ kind: 'error', text })
 
@@ -52,9 +53,9 @@ export const createFeedback = async ({
         if (comment.path === null) return null
         const uri =
             comment.side === 'base'
-                ? base_sha === null
+                ? shown_base_sha === null
                     ? null
-                    : baseUri({ path: comment.path, sha: base_sha })
+                    : baseUri({ path: comment.path, sha: shown_base_sha })
                 : checkoutFileUri({ checkout, path: comment.path })
         if (uri === null) return null
         return {
@@ -108,6 +109,12 @@ export const createFeedback = async ({
 
     return {
         showThreads,
+
+        /** Shows `base` side drafts against `sha` from now on, such as the merge base a plain diff reads. */
+        showBaseAt: async ({ sha }: { sha: string }) => {
+            shown_base_sha = sha
+            await showThreads()
+        },
 
         /** Whether the owner marked `path` as looking good. */
         looksGood: (path: string) => drafts.approved_files.includes(path),

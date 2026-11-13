@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
@@ -232,6 +233,43 @@ describe('browsing a pull request without a story (#759)', () => {
             'current',
             '',
         ])
+    })
+
+    test('This file looks good adds looks good to the browse stop of that file', async () => {
+        const { app, host, browse, pick } = await openBrowse()
+        await browse()
+        await pick(1)
+        host.active_editor = {
+            uri: pathToFileURL(join(checkout, 'src/a.ts')).href,
+            start_line: 1,
+            end_line: 1,
+        }
+
+        await app.run({ command: 'lucaWalk.toggleLooksGood', args: [] })
+
+        expect(host.stops[1]?.description).toBe('current · looks good')
+        expect(host.stops[0]?.description).toBe('done')
+    })
+
+    test('a base-side draft made while browsing shows as a Draft thread on the merge base document', async () => {
+        const { app, host, browse } = await openBrowse()
+        await browse()
+        const uri = `luca-walk-base:/README.md?sha=${base_sha}`
+
+        await app.draftCommentAdded({
+            uri,
+            start_line: 7,
+            end_line: 7,
+            body: 'Why was this seven?',
+        })
+
+        expect(host.threads).toHaveLength(1)
+        expect(host.threads[0]).toMatchObject({
+            uri,
+            start_line: 7,
+            label: 'Draft',
+        })
+        expect(host.threads[0]?.comments[0]?.body).toBe('Why was this seven?')
     })
 
     test('Browse the diff works for a stale story and for a story of schema version 2', async () => {

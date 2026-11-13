@@ -346,6 +346,8 @@ export const createWalkApp = ({
             checkout: now.checkout,
             base_ref: pull.baseRefName,
             head_sha: pull.headRefOid,
+            looksGood: now.feedback.looksGood,
+            onBaseSha: (sha) => now.feedback.showBaseAt({ sha }),
         })
         if (browse === null) return
         now.walk = browse

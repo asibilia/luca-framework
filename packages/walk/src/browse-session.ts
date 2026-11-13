@@ -73,6 +73,8 @@ export const createBrowseSession = async ({
     checkout,
     base_ref,
     head_sha,
+    looksGood,
+    onBaseSha,
 }: {
     host: WalkHost
     git: WalkGit
@@ -81,6 +83,10 @@ export const createBrowseSession = async ({
     checkout: string
     base_ref: string
     head_sha: string
+    /** Whether the owner marked the file `path` as looking good. */
+    looksGood: (path: string) => boolean
+    /** Told the merge base the diff's base side is read at. */
+    onBaseSha: (base_sha: string) => Promise<void>
 }): Promise<WalkSession | null> => {
     const failed = async (stderr: string) => {
         await host.showMessage({
@@ -95,6 +101,7 @@ export const createBrowseSession = async ({
     })
     if (!merged.ok) return failed(merged.stderr)
     const base_sha = merged.stdout.trim()
+    await onBaseSha(base_sha)
     const listed = await git({
         args: ['diff', '--name-status', '-M', '-z', base_sha, head_sha],
         cwd: checkout,
@@ -123,12 +130,16 @@ export const createBrowseSession = async ({
         host.showStops({
             items: files.map((file, at) => ({
                 label: `${at + 1}. ${file.path}`,
-                description:
+                description: [
                     file.path === place.current_stop_id
                         ? 'current'
                         : place.done_stop_ids.includes(file.path)
                           ? 'done'
                           : '',
+                    looksGood(file.path) ? 'looks good' : '',
+                ]
+                    .filter((part) => part !== '')
+                    .join(' · '),
                 stop_id: file.path,
             })),
         })
