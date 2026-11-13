@@ -56,9 +56,7 @@ afterEach(async () => {
 
 const aUri = () => pathToFileURL(join(checkout, 'src/a.ts')).href
 
-const lineThread = (
-    comments: PretendThread['comments']
-): PretendThread => ({
+const lineThread = (comments: PretendThread['comments']): PretendThread => ({
     path: 'src/a.ts',
     subject_type: 'LINE',
     line: 44,
@@ -140,7 +138,7 @@ describe('review threads already on the pull request (#763)', () => {
         })
     })
 
-    test("a reply that holds the reply marker shows as luca-pr-address, without the marker", async () => {
+    test('a reply that holds the reply marker shows as luca-pr-address, without the marker', async () => {
         const { host } = await openApp({
             threads: [
                 lineThread([
