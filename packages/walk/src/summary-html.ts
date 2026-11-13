@@ -144,12 +144,15 @@ export const summaryHtml = ({
     loaded,
     story_requested,
     replies = [],
+    visit_note = null,
 }: {
     pr_number: number
     loaded: Loaded
     story_requested: boolean
     /** `/luca-pr-address`'s summaries, newest first, without their markers. */
     replies?: string[]
+    /** What changed since the owner's last review; null on a first visit. */
+    visit_note?: string | null
 }): string => {
     const title = `Summary of #${pr_number}`
     if (loaded.status === 'failed') {
@@ -164,6 +167,7 @@ export const summaryHtml = ({
     return page({
         title,
         body: [
+            visit_note === null ? '' : paragraph({ text: visit_note }),
             body,
             ...(story_requested ? [RELOAD] : []),
             repliesBody({ replies }),

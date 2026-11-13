@@ -148,6 +148,15 @@ export const createFeedback = async ({
         /** The files the owner marked as looking good. */
         approvedFiles: () => drafts.approved_files,
 
+        /** Sets the files marked as looking good to `paths`. */
+        setApproved: async ({ paths }: { paths: string[] }) => {
+            const same =
+                paths.length === drafts.approved_files.length &&
+                paths.every((path) => drafts.approved_files.includes(path))
+            if (same) return
+            await update((now) => ({ ...now, approved_files: paths }))
+        },
+
         /** Clears the comments `ids` once a review took them. */
         clearSent: async ({ ids }: { ids: string[] }) => {
             await update((now) => ({

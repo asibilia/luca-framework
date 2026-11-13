@@ -13,6 +13,13 @@ import {
     type PullRequestRef,
 } from './pull-request-ref'
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
+import {
+    approvedOnVisit,
+    filesToWalk,
+    readVisit,
+    visitNote,
+    type Visit,
+} from './second-visit'
 import { sendReview } from './send-review'
 import { summaryHtml, type Loaded } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
@@ -80,6 +87,8 @@ type Shown = {
     story_requested: boolean
     /** `/luca-pr-address`'s summaries on it, newest first. */
     replies: string[]
+    /** What changed since the owner's last review; null on a first visit. */
+    visit_note: string | null
     /** The walk through the story, when it was written for the head. */
     walk: WalkSession | null
     /** The owner's unsent feedback on it. */
@@ -141,6 +150,7 @@ export const createWalkApp = ({
                 loaded: now.loaded,
                 story_requested: now.story_requested,
                 replies: now.replies,
+                visit_note: now.visit_note,
             }),
         })
     }
@@ -171,9 +181,20 @@ export const createWalkApp = ({
             story.head_sha === loaded.head_sha
                 ? story
                 : null
-        const [github_threads, replies] = await Promise.all([
+        const first: Visit = { kind: 'first' }
+        const [github_threads, replies, visit] = await Promise.all([
             readGitHubThreads({ gh, ref }).catch(() => []),
             readAgentSummaries({ gh, ref }).catch(() => []),
+            loaded.status === 'found'
+                ? readVisit({
+                      walk_dir,
+                      gh,
+                      git,
+                      ref,
+                      checkout,
+                      head_sha: loaded.head_sha,
+                  }).catch(() => first)
+                : first,
         ])
         const feedback = await createFeedback({
             host,
@@ -186,6 +207,12 @@ export const createWalkApp = ({
                 await shown?.walk?.showStops()
             },
         })
+        await feedback.setApproved({
+            paths: approvedOnVisit({
+                visit,
+                drafted: feedback.approvedFiles(),
+            }),
+        })
         const walk =
             walkable === null
                 ? null
@@ -196,6 +223,7 @@ export const createWalkApp = ({
                       checkout,
                       story: walkable,
                       looksGood: feedback.looksGood,
+                      files_to_walk: filesToWalk({ visit }),
                   })
         shown = {
             ref,
@@ -203,6 +231,7 @@ export const createWalkApp = ({
             loaded,
             story_requested: false,
             replies,
+            visit_note: visitNote({ visit }),
             walk,
             feedback,
         }
@@ -389,6 +418,7 @@ export const createWalkApp = ({
             host,
             gh,
             git,
+            walk_dir,
             ref: now.ref,
             checkout: now.checkout,
             feedback: now.feedback,

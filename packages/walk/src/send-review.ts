@@ -8,7 +8,12 @@ import type { Feedback } from './feedback'
 import type { PullRequestRef } from './pull-request-ref'
 import { swapLabels } from './review-labels'
 import { planReview, type ReadLines, type ReviewPlan } from './review-plan'
-import { REVIEW_RECORD_MARKER, reviewRecordLine } from './review-record'
+import {
+    REVIEW_RECORD_MARKER,
+    reviewRecordLine,
+    saveReviewRecord,
+    type ReviewRecord,
+} from './review-record'
 import type { WalkGit, WalkHost } from './walk-host'
 
 import type { Gh } from '../../engine/src/story/story-github'
@@ -89,6 +94,7 @@ export const sendReview = async ({
     host,
     gh,
     git,
+    walk_dir,
     ref,
     checkout,
     feedback,
@@ -100,6 +106,8 @@ export const sendReview = async ({
     host: WalkHost
     gh: Gh
     git: WalkGit
+    /** Where the review record is kept after the send. */
+    walk_dir: string
     ref: PullRequestRef
     checkout: string
     feedback: Feedback
@@ -118,6 +126,11 @@ export const sendReview = async ({
     const json = (args: string[], body: unknown) =>
         gh({ args: [...args, '--input', '-'], input: JSON.stringify(body) })
     const comments = feedback.comments()
+    const record: ReviewRecord = {
+        schema_version: 1,
+        commit: head_sha,
+        approved_files: feedback.approvedFiles(),
+    }
     /** The pending review this send made, to delete when the send fails. */
     const made_review: { id: number | null } = { id: null }
 
@@ -201,13 +214,7 @@ export const sendReview = async ({
                 repo: ref.repo,
                 head_sha,
                 base_sha: commit,
-                record_line: reviewRecordLine({
-                    record: {
-                        schema_version: 1,
-                        commit: head_sha,
-                        approved_files: feedback.approvedFiles(),
-                    },
-                }),
+                record_line: reviewRecordLine({ record }),
                 quote_all,
                 readLines,
             })
@@ -276,6 +283,8 @@ export const sendReview = async ({
         return
     }
     await feedback.clearSent({ ids: comments.map(({ id }) => id) })
+    // The review's text holds the record too, so a failed write loses nothing.
+    await saveReviewRecord({ walk_dir, ref, record }).catch(() => undefined)
     if (sent.own && verdict.labels !== null) {
         const refused = await swapLabels({
             gh,

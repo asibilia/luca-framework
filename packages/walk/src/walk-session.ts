@@ -14,6 +14,9 @@ import type { Story } from '../../engine/src/story/story-schema'
  */
 
 const LAST_STOP = "That was the last stop. Send the review when you're ready."
+const NOTHING_TO_WALK =
+    'Nothing to walk: no stop changed since your last review.'
+const UNCHANGED = 'unchanged since your last review'
 
 const holds = ({ change, line }: { change: StoryChange; line: number }) =>
     change.start_line <= line && line <= change.end_line
@@ -29,6 +32,7 @@ export const createWalkSession = async ({
     checkout,
     story,
     looksGood,
+    files_to_walk = null,
 }: {
     host: WalkHost
     walk_dir: string
@@ -37,8 +41,16 @@ export const createWalkSession = async ({
     story: Story
     /** Whether the owner marked the file `path` as looking good. */
     looksGood: (path: string) => boolean
+    /**
+     * On a second visit, the files changed since the last review: only
+     * the stops with a change in one of them are walked. Null walks all.
+     */
+    files_to_walk?: string[] | null
 }) => {
     const { stops } = story
+    const toWalk = (stop: StoryStop) =>
+        files_to_walk === null ||
+        stop.changes.some(({ path }) => files_to_walk.includes(path))
     const stopOf = (id: string | null) =>
         stops.find((stop) => stop.id === id) ?? null
     const saved = (await readDrafts({ walk_dir, ref })).walk
@@ -80,7 +92,9 @@ export const createWalkSession = async ({
                         ? 'current'
                         : place.done_stop_ids.includes(stop.id)
                           ? 'done'
-                          : '',
+                          : toWalk(stop)
+                            ? ''
+                            : UNCHANGED,
                     stopLooksGood(stop) ? 'looks good' : '',
                 ]
                     .filter((part) => part !== '')
@@ -143,15 +157,25 @@ export const createWalkSession = async ({
     }
 
     const start = async () => {
-        const [first] = stops
-        if (first !== undefined) await goToStop(first)
+        const first = stops.find(toWalk)
+        if (first !== undefined) {
+            await goToStop(first)
+            return
+        }
+        if (stops.length > 0) {
+            await host.showMessage({ kind: 'info', text: NOTHING_TO_WALK })
+        }
     }
 
-    /** One stop along: `step` 1 is Next, -1 is Back. */
+    /** One stop to walk along: `step` 1 is Next, -1 is Back. */
     const moveStop = async (step: 1 | -1) => {
         const stop = stopOf(place.current_stop_id)
         if (stop === null) return start()
-        const to = stops[stops.indexOf(stop) + step]
+        const at = stops.indexOf(stop)
+        const to =
+            step === 1
+                ? stops.slice(at + 1).find(toWalk)
+                : stops.slice(0, at).findLast(toWalk)
         if (to !== undefined) return goToStop(to)
         if (step === 1) {
             await host.showMessage({ kind: 'info', text: LAST_STOP })
