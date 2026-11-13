@@ -116,8 +116,16 @@ export type PretendGitHub = {
     pull: (where: { repo: string; number: number }) => PretendPull
     /** The pull request's reviews, oldest first. Throws when there is none. */
     reviewsOf: (where: { repo: string; number: number }) => PretendReview[]
-    /** Makes the next call of `step` fail once, with `error` as gh's stderr. */
-    failNext: (failure: { step: PretendStep; error: string }) => void
+    /**
+     * Makes the next call of `step` fail once, with `error` as gh's
+     * stderr. With `taken`, GitHub still takes the call and only gh's
+     * answer is lost (only `submit_review` knows this).
+     */
+    failNext: (failure: {
+        step: PretendStep
+        error: string
+        taken?: boolean
+    }) => void
 }
 
 /** The repo labels to start with: `labels`, and every label on a pull. */
@@ -173,7 +181,7 @@ export const createPretendGitHub = ({
         labels: startLabels(labels, pulls),
         calls,
     }
-    const failures = new Map<PretendStep, string>()
+    const failures = new Map<PretendStep, { error: string; taken: boolean }>()
 
     const find = ({ repo, number }: { repo: string; number: number }) =>
         state.pulls.find(
@@ -190,11 +198,19 @@ export const createPretendGitHub = ({
 
     const ok = (stdout: string) => ({ ok: true, stdout, stderr: '' })
     const no = (stderr: string) => ({ ok: false, stdout: '', stderr })
-    const failed = (step: PretendStep) => {
-        const error = failures.get(step)
-        if (error === undefined) return null
+    /**
+     * The failure of `step` at `stage`: before the call is taken, or
+     * after (GitHub took it but gh's answer is an error).
+     */
+    const failed = (
+        step: PretendStep,
+        stage: 'before' | 'after' = 'before'
+    ) => {
+        const failure = failures.get(step)
+        if (failure === undefined) return null
+        if (failure.taken !== (stage === 'after')) return null
         failures.delete(step)
-        return no(error)
+        return no(failure.error)
     }
 
     const reviews = createReviewCalls({ state, find, failed })
@@ -339,8 +355,8 @@ export const createPretendGitHub = ({
         state,
         pull,
         reviewsOf: (where) => reviews.reviewsOf(pull(where)),
-        failNext: ({ step, error }) => {
-            failures.set(step, error)
+        failNext: ({ step, error, taken = false }) => {
+            failures.set(step, { error, taken })
         },
     }
 }

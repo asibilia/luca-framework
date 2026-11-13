@@ -341,6 +341,7 @@ describe('what goes in the review (#761)', () => {
             schema_version: 1,
             commit: repo.head_sha,
             approved_files: ['src/a.ts'],
+            sent_drafts: [expect.stringMatching(/^[0-9a-f]{16}$/)],
         })
     })
 })

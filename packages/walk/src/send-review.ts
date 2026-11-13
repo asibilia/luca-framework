@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
+import { alreadySent, alreadySentNote, draftFingerprint } from './already-sent'
 import { diffFiles } from './diff-hunks'
+import type { DraftComment } from './drafts-file'
 import type { Feedback } from './feedback'
 import type { DiffBase } from './load-pull-request'
 import type { PullRequestRef } from './pull-request-ref'
@@ -13,6 +15,7 @@ import {
     saveReviewRecord,
     type ReviewRecord,
 } from './review-record'
+import { sendStopper } from './send-checks'
 import type { WalkGit, WalkHost } from './walk-host'
 
 import type { Gh } from '../../engine/src/story/story-github'
@@ -46,6 +49,14 @@ const VERDICTS: Verdict[] = [
     },
     { label: 'Just comments', event: 'COMMENT', labels: null },
 ]
+
+/** A send's outcome: the drafts it cleared, and the review it posted. */
+type Outcome =
+    | { kind: 'sent'; plan: ReviewPlan; sent: DraftComment[]; own: boolean }
+    /** A review GitHub already took holds the drafts `sent`. */
+    | { kind: 'already'; sent: DraftComment[]; own: boolean }
+    /** Nothing was posted, for the reason in `text`. */
+    | { kind: 'stopped'; text: string }
 
 const CreatedSchema = z.object({ id: z.number().int(), node_id: z.string() })
 
@@ -113,6 +124,16 @@ export const sendReview = async ({
         items: VERDICTS,
     })
     if (verdict === null) return
+    // A COMMENT review with no comments would look blank. A verdict with
+    // none still goes: an approval, or the record and label on the
+    // owner's own pull request.
+    if (verdict.event === 'COMMENT' && feedback.comments().length === 0) {
+        await host.showMessage({
+            kind: 'info',
+            text: `There is nothing to send: you have no comments on #${ref.number}.`,
+        })
+        return
+    }
     const error = (text: string) => host.showMessage({ kind: 'error', text })
     const reviews = `repos/${ref.repo}/pulls/${ref.number}/reviews`
     const json = ({ args, body }: { args: string[]; body: unknown }) =>
@@ -126,11 +147,12 @@ export const sendReview = async ({
     /** The pending review this send made, to delete when the send fails. */
     const made_review: { id: number | null } = { id: null }
 
-    /** Posts the review; null when one the owner started on GitHub is in the way. */
-    const post = async (): Promise<{
-        plan: ReviewPlan
-        own: boolean
-    } | null> => {
+    /**
+     * Posts the review, after the signed-in user's own reviews were read
+     * and the app's leftover pending ones deleted; `own` when the pull
+     * request is the signed-in user's.
+     */
+    const post = async ({ own }: { own: boolean }): Promise<ReviewPlan> => {
         if (!base.ok) throw new Error(base.error)
         const base_sha = base.sha
         const diff = await git({
@@ -146,20 +168,6 @@ export const sendReview = async ({
             cwd: checkout,
         })
         if (!diff.ok) throw failure(diff)
-
-        const { login, reviews: own_reviews } = await ownReviews({ gh, ref })
-        const pending = own_reviews.filter(
-            (review) => review.state === 'PENDING'
-        )
-        const ours = (body: string | null) =>
-            (body ?? '').includes(REVIEW_RECORD_MARKER)
-        if (pending.some((review) => !ours(review.body))) return null
-        for (const left of pending) {
-            const deleted = await gh({
-                args: ['api', '-X', 'DELETE', `${reviews}/${left.id}`],
-            })
-            if (!deleted.ok) throw failure(deleted)
-        }
 
         // Each side's file as its commit holds it, as GitHub shows it: a
         // symlink reads as its target's name, never the file it points
@@ -187,7 +195,14 @@ export const sendReview = async ({
                 repo: ref.repo,
                 head_sha,
                 base_sha,
-                record_line: reviewRecordLine({ record }),
+                record_line: reviewRecordLine({
+                    record: {
+                        ...record,
+                        sent_drafts: comments.map((comment) =>
+                            draftFingerprint({ comment })
+                        ),
+                    },
+                }),
                 quote_all,
                 readLines,
             })
@@ -234,18 +249,55 @@ export const sendReview = async ({
         }
         // GitHub won't let the owner approve their own pull request: the
         // verdict goes on a label instead.
-        const own = author === login
         const submitted = await json({
             args: ['api', '-X', 'POST', `${reviews}/${id}/events`],
             body: { event: own ? 'COMMENT' : verdict.event },
         })
         if (!submitted.ok) throw failure(submitted)
-        return { plan: made, own }
+        return made
     }
 
-    let sent: { plan: ReviewPlan; own: boolean } | null
+    /**
+     * Sends the review (#752, section 11, "How it is posted"): the drafts
+     * a review GitHub already took holds, when there is one; stopped when
+     * GitHub's head moved, a line comment was written at another head, or
+     * a review the owner started on GitHub is in the way.
+     */
+    const attempt = async (): Promise<Outcome> => {
+        const { login, reviews: own_reviews } = await ownReviews({ gh, ref })
+        const own = author === login
+        const already = alreadySent({ comments, own_reviews, head_sha })
+        if (already.length > 0) return { kind: 'already', sent: already, own }
+        const stopper = await sendStopper({ gh, ref, head_sha, comments })
+        if (stopper !== null) return { kind: 'stopped', text: stopper }
+        const pending = own_reviews.filter(
+            (review) => review.state === 'PENDING'
+        )
+        const ours = (body: string | null) =>
+            (body ?? '').includes(REVIEW_RECORD_MARKER)
+        if (pending.some((review) => !ours(review.body))) {
+            return {
+                kind: 'stopped',
+                text: `You have a review on #${ref.number} that you started on GitHub and did not send. Send or delete it on GitHub, then try again.`,
+            }
+        }
+        for (const left of pending) {
+            const deleted = await gh({
+                args: ['api', '-X', 'DELETE', `${reviews}/${left.id}`],
+            })
+            if (!deleted.ok) throw failure(deleted)
+        }
+        return {
+            kind: 'sent',
+            plan: await post({ own }),
+            sent: comments,
+            own,
+        }
+    }
+
+    let sent: Outcome
     try {
-        sent = await post()
+        sent = await attempt()
     } catch (thrown) {
         if (made_review.id !== null) {
             await gh({
@@ -258,13 +310,11 @@ export const sendReview = async ({
         )
         return
     }
-    if (sent === null) {
-        await error(
-            `You have a review on #${ref.number} that you started on GitHub and did not send. Send or delete it on GitHub, then try again.`
-        )
+    if (sent.kind === 'stopped') {
+        await error(sent.text)
         return
     }
-    await feedback.clearSent({ ids: comments.map(({ id }) => id) })
+    await feedback.clearSent({ ids: sent.sent.map(({ id }) => id) })
     // The review's text holds the record too, so a failed write loses nothing.
     await saveReviewRecord({ walk_dir, ref, record }).catch(() => undefined)
     if (sent.own && verdict.labels !== null) {
@@ -283,6 +333,12 @@ export const sendReview = async ({
     }
     await host.showMessage({
         kind: 'info',
-        text: `Review sent to #${ref.number}.${outsideNote(sent.plan.outside)}`,
+        text:
+            sent.kind === 'already'
+                ? alreadySentNote({
+                      number: ref.number,
+                      left: comments.length - sent.sent.length,
+                  })
+                : `Review sent to #${ref.number}.${outsideNote(sent.plan.outside)}`,
     })
 }

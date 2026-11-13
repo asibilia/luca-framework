@@ -315,6 +315,17 @@ describe('loading a pull request in its checkout (#753)', () => {
         expect(htmlButtons({ html })).toEqual(['Reload the story'])
     })
 
+    test('a head from GitHub that is not a commit id is never passed to git: Luca Walk could not load #12, and why', async () => {
+        const { html } = await activate({ head_sha: '--upload-pack=touch' })
+        const lines = htmlLines({ html })
+        const at = lines.indexOf('Luca Walk could not load #12:')
+
+        expect(at).toBeGreaterThanOrEqual(0)
+        expect(lines[at + 1]).toBe(
+            'GitHub gave "--upload-pack=touch" as the head of #12, which is not a commit id.'
+        )
+    })
+
     test('a story of schema version 2 asks to update Luca Walk, and offers Browse the diff only', async () => {
         const path = privateStoryPath({
             stories_dir,

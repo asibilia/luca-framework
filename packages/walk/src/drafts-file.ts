@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 
 import { z } from 'zod'
 
+import { CommitIdSchema } from './commit-id'
 import type { PullRequestRef } from './pull-request-ref'
 
 /**
@@ -19,6 +20,12 @@ const DraftCommentSchema = z.object({
     start_line: z.number().int().positive().nullable(),
     end_line: z.number().int().positive().nullable(),
     body: z.string(),
+    /**
+     * The pull request's head the draft was written (or last edited) at,
+     * so its lines are never posted against a head they weren't written
+     * for. Absent in older files, or when the head wasn't known: unknown.
+     */
+    commit: CommitIdSchema.optional().catch(undefined),
 })
 export type DraftComment = z.infer<typeof DraftCommentSchema>
 
@@ -42,10 +49,13 @@ export const DraftsSchema = z.object({
      */
     approved_checked: z
         .object({
-            record_commit: z.string().min(1),
-            head_sha: z.string().min(1),
+            record_commit: CommitIdSchema,
+            head_sha: CommitIdSchema,
         })
-        .optional(),
+        .optional()
+        // A check that isn't commit ids is dropped, never given to git:
+        // the marks are checked again against the last review.
+        .catch(undefined),
     walk: WalkPlaceSchema,
     /**
      * The last review's commit the walk's place was kept under (#752,
@@ -73,27 +83,54 @@ export const draftsPath = ({
 }): string =>
     join(walk_dir, 'drafts', ...ref.repo.split('/'), `pr-${ref.number}.json`)
 
-/** The pull request's drafts; empty when there is no file or it can't be read. */
-export const readDrafts = async ({
+/** The drafts in `text`; null when it is not a drafts file. */
+const parseDrafts = (text: string): Drafts | null => {
+    try {
+        const parsed = DraftsSchema.safeParse(JSON.parse(text))
+        return parsed.success ? parsed.data : null
+    } catch {
+        return null
+    }
+}
+
+/** Where a drafts file that can't be read is moved: next to it, stamped. */
+const asidePath = (path: string): string => {
+    const stamp = new Date().toISOString().replaceAll(/[:.]/g, '-')
+    return path.replace(/\.json$/, `.corrupt-${stamp}.json`)
+}
+
+/**
+ * The pull request's drafts, and where a drafts file that can't be read
+ * was moved (`set_aside`, else null). Such a file is never written over:
+ * it is moved aside and the drafts start empty. Throws when it can't be
+ * moved. With no file, the drafts are empty.
+ */
+export const readDraftsFile = async ({
     walk_dir,
     ref,
 }: {
     walk_dir: string
     ref: PullRequestRef
-}): Promise<Drafts> => {
+}): Promise<{ drafts: Drafts; set_aside: string | null }> => {
+    const path = draftsPath({ walk_dir, ref })
     let text: string
     try {
-        text = await readFile(draftsPath({ walk_dir, ref }), 'utf8')
+        text = await readFile(path, 'utf8')
     } catch {
-        return emptyDrafts()
+        return { drafts: emptyDrafts(), set_aside: null }
     }
-    try {
-        const parsed = DraftsSchema.safeParse(JSON.parse(text))
-        return parsed.success ? parsed.data : emptyDrafts()
-    } catch {
-        return emptyDrafts()
-    }
+    const drafts = parseDrafts(text)
+    if (drafts !== null) return { drafts, set_aside: null }
+    const aside = asidePath(path)
+    await rename(path, aside)
+    return { drafts: emptyDrafts(), set_aside: aside }
 }
+
+/** The pull request's drafts; see `readDraftsFile`. */
+export const readDrafts = async (where: {
+    walk_dir: string
+    ref: PullRequestRef
+}): Promise<Drafts> => (await readDraftsFile(where)).drafts
 
 /** Writes the pull request's drafts whole, through a temporary file. */
 export const saveDrafts = async ({
@@ -124,16 +161,21 @@ export const updateDrafts = ({
     walk_dir,
     ref,
     change,
+    onSetAside = async () => undefined,
 }: {
     walk_dir: string
     ref: PullRequestRef
     change: (drafts: Drafts) => Drafts
+    /** Runs with where a drafts file that can't be read was moved. */
+    onSetAside?: (aside: string) => Promise<void>
 }): Promise<Drafts> => {
     const path = draftsPath({ walk_dir, ref })
     const update = (updating.get(path) ?? Promise.resolve())
         .catch(() => undefined)
         .then(async () => {
-            const drafts = change(await readDrafts({ walk_dir, ref }))
+            const read = await readDraftsFile({ walk_dir, ref })
+            if (read.set_aside !== null) await onSetAside(read.set_aside)
+            const drafts = change(read.drafts)
             await saveDrafts({ walk_dir, ref, drafts })
             return drafts
         })
