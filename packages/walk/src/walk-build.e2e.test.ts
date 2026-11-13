@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
 import { builtinModules } from 'node:module'
 import { join } from 'node:path'
 
@@ -49,6 +49,7 @@ let build: Done = { code: -1, stdout: '', stderr: '' }
 let bundle = ''
 
 beforeAll(async () => {
+    await rm(join(PACKAGE, 'dist'), { recursive: true, force: true })
     build = await runBuild()
     bundle = existsSync(BUNDLE) ? await readFile(BUNDLE, 'utf8') : ''
 })
