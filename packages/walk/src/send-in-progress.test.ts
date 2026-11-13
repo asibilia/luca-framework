@@ -8,6 +8,7 @@ import { REVIEW_RECORD_MARKER } from './review-record'
 import { KEPT_SENDS, readSendProgress, saveSendProgress } from './send-progress'
 import {
     makeSendRepo,
+    REPO,
     openSendApp,
     pendingReview,
     readSaved,
@@ -145,7 +146,12 @@ describe('the sends in progress file (#766)', () => {
             await saveSendProgress({
                 walk_dir: repo.walk_dir,
                 ref,
-                send: { review_id, commit: repo.head_sha, sent_drafts: [] },
+                send: {
+                    review_id,
+                    commit: repo.head_sha,
+                    sent_drafts: [],
+                    verdict: 'just_comments',
+                },
             })
         }
 
@@ -174,6 +180,7 @@ describe("the app's own pending review in a repo that is not yours (#766)", () =
                         review_id: 77,
                         commit: repo.head_sha,
                         sent_drafts: ['0123456789abcdef'],
+                        verdict: 'just_comments',
                     },
                 ],
             })
@@ -203,6 +210,7 @@ describe("the app's own pending review in a repo that is not yours (#766)", () =
                             draft === undefined
                                 ? []
                                 : [draftFingerprint({ comment: draft })],
+                        verdict: 'just_comments',
                     },
                 ],
             })
@@ -249,5 +257,54 @@ describe('a send stopped between making the pending review and keeping its id (#
         expect(made.reviews_now()).toEqual([])
         expect((await readSaved(repo)).comments).toHaveLength(1)
         expect(made.host.messages.at(-1)?.kind).toBe('error')
+    })
+})
+
+describe('a verdict with no comments GitHub took though gh failed (#766, after #767)', () => {
+    const takenOnce = async (made: Awaited<ReturnType<typeof openSendApp>>) => {
+        made.github.failNext({
+            step: 'submit_review',
+            error: BAD_GATEWAY,
+            taken: true,
+        })
+        await made.send('Signed off', 'Approve')
+        expect(made.submitted()).toHaveLength(1)
+        expect(made.host.messages.at(-1)?.kind).toBe('error')
+    }
+
+    for (const repo_name of [REPO, 'acme/site']) {
+        test(`in ${repo_name}, the retry approves nothing again and says so`, async () => {
+            const at = await makeSendRepo({ repo_name })
+            try {
+                const made = await openSendApp(at, { author: 'hubot' })
+                await takenOnce(made)
+
+                await made.send('Signed off', 'Approve')
+
+                expect(made.submitted()).toHaveLength(1)
+                expect(made.host.messages.at(-1)).toEqual({
+                    kind: 'info',
+                    text: 'This review was already sent to #12.',
+                })
+            } finally {
+                await rm(at.dir, { recursive: true, force: true })
+            }
+        })
+    }
+
+    test('another verdict with no comments at the same commit is still sent', async () => {
+        const made = await openSendApp(repo, { author: 'hubot' })
+        await takenOnce(made)
+
+        await made.send('Changes wanted', 'Request changes')
+
+        expect(made.submitted().map(({ event }) => event)).toEqual([
+            'APPROVE',
+            'REQUEST_CHANGES',
+        ])
+        expect(made.host.messages.at(-1)).toEqual({
+            kind: 'info',
+            text: 'Review sent to #12.',
+        })
     })
 })

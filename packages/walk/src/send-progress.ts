@@ -10,8 +10,9 @@ import type { PullRequestRef } from './pull-request-ref'
  * The sends in progress (#766): in a repo that isn't yours, no review
  * record line is posted, so a retried send can't find the review GitHub
  * already took by its text. Instead, as soon as the pending review is
- * made, its id and the fingerprints of the drafts it holds are written
- * here, on this computer. A retry reads them back: a review GitHub took is
+ * made, its id, the fingerprints of the drafts it holds and the verdict
+ * are written here, on this computer, in every repo (a verdict with no
+ * comments has no fingerprint to find it by, in any repo). A retry reads them back: a review GitHub took is
  * never posted again, and the app's own pending review is known by its
  * id. The file is kept after a send completes, and holds the last
  * `KEPT_SENDS` sends, newest first, so a second window still holding
@@ -22,6 +23,14 @@ import type { PullRequestRef } from './pull-request-ref'
 /** How many sends the file remembers. */
 export const KEPT_SENDS = 20
 
+/** The verdict picked at `Send the review`. */
+export const VerdictKeySchema = z.enum([
+    'signed_off',
+    'changes_wanted',
+    'just_comments',
+])
+export type VerdictKey = z.infer<typeof VerdictKeySchema>
+
 export const SendInProgressSchema = z.object({
     /** The pending review the send made. */
     review_id: z.number().int(),
@@ -29,6 +38,8 @@ export const SendInProgressSchema = z.object({
     commit: CommitIdSchema,
     /** The fingerprints of its drafts (`draftFingerprint`). */
     sent_drafts: z.array(z.string().min(1)),
+    /** The verdict picked for it, so a retried verdict with no comments is known. */
+    verdict: VerdictKeySchema,
 })
 export type SendInProgress = z.infer<typeof SendInProgressSchema>
 

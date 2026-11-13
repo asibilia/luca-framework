@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-import { alreadySent, alreadySentNote, draftFingerprint } from './already-sent'
+import {
+    alreadySent,
+    alreadySentNote,
+    draftFingerprint,
+    verdictAlreadySent,
+} from './already-sent'
 import { diffFiles } from './diff-hunks'
 import type { DraftComment } from './drafts-file'
 import type { Feedback } from './feedback'
@@ -16,7 +21,11 @@ import {
     type ReviewRecord,
 } from './review-record'
 import { sendStopper } from './send-checks'
-import { readSendProgress, saveSendProgress } from './send-progress'
+import {
+    readSendProgress,
+    saveSendProgress,
+    type VerdictKey,
+} from './send-progress'
 import { isSignedIn, readLogin } from './signed-in'
 import type { WalkGit, WalkHost } from './walk-host'
 
@@ -36,6 +45,8 @@ type Event = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'
 
 type Verdict = {
     label: string
+    /** The verdict as the send in progress keeps it. */
+    key: VerdictKey
     /** The event on someone else's pull request. */
     event: Event
     /**
@@ -48,15 +59,22 @@ type Verdict = {
 const VERDICTS: Verdict[] = [
     {
         label: 'Signed off',
+        key: 'signed_off',
         event: 'APPROVE',
         labels: { add: 'signed-off', remove: 'changes-wanted' },
     },
     {
         label: 'Changes wanted',
+        key: 'changes_wanted',
         event: 'REQUEST_CHANGES',
         labels: { add: 'changes-wanted', remove: 'signed-off' },
     },
-    { label: 'Just comments', event: 'COMMENT', labels: null },
+    {
+        label: 'Just comments',
+        key: 'just_comments',
+        event: 'COMMENT',
+        labels: null,
+    },
 ]
 
 /** On someone else's pull request, the verdict that posts no verdict comes first. */
@@ -288,15 +306,19 @@ export const sendReview = async ({
             stdout: created.stdout,
         })
         made_review.id = id
-        // In a repo that isn't yours the review's text holds no record, so
-        // the send in progress is kept here before anything is submitted.
-        if (!your_repo) {
-            await saveSendProgress({
-                walk_dir,
-                ref,
-                send: { review_id: id, commit: head_sha, sent_drafts },
-            })
-        }
+        // The send in progress is kept here before anything is submitted:
+        // in a repo that isn't yours the review's text holds no record, and
+        // a verdict with no comments has no draft to be found by anywhere.
+        await saveSendProgress({
+            walk_dir,
+            ref,
+            send: {
+                review_id: id,
+                commit: head_sha,
+                sent_drafts,
+                verdict: verdict.key,
+            },
+        })
 
         for (const thread of made.file_threads) {
             const added = await json({
@@ -338,6 +360,17 @@ export const sendReview = async ({
             progress,
         })
         if (already.length > 0) return { kind: 'already', sent: already }
+        if (
+            comments.length === 0 &&
+            verdictAlreadySent({
+                verdict: verdict.key,
+                own_reviews,
+                head_sha,
+                progress,
+            })
+        ) {
+            return { kind: 'already', sent: [] }
+        }
         const stopper = await sendStopper({ gh, ref, head_sha, comments })
         if (stopper !== null) return { kind: 'stopped', text: stopper }
         const pending = own_reviews.filter(
@@ -406,6 +439,7 @@ export const sendReview = async ({
             sent.kind === 'already'
                 ? alreadySentNote({
                       number: ref.number,
+                      sent: sent.sent.length,
                       left: comments.length - sent.sent.length,
                   })
                 : `Review sent to #${ref.number}.${outsideNote(sent.plan.outside)}`,

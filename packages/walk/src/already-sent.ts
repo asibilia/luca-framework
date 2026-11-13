@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 import type { DraftComment } from './drafts-file'
 import { readReviewRecord, type OwnReview } from './review-record'
-import type { SendInProgress } from './send-progress'
+import type { SendInProgress, VerdictKey } from './send-progress'
 
 /**
  * Never posting a review twice (#752, section 11): a send GitHub took but
@@ -79,23 +79,63 @@ export const alreadySent = ({
 }
 
 /**
- * What to tell the owner after finding drafts already sent; `left` is how
- * many were not in that review.
+ * Whether a send with no comments and `verdict` was already taken by
+ * GitHub (#766, after #767): the newest send in progress whose review
+ * GitHub submitted is at `head_sha`, as its review is, with the same
+ * verdict. A verdict with no comments has no draft to find it by, so a
+ * retry would post it again; another verdict is still sent.
  *
  * @example
- * alreadySentNote({ number: 12, left: 0 }) // 'This review was already sent to #12. Your drafts are cleared.'
+ * verdictAlreadySent({ verdict: 'signed_off', own_reviews, head_sha, progress }) // true
+ */
+export const verdictAlreadySent = ({
+    verdict,
+    own_reviews,
+    head_sha,
+    progress,
+}: {
+    verdict: VerdictKey
+    own_reviews: OwnReview[]
+    head_sha: string
+    progress: SendInProgress[]
+}): boolean => {
+    const submitted = progress.find(({ review_id }) =>
+        own_reviews.some(
+            (review) => review.id === review_id && review.state !== 'PENDING'
+        )
+    )
+    const review = own_reviews.find(({ id }) => id === submitted?.review_id)
+    return (
+        submitted !== undefined &&
+        submitted.verdict === verdict &&
+        submitted.commit === head_sha &&
+        review?.commit_id === head_sha
+    )
+}
+
+/**
+ * What to tell the owner after finding a review already sent; `sent` is
+ * how many drafts were in it, `left` how many were not.
+ *
+ * @example
+ * alreadySentNote({ number: 12, sent: 2, left: 0 }) // 'This review was already sent to #12. Your drafts are cleared.'
+ * alreadySentNote({ number: 12, sent: 0, left: 0 }) // 'This review was already sent to #12.'
  */
 export const alreadySentNote = ({
     number,
+    sent,
     left,
 }: {
     number: number
+    sent: number
     left: number
 }): string =>
-    left === 0
-        ? `This review was already sent to #${number}. Your drafts are cleared.`
-        : `This review was already sent to #${number}, so the comments in it are cleared. ${
-              left === 1
-                  ? '1 comment was not in it and is still saved: send again to send it.'
-                  : `${left} comments were not in it and are still saved: send again to send them.`
-          }`
+    sent === 0 && left === 0
+        ? `This review was already sent to #${number}.`
+        : left === 0
+          ? `This review was already sent to #${number}. Your drafts are cleared.`
+          : `This review was already sent to #${number}, so the comments in it are cleared. ${
+                left === 1
+                    ? '1 comment was not in it and is still saved: send again to send it.'
+                    : `${left} comments were not in it and are still saved: send again to send them.`
+            }`
