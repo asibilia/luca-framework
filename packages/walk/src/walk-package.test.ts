@@ -134,4 +134,13 @@ describe('the @luca/walk package (#753)', () => {
         expect(entry).not.toBeNull()
         expect(entry).toContain('VS Code')
     })
+
+    test('the glossary has a Review record entry', async () => {
+        const glossary = await readFile(join(ROOT, 'GLOSSARY.md'), 'utf8')
+        const entry =
+            /^\*\*Review record\*\*:\n(.+)$/m.exec(glossary)?.[1] ?? null
+
+        expect(entry).not.toBeNull()
+        expect(entry).toContain('commit')
+    })
 })

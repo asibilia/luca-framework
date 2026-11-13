@@ -116,3 +116,15 @@ Tests:
 
 - `packages/walk/src/send-review.test.ts`
 - `packages/walk/src/send-review-outcome.test.ts`
+
+## Remembering what was reviewed
+
+After a send, the review record (the commit sent at and the files that looked good) is kept in `reviewed/` under Luca Walk's folder and written as the review's hidden last line, with every hyphen escaped. With no local record, the newest review by the signed-in user that holds one is read; a record that fails its schema counts as none. A second visit walks only the stops whose files changed since the record's commit, keeps the "looks good" marks of unchanged files, and the summary says what changed, that nothing did, or that the commit is gone from the history. `/luca-pr-address` leaves the record line out of its findings.
+
+Reached by: `Luca Walk: Send the review`, then opening the pull request again after new commits.
+
+Tests:
+
+- `packages/walk/src/second-visit.test.ts`
+- `packages/walk/src/review-record.test.ts`
+- `packages/engine/skills/luca-pr-address/scripts/pr-findings.test.ts`
