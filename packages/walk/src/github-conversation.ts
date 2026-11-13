@@ -6,6 +6,7 @@ import {
     REPLY_MARKER,
     SUMMARY_MARKER,
 } from '../../engine/skills/luca-pr-address/scripts/pr-findings'
+import { COVERS_MARKER } from '../../engine/skills/luca-pr-address/scripts/summary-cover'
 import type { Gh } from '../../engine/src/story/story-github'
 
 /**
@@ -141,9 +142,9 @@ export const readGitHubThreads = async ({
                 'graphql',
                 '-f',
                 `query=${THREADS_QUERY}`,
-                '-F',
+                '-f',
                 `owner=${owner}`,
-                '-F',
+                '-f',
                 `name=${name}`,
                 '-F',
                 `number=${ref.number}`,
@@ -197,12 +198,32 @@ export const readAgentSummaries = async ({
         .flat()
         .map(({ body }) => body ?? '')
         .filter((body) => body.startsWith(SUMMARY_MARKER))
-        .map((body) =>
-            body
-                .split('\n')
-                .filter((line) => !line.includes(SUMMARY_MARKER))
-                .join('\n')
-                .trim()
-        )
+        .map(shownSummary)
         .reverse()
+}
+
+/**
+ * A summary's text without its hidden parts: the marker line, and the
+ * covers block from its `<!-- luca-pr-address covers` line through the
+ * next `-->` line.
+ *
+ * @example
+ * shownSummary(`${SUMMARY_MARKER} -->\n${COVERS_MARKER}\nrc-1\n-->\nFixed.`)
+ * // 'Fixed.'
+ */
+const shownSummary = (body: string): string => {
+    const shown: string[] = []
+    let in_covers = false
+    for (const line of body.split('\n')) {
+        if (in_covers) {
+            in_covers = line.trim() !== '-->'
+            continue
+        }
+        if (line.trimStart().startsWith(COVERS_MARKER)) {
+            in_covers = true
+            continue
+        }
+        if (!line.includes(SUMMARY_MARKER)) shown.push(line)
+    }
+    return shown.join('\n').trim()
 }
