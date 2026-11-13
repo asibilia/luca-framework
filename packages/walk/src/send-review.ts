@@ -121,6 +121,16 @@ export const sendReview = async ({
         items: VERDICTS,
     })
     if (verdict === null) return
+    // A COMMENT review with no comments would look blank. A verdict with
+    // none still goes: an approval, or the record and label on the
+    // owner's own pull request.
+    if (verdict.event === 'COMMENT' && feedback.comments().length === 0) {
+        await host.showMessage({
+            kind: 'info',
+            text: `There is nothing to send: you have no comments on #${ref.number}.`,
+        })
+        return
+    }
     const error = (text: string) => host.showMessage({ kind: 'error', text })
     const reviews = `repos/${ref.repo}/pulls/${ref.number}/reviews`
     const json = ({ args, body }: { args: string[]; body: unknown }) =>

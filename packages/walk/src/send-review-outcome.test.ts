@@ -204,4 +204,17 @@ describe('after a send, and when it fails (#761)', () => {
         expect(made.submitted()).toHaveLength(2)
         expect((await readSaved(repo)).comments).toEqual([])
     })
+
+    test('Just comments with no comments sends nothing and says so', async () => {
+        const made = await openSendApp(repo)
+        await made.approveA()
+
+        await made.send('Just comments')
+
+        expect(made.reviews_now()).toEqual([])
+        expect(made.host.messages.at(-1)).toEqual({
+            kind: 'info',
+            text: 'There is nothing to send: you have no comments on #12.',
+        })
+    })
 })
