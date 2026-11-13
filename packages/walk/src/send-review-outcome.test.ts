@@ -148,4 +148,60 @@ describe('after a send, and when it fails (#761)', () => {
             text: 'You have a review on #12 that you started on GitHub and did not send. Send or delete it on GitHub, then try again.',
         })
     })
+
+    test('a send GitHub took though gh failed is never posted again: the retry clears the drafts and says so', async () => {
+        const made = await openSendApp(repo)
+        await made.lineDraft(10, 10, 'Name this')
+        await made.prDraft('Looks right')
+        made.github.failNext({
+            step: 'submit_review',
+            error: 'HTTP 502: Bad Gateway',
+            taken: true,
+        })
+        await made.send('Just comments')
+
+        await made.send('Just comments')
+
+        expect(made.submitted()).toHaveLength(1)
+        expect(made.reviews_now()).toHaveLength(1)
+        expect((await readSaved(repo)).comments).toEqual([])
+        expect(made.host.messages.at(-1)).toEqual({
+            kind: 'info',
+            text: 'This review was already sent to #12. Your drafts are cleared.',
+        })
+    })
+
+    test('a comment added or edited after a send GitHub took stays saved, and the next send posts it', async () => {
+        const made = await openSendApp(repo)
+        await made.lineDraft(10, 10, 'Name this')
+        await made.prDraft('Looks right')
+        made.github.failNext({
+            step: 'submit_review',
+            error: 'HTTP 502: Bad Gateway',
+            taken: true,
+        })
+        await made.send('Just comments')
+        const pr_draft = (await readSaved(repo)).comments[1]
+        await made.app.draftEdited({
+            draft_id: pr_draft?.id ?? '',
+            body: 'Looks right, after all',
+        })
+        await made.fileDraft('Split this file')
+
+        await made.send('Just comments')
+
+        expect(made.submitted()).toHaveLength(1)
+        expect(
+            (await readSaved(repo)).comments.map(({ body }) => body)
+        ).toEqual(['Looks right, after all', 'Split this file'])
+        expect(made.host.messages.at(-1)).toEqual({
+            kind: 'info',
+            text: 'This review was already sent to #12, so the comments in it are cleared. 2 comments were not in it and are still saved: send again to send them.',
+        })
+
+        await made.send('Just comments')
+
+        expect(made.submitted()).toHaveLength(2)
+        expect((await readSaved(repo)).comments).toEqual([])
+    })
 })

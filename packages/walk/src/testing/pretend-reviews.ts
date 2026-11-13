@@ -134,7 +134,7 @@ export const createReviewCalls = ({
         labels: Record<string, string[]>
     }
     find: (where: { repo: string; number: number }) => PretendPull | null
-    failed: (step: PretendStep) => Answer | null
+    failed: (step: PretendStep, stage?: 'before' | 'after') => Answer | null
 }) => {
     let next_id = 1000
 
@@ -302,7 +302,11 @@ export const createReviewCalls = ({
                 return no('HTTP 422: Unprocessable Entity (already submitted)')
             }
             const refused = submit(review, fields.event, fields.body)
-            return refused ?? ok(JSON.stringify(reviewJson(review)))
+            if (refused !== null) return refused
+            return (
+                failed('submit_review', 'after') ??
+                ok(JSON.stringify(reviewJson(review)))
+            )
         }
         return null
     }
