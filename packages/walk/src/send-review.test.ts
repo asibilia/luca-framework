@@ -1,4 +1,5 @@
-import { rm } from 'node:fs/promises'
+import { readFile, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
@@ -12,6 +13,7 @@ import {
     SIGNED_OFF,
     type SendRepo,
 } from './testing/send-review-setup'
+import { commitSymlink } from './testing/walk-story'
 
 import { REPLY_MARKER } from '../../engine/skills/luca-pr-address/scripts/pr-findings'
 
@@ -204,6 +206,37 @@ describe('what goes in the review (#761)', () => {
         expect(first.endsWith('#L120-L124')).toBe(true)
     })
 
+    test("a draft outside the diff on a symlink that leads out of the checkout never quotes the linked file's lines", async () => {
+        const token = 'gho_not_a_real_token'
+        const outside = join(repo.dir, 'hosts.yml')
+        await writeFile(outside, `github.com:\n    oauth_token: ${token}\n`)
+        const head_sha = await commitSymlink({
+            folder: repo.checkout,
+            path: 'fixtures/hosts.yml',
+            target: outside,
+        })
+        const link = join(repo.checkout, 'fixtures/hosts.yml')
+        expect(await readFile(link, 'utf8')).toContain(token)
+        const made = await openSendApp({ ...repo, head_sha })
+        await made.app.draftCommentAdded({
+            uri: made.uriOf('fixtures/hosts.yml'),
+            start_line: 2,
+            end_line: 2,
+            body: "Don't commit tokens",
+        })
+
+        await made.send('Just comments')
+
+        const review = made.submitted()[0]
+        const sent = [
+            review?.body ?? '',
+            ...(review?.comments ?? []).map(({ body }) => body),
+            ...(review?.file_threads ?? []).map(({ body }) => body),
+        ].join('\n')
+        expect(sent).toContain("Don't commit tokens")
+        expect(sent).not.toContain(token)
+    })
+
     test('a draft on a file not in the diff is quoted in the review text', async () => {
         const made = await openSendApp(repo)
         await made.elsewhereDraft('Move this too')
@@ -289,9 +322,9 @@ describe('what goes in the review (#761)', () => {
         const last = made.submitted()[0]?.body.split('\n').at(-1) ?? ''
         expect(last.startsWith(REVIEW_RECORD_MARKER)).toBe(true)
         expect(last.endsWith(' -->')).toBe(true)
-        const record = JSON.parse(
+        const record: unknown = JSON.parse(
             last.slice(REVIEW_RECORD_MARKER.length, -' -->'.length)
-        ) as unknown
+        )
         expect(record).toEqual({
             schema_version: 1,
             commit: repo.head_sha,

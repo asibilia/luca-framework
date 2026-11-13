@@ -57,12 +57,12 @@ describe('the record kept after a send (#762)', () => {
 
         await made.send('Just comments')
 
-        const saved = JSON.parse(
+        const saved: unknown = JSON.parse(
             await readFile(
                 join(repo.walk_dir, 'reviewed/octocat/hello-world/pr-12.json'),
                 'utf8'
             )
-        ) as unknown
+        )
         expect(saved).toEqual({
             schema_version: 1,
             commit: repo.head_sha,
@@ -138,8 +138,7 @@ describe('a second visit walks only what changed (#762)', () => {
         await writeLocalRecord(repo, recordAt(repo.c1))
         const { host, run, descriptions } = await openVisitApp(repo, {
             stops: [
-                THREE_STOPS[0]!,
-                THREE_STOPS[2]!,
+                ...THREE_STOPS.filter((stop) => stop.id !== 's2'),
                 {
                     id: 's9',
                     title: 'Loose ends',
@@ -216,6 +215,53 @@ describe('a second visit walks only what changed (#762)', () => {
             'looks good',
             UNCHANGED,
         ])
+    })
+
+    test('after walking every stop and sending at C1, the visit at C2 drops the old place: unchanged, empty, unchanged, and Next goes to src/b.ts', async () => {
+        const repo = await visitRepo(['src/b.ts'])
+        const first = await openVisitApp(repo, { head: repo.c1 })
+        await first.run('lucaWalk.startWalk')
+        await first.run('lucaWalk.nextStop')
+        await first.run('lucaWalk.nextStop')
+        expect(first.descriptions()).toEqual(['done', 'done', 'current'])
+        first.host.answers.push('Looks right', 'Just comments')
+        await first.run('lucaWalk.commentOnPullRequest')
+        await first.run('lucaWalk.sendReview')
+        expect(first.host.messages).toContainEqual({
+            kind: 'info',
+            text: 'Review sent to #12.',
+        })
+
+        const { host, run, descriptions } = await openVisitApp(repo)
+
+        expect(descriptions()).toEqual([UNCHANGED, '', UNCHANGED])
+
+        await run('lucaWalk.nextStop')
+
+        expect(host.diffs.at(-1)?.title).toBe('src/b.ts (#12)')
+    })
+
+    test('browsing the plain diff on a second visit walks only the files changed since the last review', async () => {
+        const repo = await visitRepo(['src/b.ts'])
+        await writeLocalRecord(repo, recordAt(repo.c1))
+        const { host, run, press, descriptions } = await openVisitApp(repo, {
+            with_story: false,
+        })
+
+        await press('browse_diff')
+
+        expect(host.stops.map(({ label }) => label)).toEqual([
+            '1. src/a.ts',
+            '2. src/b.ts',
+            '3. src/c.ts',
+        ])
+        expect(descriptions()).toEqual([UNCHANGED, 'current', UNCHANGED])
+        expect(host.diffs.at(-1)?.title).toBe('src/b.ts (#12)')
+        const opened = host.diffs.length
+
+        await run('lucaWalk.nextStop')
+
+        expect(host.diffs).toHaveLength(opened)
     })
 
     test('the Summary panel says one file changed since the last review', async () => {

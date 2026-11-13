@@ -1,7 +1,7 @@
 import { contextHtml, notInWalkHtml } from './context-html'
-import { readDrafts, saveWalkPlace, type WalkPlace } from './drafts-file'
 import type { PullRequestRef } from './pull-request-ref'
 import type { WalkHost } from './walk-host'
+import { createWalkPlace } from './walk-place'
 import { baseUri, checkoutFileUri, documentOf } from './walk-uris'
 
 import type { StoryChange, StoryStop } from '../../engine/src/story/story-parts'
@@ -12,11 +12,6 @@ import type { Story } from '../../engine/src/story/story-schema'
  * full-file diff, Next and Back through stops and changes, and the place
  * in the walk, kept in the pull request's drafts file.
  */
-
-const LAST_STOP = "That was the last stop. Send the review when you're ready."
-const NOTHING_TO_WALK =
-    'Nothing to walk: no stop changed since your last review.'
-const UNCHANGED = 'unchanged since your last review'
 
 const holds = ({ change, line }: { change: StoryChange; line: number }) =>
     change.start_line <= line && line <= change.end_line
@@ -33,6 +28,7 @@ export const createWalkSession = async ({
     story,
     looksGood,
     files_to_walk = null,
+    last_review = null,
 }: {
     host: WalkHost
     walk_dir: string
@@ -46,37 +42,29 @@ export const createWalkSession = async ({
      * the stops with a change in one of them are walked. Null walks all.
      */
     files_to_walk?: string[] | null
+    /** The last review's commit; null when there was none. */
+    last_review?: string | null
 }) => {
     const { stops } = story
-    const toWalk = (stop: StoryStop) =>
-        files_to_walk === null ||
-        stop.changes.some(({ path }) => files_to_walk.includes(path))
-    const stopOf = (id: string | null) =>
-        stops.find((stop) => stop.id === id) ?? null
-    const saved = (await readDrafts({ walk_dir, ref })).walk
-    const current = stopOf(saved.current_stop_id)
-    let place: WalkPlace = {
-        current_stop_id: current?.id ?? null,
-        done_stop_ids: saved.done_stop_ids.filter((id) => stopOf(id) !== null),
-        last_change_id: current?.changes.some(
-            ({ id }) => id === saved.last_change_id
-        )
-            ? saved.last_change_id
-            : null,
-    }
+    const place = await createWalkPlace({
+        host,
+        walk_dir,
+        ref,
+        last_review,
+        stops: stops.map((stop) => ({
+            id: stop.id,
+            change_ids: stop.changes.map(({ id }) => id),
+            to_walk:
+                files_to_walk === null ||
+                stop.changes.some(({ path }) => files_to_walk.includes(path)),
+            stop,
+        })),
+    })
+    const currentStop = () => place.current()?.stop ?? null
     /** The last line the cursor was on, by document (path and side). */
     const cursors = new Map<string, number>()
     const cursorKey = ({ path, side }: { path: string; side: string }) =>
         `${side}:${path}`
-    let saving: Promise<void> = Promise.resolve()
-
-    const save = () => {
-        const walk = place
-        saving = saving
-            .catch(() => undefined)
-            .then(() => saveWalkPlace({ walk_dir, ref, walk }))
-        return saving
-    }
 
     /** A stop looks good when every file it changes was marked so. */
     const stopLooksGood = (stop: StoryStop) =>
@@ -87,23 +75,15 @@ export const createWalkSession = async ({
         host.showStops({
             items: stops.map((stop, at) => ({
                 label: `${at + 1}. ${stop.title}`,
-                description: [
-                    stop.id === place.current_stop_id
-                        ? 'current'
-                        : place.done_stop_ids.includes(stop.id)
-                          ? 'done'
-                          : toWalk(stop)
-                            ? ''
-                            : UNCHANGED,
-                    stopLooksGood(stop) ? 'looks good' : '',
-                ]
-                    .filter((part) => part !== '')
-                    .join(' · '),
+                description: place.descriptionOf({
+                    id: stop.id,
+                    looks_good: stopLooksGood(stop),
+                }),
                 stop_id: stop.id,
             })),
         })
 
-    const openChange = async (change: StoryChange) => {
+    const openChange = async ({ change }: { change: StoryChange }) => {
         const file = story.map.files.find(({ path }) => path === change.path)
         const status = file?.status ?? 'modified'
         const base_path =
@@ -129,58 +109,28 @@ export const createWalkSession = async ({
     }
 
     /** Goes to `stop`, at `first` (the stop's first change by default). */
-    const goToStop = async (
-        stop: StoryStop,
-        first: StoryChange | undefined = stop.changes[0]
-    ) => {
-        const left = place.current_stop_id
-        const done =
-            left === null ||
-            left === stop.id ||
-            place.done_stop_ids.includes(left)
-                ? place.done_stop_ids
-                : [...place.done_stop_ids, left]
-        place = {
-            current_stop_id: stop.id,
-            done_stop_ids: done,
-            last_change_id: first?.id ?? null,
-        }
-        await save()
+    const goToStop = async ({
+        stop,
+        first = stop.changes[0],
+    }: {
+        stop: StoryStop
+        first?: StoryChange
+    }) => {
+        await place.enter({ id: stop.id, change_id: first?.id ?? null })
         await showStops()
-        if (first !== undefined) await openChange(first)
+        if (first !== undefined) await openChange({ change: first })
     }
 
-    const goToChange = async (change: StoryChange) => {
-        place = { ...place, last_change_id: change.id }
-        await save()
-        await openChange(change)
+    const goToChange = async ({ change }: { change: StoryChange }) => {
+        await place.keepChange({ change_id: change.id })
+        await openChange({ change })
     }
 
-    const start = async () => {
-        const first = stops.find(toWalk)
-        if (first !== undefined) {
-            await goToStop(first)
-            return
-        }
-        if (stops.length > 0) {
-            await host.showMessage({ kind: 'info', text: NOTHING_TO_WALK })
-        }
+    const goToPlaced = async (placed: { stop: StoryStop } | null) => {
+        if (placed !== null) await goToStop({ stop: placed.stop })
     }
 
-    /** One stop to walk along: `step` 1 is Next, -1 is Back. */
-    const moveStop = async (step: 1 | -1) => {
-        const stop = stopOf(place.current_stop_id)
-        if (stop === null) return start()
-        const at = stops.indexOf(stop)
-        const to =
-            step === 1
-                ? stops.slice(at + 1).find(toWalk)
-                : stops.slice(0, at).findLast(toWalk)
-        if (to !== undefined) return goToStop(to)
-        if (step === 1) {
-            await host.showMessage({ kind: 'info', text: LAST_STOP })
-        }
-    }
+    const start = async () => goToPlaced(await place.first())
 
     /**
      * The open editor's path and side, with the cursor's last line in it:
@@ -196,7 +146,13 @@ export const createWalkSession = async ({
     }
 
     /** In the loose ends: the stop's changes in walk order, across files. */
-    const moveLooseChange = async (stop: StoryStop, step: 1 | -1) => {
+    const moveLooseChange = async ({
+        stop,
+        step,
+    }: {
+        stop: StoryStop
+        step: 1 | -1
+    }) => {
         const document = await openDocument()
         const under =
             document === null
@@ -209,15 +165,21 @@ export const createWalkSession = async ({
                   )
         const from =
             under ??
-            stop.changes.find(({ id }) => id === place.last_change_id) ??
+            stop.changes.find(({ id }) => id === place.lastChangeId()) ??
             stop.changes[0]
         if (from === undefined) return
         const to = stop.changes[stop.changes.indexOf(from) + step]
-        if (to !== undefined) await goToChange(to)
+        if (to !== undefined) await goToChange({ change: to })
     }
 
     /** In any other stop: the stop's changes in the open file, by line. */
-    const moveFileChange = async (stop: StoryStop, step: 1 | -1) => {
+    const moveFileChange = async ({
+        stop,
+        step,
+    }: {
+        stop: StoryStop
+        step: 1 | -1
+    }) => {
         const document = await openDocument()
         if (document === null) {
             await host.showMessage({
@@ -239,42 +201,42 @@ export const createWalkSession = async ({
             step === 1
                 ? here.find(({ start_line }) => start_line > line)
                 : here.findLast(({ start_line }) => start_line < pivot)
-        if (to !== undefined) await goToChange(to)
+        if (to !== undefined) await goToChange({ change: to })
     }
 
-    const moveChange = async (step: 1 | -1) => {
-        const stop = stopOf(place.current_stop_id)
+    const moveChange = async ({ step }: { step: 1 | -1 }) => {
+        const stop = currentStop()
         if (stop === null) return start()
-        if (stop.kind === 'loose_ends') return moveLooseChange(stop, step)
-        return moveFileChange(stop, step)
+        if (stop.kind === 'loose_ends') return moveLooseChange({ stop, step })
+        return moveFileChange({ stop, step })
     }
 
     return {
         /** Shows the Stops view as the drafts file left it. */
         showStops,
         start,
-        nextStop: () => moveStop(1),
-        previousStop: () => moveStop(-1),
-        nextChange: () => moveChange(1),
-        previousChange: () => moveChange(-1),
+        nextStop: async () => goToPlaced(await place.along({ step: 1 })),
+        previousStop: async () => goToPlaced(await place.along({ step: -1 })),
+        nextChange: () => moveChange({ step: 1 }),
+        previousChange: () => moveChange({ step: -1 }),
 
         /** Reopens the current stop at the change the owner was last on. */
         backToWalk: async () => {
-            const stop = stopOf(place.current_stop_id)
+            const stop = currentStop()
             if (stop === null) return start()
             const change =
-                stop.changes.find(({ id }) => id === place.last_change_id) ??
+                stop.changes.find(({ id }) => id === place.lastChangeId()) ??
                 stop.changes[0]
-            if (change !== undefined) await openChange(change)
+            if (change !== undefined) await openChange({ change })
         },
 
         pickStop: async ({ stop_id }: { stop_id: string }) => {
-            const stop = stopOf(stop_id)
-            if (stop !== null) await goToStop(stop)
+            const stop = stops.find(({ id }) => id === stop_id)
+            if (stop !== undefined) await goToStop({ stop })
         },
 
-        /** The story this walk goes through (null when browsing the plain diff). */
-        story: story as Story | null,
+        /** The story this walk goes through. */
+        story,
 
         /** Goes to the first stop with a change in the file at `path`. */
         goToFile: async ({ path }: { path: string }) => {
@@ -282,10 +244,10 @@ export const createWalkSession = async ({
                 changes.some((change) => change.path === path)
             )
             if (stop === undefined) return
-            await goToStop(
+            await goToStop({
                 stop,
-                stop.changes.find((change) => change.path === path)
-            )
+                first: stop.changes.find((change) => change.path === path),
+            })
         },
 
         /**
@@ -306,19 +268,21 @@ export const createWalkSession = async ({
             await host.showContext({
                 html: contextHtml({ story, cursor: { ...document, line } }),
             })
-            const stop = stopOf(place.current_stop_id)
-            if (stop === null) return
-            const under = stop.changes.find(
+            const under = currentStop()?.changes.find(
                 (change) =>
                     change.path === document.path &&
                     change.side === document.side &&
                     holds({ change, line })
             )
-            if (under === undefined || under.id === place.last_change_id) return
-            place = { ...place, last_change_id: under.id }
-            await save()
+            if (under !== undefined) {
+                await place.keepChange({ change_id: under.id })
+            }
         },
     }
 }
 
-export type WalkSession = Awaited<ReturnType<typeof createWalkSession>>
+/** A story's walk or the plain diff's: `story` is null for the plain diff. */
+export type WalkSession = Omit<
+    Awaited<ReturnType<typeof createWalkSession>>,
+    'story'
+> & { story: Story | null }

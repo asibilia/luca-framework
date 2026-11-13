@@ -78,7 +78,15 @@ export const planReview = async ({
     const file_threads: { path: string; body: string }[] = []
     let outside = 0
 
-    const blob = (path: string, side: 'head' | 'base', anchor: string) =>
+    const blob = ({
+        path,
+        side,
+        anchor,
+    }: {
+        path: string
+        side: 'head' | 'base'
+        anchor: string
+    }) =>
         `https://github.com/${repo}/blob/${side === 'head' ? head_sha : base_sha}/${path}${anchor}`
 
     const quoted = async ({
@@ -99,7 +107,7 @@ export const planReview = async ({
             ? `On line ${start_line} of ${path}`
             : `On lines ${start_line} to ${end_line} of ${path}`
         const anchor = one ? `#L${start_line}` : `#L${start_line}-L${end_line}`
-        const first = `${where}, outside this pull request's diff: ${blob(path, side, anchor)}`
+        const first = `${where}, outside this pull request's diff: ${blob({ path, side, anchor })}`
         const lines = (
             await readLines({ path, side, start_line, end_line })
         ).map((line) => (line === '' ? '>' : `> ${line}`))
@@ -127,7 +135,7 @@ export const planReview = async ({
             } else {
                 outside += 1
                 text.push(
-                    `On ${path}, outside this pull request's diff: ${blob(path, 'head', '')}\n\n${body}`
+                    `On ${path}, outside this pull request's diff: ${blob({ path, side: 'head', anchor: '' })}\n\n${body}`
                 )
             }
             continue

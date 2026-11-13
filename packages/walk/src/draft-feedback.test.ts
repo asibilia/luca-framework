@@ -1,14 +1,15 @@
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { DraftsSchema, type Drafts } from './drafts-file'
 import { createFakeHost } from './testing/fake-host'
 import { createPretendGitHub } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
-import { makeCheckoutRepo, storyOf } from './testing/walk-story'
+import { commitSymlink, makeCheckoutRepo, storyOf } from './testing/walk-story'
 import { createWalkApp } from './walk-app'
 
 import { savePrivateStory } from '../../engine/src/story/story-store'
@@ -49,21 +50,9 @@ const aUri = () => pathToFileURL(join(checkout, 'src/a.ts')).href
 const baseUri = () => `luca-walk-base:/src/a.ts?sha=${base_sha}`
 const draftsFile = () => join(walk_dir, 'drafts/octocat/hello-world/pr-12.json')
 
-type Saved = {
-    comments: {
-        id: string
-        kind: string
-        path: string | null
-        side: string | null
-        start_line: number | null
-        end_line: number | null
-        body: string
-    }[]
-    approved_files: string[]
-}
-
-const readSaved = async (): Promise<Saved> =>
-    JSON.parse(await readFile(draftsFile(), 'utf8')) as Saved
+/** The drafts file, parsed with its own schema, so a drifted shape fails. */
+const readSaved = async (): Promise<Drafts> =>
+    DraftsSchema.parse(JSON.parse(await readFile(draftsFile(), 'utf8')))
 
 /** A new app on the checkout of #12, activated. */
 const openApp = async () => {
@@ -192,6 +181,34 @@ describe('feedback kept until it is sent (#760)', () => {
             comments.map((comment) => comment.body)
         )
         expect(started).toEqual([body])
+    })
+
+    test("Suggest a change on a symlink that leads out of the checkout never copies the linked file's lines", async () => {
+        const token = 'gho_not_a_real_token'
+        const outside = join(dir, 'hosts.yml')
+        await writeFile(outside, `github.com:\n    oauth_token: ${token}\n`)
+        head_sha = await commitSymlink({
+            folder: checkout,
+            path: 'fixtures/hosts.yml',
+            target: outside,
+        })
+        const link = join(checkout, 'fixtures/hosts.yml')
+        expect(await readFile(link, 'utf8')).toContain(token)
+        const { host, run } = await openApp()
+        host.active_editor = {
+            uri: pathToFileURL(link).href,
+            start_line: 1,
+            end_line: 2,
+        }
+
+        await run('lucaWalk.suggestChange')
+
+        const started = host.threads.flatMap(({ comments }) =>
+            comments.map((comment) => comment.body)
+        )
+        expect(started).toHaveLength(1)
+        expect(started[0]).not.toContain(token)
+        expect(JSON.stringify(await readSaved())).not.toContain(token)
     })
 
     test('Suggest a change on a base document starts no draft and shows an error', async () => {

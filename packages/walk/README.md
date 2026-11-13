@@ -16,6 +16,10 @@ The VS Code extension the owner reviews a pull request in (spec #752). It reads 
 
 Every command is under `Luca Walk:` in the command palette. There are no default key bindings: bind your own in the `Luca Walk` profile.
 
+## Workspace Trust
+
+Luca Walk works in VS Code's Restricted Mode, so it never needs you to trust a pull request's code. Each pull request opens as its own folder, and VS Code asks whether to trust it. Keep a checkout of someone else's pull request in Restricted Mode: trusting it lets that pull request's `.vscode/tasks.json`, workspace settings and other extensions run its author's code. Never trust the `checkouts` folder itself (`~/.local/state/luca/walk/checkouts`), because that trusts every pull request opened under it.
+
 ## How it is built
 
 - `src/walk-app.ts` holds every rule. It never imports `vscode`: it talks to VS Code through a `WalkHost` (`src/walk-host.ts`).

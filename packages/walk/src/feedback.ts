@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 
 import {
     readDrafts,
@@ -10,7 +8,7 @@ import {
 } from './drafts-file'
 import type { GitHubThread } from './github-conversation'
 import type { PullRequestRef } from './pull-request-ref'
-import type { WalkHost, WalkThread } from './walk-host'
+import type { WalkGit, WalkHost, WalkThread } from './walk-host'
 import { baseUri, checkoutFileUri, documentOf } from './walk-uris'
 
 /**
@@ -33,6 +31,7 @@ const FENCE = '```'
  */
 export const createFeedback = async ({
     host,
+    git,
     walk_dir,
     ref,
     checkout,
@@ -41,6 +40,8 @@ export const createFeedback = async ({
     onApprovedChanged,
 }: {
     host: WalkHost
+    /** Reads the checkout's committed files, for suggested changes. */
+    git: WalkGit
     walk_dir: string
     ref: PullRequestRef
     checkout: string
@@ -257,12 +258,14 @@ export const createFeedback = async ({
                 open.editor.start_line,
                 open.editor.end_line
             )
-            let text: string
-            try {
-                text = await readFile(join(checkout, open.path), 'utf8')
-            } catch {
-                text = ''
-            }
+            // The file as the checkout's commit holds it, as GitHub shows
+            // it: a symlink reads as its target's name, never the file it
+            // points at, which may be outside the checkout.
+            const shown = await git({
+                args: ['show', `HEAD:${open.path}`],
+                cwd: checkout,
+            })
+            const text = shown.ok ? shown.stdout : ''
             const lines = text.split('\n').slice(start_line - 1, end_line)
             await keep({
                 kind: 'line',

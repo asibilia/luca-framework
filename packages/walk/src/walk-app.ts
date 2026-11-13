@@ -2,34 +2,31 @@ import { z } from 'zod'
 
 import { createBrowseSession } from './browse-session'
 import { prepareCheckout } from './checkout'
-import { createFeedback, type Feedback } from './feedback'
-import { readAgentSummaries, readGitHubThreads } from './github-conversation'
+import type { Feedback } from './feedback'
+import {
+    loadPullRequest,
+    messageOf,
+    readPullView,
+    type PullHead,
+    type PullView,
+    type Shown,
+} from './load-pull-request'
 import { mapHtml } from './map-html'
 import {
-    checkoutPath,
     checkoutRefOf,
     githubRepoOf,
     readAnswer,
     type PullRequestRef,
 } from './pull-request-ref'
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
-import {
-    approvedOnVisit,
-    changedBetween,
-    filesToWalk,
-    readVisit,
-    visitNote,
-    type Visit,
-} from './second-visit'
+import { filesToWalk, lastReviewOf, visitNote } from './second-visit'
 import { sendReview } from './send-review'
-import { summaryHtml, type Loaded } from './summary-html'
+import { summaryHtml } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
-import { createWalkSession, type WalkSession } from './walk-session'
+import type { WalkSession } from './walk-session'
 import { readBaseUri } from './walk-uris'
 
 import type { Gh } from '../../engine/src/story/story-github'
-import { prNow } from '../../engine/src/story/story-github'
-import { findStory } from '../../engine/src/story/story-pick'
 
 /**
  * Luca Walk's app (#752, section 2): every rule lives here. It never
@@ -58,19 +55,6 @@ export const WALK_COMMANDS = [
     'lucaWalk.reloadStory',
 ]
 
-const messageOf = (thrown: unknown): string =>
-    thrown instanceof Error ? thrown.message : String(thrown)
-
-const PullViewSchema = z.object({
-    number: z.number().int(),
-    title: z.string(),
-    author: z.object({ login: z.string() }),
-    baseRefName: z.string(),
-    headRefOid: z.string(),
-    state: z.string(),
-    url: z.string(),
-})
-
 const PanelMessageSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('button'), id: z.string() }),
     z.object({
@@ -79,22 +63,6 @@ const PanelMessageSchema = z.discriminatedUnion('type', [
     }),
     z.object({ type: z.literal('open_file'), path: z.string() }),
 ])
-
-/** The pull request on screen. */
-type Shown = {
-    ref: PullRequestRef
-    checkout: string
-    loaded: Loaded
-    story_requested: boolean
-    /** `/luca-pr-address`'s summaries on it, newest first. */
-    replies: string[]
-    /** What changed since the owner's last review; null on a first visit. */
-    visit_note: string | null
-    /** The walk through the story, when it was written for the head. */
-    walk: WalkSession | null
-    /** The owner's unsent feedback on it. */
-    feedback: Feedback
-}
 
 /** The feedback commands, by what they ask of the feedback. */
 const FEEDBACK_STEPS: Record<string, (feedback: Feedback) => Promise<void>> = {
@@ -151,125 +119,34 @@ export const createWalkApp = ({
                 loaded: now.loaded,
                 story_requested: now.story_requested,
                 replies: now.replies,
-                visit_note: now.visit_note,
+                visit_note: visitNote({ visit: now.visit }),
             }),
         })
     }
 
     const load = async (ref: PullRequestRef) => {
-        const { repo, number: pr_number } = ref
-        let loaded: Loaded
-        try {
-            const { found } = await findStory({
-                gh,
-                stories_dir,
-                repo,
-                pr_number,
-            })
-            const { head_sha } = await prNow({ gh, repo, pr_number })
-            loaded = { status: 'found', found, head_sha }
-        } catch (thrown) {
-            loaded = { status: 'failed', message: messageOf(thrown) }
-        }
-        const checkout = checkoutPath({ walk_dir, ref })
-        const story =
-            loaded.status === 'found' && loaded.found.status === 'ok'
-                ? loaded.found.story
-                : null
-        const walkable =
-            story !== null &&
-            loaded.status === 'found' &&
-            story.head_sha === loaded.head_sha
-                ? story
-                : null
-        const first: Visit = { kind: 'first' }
-        const [github_threads, replies, visit] = await Promise.all([
-            readGitHubThreads({ gh, ref }).catch(() => []),
-            readAgentSummaries({ gh, ref }).catch(() => []),
-            loaded.status === 'found'
-                ? readVisit({
-                      walk_dir,
-                      gh,
-                      git,
-                      ref,
-                      checkout,
-                      head_sha: loaded.head_sha,
-                  }).catch(() => first)
-                : first,
-        ])
-        const feedback = await createFeedback({
+        const now = await loadPullRequest({
             host,
+            gh,
+            git,
             walk_dir,
+            stories_dir,
+            remote_url,
             ref,
-            checkout,
-            base_sha: story?.base_sha ?? null,
-            github_threads,
-            onApprovedChanged: async () => {
-                await shown?.walk?.showStops()
-            },
         })
-        const head_sha = loaded.status === 'found' ? loaded.head_sha : null
-        const stored = feedback.approvedChecked()
-        const checked_changed =
-            visit.kind === 'first' ||
-            head_sha === null ||
-            stored === null ||
-            stored.record_commit !== visit.commit
-                ? null
-                : await changedBetween({
-                      git,
-                      checkout,
-                      from: stored.head_sha,
-                      to: head_sha,
-                  })
-        await feedback.setApproved({
-            paths: approvedOnVisit({
-                visit,
-                drafted: feedback.approvedFiles(),
-                checked:
-                    stored === null || checked_changed === null
-                        ? null
-                        : {
-                              record_commit: stored.record_commit,
-                              changed: checked_changed,
-                          },
-            }),
-            checked:
-                visit.kind === 'first' || head_sha === null
-                    ? null
-                    : { record_commit: visit.commit, head_sha },
-        })
-        const walk =
-            walkable === null
-                ? null
-                : await createWalkSession({
-                      host,
-                      walk_dir,
-                      ref,
-                      checkout,
-                      story: walkable,
-                      looksGood: feedback.looksGood,
-                      files_to_walk: filesToWalk({ visit }),
-                  })
-        shown = {
-            ref,
-            checkout,
-            loaded,
-            story_requested: false,
-            replies,
-            visit_note: visitNote({ visit }),
-            walk,
-            feedback,
-        }
-        await showSummary(shown)
-        await feedback.showThreads()
-        if (walk !== null) await walk.showStops()
+        shown = now
+        await showSummary(now)
+        await now.feedback.showThreads()
+        if (now.walk !== null) await now.walk.showStops()
     }
 
-    const walkStep = async (
-        now: Shown,
+    const walkStep = async ({
+        now,
+        step,
+    }: {
+        now: Shown
         step: (walk: WalkSession) => Promise<void>
-    ) => {
+    }) => {
         if (now.walk === null) {
             await error(
                 `#${now.ref.number} has no story to walk. Use "Browse the diff" to read the plain diff.`
@@ -277,6 +154,20 @@ export const createWalkApp = ({
             return
         }
         await step(now.walk)
+    }
+
+    /** The head the pull request was loaded at, or null after saying there is none. */
+    const headOf = async ({
+        now,
+    }: {
+        now: Shown
+    }): Promise<PullHead | null> => {
+        if (now.head === null) {
+            await error(
+                `Luca Walk could not load #${now.ref.number}. Use "Reload the story" to try again.`
+            )
+        }
+        return now.head
     }
 
     /** The pull request the owner named, or null after telling them why not. */
@@ -312,40 +203,16 @@ export const createWalkApp = ({
         return { repo, number: read.number }
     }
 
-    /** The pull request as `gh pr view` reads it, or null after showing why not. */
-    const readPull = async (
-        ref: PullRequestRef
-    ): Promise<z.infer<typeof PullViewSchema> | null> => {
-        const view = await gh({
-            args: [
-                'pr',
-                'view',
-                String(ref.number),
-                '--repo',
-                ref.repo,
-                '--json',
-                'number,title,author,baseRefName,headRefOid,state,url',
-            ],
-        })
-        if (!view.ok) {
-            await error(
-                `Luca Walk could not read #${ref.number}: ${view.stderr.trim() || 'gh failed'}`
-            )
-            return null
-        }
+    const openPullRequest = async (ref: PullRequestRef) => {
+        let pull: PullView
         try {
-            return PullViewSchema.parse(JSON.parse(view.stdout))
+            pull = await readPullView({ gh, ref })
         } catch (thrown) {
             await error(
                 `Luca Walk could not read #${ref.number}: ${messageOf(thrown)}`
             )
-            return null
+            return
         }
-    }
-
-    const openPullRequest = async (ref: PullRequestRef) => {
-        const pull = await readPull(ref)
-        if (pull === null) return
         const prepared = await prepareCheckout({
             git,
             walk_dir,
@@ -400,20 +267,22 @@ export const createWalkApp = ({
         await showSummary(now)
     }
 
-    /** `Browse the diff`: one stop per changed file, at the first one. */
+    /** `Browse the diff`: one stop per changed file, at the first one to walk. */
     const browseDiff = async (now: Shown) => {
-        const pull = await readPull(now.ref)
-        if (pull === null) return
+        const head = await headOf({ now })
+        if (head === null) return
         const browse = await createBrowseSession({
             host,
             git,
             walk_dir,
             ref: now.ref,
             checkout: now.checkout,
-            base_ref: pull.baseRefName,
-            head_sha: pull.headRefOid,
+            base_ref: head.base_ref,
+            head_sha: head.sha,
             looksGood: now.feedback.looksGood,
             onBaseSha: (sha) => now.feedback.showBaseAt({ sha }),
+            files_to_walk: filesToWalk({ visit: now.visit }),
+            last_review: lastReviewOf({ visit: now.visit }),
         })
         if (browse === null) return
         now.walk = browse
@@ -422,23 +291,26 @@ export const createWalkApp = ({
     }
 
     const showMap = (now: Shown) =>
-        walkStep(now, async (walk) => {
-            if (walk.story === null) {
-                await error(
-                    `#${now.ref.number} has no story, so it has no map. Use "Write the story" for a guided walk.`
-                )
-                return
-            }
-            await host.showPanel({
-                id: 'map',
-                title: `Map of #${now.ref.number}`,
-                html: mapHtml({ story: walk.story }),
-            })
+        walkStep({
+            now,
+            step: async (walk) => {
+                if (walk.story === null) {
+                    await error(
+                        `#${now.ref.number} has no story, so it has no map. Use "Write the story" for a guided walk.`
+                    )
+                    return
+                }
+                await host.showPanel({
+                    id: 'map',
+                    title: `Map of #${now.ref.number}`,
+                    html: mapHtml({ story: walk.story }),
+                })
+            },
         })
 
     const send = async (now: Shown) => {
-        const pull = await readPull(now.ref)
-        if (pull === null) return
+        const head = await headOf({ now })
+        if (head === null) return
         const { loaded } = now
         await sendReview({
             host,
@@ -448,9 +320,9 @@ export const createWalkApp = ({
             ref: now.ref,
             checkout: now.checkout,
             feedback: now.feedback,
-            author: pull.author.login,
-            base_ref: pull.baseRefName,
-            head_sha: pull.headRefOid,
+            author: head.author,
+            base_ref: head.base_ref,
+            head_sha: head.sha,
             story_base_sha:
                 loaded.status === 'found' && loaded.found.status === 'ok'
                     ? loaded.found.story.base_sha
@@ -481,7 +353,7 @@ export const createWalkApp = ({
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
             if (command === 'lucaWalk.sendReview') return send(now)
             const step = WALK_STEPS[command]
-            if (step !== undefined) return walkStep(now, step)
+            if (step !== undefined) return walkStep({ now, step })
             const feedbackStep = FEEDBACK_STEPS[command]
             if (feedbackStep !== undefined) return feedbackStep(now.feedback)
             return notBuilt()
@@ -536,7 +408,10 @@ export const createWalkApp = ({
             if (now === null) return
             if (parsed.data.type === 'open_file') {
                 const { path } = parsed.data
-                return walkStep(now, (walk) => walk.goToFile({ path }))
+                return walkStep({
+                    now,
+                    step: (walk) => walk.goToFile({ path }),
+                })
             }
             const { id } = parsed.data
             if (id === 'write_story') return writeStory(now)
@@ -544,7 +419,7 @@ export const createWalkApp = ({
             if (id === 'reload_story') return load(now.ref)
             if (id === 'browse_diff') return browseDiff(now)
             if (id === 'start_walk') {
-                return walkStep(now, (walk) => walk.start())
+                return walkStep({ now, step: (walk) => walk.start() })
             }
             return notBuilt()
         },

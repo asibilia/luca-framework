@@ -1,10 +1,16 @@
+import { z } from 'zod'
+
 /**
  * Taking a `gh api` call apart, for the pretend GitHub (#761): its method,
  * its endpoint and its fields, from `-f`/`-F` flags or a JSON body given
  * by `--input -`.
  */
 
-export type Fields = Record<string, unknown>
+/** A call's fields by name: a JSON object, its values not checked yet. */
+export const FieldsSchema = z.record(z.string(), z.unknown())
+export type Fields = z.infer<typeof FieldsSchema>
+
+const ListSchema = z.array(z.unknown())
 
 const VALUED = new Set(['-X', '--method', '--jq', '-q', '-H', '--header'])
 const FIELD_FLAGS = new Set(['-f', '-F', '--raw-field', '--field'])
@@ -45,8 +51,9 @@ export const apiCall = ({
             const raw = pair.slice(equals + 1)
             const value = arg === '-F' || arg === '--field' ? typed(raw) : raw
             if (key.endsWith('[]')) {
-                const list = (fields[key.slice(0, -2)] as unknown[]) ?? []
-                fields[key.slice(0, -2)] = [...list, value]
+                const name = key.slice(0, -2)
+                const list = ListSchema.safeParse(fields[name]).data ?? []
+                fields[name] = [...list, value]
             } else fields[key] = value
             at += 1
         } else if (arg === '--input') {
@@ -59,7 +66,7 @@ export const apiCall = ({
         }
     }
     if (from_input && input !== undefined && input.trim() !== '') {
-        Object.assign(fields, JSON.parse(input) as Fields)
+        Object.assign(fields, FieldsSchema.parse(JSON.parse(input)))
     }
     const has_fields = Object.keys(fields).length > 0
     return {
@@ -77,5 +84,5 @@ export const inQuery = (query: string, name: string): string | undefined => {
     )
     return found?.[1] === undefined
         ? undefined
-        : (JSON.parse(found[1]) as string)
+        : z.string().parse(JSON.parse(found[1]))
 }

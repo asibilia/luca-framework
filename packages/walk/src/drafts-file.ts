@@ -47,6 +47,12 @@ export const DraftsSchema = z.object({
         })
         .optional(),
     walk: WalkPlaceSchema,
+    /**
+     * The last review's commit the walk's place was kept under (#752,
+     * section 12); absent when there was none. A place kept under another
+     * review is from an earlier visit.
+     */
+    walk_review: z.string().min(1).optional(),
 })
 export type Drafts = z.infer<typeof DraftsSchema>
 
@@ -135,19 +141,29 @@ export const updateDrafts = ({
     return update
 }
 
-/** Keeps `walk` as the owner's place, leaving the rest of the drafts as they are. */
+/**
+ * Keeps `walk` as the owner's place, made under the last review at
+ * `last_review` (null when there was none), leaving the rest of the
+ * drafts as they are.
+ */
 export const saveWalkPlace = async ({
     walk_dir,
     ref,
     walk,
+    last_review,
 }: {
     walk_dir: string
     ref: PullRequestRef
     walk: WalkPlace
+    last_review: string | null
 }): Promise<void> => {
     await updateDrafts({
         walk_dir,
         ref,
-        change: (drafts) => ({ ...drafts, walk }),
+        change: (drafts) => ({
+            ...drafts,
+            walk,
+            walk_review: last_review ?? undefined,
+        }),
     })
 }

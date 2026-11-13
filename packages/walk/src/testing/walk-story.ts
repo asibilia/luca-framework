@@ -1,5 +1,5 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { dirname, join, relative } from 'node:path'
 
 import { testGit } from './test-git'
 
@@ -155,4 +155,26 @@ export const makeCheckoutRepo = async ({
     await writeFiles(folder, head)
     const head_sha = await commit(folder, 'head')
     return { base_sha, head_sha }
+}
+
+/**
+ * Commits, in the repo `folder`, a symlink at `path` to the file `target`
+ * by a relative path, as a pull request can, so it may lead out of the
+ * checkout.
+ *
+ * @returns The new head commit.
+ */
+export const commitSymlink = async ({
+    folder,
+    path,
+    target,
+}: {
+    folder: string
+    path: string
+    target: string
+}): Promise<string> => {
+    const link = join(folder, path)
+    await mkdir(dirname(link), { recursive: true })
+    await symlink(relative(dirname(link), target), link)
+    return commit(folder, `link ${path}`)
 }

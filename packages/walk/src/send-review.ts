@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
-
 import { z } from 'zod'
 
 import { diffFiles } from './diff-hunks'
@@ -69,7 +66,13 @@ const ADD_FILE_THREAD = `mutation($pullRequestReviewId: ID!, $path: String!, $bo
 const failure = (ran: { stderr: string }) =>
     new Error(ran.stderr.trim() || 'gh failed')
 
-const parsed = <T>(schema: z.ZodType<T>, stdout: string): T => {
+const parsed = <T>({
+    schema,
+    stdout,
+}: {
+    schema: z.ZodType<T>
+    stdout: string
+}): T => {
     try {
         return schema.parse(JSON.parse(stdout))
     } catch {
@@ -123,7 +126,7 @@ export const sendReview = async ({
     if (verdict === null) return
     const error = (text: string) => host.showMessage({ kind: 'error', text })
     const reviews = `repos/${ref.repo}/pulls/${ref.number}/reviews`
-    const json = (args: string[], body: unknown) =>
+    const json = ({ args, body }: { args: string[]; body: unknown }) =>
         gh({ args: [...args, '--input', '-'], input: JSON.stringify(body) })
     const comments = feedback.comments()
     const record: ReviewRecord = {
@@ -170,7 +173,10 @@ export const sendReview = async ({
             args: ['api', `${reviews}?per_page=100`, '--paginate', '--slurp'],
         })
         if (!listed.ok) throw failure(listed)
-        const pending = parsed(ReviewListSchema, listed.stdout)
+        const pending = parsed({
+            schema: ReviewListSchema,
+            stdout: listed.stdout,
+        })
             .flat()
             .filter(
                 (review) =>
@@ -187,24 +193,23 @@ export const sendReview = async ({
         }
 
         const commit = base_sha
+        // Each side's file as its commit holds it, as GitHub shows it: a
+        // symlink reads as its target's name, never the file it points
+        // at, which may be outside the checkout.
         const readLines: ReadLines = async ({
             path,
             side,
             start_line,
             end_line,
         }) => {
-            let text = ''
-            if (side === 'head') {
-                text = await readFile(join(checkout, path), 'utf8').catch(
-                    () => ''
-                )
-            } else {
-                const shown = await git({
-                    args: ['show', `${commit}:${path}`],
-                    cwd: checkout,
-                })
-                text = shown.ok ? shown.stdout : ''
-            }
+            const shown = await git({
+                args: [
+                    'show',
+                    `${side === 'head' ? head_sha : commit}:${path}`,
+                ],
+                cwd: checkout,
+            })
+            const text = shown.ok ? shown.stdout : ''
             return text.split('\n').slice(start_line - 1, end_line)
         }
         const plan = (quote_all: boolean) =>
@@ -219,10 +224,13 @@ export const sendReview = async ({
                 readLines,
             })
         const create = (made: ReviewPlan) =>
-            json(['api', '-X', 'POST', reviews], {
-                commit_id: head_sha,
-                body: made.body,
-                comments: made.comments,
+            json({
+                args: ['api', '-X', 'POST', reviews],
+                body: {
+                    commit_id: head_sha,
+                    body: made.body,
+                    comments: made.comments,
+                },
             })
 
         let made = await plan(false)
@@ -236,16 +244,22 @@ export const sendReview = async ({
             created = await create(made)
         }
         if (!created.ok) throw failure(created)
-        const { id, node_id } = parsed(CreatedSchema, created.stdout)
+        const { id, node_id } = parsed({
+            schema: CreatedSchema,
+            stdout: created.stdout,
+        })
         made_review.id = id
 
         for (const thread of made.file_threads) {
-            const added = await json(['api', 'graphql'], {
-                query: ADD_FILE_THREAD,
-                variables: {
-                    pullRequestReviewId: node_id,
-                    path: thread.path,
-                    body: thread.body,
+            const added = await json({
+                args: ['api', 'graphql'],
+                body: {
+                    query: ADD_FILE_THREAD,
+                    variables: {
+                        pullRequestReviewId: node_id,
+                        path: thread.path,
+                        body: thread.body,
+                    },
                 },
             })
             if (!added.ok) throw failure(added)
@@ -253,10 +267,10 @@ export const sendReview = async ({
         // GitHub won't let the owner approve their own pull request: the
         // verdict goes on a label instead.
         const own = author === login
-        const submitted = await json(
-            ['api', '-X', 'POST', `${reviews}/${id}/events`],
-            { event: own ? 'COMMENT' : verdict.event }
-        )
+        const submitted = await json({
+            args: ['api', '-X', 'POST', `${reviews}/${id}/events`],
+            body: { event: own ? 'COMMENT' : verdict.event },
+        })
         if (!submitted.ok) throw failure(submitted)
         return { plan: made, own }
     }

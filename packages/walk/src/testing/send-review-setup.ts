@@ -9,6 +9,7 @@ import { testGit } from './test-git'
 import { makeCheckoutRepo, storyOf } from './walk-story'
 
 import { savePrivateStory } from '../../../engine/src/story/story-store'
+import { DraftsSchema, type Drafts } from '../drafts-file'
 import { createWalkApp } from '../walk-app'
 
 /**
@@ -60,16 +61,16 @@ export const makeSendRepo = async (): Promise<SendRepo> => {
     return { dir, walk_dir, checkout, ...made }
 }
 
-/** The pull request's drafts file, as saved. */
-export const readSaved = async (
-    repo: SendRepo
-): Promise<{ comments: { body: string }[]; approved_files: string[] }> =>
-    JSON.parse(
-        await readFile(
-            join(repo.walk_dir, 'drafts/octocat/hello-world/pr-12.json'),
-            'utf8'
+/** The pull request's drafts file, as saved, parsed with its own schema. */
+export const readSaved = async (repo: SendRepo): Promise<Drafts> =>
+    DraftsSchema.parse(
+        JSON.parse(
+            await readFile(
+                join(repo.walk_dir, 'drafts/octocat/hello-world/pr-12.json'),
+                'utf8'
+            )
         )
-    ) as { comments: { body: string }[]; approved_files: string[] }
+    )
 
 /** The first line of a comment outside the diff, on the head side. */
 export const outsideStart = (repo: SendRepo, line: string, path: string) =>

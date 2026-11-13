@@ -25,7 +25,7 @@ Tests:
 
 ## Opening a pull request and its summary
 
-`Open pull request` reads a number or a URL, makes Luca Walk's own clone and a checkout of the pull request's head under its folder (never moving a checkout with changes), opens it, and shows the story's summary, or why there is none, on the Summary panel.
+`Open pull request` reads a number or a URL, makes Luca Walk's own clone and a checkout of the pull request's head under its folder (never moving a checkout with changes), opens it, and shows the story's summary, or why there is none, on the Summary panel. Loading reads GitHub's head once and brings a checkout left behind by a moved pull request there (the same refusal for changes that are not committed), so the walk, browsing, sending and the record all use that one head.
 
 Reached by: `Luca Walk: Open pull request`, and the Summary panel's buttons.
 
@@ -108,7 +108,7 @@ Tests:
 
 ## Sending one review
 
-`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text, a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record.
+`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record.
 
 Reached by: `Luca Walk: Send the review`.
 
@@ -119,7 +119,7 @@ Tests:
 
 ## Remembering what was reviewed
 
-After a send, the review record (the commit sent at and the files that looked good) is kept in `reviewed/` under Luca Walk's folder and written as the review's hidden last line, with every hyphen escaped. With no local record, the newest review by the signed-in user that holds one is read; a record that fails its schema counts as none. A second visit walks only the stops whose files changed since the record's commit, keeps the "looks good" marks of unchanged files, and the summary says what changed, that nothing did, or that the commit is gone from the history. `/luca-pr-address` leaves the record line out of its findings.
+After a send, the review record (the commit sent at and the files that looked good) is kept in `reviewed/` under Luca Walk's folder and written as the review's hidden last line, with every hyphen escaped. With no local record, the newest review by the signed-in user that holds one is read; a record that fails its schema counts as none. A second visit walks only the stops whose files changed since the record's commit (browsing the plain diff too), starts from a fresh place rather than the one kept before that review, keeps the "looks good" marks of unchanged files, and the summary says what changed, that nothing did, or that the commit is gone from the history. `/luca-pr-address` leaves the record line out of its findings.
 
 Reached by: `Luca Walk: Send the review`, then opening the pull request again after new commits.
 

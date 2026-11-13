@@ -12,6 +12,11 @@
     "activationEvents": [
         "onStartupFinished"
     ],
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": true
+        }
+    },
     "scripts": {
         "build": "bun build src/extension.ts --target node --format cjs --external vscode --outfile dist/extension.js",
         "package": "bun run build && vsce package --no-dependencies --allow-missing-repository --skip-license --out luca-walk.vsix",

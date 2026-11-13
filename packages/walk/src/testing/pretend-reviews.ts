@@ -1,4 +1,6 @@
-import { apiCall, inQuery, type Fields } from './pretend-api-call'
+import { z } from 'zod'
+
+import { apiCall, FieldsSchema, inQuery, type Fields } from './pretend-api-call'
 import type { PretendPull, PretendStep } from './pretend-github'
 
 /**
@@ -52,6 +54,12 @@ const EVENT_STATE = {
     APPROVE: 'APPROVED',
     REQUEST_CHANGES: 'CHANGES_REQUESTED',
 } as const
+
+/** The label names a call adds; none when it names none. */
+const NamesSchema = z.array(z.string()).default([])
+
+/** A new review's line comments; none when it has none. */
+const CommentsSchema = z.array(FieldsSchema).default([])
 
 const ENDPOINT =
     /^repos\/([^/]+\/[^/]+)\/(pulls|issues|labels)(?:\/([^/]+))?(?:\/(reviews|labels))?(?:\/([^/]+))?(?:\/(events))?$/
@@ -165,12 +173,12 @@ export const createReviewCalls = ({
         if (failure !== null) return failure
         const variables = {
             ...fields,
-            ...((fields.variables as Fields | undefined) ?? {}),
+            ...(FieldsSchema.safeParse(fields.variables).data ?? {}),
         }
-        const read = (name: string) =>
-            typeof variables[name] === 'string'
-                ? (variables[name] as string)
-                : inQuery(query, name)
+        const read = (name: string) => {
+            const value = variables[name]
+            return typeof value === 'string' ? value : inQuery(query, name)
+        }
         if (
             variables.subjectType !== 'FILE' &&
             !/subjectType\s*:\s*FILE/.test(query)
@@ -213,7 +221,11 @@ export const createReviewCalls = ({
         const listed = () =>
             ok(JSON.stringify(found.labels.map((name) => ({ name }))))
         if (method === 'POST' && item === undefined) {
-            for (const name of (fields.labels as string[]) ?? []) {
+            const names = NamesSchema.safeParse(fields.labels)
+            if (!names.success) {
+                return no('HTTP 422: Unprocessable Entity (labels)')
+            }
+            for (const name of names.data) {
                 const refused = addLabel(found, name)
                 if (refused !== null) return refused
             }
@@ -233,9 +245,11 @@ export const createReviewCalls = ({
     const createReview = (found: PretendPull, fields: Fields): Answer => {
         const failure = failed('create_review')
         if (failure !== null) return failure
-        const comments = ((fields.comments as Fields[] | undefined) ?? []).map(
-            lineComment
-        )
+        const sent = CommentsSchema.safeParse(fields.comments)
+        if (!sent.success) {
+            return no('HTTP 422: Unprocessable Entity (comments)')
+        }
+        const comments = sent.data.map(lineComment)
         if (comments.some((comment) => !inDiff(found, comment))) {
             return no(
                 'HTTP 422: Unprocessable Entity (Pull request review thread line must be part of the diff)'

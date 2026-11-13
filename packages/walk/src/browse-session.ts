@@ -1,6 +1,6 @@
-import { readDrafts, saveWalkPlace, type WalkPlace } from './drafts-file'
 import type { PullRequestRef } from './pull-request-ref'
 import type { WalkGit, WalkHost } from './walk-host'
+import { createWalkPlace } from './walk-place'
 import type { WalkSession } from './walk-session'
 import { baseUri, checkoutFileUri } from './walk-uris'
 import { page, paragraph } from './webview-html'
@@ -8,13 +8,11 @@ import { page, paragraph } from './webview-html'
 /**
  * Browsing without a story (#752, section 9): one stop per changed file,
  * from `git diff --name-status -M` between the merge base and the head,
- * walked with the same commands as a story's walk.
+ * walked with the same commands and the same place as a story's walk.
  */
 
 const NO_STORY =
     'No story: this is the plain diff. Use "Write the story" for a guided walk.'
-
-const LAST_STOP = "That was the last stop. Send the review when you're ready."
 
 /** One changed file: its status letter, its path and, for a rename, its old path. */
 type ChangedFile = { status: string; path: string; previous_path: string }
@@ -75,6 +73,8 @@ export const createBrowseSession = async ({
     head_sha,
     looksGood,
     onBaseSha,
+    files_to_walk = null,
+    last_review = null,
 }: {
     host: WalkHost
     git: WalkGit
@@ -87,8 +87,15 @@ export const createBrowseSession = async ({
     looksGood: (path: string) => boolean
     /** Told the merge base the diff's base side is read at. */
     onBaseSha: (base_sha: string) => Promise<void>
+    /**
+     * On a second visit, the files changed since the last review: only
+     * their stops are walked. Null walks all.
+     */
+    files_to_walk?: string[] | null
+    /** The last review's commit; null when there was none. */
+    last_review?: string | null
 }): Promise<WalkSession | null> => {
-    const failed = async (stderr: string) => {
+    const failed = async ({ stderr }: { stderr: string }) => {
         await host.showMessage({
             kind: 'error',
             text: `Luca Walk could not read the diff of #${ref.number}: ${stderr.trim() || 'git failed'}`,
@@ -99,47 +106,39 @@ export const createBrowseSession = async ({
         args: ['merge-base', `origin/${base_ref}`, head_sha],
         cwd: checkout,
     })
-    if (!merged.ok) return failed(merged.stderr)
+    if (!merged.ok) return failed(merged)
     const base_sha = merged.stdout.trim()
     await onBaseSha(base_sha)
     const listed = await git({
         args: ['diff', '--name-status', '-M', '-z', base_sha, head_sha],
         cwd: checkout,
     })
-    if (!listed.ok) return failed(listed.stderr)
+    if (!listed.ok) return failed(listed)
     const files = changedFiles({ output: listed.stdout })
-    const fileOf = (id: string | null) =>
-        files.find(({ path }) => path === id) ?? null
-
-    const saved = (await readDrafts({ walk_dir, ref })).walk
-    let place: WalkPlace = {
-        current_stop_id: fileOf(saved.current_stop_id)?.path ?? null,
-        done_stop_ids: saved.done_stop_ids.filter((id) => fileOf(id) !== null),
-        last_change_id: null,
-    }
-    let saving: Promise<void> = Promise.resolve()
-    const save = () => {
-        const walk = place
-        saving = saving
-            .catch(() => undefined)
-            .then(() => saveWalkPlace({ walk_dir, ref, walk }))
-        return saving
-    }
+    const place = await createWalkPlace({
+        host,
+        walk_dir,
+        ref,
+        last_review,
+        stops: files.map((file) => ({
+            id: file.path,
+            change_ids: [],
+            to_walk:
+                files_to_walk === null ||
+                files_to_walk.includes(file.path) ||
+                files_to_walk.includes(file.previous_path),
+            file,
+        })),
+    })
 
     const showStops = () =>
         host.showStops({
             items: files.map((file, at) => ({
                 label: `${at + 1}. ${file.path}`,
-                description: [
-                    file.path === place.current_stop_id
-                        ? 'current'
-                        : place.done_stop_ids.includes(file.path)
-                          ? 'done'
-                          : '',
-                    looksGood(file.path) ? 'looks good' : '',
-                ]
-                    .filter((part) => part !== '')
-                    .join(' · '),
+                description: place.descriptionOf({
+                    id: file.path,
+                    looks_good: looksGood(file.path),
+                }),
                 stop_id: file.path,
             })),
         })
@@ -152,7 +151,7 @@ export const createBrowseSession = async ({
             }),
         })
 
-    const openFile = async (file: ChangedFile) => {
+    const openFile = async ({ file }: { file: ChangedFile }) => {
         const deleted = file.status === 'D'
         const paths =
             file.previous_path === file.path
@@ -190,64 +189,39 @@ export const createBrowseSession = async ({
         await showContext()
     }
 
-    const goToFile = async (file: ChangedFile) => {
-        const left = place.current_stop_id
-        const done =
-            left === null ||
-            left === file.path ||
-            place.done_stop_ids.includes(left)
-                ? place.done_stop_ids
-                : [...place.done_stop_ids, left]
-        place = {
-            current_stop_id: file.path,
-            done_stop_ids: done,
-            last_change_id: null,
-        }
-        await save()
+    const goToFile = async (placed: { file: ChangedFile } | null) => {
+        if (placed === null) return
+        await place.enter({ id: placed.file.path, change_id: null })
         await showStops()
-        await openFile(file)
+        await openFile(placed)
     }
 
-    const start = async () => {
-        const [first] = files
-        if (first !== undefined) await goToFile(first)
+    const fileOf = ({ path }: { path: string }) => {
+        const file = files.find((changed) => changed.path === path)
+        return file === undefined ? null : { file }
     }
 
-    const moveStop = async (step: 1 | -1) => {
-        const file = fileOf(place.current_stop_id)
-        if (file === null) return start()
-        const to = files[files.indexOf(file) + step]
-        if (to !== undefined) return goToFile(to)
-        if (step === 1) {
-            await host.showMessage({ kind: 'info', text: LAST_STOP })
-        }
-    }
-
-    const backToWalk = async () => {
-        const file = fileOf(place.current_stop_id)
-        if (file === null) return start()
-        await openFile(file)
-    }
+    const start = async () => goToFile(await place.first())
 
     return {
         showStops,
         start,
-        nextStop: () => moveStop(1),
-        previousStop: () => moveStop(-1),
+        nextStop: async () => goToFile(await place.along({ step: 1 })),
+        previousStop: async () => goToFile(await place.along({ step: -1 })),
         /** The plain diff has no story changes to move through. */
         nextChange: async () => undefined,
         previousChange: async () => undefined,
-        backToWalk,
-        pickStop: async ({ stop_id }: { stop_id: string }) => {
-            const file = fileOf(stop_id)
-            if (file !== null) await goToFile(file)
+        backToWalk: async () => {
+            const current = place.current()
+            if (current === null) return start()
+            await openFile(current)
         },
+        pickStop: async ({ stop_id }: { stop_id: string }) =>
+            goToFile(fileOf({ path: stop_id })),
         /** The plain diff has no story, so no map. */
         story: null,
-        goToFile: async ({ path }: { path: string }) => {
-            const file = fileOf(path)
-            if (file !== null) await goToFile(file)
-        },
+        goToFile: async ({ path }: { path: string }) =>
+            goToFile(fileOf({ path })),
         cursorMoved: async () => undefined,
     }
 }

@@ -19,6 +19,7 @@ import {
 } from 'bun:test'
 
 import { createFakeHost } from './testing/fake-host'
+import { htmlText } from './testing/html-text'
 import { createPretendGitHub } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
 import { createWalkApp } from './walk-app'
@@ -130,7 +131,9 @@ const setUp = ({ workspace_folder }: { workspace_folder: string | null }) => {
         github.pull({ repo: REPO, number: 12 }).head_sha = moved
         return moved
     }
-    return { host, open, moveHead }
+    /** `Reload the story`, as after `Write the story` or a restart. */
+    const reload = () => app.run({ command: 'lucaWalk.reloadStory', args: [] })
+    return { host, open, moveHead, reload }
 }
 
 /** Expects the checkout of #12: a detached worktree of Luca Walk's clone at `head`. */
@@ -213,5 +216,42 @@ describe('opening a pull request into its own checkout (#753)', () => {
         expect(host.folders).toContain(checkout)
         expect(await git(own, 'symbolic-ref', '--short', 'HEAD')).toBe('main')
         expect(await git(own, 'status', '--porcelain')).toBe('')
+    })
+})
+
+describe('loading a pull request that moved after its checkout was made (#753)', () => {
+    test('Reload the story in the checkout brings it to the new head', async () => {
+        const { host, open, moveHead, reload } = setUp({
+            workspace_folder: checkout,
+        })
+        await open(URL_12)
+        await expectCheckoutAt(first_head)
+
+        const moved = await moveHead('export const a = 3\n')
+        await reload()
+
+        await expectCheckoutAt(moved)
+        expect(htmlText({ html: host.panels.summary?.html ?? '' })).toContain(
+            'This pull request has no story yet.'
+        )
+    })
+
+    test('Reload the story never moves a checkout with changes that are not committed, and the summary says why', async () => {
+        const { host, open, moveHead, reload } = setUp({
+            workspace_folder: checkout,
+        })
+        await open(URL_12)
+        await writeFile(join(checkout, 'README.md'), 'my own edit\n')
+
+        await moveHead('export const a = 3\n')
+        await reload()
+
+        expect(await git(checkout, 'rev-parse', 'HEAD')).toBe(first_head)
+        expect(await readFile(join(checkout, 'README.md'), 'utf8')).toBe(
+            'my own edit\n'
+        )
+        expect(htmlText({ html: host.panels.summary?.html ?? '' })).toContain(
+            NOT_COMMITTED
+        )
     })
 })

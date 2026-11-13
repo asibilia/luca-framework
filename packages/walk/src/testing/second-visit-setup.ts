@@ -87,6 +87,11 @@ export const makeVisitRepo = async ({
             cwd: checkout,
         })
     ).stdout.trim()
+    // The base is on main, so browsing the plain diff starts from it.
+    await testGit({
+        args: ['update-ref', 'refs/remotes/origin/main', made.base_sha],
+        cwd: checkout,
+    })
     return { dir, walk_dir, checkout, base_sha: made.base_sha, c1, c2, gone }
 }
 
@@ -124,7 +129,8 @@ export const submittedReview = (body: string, id = 51): PretendReview => ({
 /**
  * A new app on the checkout of #12 whose story has `stops`. The pull
  * request's head, and the commit the story is written for, is `head`
- * (`C2` unless the test names another).
+ * (`C2` unless the test names another). With `with_story` false, the
+ * pull request has no story.
  */
 export const openVisitApp = async (
     repo: VisitRepo,
@@ -132,23 +138,33 @@ export const openVisitApp = async (
         stops = THREE_STOPS,
         reviews = [],
         head = repo.c2,
-    }: { stops?: StopAt[]; reviews?: PretendReview[]; head?: string } = {}
+        with_story = true,
+    }: {
+        stops?: StopAt[]
+        reviews?: PretendReview[]
+        head?: string
+        with_story?: boolean
+    } = {}
 ): Promise<{
     host: FakeHost
     run: (command: string) => Promise<void>
+    /** Presses the Summary panel's button `id`, such as `browse_diff`. */
+    press: (id: string) => Promise<void>
     descriptions: () => string[]
     summary: () => string
 }> => {
     const stories_dir = join(repo.dir, 'stories')
-    await savePrivateStory({
-        stories_dir,
-        story: storyOf({
-            repo: REPO,
-            base_sha: repo.base_sha,
-            head_sha: head,
-            stops,
-        }),
-    })
+    if (with_story) {
+        await savePrivateStory({
+            stories_dir,
+            story: storyOf({
+                repo: REPO,
+                base_sha: repo.base_sha,
+                head_sha: head,
+                stops,
+            }),
+        })
+    }
     const github = createPretendGitHub({
         login: 'octocat',
         pulls: [
@@ -179,6 +195,11 @@ export const openVisitApp = async (
     return {
         host,
         run: (command) => app.run({ command, args: [] }),
+        press: (id) =>
+            app.panelMessage({
+                panel: 'summary',
+                message: { type: 'button', id },
+            }),
         descriptions: () => host.stops.map(({ description }) => description),
         summary: () => host.panels.summary?.html ?? '',
     }

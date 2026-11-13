@@ -157,6 +157,7 @@ export const createPretendGitHub = ({
      */
     labels?: Record<string, string[]>
 }): PretendGitHub => {
+    const calls: string[] = []
     const state = {
         login,
         pulls: pulls.map((pull) => ({
@@ -170,7 +171,7 @@ export const createPretendGitHub = ({
             })),
         })),
         labels: startLabels(labels, pulls),
-        calls: [] as string[],
+        calls,
     }
     const failures = new Map<PretendStep, string>()
 

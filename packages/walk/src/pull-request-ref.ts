@@ -27,8 +27,13 @@ const REMOTE = new RegExp(
 const safe = (part: string | undefined): part is string =>
     part !== undefined && part !== '' && !part.startsWith('.')
 
-const repoOf = (owner?: string, name?: string): string | null =>
-    safe(owner) && safe(name) ? `${owner}/${name}` : null
+const repoOf = ({
+    owner,
+    name,
+}: {
+    owner: string | undefined
+    name: string | undefined
+}): string | null => (safe(owner) && safe(name) ? `${owner}/${name}` : null)
 
 /**
  * What the owner typed: a pull request URL names its repo, a number needs
@@ -48,7 +53,7 @@ export const readAnswer = ({
     const text = answer.trim()
     const url = PULL_URL.exec(text)
     if (url !== null) {
-        const repo = repoOf(url[1], url[2])
+        const repo = repoOf({ owner: url[1], name: url[2] })
         const number = Number(url[3])
         return repo === null || number < 1
             ? null
@@ -68,7 +73,7 @@ export const readAnswer = ({
  */
 export const githubRepoOf = ({ remote }: { remote: string }): string | null => {
     const found = REMOTE.exec(remote.trim())
-    return found === null ? null : repoOf(found[1], found[2])
+    return found === null ? null : repoOf({ owner: found[1], name: found[2] })
 }
 
 /** Where Luca Walk clones a repo from: GitHub. */
@@ -119,7 +124,7 @@ export const checkoutRefOf = ({
     const parts = relative(join(walk_dir, 'checkouts'), folder).split(sep)
     if (parts.length !== 3) return null
     const [owner, name, pr] = parts
-    const repo = repoOf(owner, name)
+    const repo = repoOf({ owner, name })
     const number = /^pr-(\d+)$/.exec(pr ?? '')?.[1]
     if (repo === null || number === undefined || Number(number) < 1) {
         return null

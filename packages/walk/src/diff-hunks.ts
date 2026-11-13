@@ -36,7 +36,13 @@ const pathOf = (line: string): string | null => {
     return text.replace(/^[ab]\//, '')
 }
 
-const linesOf = (start: string | undefined, count: string | undefined) => {
+const linesOf = ({
+    start,
+    count,
+}: {
+    start: string | undefined
+    count: string | undefined
+}) => {
     const first = Number(start)
     const length = count === undefined ? 1 : Number(count)
     return { start: first, end: first + length - 1 }
@@ -70,8 +76,8 @@ export const diffFiles = ({ output }: { output: string }): DiffFile[] => {
             const hunk = HUNK.exec(line)
             if (hunk !== null) {
                 current.hunks.push({
-                    base: linesOf(hunk[1], hunk[2]),
-                    head: linesOf(hunk[3], hunk[4]),
+                    base: linesOf({ start: hunk[1], count: hunk[2] }),
+                    head: linesOf({ start: hunk[3], count: hunk[4] }),
                 })
             }
         }

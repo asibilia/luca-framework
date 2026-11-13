@@ -257,14 +257,34 @@ export const createVscodeHost = ({
         },
         showContext: async ({ html }) => contextBox.show(html),
         showStops: async ({ items }) => stops.show(items),
-        openDiff: async ({ title, base_uri, head_uri, reveal_line }) => {
+        openDiff: async ({
+            title,
+            base_uri,
+            head_uri,
+            reveal_line,
+            reveal_side,
+        }) => {
             const line = Math.max(reveal_line - 1, 0)
+            const range = new vscode.Range(line, 0, line, 0)
+            const base = vscode.Uri.parse(base_uri)
+            // `selection` places the cursor in the diff's right (head)
+            // editor only; a base side change is revealed in its left one.
             await vscode.commands.executeCommand(
                 'vscode.diff',
-                vscode.Uri.parse(base_uri),
+                base,
                 vscode.Uri.parse(head_uri),
                 title,
-                { selection: new vscode.Range(line, 0, line, 0) }
+                reveal_side === 'head' ? { selection: range } : {}
+            )
+            if (reveal_side !== 'base') return
+            const left = vscode.window.visibleTextEditors.find(
+                (editor) => editor.document.uri.toString() === base.toString()
+            )
+            if (left === undefined) return
+            left.selection = new vscode.Selection(range.start, range.end)
+            left.revealRange(
+                range,
+                vscode.TextEditorRevealType.InCenterIfOutsideViewport
             )
         },
         openFolder: async ({ path }) => {

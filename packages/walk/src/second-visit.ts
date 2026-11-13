@@ -93,6 +93,13 @@ export const changedBetween = async ({
 export const filesToWalk = ({ visit }: { visit: Visit }): string[] | null =>
     visit.kind === 'changed' ? visit.changed : visit.kind === 'same' ? [] : null
 
+/** The last review's commit; null on a first visit. */
+export const lastReviewOf = ({ visit }: { visit: Visit }): string | null =>
+    visit.kind === 'first' ? null : visit.commit
+
+/** When the marks were last checked: the last review's commit and the head then. */
+type MarksChecked = { record_commit: string; head_sha: string }
+
 /**
  * The approved files on this visit: the drafts' marks, else the record's,
  * without the files that changed since the last review. Once the marks
@@ -101,7 +108,7 @@ export const filesToWalk = ({ visit }: { visit: Visit }): string[] | null =>
  * so a file approved again after that check stays approved until it
  * changes again.
  */
-export const approvedOnVisit = ({
+const approvedOnVisit = ({
     visit,
     drafted,
     checked,
@@ -118,6 +125,55 @@ export const approvedOnVisit = ({
     return visit.kind === 'changed'
         ? from.filter((path) => !visit.changed.includes(path))
         : from
+}
+
+/**
+ * The "looks good" marks on this visit at `head_sha` (#752, section 12):
+ * an approved file that changed since the last review loses its mark, the
+ * rest keep it. Answers the marks and the check to keep with them (null
+ * on a first visit, when there is nothing to check against).
+ *
+ * @param drafted - The marks in the drafts file.
+ * @param stored - The check kept with them; null when never checked.
+ */
+export const marksOnVisit = async ({
+    visit,
+    git,
+    checkout,
+    head_sha,
+    drafted,
+    stored,
+}: {
+    visit: Visit
+    git: WalkGit
+    checkout: string
+    head_sha: string | null
+    drafted: string[]
+    stored: MarksChecked | null
+}): Promise<{ paths: string[]; checked: MarksChecked | null }> => {
+    if (visit.kind === 'first' || head_sha === null) {
+        return { paths: drafted, checked: null }
+    }
+    const changed =
+        stored === null || stored.record_commit !== visit.commit
+            ? null
+            : await changedBetween({
+                  git,
+                  checkout,
+                  from: stored.head_sha,
+                  to: head_sha,
+              })
+    return {
+        paths: approvedOnVisit({
+            visit,
+            drafted,
+            checked:
+                stored === null || changed === null
+                    ? null
+                    : { record_commit: stored.record_commit, changed },
+        }),
+        checked: { record_commit: visit.commit, head_sha },
+    }
 }
 
 /**
