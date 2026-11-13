@@ -2,7 +2,7 @@
     "name": "luca-walk",
     "displayName": "Luca Walk",
     "description": "Walk a pull request's story in full-file diffs and send one GitHub review.",
-    "version": "0.1.0",
+    "version": "0.2.0-alpha.0",
     "private": true,
     "publisher": "luca",
     "main": "./dist/extension.js",
