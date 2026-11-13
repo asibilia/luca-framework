@@ -69,10 +69,9 @@ export const createBrowseSession = async ({
     walk_dir,
     ref,
     checkout,
-    base_ref,
+    base_sha,
     head_sha,
     looksGood,
-    onBaseSha,
     files_to_walk = null,
     last_review = null,
 }: {
@@ -81,12 +80,11 @@ export const createBrowseSession = async ({
     walk_dir: string
     ref: PullRequestRef
     checkout: string
-    base_ref: string
+    /** The commit the diff's base side is read at: the loaded pull request's merge base. */
+    base_sha: string
     head_sha: string
     /** Whether the owner marked the file `path` as looking good. */
     looksGood: (path: string) => boolean
-    /** Told the merge base the diff's base side is read at. */
-    onBaseSha: (base_sha: string) => Promise<void>
     /**
      * On a second visit, the files changed since the last review: only
      * their stops are walked. Null walks all.
@@ -95,25 +93,17 @@ export const createBrowseSession = async ({
     /** The last review's commit; null when there was none. */
     last_review?: string | null
 }): Promise<WalkSession | null> => {
-    const failed = async ({ stderr }: { stderr: string }) => {
-        await host.showMessage({
-            kind: 'error',
-            text: `Luca Walk could not read the diff of #${ref.number}: ${stderr.trim() || 'git failed'}`,
-        })
-        return null
-    }
-    const merged = await git({
-        args: ['merge-base', `origin/${base_ref}`, head_sha],
-        cwd: checkout,
-    })
-    if (!merged.ok) return failed(merged)
-    const base_sha = merged.stdout.trim()
-    await onBaseSha(base_sha)
     const listed = await git({
         args: ['diff', '--name-status', '-M', '-z', base_sha, head_sha],
         cwd: checkout,
     })
-    if (!listed.ok) return failed(listed)
+    if (!listed.ok) {
+        await host.showMessage({
+            kind: 'error',
+            text: `Luca Walk could not read the diff of #${ref.number}: ${listed.stderr.trim() || 'git failed'}`,
+        })
+        return null
+    }
     const files = changedFiles({ output: listed.stdout })
     const place = await createWalkPlace({
         host,

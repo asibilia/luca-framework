@@ -7,9 +7,11 @@ import { REVIEW_RECORD_MARKER } from './review-record'
 import {
     CHANGES_WANTED,
     makeSendRepo,
+    moveMainOn,
     openSendApp,
     outsideStart,
     readSaved,
+    REPO,
     SIGNED_OFF,
     type SendRepo,
 } from './testing/send-review-setup'
@@ -330,5 +332,81 @@ describe('what goes in the review (#761)', () => {
             commit: repo.head_sha,
             approved_files: ['src/a.ts'],
         })
+    })
+})
+
+describe('sending a review of the plain diff (#759, #761)', () => {
+    type SendApp = Awaited<ReturnType<typeof openSendApp>>
+
+    /**
+     * Browses the plain diff and sends three drafts: one on head line 10
+     * and one on base line 10, both in the merge base's one hunk, and one
+     * on base line 100, which only main's tip changed.
+     */
+    const browseAndSend = async (made: SendApp) => {
+        await made.app.panelMessage({
+            panel: 'summary',
+            message: { type: 'button', id: 'browse_diff' },
+        })
+        const baseDraft = (line: number, body: string) =>
+            made.app.draftCommentAdded({
+                uri: `luca-walk-base:/src/a.ts?sha=${repo.base_sha}`,
+                start_line: line,
+                end_line: line,
+                body,
+            })
+        await made.lineDraft(10, 10, 'Name this')
+        await baseDraft(10, 'Why was this 10?')
+        await baseDraft(100, 'Why 100?')
+        await made.send('Just comments')
+    }
+
+    /** The review the three drafts make when checked against the merge base. */
+    const expectMergeBaseReview = (made: SendApp) => {
+        expect(made.reviews_now()).toHaveLength(1)
+        const review = made.submitted()[0]
+        expect(review?.comments).toHaveLength(2)
+        expect(review?.comments).toContainEqual(
+            expect.objectContaining({
+                path: 'src/a.ts',
+                line: 10,
+                side: 'RIGHT',
+                body: 'Name this',
+            })
+        )
+        expect(review?.comments).toContainEqual(
+            expect.objectContaining({
+                path: 'src/a.ts',
+                line: 10,
+                side: 'LEFT',
+                body: 'Why was this 10?',
+            })
+        )
+        expect(review?.file_threads).toEqual([
+            {
+                path: 'src/a.ts',
+                body: `On line 100 of src/a.ts, outside this pull request's diff: https://github.com/${REPO}/blob/${repo.base_sha}/src/a.ts#L100\n\n> const line100 = 100\n\nWhy 100?`,
+            },
+        ])
+    }
+
+    test('with no story, both sides are sent as checked against the merge base of origin/main and the head', async () => {
+        await moveMainOn(repo)
+        const made = await openSendApp(repo, { story: null })
+
+        await browseAndSend(made)
+
+        expectMergeBaseReview(made)
+    })
+
+    test("with a stale story, both sides are sent as checked against the merge base, not the story's base", async () => {
+        const main_tip = await moveMainOn(repo)
+        const made = await openSendApp(repo, {
+            story: { base_sha: main_tip, head_sha: 'a'.repeat(40) },
+        })
+
+        await browseAndSend(made)
+
+        expectMergeBaseReview(made)
     })
 })

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, realpath } from 'node:fs/promises'
+import { mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -29,9 +29,12 @@ const LINES = 130
 const HUNK = { start: 7, end: 13 }
 const ELSEWHERE = 'one\ntwo\nthree\n'
 
-const linesOf = (changed: string) =>
+/** `src/a.ts` with line 10 as `changed`, and any line of `more` as given. */
+const linesOf = (changed: string, more: Record<number, string> = {}) =>
     Array.from({ length: LINES }, (_, at) =>
-        at + 1 === 10 ? changed : `const line${at + 1} = ${at + 1}`
+        at + 1 === 10
+            ? changed
+            : (more[at + 1] ?? `const line${at + 1} = ${at + 1}`)
     ).join('\n') + '\n'
 
 export type SendRepo = {
@@ -59,6 +62,34 @@ export const makeSendRepo = async (): Promise<SendRepo> => {
         },
     })
     return { dir, walk_dir, checkout, ...made }
+}
+
+/**
+ * Moves `origin/main` on past the base (#759): one commit after the base
+ * that changes line 100 of `src/a.ts` to `const line100 = main`. The merge
+ * base of `origin/main` and the head is still the base, but a diff from
+ * main's tip has a second hunk, around line 100. Leaves the checkout at
+ * the head.
+ *
+ * @returns Main's new tip.
+ */
+export const moveMainOn = async (repo: SendRepo): Promise<string> => {
+    const cwd = repo.checkout
+    await testGit({ args: ['checkout', '-q', '--detach', repo.base_sha], cwd })
+    await writeFile(
+        join(cwd, 'src/a.ts'),
+        linesOf('const line10 = 10', { 100: 'const line100 = main' })
+    )
+    await testGit({ args: ['commit', '-q', '-am', 'main moved on'], cwd })
+    const tip = (
+        await testGit({ args: ['rev-parse', 'HEAD'], cwd })
+    ).stdout.trim()
+    await testGit({
+        args: ['update-ref', 'refs/remotes/origin/main', tip],
+        cwd,
+    })
+    await testGit({ args: ['checkout', '-q', '--detach', repo.head_sha], cwd })
+    return tip
 }
 
 /** The pull request's drafts file, as saved, parsed with its own schema. */
@@ -90,7 +121,12 @@ export const pendingReview = (body: string): PretendReview => ({
     file_threads: [],
 })
 
-/** A new app on the checkout of #12 by `author`, activated, and helpers. */
+/**
+ * A new app on the checkout of #12 by `author`, activated, and helpers.
+ *
+ * @param story - The commits its private story was written for: the
+ *   repo's base and head when left out, none when null.
+ */
 export const openSendApp = async (
     repo: SendRepo,
     {
@@ -98,29 +134,32 @@ export const openSendApp = async (
         labels = [],
         repo_labels = [SIGNED_OFF, CHANGES_WANTED],
         reviews = [],
+        story = { base_sha: repo.base_sha, head_sha: repo.head_sha },
     }: {
         author?: string
         labels?: string[]
         repo_labels?: string[]
         reviews?: PretendReview[]
+        story?: { base_sha: string; head_sha: string } | null
     } = {}
 ) => {
     const stories_dir = join(repo.dir, 'stories')
-    await savePrivateStory({
-        stories_dir,
-        story: storyOf({
-            repo: REPO,
-            base_sha: repo.base_sha,
-            head_sha: repo.head_sha,
-            stops: [
-                {
-                    id: 's1',
-                    title: 'The a file',
-                    changes: [{ id: 'c1', path: 'src/a.ts', line: 10 }],
-                },
-            ],
-        }),
-    })
+    if (story !== null) {
+        await savePrivateStory({
+            stories_dir,
+            story: storyOf({
+                repo: REPO,
+                ...story,
+                stops: [
+                    {
+                        id: 's1',
+                        title: 'The a file',
+                        changes: [{ id: 'c1', path: 'src/a.ts', line: 10 }],
+                    },
+                ],
+            }),
+        })
+    }
     const github = createPretendGitHub({
         login: 'octocat',
         labels: { [REPO]: repo_labels },

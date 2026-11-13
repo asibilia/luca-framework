@@ -2,10 +2,12 @@ import { z } from 'zod'
 
 import { diffFiles } from './diff-hunks'
 import type { Feedback } from './feedback'
+import type { DiffBase } from './load-pull-request'
 import type { PullRequestRef } from './pull-request-ref'
 import { swapLabels } from './review-labels'
 import { planReview, type ReadLines, type ReviewPlan } from './review-plan'
 import {
+    ownReviews,
     REVIEW_RECORD_MARKER,
     reviewRecordLine,
     saveReviewRecord,
@@ -45,17 +47,6 @@ const VERDICTS: Verdict[] = [
     { label: 'Just comments', event: 'COMMENT', labels: null },
 ]
 
-const ReviewListSchema = z.array(
-    z.array(
-        z.object({
-            id: z.number().int(),
-            user: z.object({ login: z.string() }).nullable(),
-            state: z.string(),
-            body: z.string().nullable(),
-        })
-    )
-)
-
 const CreatedSchema = z.object({ id: z.number().int(), node_id: z.string() })
 
 const ADD_FILE_THREAD = `mutation($pullRequestReviewId: ID!, $path: String!, $body: String!) {
@@ -90,8 +81,8 @@ const outsideNote = (outside: number) =>
 /**
  * Asks for the verdict and sends the review of `ref` at `head_sha`.
  *
- * @param story_base_sha - The story's base; null to read the merge base
- *   of `origin/<base_ref>` and the head.
+ * @param base - The diff's base the drafts were made against: the hunks
+ *   are read and the base side quoted at it.
  */
 export const sendReview = async ({
     host,
@@ -102,9 +93,8 @@ export const sendReview = async ({
     checkout,
     feedback,
     author,
-    base_ref,
     head_sha,
-    story_base_sha,
+    base,
 }: {
     host: WalkHost
     gh: Gh
@@ -115,9 +105,8 @@ export const sendReview = async ({
     checkout: string
     feedback: Feedback
     author: string
-    base_ref: string
     head_sha: string
-    story_base_sha: string | null
+    base: DiffBase
 }): Promise<void> => {
     const verdict = await host.pick({
         placeholder: 'Your verdict',
@@ -142,19 +131,8 @@ export const sendReview = async ({
         plan: ReviewPlan
         own: boolean
     } | null> => {
-        const user = await gh({ args: ['api', 'user', '--jq', '.login'] })
-        if (!user.ok) throw failure(user)
-        const login = user.stdout.trim()
-
-        let base_sha = story_base_sha
-        if (base_sha === null) {
-            const merged = await git({
-                args: ['merge-base', `origin/${base_ref}`, head_sha],
-                cwd: checkout,
-            })
-            if (!merged.ok) throw failure(merged)
-            base_sha = merged.stdout.trim()
-        }
+        if (!base.ok) throw new Error(base.error)
+        const base_sha = base.sha
         const diff = await git({
             args: [
                 'diff',
@@ -169,19 +147,10 @@ export const sendReview = async ({
         })
         if (!diff.ok) throw failure(diff)
 
-        const listed = await gh({
-            args: ['api', `${reviews}?per_page=100`, '--paginate', '--slurp'],
-        })
-        if (!listed.ok) throw failure(listed)
-        const pending = parsed({
-            schema: ReviewListSchema,
-            stdout: listed.stdout,
-        })
-            .flat()
-            .filter(
-                (review) =>
-                    review.state === 'PENDING' && review.user?.login === login
-            )
+        const { login, reviews: own_reviews } = await ownReviews({ gh, ref })
+        const pending = own_reviews.filter(
+            (review) => review.state === 'PENDING'
+        )
         const ours = (body: string | null) =>
             (body ?? '').includes(REVIEW_RECORD_MARKER)
         if (pending.some((review) => !ours(review.body))) return null
@@ -192,7 +161,6 @@ export const sendReview = async ({
             if (!deleted.ok) throw failure(deleted)
         }
 
-        const commit = base_sha
         // Each side's file as its commit holds it, as GitHub shows it: a
         // symlink reads as its target's name, never the file it points
         // at, which may be outside the checkout.
@@ -205,7 +173,7 @@ export const sendReview = async ({
             const shown = await git({
                 args: [
                     'show',
-                    `${side === 'head' ? head_sha : commit}:${path}`,
+                    `${side === 'head' ? head_sha : base_sha}:${path}`,
                 ],
                 cwd: checkout,
             })
@@ -218,7 +186,7 @@ export const sendReview = async ({
                 files: diffFiles({ output: diff.stdout }),
                 repo: ref.repo,
                 head_sha,
-                base_sha: commit,
+                base_sha,
                 record_line: reviewRecordLine({ record }),
                 quote_all,
                 readLines,

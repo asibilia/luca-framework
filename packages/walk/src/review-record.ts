@@ -103,6 +103,7 @@ export const saveReviewRecord = async ({
 const ReviewListSchema = z.array(
     z.array(
         z.object({
+            id: z.number().int(),
             user: z.object({ login: z.string() }).nullable(),
             state: z.string(),
             body: z.string().nullable(),
@@ -110,17 +111,21 @@ const ReviewListSchema = z.array(
         })
     )
 )
+export type OwnReview = z.infer<typeof ReviewListSchema>[number][number]
 
-/** The record in the signed-in user's newest submitted review that holds one. */
-const recordOnGitHub = async ({
+/**
+ * The signed-in user's login and their reviews on `ref`, pending ones
+ * too; throws gh's error.
+ */
+export const ownReviews = async ({
     gh,
     ref,
 }: {
     gh: Gh
     ref: PullRequestRef
-}): Promise<ReviewRecord | null> => {
+}): Promise<{ login: string; reviews: OwnReview[] }> => {
     const user = await gh({ args: ['api', 'user', '--jq', '.login'] })
-    if (!user.ok) return null
+    if (!user.ok) throw new Error(user.stderr.trim() || 'gh failed')
     const login = user.stdout.trim()
     const listed = await gh({
         args: [
@@ -130,20 +135,34 @@ const recordOnGitHub = async ({
             '--slurp',
         ],
     })
-    if (!listed.ok) return null
-    let reviews: z.infer<typeof ReviewListSchema>
+    if (!listed.ok) throw new Error(listed.stderr.trim() || 'gh failed')
+    let pages: z.infer<typeof ReviewListSchema>
     try {
-        reviews = ReviewListSchema.parse(JSON.parse(listed.stdout))
+        pages = ReviewListSchema.parse(JSON.parse(listed.stdout))
     } catch {
-        return null
+        throw new Error(`gh answered something else: ${listed.stdout.trim()}`)
     }
-    const newest = reviews
-        .flat()
+    return {
+        login,
+        reviews: pages.flat().filter((review) => review.user?.login === login),
+    }
+}
+
+/** The record in the signed-in user's newest submitted review that holds one. */
+const recordOnGitHub = async ({
+    gh,
+    ref,
+}: {
+    gh: Gh
+    ref: PullRequestRef
+}): Promise<ReviewRecord | null> => {
+    const own = await ownReviews({ gh, ref }).catch(() => null)
+    if (own === null) return null
+    const newest = own.reviews
         .filter(
             (review) =>
                 review.state !== 'PENDING' &&
                 typeof review.submitted_at === 'string' &&
-                review.user?.login === login &&
                 (review.body ?? '').includes(REVIEW_RECORD_MARKER)
         )
         .toSorted((a, b) =>

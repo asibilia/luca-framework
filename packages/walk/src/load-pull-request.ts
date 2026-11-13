@@ -17,6 +17,7 @@ import { createWalkSession, type WalkSession } from './walk-session'
 
 import type { Gh } from '../../engine/src/story/story-github'
 import { findStory } from '../../engine/src/story/story-pick'
+import type { Story } from '../../engine/src/story/story-schema'
 
 /**
  * Loading a pull request (#752, sections 4, 12 and 13): GitHub's head,
@@ -62,8 +63,40 @@ export const readPullView = async ({
     return PullViewSchema.parse(JSON.parse(view.stdout))
 }
 
-/** The head the app works at, and who opened the pull request against which branch. */
-export type PullHead = { sha: string; author: string; base_ref: string }
+/**
+ * The commit the diff's base side is read at, by the walk, browsing, the
+ * drafts and the send alike: the story's base when the story is for the
+ * head, else the merge base of `origin/<base branch>` and the head, which
+ * the plain diff shows. `ok` false holds git's error when it can't be read.
+ */
+export type DiffBase = { ok: true; sha: string } | { ok: false; error: string }
+
+/** The head the app works at, who opened the pull request, and the diff's base. */
+export type PullHead = { sha: string; author: string; base: DiffBase }
+
+/** The diff's base of a pull request at `head_sha`; `story` is the one written for that head. */
+const diffBaseOf = async ({
+    git,
+    checkout,
+    base_ref,
+    head_sha,
+    story,
+}: {
+    git: WalkGit
+    checkout: string
+    base_ref: string
+    head_sha: string
+    story: Story | null
+}): Promise<DiffBase> => {
+    if (story !== null) return { ok: true, sha: story.base_sha }
+    const merged = await git({
+        args: ['merge-base', `origin/${base_ref}`, head_sha],
+        cwd: checkout,
+    })
+    return merged.ok
+        ? { ok: true, sha: merged.stdout.trim() }
+        : { ok: false, error: merged.stderr.trim() || 'git failed' }
+}
 
 /** The pull request on screen. */
 export type Shown = {
@@ -71,9 +104,10 @@ export type Shown = {
     checkout: string
     loaded: Loaded
     /**
-     * GitHub's head, which the checkout is at, for the walk, browsing,
-     * sending and the record alike; null when the pull request could not
-     * be read or the checkout could not be brought to its head.
+     * GitHub's head, which the checkout is at, and the diff's base, for
+     * the walk, browsing, the drafts, sending and the record alike; null
+     * when the pull request could not be read or the checkout could not
+     * be brought to its head.
      */
     head: PullHead | null
     story_requested: boolean
@@ -108,34 +142,36 @@ export const loadPullRequest = async ({
     const { repo, number: pr_number } = ref
     const checkout = checkoutPath({ walk_dir, ref })
     let loaded: Loaded
-    let head: PullHead | null = null
+    /** The pull request, once the checkout is at its head. */
+    let pull: PullView | null = null
     try {
-        const pull = await readPullView({ gh, ref })
+        const view = await readPullView({ gh, ref })
         const at = await checkoutAtHead({
             git,
             walk_dir,
             remote_url: remote_url({ repo }),
             ref,
-            base_ref: pull.baseRefName,
-            head_sha: pull.headRefOid,
+            base_ref: view.baseRefName,
+            head_sha: view.headRefOid,
         })
         if (!at.ok) throw new Error(at.error)
-        head = {
-            sha: pull.headRefOid,
-            author: pull.author.login,
-            base_ref: pull.baseRefName,
-        }
+        pull = view
         const { found } = await findStory({ gh, stories_dir, repo, pr_number })
-        loaded = { status: 'found', found, head_sha: head.sha }
+        loaded = { status: 'found', found, head_sha: view.headRefOid }
     } catch (thrown) {
         loaded = { status: 'failed', message: messageOf(thrown) }
     }
-    const story =
+    const found_story =
         loaded.status === 'found' && loaded.found.status === 'ok'
             ? loaded.found.story
             : null
+    /** The story, when it was written for the head: only then is it walked. */
+    const story =
+        found_story !== null && found_story.head_sha === pull?.headRefOid
+            ? found_story
+            : null
     const first: Visit = { kind: 'first' }
-    const [github_threads, replies, visit] = await Promise.all([
+    const [github_threads, replies, visit, base] = await Promise.all([
         readGitHubThreads({ gh, ref }).catch(() => []),
         readAgentSummaries({ gh, ref }).catch(() => []),
         loaded.status === 'found'
@@ -148,7 +184,20 @@ export const loadPullRequest = async ({
                   head_sha: loaded.head_sha,
               }).catch(() => first)
             : first,
+        pull === null
+            ? null
+            : diffBaseOf({
+                  git,
+                  checkout,
+                  base_ref: pull.baseRefName,
+                  head_sha: pull.headRefOid,
+                  story,
+              }),
     ])
+    const head: PullHead | null =
+        pull === null || base === null
+            ? null
+            : { sha: pull.headRefOid, author: pull.author.login, base }
     let shown: Shown | null = null
     const feedback = await createFeedback({
         host,
@@ -156,7 +205,7 @@ export const loadPullRequest = async ({
         walk_dir,
         ref,
         checkout,
-        base_sha: story?.base_sha ?? null,
+        base_sha: base?.ok ? base.sha : null,
         github_threads,
         onApprovedChanged: async () => {
             await shown?.walk?.showStops()
@@ -173,7 +222,7 @@ export const loadPullRequest = async ({
         })
     )
     const walk =
-        story === null || story.head_sha !== head?.sha
+        story === null
             ? null
             : await createWalkSession({
                   host,

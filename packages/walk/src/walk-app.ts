@@ -271,16 +271,21 @@ export const createWalkApp = ({
     const browseDiff = async (now: Shown) => {
         const head = await headOf({ now })
         if (head === null) return
+        if (!head.base.ok) {
+            await error(
+                `Luca Walk could not read the diff of #${now.ref.number}: ${head.base.error}`
+            )
+            return
+        }
         const browse = await createBrowseSession({
             host,
             git,
             walk_dir,
             ref: now.ref,
             checkout: now.checkout,
-            base_ref: head.base_ref,
+            base_sha: head.base.sha,
             head_sha: head.sha,
             looksGood: now.feedback.looksGood,
-            onBaseSha: (sha) => now.feedback.showBaseAt({ sha }),
             files_to_walk: filesToWalk({ visit: now.visit }),
             last_review: lastReviewOf({ visit: now.visit }),
         })
@@ -311,7 +316,6 @@ export const createWalkApp = ({
     const send = async (now: Shown) => {
         const head = await headOf({ now })
         if (head === null) return
-        const { loaded } = now
         await sendReview({
             host,
             gh,
@@ -321,17 +325,10 @@ export const createWalkApp = ({
             checkout: now.checkout,
             feedback: now.feedback,
             author: head.author,
-            base_ref: head.base_ref,
             head_sha: head.sha,
-            story_base_sha:
-                loaded.status === 'found' && loaded.found.status === 'ok'
-                    ? loaded.found.story.base_sha
-                    : null,
+            base: head.base,
         })
     }
-
-    const notBuilt = () =>
-        host.showMessage({ kind: 'info', text: 'Not built yet.' })
 
     return {
         /** Runs one of `WALK_COMMANDS`. */
@@ -356,7 +353,6 @@ export const createWalkApp = ({
             if (step !== undefined) return walkStep({ now, step })
             const feedbackStep = FEEDBACK_STEPS[command]
             if (feedbackStep !== undefined) return feedbackStep(now.feedback)
-            return notBuilt()
         },
 
         /** A comment typed in VS Code's comment box. */
@@ -421,7 +417,6 @@ export const createWalkApp = ({
             if (id === 'start_walk') {
                 return walkStep({ now, step: (walk) => walk.start() })
             }
-            return notBuilt()
         },
 
         /** A stop was clicked in the Stops view. */

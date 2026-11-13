@@ -108,7 +108,7 @@ Tests:
 
 ## Sending one review
 
-`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record.
+`Send the review` asks for a verdict and posts every draft as one GitHub review: `APPROVE` or `REQUEST_CHANGES` on someone else's pull request, `COMMENT` and the `signed-off` or `changes-wanted` label on the owner's own. A comment GitHub won't attach to its line goes as quoted text (quoted, like a suggested change's lines, from the commit as GitHub shows the file, so a symlink never quotes a file outside the checkout), a leftover pending review of the app's own is deleted (any other stops the send), a failed send keeps every draft, and the review's text ends with the review record. With no story, or a stale one, the drafts are checked and quoted against the merge base of `origin/<base branch>` and the head, the commit the plain diff shows.
 
 Reached by: `Luca Walk: Send the review`.
 
