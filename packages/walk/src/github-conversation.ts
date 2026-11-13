@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
+import type { PullComment } from './own-story'
 import type { PullRequestRef } from './pull-request-ref'
+import { isSignedIn } from './signed-in'
 
 import {
     REPLY_MARKER,
@@ -11,7 +13,9 @@ import type { Gh } from '../../engine/src/story/story-github'
 
 /**
  * The conversation already on a pull request (#752, section 13): its
- * review threads, and the summaries `/luca-pr-address` posts.
+ * review threads, and the summaries `/luca-pr-address` posts. The agent
+ * posts as the signed-in user, so only a comment the signed-in user wrote
+ * is ever shown as the agent's (#766): anyone else can paste its marker.
  */
 
 /** The author shown for a comment `/luca-pr-address` posted as a reply. */
@@ -28,21 +32,24 @@ export type GitHubThread = {
 }
 
 /**
- * A comment as the owner sees it: one holding the reply marker is the
- * agent's, with the marker taken out.
+ * A comment as the owner sees it: one holding the reply marker, written
+ * by the signed-in user (`login`), is the agent's, with the marker taken
+ * out; any other is shown as it is, under its real author.
  *
  * @example
- * shownComment({ author: 'octocat', body: `Fixed.\n${REPLY_MARKER}` })
+ * shownComment({ author: 'octocat', body: `Fixed.\n${REPLY_MARKER}`, login: 'octocat' })
  * // { author: 'luca-pr-address', body: 'Fixed.' }
  */
 export const shownComment = ({
     author,
     body,
+    login,
 }: {
     author: string
     body: string
+    login: string | null
 }): { author: string; body: string } =>
-    body.includes(REPLY_MARKER)
+    body.includes(REPLY_MARKER) && isSignedIn({ author, login })
         ? {
               author: AGENT_AUTHOR,
               body: body.split(REPLY_MARKER).join('').trim(),
@@ -105,7 +112,13 @@ type ThreadNode = z.infer<
     typeof ThreadsPageSchema
 >['data']['repository']['pullRequest']['reviewThreads']['nodes'][number]
 
-const threadOf = (node: ThreadNode): GitHubThread => {
+const threadOf = ({
+    node,
+    login,
+}: {
+    node: ThreadNode
+    login: string | null
+}): GitHubThread => {
     const line = node.subjectType === 'FILE' ? null : (node.line ?? null)
     const start = line === null ? 1 : (node.startLine ?? line)
     return {
@@ -114,23 +127,26 @@ const threadOf = (node: ThreadNode): GitHubThread => {
         start_line: Math.min(start, line ?? 1),
         end_line: line ?? 1,
         comments: node.comments.nodes.map(({ author, body }) =>
-            shownComment({ author: author?.login ?? 'ghost', body })
+            shownComment({ author: author?.login ?? 'ghost', body, login })
         ),
     }
 }
 
 /**
- * The pull request's review threads. Throws when `gh` fails.
+ * The pull request's review threads, `login` being the signed-in user.
+ * Throws when `gh` fails.
  *
  * @example
- * await readGitHubThreads({ gh, ref: { repo: 'octocat/hello-world', number: 12 } })
+ * await readGitHubThreads({ gh, ref: { repo: 'octocat/hello-world', number: 12 }, login: 'octocat' })
  */
 export const readGitHubThreads = async ({
     gh,
     ref,
+    login,
 }: {
     gh: Gh
     ref: PullRequestRef
+    login: string | null
 }): Promise<GitHubThread[]> => {
     const [owner = '', name = ''] = ref.repo.split('/')
     const threads: GitHubThread[] = []
@@ -158,7 +174,7 @@ export const readGitHubThreads = async ({
         }
         const page = ThreadsPageSchema.parse(JSON.parse(read.stdout)).data
             .repository.pullRequest.reviewThreads
-        threads.push(...page.nodes.map(threadOf))
+        threads.push(...page.nodes.map((node) => threadOf({ node, login })))
         if (!page.pageInfo.hasNextPage || !page.pageInfo.endCursor) {
             return threads
         }
@@ -166,41 +182,34 @@ export const readGitHubThreads = async ({
     }
 }
 
-const CommentPagesSchema = z.array(
-    z.array(z.object({ body: z.string().nullable() }))
-)
+/** A summary comment as the Summary panel shows it. */
+export type Reply = { author: string; body: string }
 
 /**
- * The texts of `/luca-pr-address`'s summary comments, newest first, each
- * without its marker line. Throws when `gh` fails.
+ * The conversation's comments that hold `/luca-pr-address`'s summary
+ * marker, newest first: the signed-in user's (`login`) as the agent's,
+ * each without its hidden parts; anyone else's under its real author,
+ * as it is.
+ *
+ * @example
+ * agentReplies({ comments, login: 'octocat' })
+ * // [{ author: 'luca-pr-address', body: 'Fixed two findings.' }]
  */
-export const readAgentSummaries = async ({
-    gh,
-    ref,
+export const agentReplies = ({
+    comments,
+    login,
 }: {
-    gh: Gh
-    ref: PullRequestRef
-}): Promise<string[]> => {
-    const listed = await gh({
-        args: [
-            'api',
-            `repos/${ref.repo}/issues/${ref.number}/comments?per_page=100`,
-            '--paginate',
-            '--slurp',
-        ],
-    })
-    if (!listed.ok) {
-        throw new Error(
-            `reading the comments of #${ref.number}: ${listed.stderr.trim() || 'gh failed'}`
+    comments: PullComment[]
+    login: string | null
+}): Reply[] =>
+    comments
+        .filter(({ body }) => body.startsWith(SUMMARY_MARKER))
+        .map(({ author, body }) =>
+            isSignedIn({ author, login })
+                ? { author: AGENT_AUTHOR, body: shownSummary(body) }
+                : { author: author ?? 'ghost', body }
         )
-    }
-    return CommentPagesSchema.parse(JSON.parse(listed.stdout))
-        .flat()
-        .map(({ body }) => body ?? '')
-        .filter((body) => body.startsWith(SUMMARY_MARKER))
-        .map(shownSummary)
         .reverse()
-}
 
 /**
  * A summary's text without its hidden parts: the marker line, and the

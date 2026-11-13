@@ -58,6 +58,7 @@ export type {
 
 /** One step `failNext` can make fail once. Later tickets add theirs. */
 export type PretendStep =
+    | 'read_user'
     | 'read_comments'
     | 'create_review'
     | 'add_file_thread'
@@ -218,7 +219,9 @@ export const createPretendGitHub = ({
     const gh: Gh = async ({ args, input }) => {
         const call = args.join(' ')
         state.calls.push(call)
-        if (call === 'api user --jq .login') return ok(`${state.login}\n`)
+        if (call === 'api user --jq .login') {
+            return failed('read_user') ?? ok(`${state.login}\n`)
+        }
 
         if (args[0] === 'pr' && args[1] === 'view') {
             const repo = args[args.indexOf('--repo') + 1] ?? ''

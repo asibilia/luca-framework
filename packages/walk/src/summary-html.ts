@@ -1,3 +1,4 @@
+import { AGENT_AUTHOR, type Reply } from './github-conversation'
 import { button, escapeHtml, labelled, page, paragraph } from './webview-html'
 
 import type { StoryUnpack } from '../../engine/src/story/story-comments'
@@ -82,6 +83,30 @@ const summaryBody = ({ story }: { story: Story }): string => {
 }
 
 const WRITE = button({ id: 'write_story', label: 'Write the story' })
+
+/** The command shown instead of `Write the story`, and why. */
+type StoryCommand = { command: string; why: string }
+
+/**
+ * Where `Write the story` would be: the button, or, anywhere but the
+ * owner's own pull request in their own repo (#766), why not, the command
+ * to copy and its Copy button.
+ */
+const writePart = ({
+    story_command,
+}: {
+    story_command: StoryCommand | null
+}) =>
+    story_command === null
+        ? WRITE
+        : [
+              paragraph({ text: story_command.why }),
+              paragraph({
+                  text: "To write the story, run this in a terminal. It starts Claude outside this checkout, so this repo's Claude settings are never loaded:",
+              }),
+              `<pre><code>${escapeHtml({ text: story_command.command })}</code></pre>`,
+              button({ id: 'copy_story_command', label: 'Copy the command' }),
+          ].join('\n')
 const BROWSE = button({ id: 'browse_diff', label: 'Browse the diff' })
 const RELOAD = button({ id: 'reload_story', label: 'Reload the story' })
 const NOT_READ = "This pull request's story can't be read:"
@@ -90,9 +115,12 @@ const NOT_READ = "This pull request's story can't be read:"
 const foundBody = ({
     found,
     head_sha,
+    write,
 }: {
     found: StoryUnpack
     head_sha: string
+    /** The HTML where `Write the story` goes. */
+    write: string
 }): string => {
     if (found.status === 'ok' && found.story.head_sha === head_sha) {
         return summaryBody({ story: found.story })
@@ -115,24 +143,46 @@ const foundBody = ({
                       paragraph({ text })
                   )
                 : [NOT_READ, found.reason].map((text) => paragraph({ text }))
-    return [...said, WRITE, BROWSE].join('\n')
+    return [...said, write, BROWSE].join('\n')
 }
 
-/** `/luca-pr-address`'s summaries, newest first; empty when there are none. */
-const repliesBody = ({ replies }: { replies: string[] }): string =>
-    replies.length === 0
-        ? ''
-        : [
-              `<h2>${escapeHtml({ text: 'Replies from /luca-pr-address:' })}</h2>`,
-              ...replies.map(
-                  (reply) =>
-                      `<div>${reply
-                          .split('\n')
-                          .filter((line) => line.trim() !== '')
-                          .map((text) => paragraph({ text }))
-                          .join('')}</div>`
-              ),
-          ].join('\n')
+/** A text as one paragraph per line that isn't blank. */
+const linesOf = (text: string): string =>
+    text
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .map((line) => paragraph({ text: line }))
+        .join('')
+
+/**
+ * `/luca-pr-address`'s summaries, newest first, then (#766) comments by
+ * others that hold its marker, under their real authors; empty when there
+ * are none.
+ */
+const repliesBody = ({ replies }: { replies: Reply[] }): string => {
+    const agent = replies.filter(({ author }) => author === AGENT_AUTHOR)
+    const others = replies.filter(({ author }) => author !== AGENT_AUTHOR)
+    const heading = (text: string) => `<h2>${escapeHtml({ text })}</h2>`
+    return [
+        ...(agent.length === 0
+            ? []
+            : [
+                  heading('Replies from /luca-pr-address:'),
+                  ...agent.map(({ body }) => `<div>${linesOf(body)}</div>`),
+              ]),
+        ...(others.length === 0
+            ? []
+            : [
+                  heading(
+                      "Comments by others that hold /luca-pr-address's marker:"
+                  ),
+                  ...others.map(
+                      ({ author, body }) =>
+                          `<div>${paragraph({ text: `${author}:` })}${linesOf(body)}</div>`
+                  ),
+              ]),
+    ].join('\n')
+}
 
 /**
  * The Summary panel's HTML for pull request `pr_number`.
@@ -145,14 +195,20 @@ export const summaryHtml = ({
     story_requested,
     replies = [],
     visit_note = null,
+    story_command = null,
+    story_note = null,
 }: {
     pr_number: number
     loaded: Loaded
     story_requested: boolean
-    /** `/luca-pr-address`'s summaries, newest first, without their markers. */
-    replies?: string[]
+    /** `/luca-pr-address`'s summaries, and look-alikes by others, newest first. */
+    replies?: Reply[]
     /** What changed since the owner's last review; null on a first visit. */
     visit_note?: string | null
+    /** The command shown instead of `Write the story`, and why; null for the button. */
+    story_command?: StoryCommand | null
+    /** Why a story on the pull request is not used (#766); null when none is left out. */
+    story_note?: string | null
 }): string => {
     const title = `Summary of #${pr_number}`
     if (loaded.status === 'failed') {
@@ -163,11 +219,15 @@ export const summaryHtml = ({
         ].join('\n')
         return page({ title, body })
     }
-    const body = foundBody(loaded)
+    const body = foundBody({
+        ...loaded,
+        write: writePart({ story_command }),
+    })
     return page({
         title,
         body: [
             visit_note === null ? '' : paragraph({ text: visit_note }),
+            story_note === null ? '' : paragraph({ text: story_note }),
             body,
             ...(story_requested ? [RELOAD] : []),
             repliesBody({ replies }),

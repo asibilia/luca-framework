@@ -4,7 +4,13 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { createFakeHost } from './fake-host'
-import { createPretendGitHub, type PretendReview } from './pretend-github'
+import {
+    createPretendGitHub,
+    type PretendComment,
+    type PretendGitHub,
+    type PretendReview,
+    type PretendThread,
+} from './pretend-github'
 import { testGit } from './test-git'
 import { makeCheckoutRepo, storyOf } from './walk-story'
 
@@ -14,8 +20,8 @@ import { createWalkApp } from '../walk-app'
 
 /**
  * The setup for the send tests (#761): a checkout of #12 of
- * `octocat/hello-world` under a fresh walk folder, its story, a pretend
- * GitHub and an app on it.
+ * `octocat/hello-world` (or another repo, #766) under a fresh walk folder,
+ * its story, a pretend GitHub signed in as `octocat` and an app on it.
  *
  * `src/a.ts` has 130 lines; only line 10 changes, so the diff's one hunk
  * holds lines 7 to 13 on both sides. `src/elsewhere.ts` is not in the diff.
@@ -38,6 +44,8 @@ const linesOf = (changed: string, more: Record<number, string> = {}) =>
     ).join('\n') + '\n'
 
 export type SendRepo = {
+    /** The pull request's repo, `owner/name`. */
+    repo_name: string
     dir: string
     walk_dir: string
     checkout: string
@@ -45,11 +53,16 @@ export type SendRepo = {
     head_sha: string
 }
 
-/** A fresh temporary folder with the checkout of #12 in its walk folder. */
-export const makeSendRepo = async (): Promise<SendRepo> => {
+/**
+ * A fresh temporary folder with the checkout of #12 of `repo_name` in its
+ * walk folder.
+ */
+export const makeSendRepo = async ({
+    repo_name = REPO,
+}: { repo_name?: string } = {}): Promise<SendRepo> => {
     const dir = await realpath(await mkdtemp(join(tmpdir(), 'luca-walk-send-')))
     const walk_dir = join(dir, 'walk')
-    const checkout = join(walk_dir, 'checkouts/octocat/hello-world/pr-12')
+    const checkout = join(walk_dir, 'checkouts', repo_name, 'pr-12')
     const made = await makeCheckoutRepo({
         folder: checkout,
         base: {
@@ -61,7 +74,7 @@ export const makeSendRepo = async (): Promise<SendRepo> => {
             'src/elsewhere.ts': ELSEWHERE,
         },
     })
-    return { dir, walk_dir, checkout, ...made }
+    return { repo_name, dir, walk_dir, checkout, ...made }
 }
 
 /**
@@ -97,7 +110,7 @@ export const readSaved = async (repo: SendRepo): Promise<Drafts> =>
     DraftsSchema.parse(
         JSON.parse(
             await readFile(
-                join(repo.walk_dir, 'drafts/octocat/hello-world/pr-12.json'),
+                join(repo.walk_dir, 'drafts', repo.repo_name, 'pr-12.json'),
                 'utf8'
             )
         )
@@ -105,7 +118,7 @@ export const readSaved = async (repo: SendRepo): Promise<Drafts> =>
 
 /** The first line of a comment outside the diff, on the head side. */
 export const outsideStart = (repo: SendRepo, line: string, path: string) =>
-    `On line ${line} of ${path}, outside this pull request's diff: https://github.com/${REPO}/blob/${repo.head_sha}/${path}#L${line}`
+    `On line ${line} of ${path}, outside this pull request's diff: https://github.com/${repo.repo_name}/blob/${repo.head_sha}/${path}#L${line}`
 
 /** A pending review by `octocat`, id 77, holding `body`. */
 export const pendingReview = (body: string): PretendReview => ({
@@ -126,6 +139,8 @@ export const pendingReview = (body: string): PretendReview => ({
  *
  * @param story - The commits its private story was written for: the
  *   repo's base and head when left out, none when null.
+ * @param github - The pretend GitHub to open it on, to open a second
+ *   window on the same pull request; a new one when left out.
  */
 export const openSendApp = async (
     repo: SendRepo,
@@ -135,20 +150,31 @@ export const openSendApp = async (
         repo_labels = [SIGNED_OFF, CHANGES_WANTED],
         reviews = [],
         story = { base_sha: repo.base_sha, head_sha: repo.head_sha },
+        comments = [],
+        threads = [],
+        user_unreadable = false,
+        github: shared = null,
     }: {
         author?: string
         labels?: string[]
         repo_labels?: string[]
         reviews?: PretendReview[]
         story?: { base_sha: string; head_sha: string } | null
+        /** The pull request's conversation comments. */
+        comments?: PretendComment[]
+        threads?: PretendThread[]
+        /** gh can't say who is signed in when the pull request is opened. */
+        user_unreadable?: boolean
+        github?: PretendGitHub | null
     } = {}
 ) => {
+    const repo_name = repo.repo_name
     const stories_dir = join(repo.dir, 'stories')
     if (story !== null) {
         await savePrivateStory({
             stories_dir,
             story: storyOf({
-                repo: REPO,
+                repo: repo_name,
                 ...story,
                 stops: [
                     {
@@ -160,28 +186,34 @@ export const openSendApp = async (
             }),
         })
     }
-    const github = createPretendGitHub({
-        login: 'octocat',
-        labels: { [REPO]: repo_labels },
-        pulls: [
-            {
-                repo: REPO,
-                number: 12,
-                title: 'Retry stuck tickets',
-                author,
-                base_ref: 'main',
-                head_sha: repo.head_sha,
-                state: 'OPEN',
-                labels,
-                comments: [],
-                reviews,
-                diff_hunks: [
-                    { path: 'src/a.ts', side: 'RIGHT', ...HUNK },
-                    { path: 'src/a.ts', side: 'LEFT', ...HUNK },
-                ],
-            },
-        ],
-    })
+    const github =
+        shared ??
+        createPretendGitHub({
+            login: 'octocat',
+            labels: { [repo_name]: repo_labels },
+            pulls: [
+                {
+                    repo: repo_name,
+                    number: 12,
+                    title: 'Retry stuck tickets',
+                    author,
+                    base_ref: 'main',
+                    head_sha: repo.head_sha,
+                    state: 'OPEN',
+                    labels,
+                    comments,
+                    threads,
+                    reviews,
+                    diff_hunks: [
+                        { path: 'src/a.ts', side: 'RIGHT', ...HUNK },
+                        { path: 'src/a.ts', side: 'LEFT', ...HUNK },
+                    ],
+                },
+            ],
+        })
+    if (user_unreadable) {
+        github.failNext({ step: 'read_user', error: 'gh: not logged in' })
+    }
     const host = createFakeHost({ workspace_folder: repo.checkout })
     const app = createWalkApp({
         host,
@@ -193,7 +225,7 @@ export const openSendApp = async (
     })
     await app.activated()
     const run = (command: string) => app.run({ command, args: [] })
-    const where = { repo: REPO, number: 12 }
+    const where = { repo: repo_name, number: 12 }
     const uriOf = (path: string) =>
         pathToFileURL(join(repo.checkout, path)).href
     const reviews_now = () => github.reviewsOf(where)
@@ -207,7 +239,7 @@ export const openSendApp = async (
         submitted: () =>
             reviews_now().filter((review) => review.state !== 'PENDING'),
         labels_now: () => github.pull(where).labels,
-        repo_labels_now: () => github.state.labels[REPO] ?? [],
+        repo_labels_now: () => github.state.labels[repo_name] ?? [],
         lineDraft: (start_line: number, end_line: number, body: string) =>
             app.draftCommentAdded({
                 uri: uriOf('src/a.ts'),
@@ -243,9 +275,22 @@ export const openSendApp = async (
             }
             await run('lucaWalk.toggleLooksGood')
         },
-        send: async (verdict: string | null) => {
+        /**
+         * Sends with `verdict`; `confirm` answers the modal question
+         * before a real GitHub verdict (its button's label, or null).
+         */
+        send: async (verdict: string | null, confirm?: string | null) => {
             host.answers.push(verdict)
+            if (confirm !== undefined) host.answers.push(confirm)
             await run('lucaWalk.sendReview')
         },
+        /** Presses the Summary panel's button `id`. */
+        press: (id: string) =>
+            app.panelMessage({
+                panel: 'summary',
+                message: { type: 'button', id },
+            }),
+        /** The Summary panel's HTML. */
+        summary: () => host.panels.summary?.html ?? '',
     }
 }

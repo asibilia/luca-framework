@@ -12,6 +12,7 @@ import {
     type Shown,
 } from './load-pull-request'
 import { mapHtml } from './map-html'
+import { notYourRepoBadge, storyCommand, storyPlace } from './not-your-repo'
 import {
     checkoutRefOf,
     githubRepoOf,
@@ -110,6 +111,28 @@ export const createWalkApp = ({
 
     const error = (text: string) => host.showMessage({ kind: 'error', text })
 
+    /**
+     * The command shown instead of `Write the story`, and why; null on the
+     * owner's own pull request in their own repo, where the button starts
+     * a terminal in the checkout.
+     */
+    const storyCommandOf = (now: Shown) => {
+        const place = storyPlace({
+            login: now.login,
+            your_repo: now.your_repo,
+            author: now.author,
+        })
+        return place.kind === 'terminal'
+            ? null
+            : {
+                  command: storyCommand({
+                      ref: now.ref,
+                      checkout: now.checkout,
+                  }),
+                  why: place.why,
+              }
+    }
+
     const showSummary = async (now: Shown) => {
         await host.showPanel({
             id: 'summary',
@@ -120,6 +143,8 @@ export const createWalkApp = ({
                 story_requested: now.story_requested,
                 replies: now.replies,
                 visit_note: visitNote({ visit: now.visit }),
+                story_note: now.story_note,
+                story_command: storyCommandOf(now),
             }),
         })
     }
@@ -135,6 +160,11 @@ export const createWalkApp = ({
             ref,
         })
         shown = now
+        await host.showBadge(
+            now.your_repo
+                ? null
+                : notYourRepoBadge({ repo: ref.repo, login: now.login })
+        )
         await showSummary(now)
         await now.feedback.showThreads()
         if (now.walk !== null) await now.walk.showStops()
@@ -256,13 +286,28 @@ export const createWalkApp = ({
         if (picked !== null) await openPullRequest(picked.ref)
     }
 
+    /**
+     * `Write the story`: on your own pull request in your own repo,
+     * `claude` runs `/luca-pr-prep` in a terminal in the checkout;
+     * anywhere else (#766), the command that runs it outside the checkout
+     * is copied instead. The only place Luca Walk starts a terminal.
+     */
     const writeStory = async (now: Shown) => {
-        const url = `https://github.com/${now.ref.repo}/pull/${now.ref.number}`
-        await host.startTerminal({
-            name: 'Luca: write the story',
-            cwd: now.checkout,
-            command: `claude "/luca-pr-prep ${url}"`,
-        })
+        const shown_command = storyCommandOf(now)
+        if (shown_command === null) {
+            const url = `https://github.com/${now.ref.repo}/pull/${now.ref.number}`
+            await host.startTerminal({
+                name: 'Luca: write the story',
+                cwd: now.checkout,
+                command: `claude "/luca-pr-prep ${url}"`,
+            })
+        } else {
+            await host.copyText({ text: shown_command.command })
+            await host.showMessage({
+                kind: 'info',
+                text: `Copied the command that writes the story of #${now.ref.number}. Run it in a terminal, then press Reload the story.`,
+            })
+        }
         now.story_requested = true
         await showSummary(now)
     }
@@ -410,7 +455,9 @@ export const createWalkApp = ({
                 })
             }
             const { id } = parsed.data
-            if (id === 'write_story') return writeStory(now)
+            if (id === 'write_story' || id === 'copy_story_command') {
+                return writeStory(now)
+            }
             if (id === 'show_map') return showMap(now)
             if (id === 'reload_story') return load(now.ref)
             if (id === 'browse_diff') return browseDiff(now)

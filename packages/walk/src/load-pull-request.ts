@@ -3,7 +3,12 @@ import { z } from 'zod'
 import { checkoutAtHead } from './checkout'
 import { CommitIdSchema } from './commit-id'
 import { createFeedback, type Feedback } from './feedback'
-import { readAgentSummaries, readGitHubThreads } from './github-conversation'
+import {
+    agentReplies,
+    readGitHubThreads,
+    type Reply,
+} from './github-conversation'
+import { findOwnStory, type PullComment } from './own-story'
 import { checkoutPath, type PullRequestRef } from './pull-request-ref'
 import {
     filesToWalk,
@@ -12,12 +17,12 @@ import {
     readVisit,
     type Visit,
 } from './second-visit'
+import { readLogin } from './signed-in'
 import type { Loaded } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
 import { createWalkSession, type WalkSession } from './walk-session'
 
-import type { Gh } from '../../engine/src/story/story-github'
-import { findStory } from '../../engine/src/story/story-pick'
+import { isOwnRepo, type Gh } from '../../engine/src/story/story-github'
 import type { Story } from '../../engine/src/story/story-schema'
 
 /**
@@ -120,6 +125,12 @@ const diffBaseOf = async ({
 export type Shown = {
     ref: PullRequestRef
     checkout: string
+    /** The signed-in user, read once on loading; null when gh could not say. */
+    login: string | null
+    /** The repo is the signed-in user's own (#766, `isOwnRepo`). */
+    your_repo: boolean
+    /** The pull request's author; null when it could not be read. */
+    author: string | null
     loaded: Loaded
     /**
      * GitHub's head, which the checkout is at, and the diff's base, for
@@ -129,8 +140,10 @@ export type Shown = {
      */
     head: PullHead | null
     story_requested: boolean
-    /** `/luca-pr-address`'s summaries on it, newest first. */
-    replies: string[]
+    /** Why a story on the pull request is not used (#766); null when none is left out. */
+    story_note: string | null
+    /** `/luca-pr-address`'s summaries on it, and look-alikes by others, newest first. */
+    replies: Reply[]
     /** What changed since the owner's last review. */
     visit: Visit
     /** The walk through the story, or the plain diff once browsed. */
@@ -157,11 +170,14 @@ export const loadPullRequest = async ({
     remote_url: (where: { repo: string }) => string
     ref: PullRequestRef
 }): Promise<Shown> => {
-    const { repo, number: pr_number } = ref
+    const { repo } = ref
     const checkout = checkoutPath({ walk_dir, ref })
+    const login = await readLogin({ gh })
     let loaded: Loaded
     /** The pull request, once the checkout is at its head. */
     let pull: PullView | null = null
+    let story_note: string | null = null
+    let comments: PullComment[] | null = null
     try {
         const view = await readPullView({ gh, ref })
         const at = await checkoutAtHead({
@@ -174,7 +190,10 @@ export const loadPullRequest = async ({
         })
         if (!at.ok) throw new Error(at.error)
         pull = view
-        const { found } = await findStory({ gh, stories_dir, repo, pr_number })
+        const own = await findOwnStory({ gh, stories_dir, ref, login })
+        story_note = own.note
+        comments = own.comments
+        const { found } = own
         loaded = { status: 'found', found, head_sha: view.headRefOid }
     } catch (thrown) {
         loaded = { status: 'failed', message: messageOf(thrown) }
@@ -189,9 +208,9 @@ export const loadPullRequest = async ({
             ? found_story
             : null
     const first: Visit = { kind: 'first' }
-    const [github_threads, replies, visit, base] = await Promise.all([
-        readGitHubThreads({ gh, ref }).catch(() => []),
-        readAgentSummaries({ gh, ref }).catch(() => []),
+    const replies = agentReplies({ comments: comments ?? [], login })
+    const [github_threads, visit, base] = await Promise.all([
+        readGitHubThreads({ gh, ref, login }).catch(() => []),
         loaded.status === 'found'
             ? readVisit({
                   walk_dir,
@@ -200,6 +219,7 @@ export const loadPullRequest = async ({
                   ref,
                   checkout,
                   head_sha: loaded.head_sha,
+                  login,
               }).catch(() => first)
             : first,
         pull === null
@@ -256,9 +276,13 @@ export const loadPullRequest = async ({
     shown = {
         ref,
         checkout,
+        login,
+        your_repo: isOwnRepo({ repo, login }),
+        author: pull?.author.login ?? null,
         loaded,
         head,
         story_requested: false,
+        story_note,
         replies,
         visit,
         walk,
