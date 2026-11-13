@@ -10,6 +10,9 @@ import type { Gh } from '../../../engine/src/story/story-github'
  * - `gh api user --jq .login`;
  * - `gh pr view <number> --repo <repo> --json ...` (every field it knows,
  *   whatever `--json` asks for: a reader's schema drops the rest);
+ * - `gh search prs --state S --label L ...` (answers `number`, `title`,
+ *   `state`, `author`, `url` and `repository`; honors only `--state` and
+ *   `--label`, so `--involves` is the app's to send);
  * - `gh api repos/<repo>/issues/<number>/comments?per_page=100 --paginate --slurp`.
  *
  * Any other call fails with `pretend GitHub does not know: <call>`.
@@ -118,6 +121,32 @@ export const createPretendGitHub = ({
                     url: `https://github.com/${found.repo}/pull/${found.number}`,
                     labels: found.labels.map((name) => ({ name })),
                 })
+            )
+        }
+
+        if (args[0] === 'search' && args[1] === 'prs') {
+            const flag = (name: string) => args[args.indexOf(name) + 1]
+            const label = flag('--label')
+            const wanted = (flag('--state') ?? 'open').toUpperCase()
+            const found = state.pulls.filter(
+                (pull) =>
+                    pull.state === wanted &&
+                    (label === undefined || pull.labels.includes(label))
+            )
+            return ok(
+                JSON.stringify(
+                    found.map((pull) => ({
+                        number: pull.number,
+                        title: pull.title,
+                        state: pull.state.toLowerCase(),
+                        author: { login: pull.author },
+                        url: `https://github.com/${pull.repo}/pull/${pull.number}`,
+                        repository: {
+                            name: pull.repo.split('/')[1],
+                            nameWithOwner: pull.repo,
+                        },
+                    }))
+                )
             )
         }
 

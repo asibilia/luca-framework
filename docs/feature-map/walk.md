@@ -23,3 +23,14 @@ Tests:
 - `packages/walk/src/open-pull-request.test.ts`
 - `packages/walk/src/open-pull-request.e2e.test.ts`
 - `packages/walk/src/load-pull-request.test.ts`
+
+## The list of review-ready pull requests
+
+`Open a review-ready pull request` joins the pull requests `gh search prs` finds with the open pull requests that have a private story, lists each once, and opens the one picked.
+
+Reached by: `Luca Walk: Open a review-ready pull request`.
+
+Tests:
+
+- `packages/walk/src/review-ready-list.test.ts`
+- `packages/walk/src/review-ready-list.e2e.test.ts`

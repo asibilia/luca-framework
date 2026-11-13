@@ -50,6 +50,8 @@ export type FakeHost = {
     answers: (string | null)[]
     /** Every prompt and quick pick placeholder the app asked with. */
     prompts: string[]
+    /** The items of every quick pick the app showed, in order. */
+    picks: { label: string; description: string }[][]
     /** The open webview panels by id (`summary`, `map`). */
     panels: Record<string, FakePanel>
     /** The Context view's last HTML. */
@@ -109,6 +111,7 @@ export const createFakeHost = ({
         active_editor: null,
         answers: [],
         prompts: [],
+        picks: [],
         panels: {},
         context_html: '',
         all_html: [],
@@ -128,6 +131,12 @@ export const createFakeHost = ({
         },
         pick: async ({ placeholder, items }) => {
             host.prompts.push(placeholder)
+            host.picks.push(
+                items.map(({ label, description }) => ({
+                    label,
+                    description: description ?? '',
+                }))
+            )
             const label = next()
             return items.find((item) => item.label === label) ?? null
         },
