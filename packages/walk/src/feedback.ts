@@ -148,33 +148,34 @@ export const createFeedback = async ({
         /** The files the owner marked as looking good. */
         approvedFiles: () => drafts.approved_files,
 
-        /** The last review's commit the marks were last checked against; null when never. */
-        approvedCheckedAt: () => drafts.approved_checked_at ?? null,
+        /** The last review's commit and the head the marks were last checked at; null when never. */
+        approvedChecked: () => drafts.approved_checked ?? null,
 
         /**
          * Sets the files marked as looking good to `paths`, and, when
-         * `checked_at` is given, keeps it as the last review's commit the
-         * marks were checked against.
+         * `checked` is given, keeps it as the last review's commit and the
+         * head the marks were checked at.
          */
         setApproved: async ({
             paths,
-            checked_at = null,
+            checked = null,
         }: {
             paths: string[]
-            checked_at?: string | null
+            checked?: { record_commit: string; head_sha: string } | null
         }) => {
             const same =
                 paths.length === drafts.approved_files.length &&
                 paths.every((path) => drafts.approved_files.includes(path))
-            const checked =
-                checked_at === null || checked_at === drafts.approved_checked_at
-            if (same && checked) return
+            const kept =
+                checked === null ||
+                (checked.record_commit ===
+                    drafts.approved_checked?.record_commit &&
+                    checked.head_sha === drafts.approved_checked.head_sha)
+            if (same && kept) return
             await update((now) => ({
                 ...now,
                 approved_files: paths,
-                ...(checked_at === null
-                    ? {}
-                    : { approved_checked_at: checked_at }),
+                ...(checked === null ? {} : { approved_checked: checked }),
             }))
         },
 

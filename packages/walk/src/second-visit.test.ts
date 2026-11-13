@@ -172,6 +172,28 @@ describe('a second visit walks only what changed (#762)', () => {
         ])
     })
 
+    test('a load at C1 after the review at C1 does not stop C2 from removing the mark of a changed file', async () => {
+        const repo = await visitRepo(['src/b.ts'])
+        await writeLocalRecord(
+            repo,
+            recordAt(repo.c1, ['src/a.ts', 'src/b.ts'])
+        )
+        const same = await openVisitApp(repo, { head: repo.c1 })
+        expect(same.descriptions()).toEqual([
+            `${UNCHANGED} · looks good`,
+            `${UNCHANGED} · looks good`,
+            UNCHANGED,
+        ])
+
+        const { descriptions } = await openVisitApp(repo)
+
+        expect(descriptions()).toEqual([
+            `${UNCHANGED} · looks good`,
+            '',
+            UNCHANGED,
+        ])
+    })
+
     test('a changed file approved again on the second visit keeps its mark in a new app', async () => {
         const repo = await visitRepo(['src/b.ts'])
         await writeLocalRecord(

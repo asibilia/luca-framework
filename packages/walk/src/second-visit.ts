@@ -52,16 +52,38 @@ export const readVisit = async ({
         cwd: checkout,
     })
     if (!ancestor.ok) return { kind: 'gone', commit, approved_files }
+    const changed = await changedBetween({
+        git,
+        checkout,
+        from: commit,
+        to: head_sha,
+    })
+    if (changed === null) return { kind: 'gone', commit, approved_files }
+    return { kind: 'changed', commit, changed, approved_files }
+}
+
+/** The files that changed from `from` to `to`; null when git can't tell. */
+export const changedBetween = async ({
+    git,
+    checkout,
+    from,
+    to,
+}: {
+    git: WalkGit
+    checkout: string
+    from: string
+    to: string
+}): Promise<string[] | null> => {
+    if (from === to) return []
     const diff = await git({
-        args: ['diff', '--name-only', commit, head_sha],
+        args: ['diff', '--name-only', from, to],
         cwd: checkout,
     })
-    if (!diff.ok) return { kind: 'gone', commit, approved_files }
-    const changed = diff.stdout
+    if (!diff.ok) return null
+    return diff.stdout
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line !== '')
-    return { kind: 'changed', commit, changed, approved_files }
 }
 
 /**
@@ -74,23 +96,25 @@ export const filesToWalk = ({ visit }: { visit: Visit }): string[] | null =>
 /**
  * The approved files on this visit: the drafts' marks, else the record's,
  * without the files that changed since the last review. Once the marks
- * were checked against this last review (`checked_at` is its commit), the
- * drafts' marks stand as they are, so a file approved again stays approved.
+ * were checked against this last review at some head (`checked`), only the
+ * files that changed since that head (`checked.changed`) lose their mark,
+ * so a file approved again after that check stays approved until it
+ * changes again.
  */
 export const approvedOnVisit = ({
     visit,
     drafted,
-    checked_at,
+    checked,
 }: {
     visit: Visit
     drafted: string[]
-    checked_at: string | null
+    checked: { record_commit: string; changed: string[] } | null
 }): string[] => {
-    if (visit.kind !== 'first' && checked_at === visit.commit) return drafted
-    const from =
-        drafted.length > 0 || visit.kind === 'first'
-            ? drafted
-            : visit.approved_files
+    if (visit.kind === 'first') return drafted
+    if (checked !== null && checked.record_commit === visit.commit) {
+        return drafted.filter((path) => !checked.changed.includes(path))
+    }
+    const from = drafted.length > 0 ? drafted : visit.approved_files
     return visit.kind === 'changed'
         ? from.filter((path) => !visit.changed.includes(path))
         : from

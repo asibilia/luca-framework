@@ -35,10 +35,17 @@ export const DraftsSchema = z.object({
     comments: z.array(DraftCommentSchema),
     approved_files: z.array(z.string().min(1)),
     /**
-     * The last review's commit the "looks good" marks were last checked
-     * against (#752, section 12), so a mark made after that check is kept.
+     * When the "looks good" marks were last checked for changed files
+     * (#752, section 12): the last review's commit and the head they were
+     * checked at, so a later visit removes only the marks of files that
+     * changed since that head.
      */
-    approved_checked_at: z.string().min(1).optional(),
+    approved_checked: z
+        .object({
+            record_commit: z.string().min(1),
+            head_sha: z.string().min(1),
+        })
+        .optional(),
     walk: WalkPlaceSchema,
 })
 export type Drafts = z.infer<typeof DraftsSchema>

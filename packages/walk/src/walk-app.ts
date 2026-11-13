@@ -15,6 +15,7 @@ import {
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
 import {
     approvedOnVisit,
+    changedBetween,
     filesToWalk,
     readVisit,
     visitNote,
@@ -207,13 +208,36 @@ export const createWalkApp = ({
                 await shown?.walk?.showStops()
             },
         })
+        const head_sha = loaded.status === 'found' ? loaded.head_sha : null
+        const stored = feedback.approvedChecked()
+        const checked_changed =
+            visit.kind === 'first' ||
+            head_sha === null ||
+            stored === null ||
+            stored.record_commit !== visit.commit
+                ? null
+                : await changedBetween({
+                      git,
+                      checkout,
+                      from: stored.head_sha,
+                      to: head_sha,
+                  })
         await feedback.setApproved({
             paths: approvedOnVisit({
                 visit,
                 drafted: feedback.approvedFiles(),
-                checked_at: feedback.approvedCheckedAt(),
+                checked:
+                    stored === null || checked_changed === null
+                        ? null
+                        : {
+                              record_commit: stored.record_commit,
+                              changed: checked_changed,
+                          },
             }),
-            checked_at: visit.kind === 'first' ? null : visit.commit,
+            checked:
+                visit.kind === 'first' || head_sha === null
+                    ? null
+                    : { record_commit: visit.commit, head_sha },
         })
         const walk =
             walkable === null

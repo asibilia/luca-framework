@@ -121,13 +121,18 @@ export const submittedReview = (body: string, id = 51): PretendReview => ({
     file_threads: [],
 })
 
-/** A new app on the checkout of #12 (head `C2`) whose story has `stops`. */
+/**
+ * A new app on the checkout of #12 whose story has `stops`. The pull
+ * request's head, and the commit the story is written for, is `head`
+ * (`C2` unless the test names another).
+ */
 export const openVisitApp = async (
     repo: VisitRepo,
     {
         stops = THREE_STOPS,
         reviews = [],
-    }: { stops?: StopAt[]; reviews?: PretendReview[] } = {}
+        head = repo.c2,
+    }: { stops?: StopAt[]; reviews?: PretendReview[]; head?: string } = {}
 ): Promise<{
     host: FakeHost
     run: (command: string) => Promise<void>
@@ -140,7 +145,7 @@ export const openVisitApp = async (
         story: storyOf({
             repo: REPO,
             base_sha: repo.base_sha,
-            head_sha: repo.c2,
+            head_sha: head,
             stops,
         }),
     })
@@ -153,7 +158,7 @@ export const openVisitApp = async (
                 title: 'Retry stuck tickets',
                 author: 'octocat',
                 base_ref: 'main',
-                head_sha: repo.c2,
+                head_sha: head,
                 state: 'OPEN',
                 labels: [],
                 comments: [],
