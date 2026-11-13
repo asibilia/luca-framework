@@ -5,10 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { createFakeHost } from './testing/fake-host'
-import {
-    createPretendGitHub,
-    type PretendPull,
-} from './testing/pretend-github'
+import { createPretendGitHub, type PretendPull } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
 import { createWalkApp } from './walk-app'
 
@@ -187,9 +184,7 @@ describe('the list of review-ready pull requests (#755)', () => {
             ])
         )
         expect(words.indexOf('open')).toBe(words.indexOf('--state') + 1)
-        expect(words.indexOf('review-ready')).toBe(
-            words.indexOf('--label') + 1
-        )
+        expect(words.indexOf('review-ready')).toBe(words.indexOf('--label') + 1)
         expect(words.indexOf('@me')).toBe(words.indexOf('--involves') + 1)
     })
 })
