@@ -39,7 +39,16 @@ const START = 'Start the walk'
 
 /** The story of #12, for the head, as story comments by `author`. */
 const storyComments = (author: string): PretendComment[] =>
+    storyParts({ max_bytes: undefined }).map((body, at) => ({
+        id: 900 + at,
+        body,
+        author,
+    }))
+
+/** The story of #12's comment bodies, split to `max_bytes` each. */
+const storyParts = ({ max_bytes }: { max_bytes: number | undefined }) =>
     packStory({
+        max_bytes,
         story: storyOf({
             repo: repo.repo_name,
             base_sha: repo.base_sha,
@@ -52,7 +61,7 @@ const storyComments = (author: string): PretendComment[] =>
                 },
             ],
         }),
-    }).map((body, at) => ({ id: 900 + at, body, author }))
+    })
 
 describe('a shared story is used only when the signed-in user wrote it (#766)', () => {
     test('a story by hubot is not used: the plain diff is offered, with a note saying why', async () => {
@@ -98,6 +107,57 @@ describe('a shared story is used only when the signed-in user wrote it (#766)', 
         })
 
         expect(htmlButtons({ html: made.summary() })).toContain(START)
+    })
+})
+
+describe('a shared story whose parts are by more than one author (#766)', () => {
+    /** The story in two parts, the first by `first`, the second by `second`. */
+    const twoParts = (first: string, second: string): PretendComment[] =>
+        storyParts({ max_bytes: 3000 }).map((body, at) => ({
+            id: 900 + at,
+            body,
+            author: at === 0 ? first : second,
+        }))
+
+    for (const [first, second] of [
+        ['octocat', 'hubot'],
+        ['hubot', 'octocat'],
+    ]) {
+        test(`part 1 by ${first} and part 2 by ${second}: hubot's part is left out and named, so the story can't be read and is not walked`, async () => {
+            const made = await openSendApp(repo, {
+                author: 'hubot',
+                story: null,
+                comments: twoParts(first ?? '', second ?? ''),
+            })
+
+            const lines = htmlLines({ html: made.summary() })
+            expect(htmlButtons({ html: made.summary() })).not.toContain(START)
+            expect(lines).toContain(
+                'There is a story on #12 by hubot, not by you, so it is not used.'
+            )
+            expect(lines).toContain("This pull request's story can't be read:")
+            expect(lines).toContain(
+                'the story comments are incomplete or were edited; run /luca-pr-prep again'
+            )
+        })
+    }
+})
+
+describe('when gh cannot say who is signed in, the note on a shared story (#766)', () => {
+    test("does not call the user's own story someone else's", async () => {
+        const made = await openSendApp(repo, {
+            story: null,
+            comments: storyComments('octocat'),
+            user_unreadable: true,
+        })
+
+        const lines = htmlLines({ html: made.summary() })
+        expect(lines).not.toContain(
+            'There is a story on #12 by octocat, not by you, so it is not used.'
+        )
+        expect(lines).toContain(
+            'There is a story on #12, but Luca Walk could not read who is signed in to GitHub, so it is not used.'
+        )
     })
 })
 

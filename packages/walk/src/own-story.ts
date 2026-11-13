@@ -119,23 +119,23 @@ export const findOwnStory = async ({
         pr_number: ref.number,
     })
     const comments = read.ok ? read.comments : null
+    const story_comments = (comments ?? []).filter(({ body }) =>
+        isStoryComment({ body })
+    )
     const others = [
         ...new Set(
-            (comments ?? [])
-                .filter(
-                    ({ author, body }) =>
-                        !isSignedIn({ author, login }) &&
-                        isStoryComment({ body })
-                )
+            story_comments
+                .filter(({ author }) => !isSignedIn({ author, login }))
                 .map(({ author }) => author ?? 'ghost')
         ),
     ]
-    return {
-        found,
-        note:
-            others.length === 0
-                ? null
-                : `There is a story on #${ref.number} by ${others.join(', ')}, not by you, so it is not used.`,
-        comments,
-    }
+    // With no login, the story may be the user's own: it is not named
+    // as someone else's.
+    const note =
+        others.length === 0
+            ? null
+            : login === null
+              ? `There is a story on #${ref.number}, but Luca Walk could not read who is signed in to GitHub, so it is not used.`
+              : `There is a story on #${ref.number} by ${others.join(', ')}, not by you, so it is not used.`
+    return { found, note, comments }
 }
