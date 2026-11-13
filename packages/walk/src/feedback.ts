@@ -148,13 +148,34 @@ export const createFeedback = async ({
         /** The files the owner marked as looking good. */
         approvedFiles: () => drafts.approved_files,
 
-        /** Sets the files marked as looking good to `paths`. */
-        setApproved: async ({ paths }: { paths: string[] }) => {
+        /** The last review's commit the marks were last checked against; null when never. */
+        approvedCheckedAt: () => drafts.approved_checked_at ?? null,
+
+        /**
+         * Sets the files marked as looking good to `paths`, and, when
+         * `checked_at` is given, keeps it as the last review's commit the
+         * marks were checked against.
+         */
+        setApproved: async ({
+            paths,
+            checked_at = null,
+        }: {
+            paths: string[]
+            checked_at?: string | null
+        }) => {
             const same =
                 paths.length === drafts.approved_files.length &&
                 paths.every((path) => drafts.approved_files.includes(path))
-            if (same) return
-            await update((now) => ({ ...now, approved_files: paths }))
+            const checked =
+                checked_at === null || checked_at === drafts.approved_checked_at
+            if (same && checked) return
+            await update((now) => ({
+                ...now,
+                approved_files: paths,
+                ...(checked_at === null
+                    ? {}
+                    : { approved_checked_at: checked_at }),
+            }))
         },
 
         /** Clears the comments `ids` once a review took them. */

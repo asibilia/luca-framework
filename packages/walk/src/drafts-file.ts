@@ -34,6 +34,11 @@ export const DraftsSchema = z.object({
     schema_version: z.literal(1),
     comments: z.array(DraftCommentSchema),
     approved_files: z.array(z.string().min(1)),
+    /**
+     * The last review's commit the "looks good" marks were last checked
+     * against (#752, section 12), so a mark made after that check is kept.
+     */
+    approved_checked_at: z.string().min(1).optional(),
     walk: WalkPlaceSchema,
 })
 export type Drafts = z.infer<typeof DraftsSchema>

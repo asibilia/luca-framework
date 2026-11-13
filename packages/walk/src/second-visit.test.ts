@@ -1,5 +1,6 @@
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { afterEach, describe, expect, test } from 'bun:test'
 
@@ -167,6 +168,30 @@ describe('a second visit walks only what changed (#762)', () => {
         expect(descriptions()).toEqual([
             `${UNCHANGED} · looks good`,
             '',
+            UNCHANGED,
+        ])
+    })
+
+    test('a changed file approved again on the second visit keeps its mark in a new app', async () => {
+        const repo = await visitRepo(['src/b.ts'])
+        await writeLocalRecord(
+            repo,
+            recordAt(repo.c1, ['src/a.ts', 'src/b.ts'])
+        )
+        const first = await openVisitApp(repo)
+        first.host.active_editor = {
+            uri: pathToFileURL(join(repo.checkout, 'src/b.ts')).href,
+            start_line: 1,
+            end_line: 1,
+        }
+        await first.run('lucaWalk.toggleLooksGood')
+        expect(first.descriptions()[1]).toBe('looks good')
+
+        const { descriptions } = await openVisitApp(repo)
+
+        expect(descriptions()).toEqual([
+            `${UNCHANGED} · looks good`,
+            'looks good',
             UNCHANGED,
         ])
     })

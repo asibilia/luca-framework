@@ -73,15 +73,20 @@ export const filesToWalk = ({ visit }: { visit: Visit }): string[] | null =>
 
 /**
  * The approved files on this visit: the drafts' marks, else the record's,
- * without the files that changed since the last review.
+ * without the files that changed since the last review. Once the marks
+ * were checked against this last review (`checked_at` is its commit), the
+ * drafts' marks stand as they are, so a file approved again stays approved.
  */
 export const approvedOnVisit = ({
     visit,
     drafted,
+    checked_at,
 }: {
     visit: Visit
     drafted: string[]
+    checked_at: string | null
 }): string[] => {
+    if (visit.kind !== 'first' && checked_at === visit.commit) return drafted
     const from =
         drafted.length > 0 || visit.kind === 'first'
             ? drafted

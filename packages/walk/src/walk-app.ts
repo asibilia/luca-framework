@@ -211,7 +211,9 @@ export const createWalkApp = ({
             paths: approvedOnVisit({
                 visit,
                 drafted: feedback.approvedFiles(),
+                checked_at: feedback.approvedCheckedAt(),
             }),
+            checked_at: visit.kind === 'first' ? null : visit.commit,
         })
         const walk =
             walkable === null
