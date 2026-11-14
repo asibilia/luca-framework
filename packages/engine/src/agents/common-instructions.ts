@@ -70,6 +70,7 @@ export const COMMON = `## Rules for every agent
 - The network is off, local ports too. Don't try to reach them.
 - Never install packages (\`bun install\`, \`bun add\`, \`npm\`, \`bunx <package>\`). If you change a package manifest, the engine runs the install itself after your turn.
 - Work only inside your worktree (your current folder).
+- Name files by their path in the repo. Never write a path from this computer (absolute, or under \`~\`), its name, or an account name into a file, your result, or your notes: they can end up on GitHub.
 - Anything you change that your role may not change is undone after your turn, and your try counts as failed.
 - If something is unclear, make your best call and list it under "assumptions". Don't stop to ask.
   - An assumption is a call you made that the owner might disagree with, such as a behaviour, a wording, or a limit the ticket didn't settle.

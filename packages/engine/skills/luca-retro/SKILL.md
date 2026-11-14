@@ -70,5 +70,6 @@ For each finding the owner picked:
 
 - Never edit code or rule files, and never commit. The issue says what to change; a person or a later run does it.
 - Never open an issue without the owner's yes.
+- Never paste a path from this computer (absolute, or under `~`), a computer's name, or an account name into an issue: name files by their repo-relative path.
 - Never run on your own: only when the owner asks.
 - Never edit the journal. It is the engine's.
