@@ -28,7 +28,7 @@ const WITH_HELPERS: EngineConfig = EngineConfigSchema.parse({
 const SANDBOX_PATHS = {
     worktree: '/runs/run-1/tickets/11',
     common_git_dir: '/repo/.git',
-    home: '/home/owner',
+    home: '/home/me',
     user_temp_dir: null,
 }
 

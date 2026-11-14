@@ -107,7 +107,7 @@ const GENERIC_RULES: Rule[] = [
         token: '<home>',
         keep_tail: false,
     }),
-    // `~/Github/...` names a folder layout; `~/.claude.json` is a tool's.
+    // `~/work/...` names a folder layout; `~/.claude.json` is a tool's.
     rule({
         root: String.raw`~(?=${SEP}[^.\s/\\])`,
         token: '<home>',
@@ -177,7 +177,7 @@ const applyRules = ({
  * Then the same for any computer: `/Users/<name>`, `/home/<name>`,
  * `C:\Users\<name>` (and `C:/Users/<name>`) become `<home>`, and
  * `/var/folders/...` (and its `/private` twin) `<tmp>`. A home-relative
- * path (`~/Github/...`) becomes `<home>` too; `~/.claude.json` and other
+ * path (`~/work/...`) becomes `<home>` too; `~/.claude.json` and other
  * dotfiles stay. After a home folder, only the path's last name is kept,
  * as the folders between show how the owner lays things out.
  *

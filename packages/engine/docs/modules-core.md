@@ -99,4 +99,4 @@ The modules split out of `src/core/stuck-text.ts`. It re-exports them.
 | `src/core/final-stuck-text.ts` | The stuck final review's comment. |
 | `src/core/run-stuck-text.ts` | The run's stuck comments: run budget, unopened PR. |
 | `src/core/stuck-detail-text.ts` | Stuck details: a setup file change, a bad test. |
-| `src/core/stuck-format.ts` | The stuck texts' error fence and plurals. |
+| `src/core/stuck-format.ts` | The stuck texts' error fence and plurals, and `worktreeLabel`: a worktree named inside Luca's runs folder, never by its local path. |

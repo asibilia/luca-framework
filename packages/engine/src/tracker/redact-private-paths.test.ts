@@ -45,7 +45,7 @@ describe('redactPrivatePaths', () => {
             'json: {"path":"C:\\\\Users\\\\me\\\\repo\\\\c.ts"}',
             'mixed: C:/Users/me/repo/d.ts',
             'tmp: /var/folders/zz/yy999/T/x/e.txt',
-            'see ~/Github/repo/f.ts and `/Users/me/g.ts`',
+            'see ~/work/repo/f.ts and `/Users/me/g.ts`',
         ].join('\n')
 
         const redacted = redactPrivatePaths({ text })
@@ -76,7 +76,7 @@ describe('redactPrivatePaths', () => {
 
     test('it is idempotent', () => {
         const text =
-            'a /Users/me/x/y/z.ts b /home/me c C:\\Users\\me\\q d ~/Github/r e /Users/me/.local/state/luca/runs/r/run-branch f /private/var/folders/ab/cd123/T/g'
+            'a /Users/me/x/y/z.ts b /home/me c C:\\Users\\me\\q d ~/work/r e /Users/me/.local/state/luca/runs/r/run-branch f /private/var/folders/ab/cd123/T/g'
         const once = redactPrivatePaths({ text, known: MAC })
 
         expect(redactPrivatePaths({ text: once, known: MAC })).toBe(once)
