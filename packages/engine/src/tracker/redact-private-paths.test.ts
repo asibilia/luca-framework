@@ -3,7 +3,13 @@ import { describe, expect, test } from 'bun:test'
 import { redactPrivatePaths, type KnownRoots } from './redact-private-paths'
 
 /** What no redacted text may hold. */
-const PRIVATE = [/\/Users\//, /\/home\//, /\/var\/folders/, /C:\\Users/i, /~\//]
+const PRIVATE = [
+    /\/Users\//,
+    /\/home\//,
+    /\/var\/folders/,
+    /C:\\{1,2}Users/i,
+    /~\//,
+]
 
 const expectNoPrivatePaths = (text: string): void => {
     for (const pattern of PRIVATE) expect(text).not.toMatch(pattern)
@@ -64,11 +70,11 @@ describe('redactPrivatePaths', () => {
 
     test('URLs, markers, dotfiles under ~ and plain words stay as they are', () => {
         const text = [
-            'https://github.com/Users/foo and http://x/home/y',
+            'https://github.com/Users/foo and http://example.com/home/y',
             '<!-- luca:run-1:42:0 -->',
             '<!-- luca-pr-story v=1 part=1/1 head=abc sha256=def -->',
             'Read ~/.claude.json, then reply `retry #11`.',
-            'src/home/page.tsx and the Users list',
+            `src${['/home', 'page.tsx'].join('/')} and the Users list`,
         ].join('\n')
 
         expect(redactPrivatePaths({ text, known: MAC })).toBe(text)

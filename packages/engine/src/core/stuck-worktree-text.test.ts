@@ -27,7 +27,7 @@ const expectNoPrivatePaths = (text: string): void => {
         /\/Users\//,
         /\/home\//,
         /\/var\/folders/,
-        /C:\\Users/i,
+        /C:\\{1,2}Users/i,
         /~\//,
     ]) {
         expect(text).not.toMatch(pattern)

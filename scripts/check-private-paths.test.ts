@@ -3,24 +3,32 @@ import { describe, expect, test } from 'bun:test'
 import { findPrivatePaths, formatHits } from './check-private-paths'
 
 /**
- * Real-looking names are built when the test runs, so this file holds none
- * and passes its own check.
+ * Real-looking names and the forms the check flags are built when the test
+ * runs, so this file holds none and passes its own check.
  */
 const NAME = ['ja', 'ne'].join('')
+const DOTTED = ['a', 'sibilia'].join('.')
 const GITHUB = ['Git', 'hub'].join('')
-const CAPITAL_ME = ['M', 'e'].join('')
+const HOME_VAR = ['$', 'HOME'].join('')
+const MAC = ['Janes', 'MacBook', 'Air'].join('-')
+const DEV = ['d', 'ev'].join('')
+const TEST = ['te', 'st'].join('')
+const DOCS = ['Docu', 'ments'].join('')
+const DESK = ['Desk', 'top'].join('')
+const DOWN = ['Down', 'loads'].join('')
 
 const hitsIn = (text: string): string[] =>
     findPrivatePaths({ text }).map(({ hit }) => hit)
 
 describe('findPrivatePaths', () => {
-    test('placeholder names pass', () => {
+    test('placeholder names, web URLs and tool folders pass', () => {
         const text = [
-            'home: /Users/me/project',
-            "cwd: '/home/runner/work/app'",
-            '/Users/you, /home/x, /Users/a, /home/dev, /Users/test, /home/example',
+            'home: /Users/me/project and /Users/jdoe/My Projects/a.ts',
+            "cwd: '/home/runner/work/app', /Users/you, /home/x",
             'C:\\Users\\me\\repo and C:/Users/you/repo',
-            '/home/.config/luca/.env',
+            '/home/.config/luca/.env and ~/.claude/skills',
+            '-Users-jdoe-Github-app, ~/.local/state/luca/runs',
+            `https://github.com/Users/${NAME}`,
         ].join('\n')
 
         expect(hitsIn(text)).toEqual([])
@@ -32,30 +40,43 @@ describe('findPrivatePaths', () => {
             `cd /Users/${NAME}/repo`,
             `"/home/${NAME}"`,
             `C:\\Users\\${NAME}\\repo`,
-            `see ~/${GITHUB}/app`,
-            `/Users/${CAPITAL_ME}/x`,
+            `file:///Users/${NAME}/x and -I/home/${NAME}/include`,
+            `/Users/${DOTTED}/x and /home/${DEV}/x and /Users/${TEST}/x`,
+            `/private/tmp/c/-Users-${NAME}-Github-app/a`,
         ].join('\n')
 
-        expect(findPrivatePaths({ text })).toEqual([
-            { line: 2, hit: `/Users/${NAME}` },
-            { line: 3, hit: `/home/${NAME}` },
-            { line: 4, hit: `C:\\Users\\${NAME}` },
-            { line: 5, hit: `~/${GITHUB}/` },
-            { line: 6, hit: `/Users/${CAPITAL_ME}` },
-        ])
         expect(
-            formatHits({
-                hits: [{ where: 'docs/a.md:2', hit: `/Users/${NAME}` }],
-            })
-        ).toContain(`docs/a.md:2: /Users/${NAME}`)
+            findPrivatePaths({ text }).map(({ line, hit }) => [line, hit])
+        ).toEqual([
+            [2, `/Users/${NAME}/repo`],
+            [3, `/home/${NAME}`],
+            [4, `C:\\Users\\${NAME}\\repo`],
+            [5, `/Users/${NAME}/x`],
+            [5, `/home/${NAME}/include`],
+            [6, `/Users/${DOTTED}/x`],
+            [6, `/home/${DEV}/x`],
+            [6, `/Users/${TEST}/x`],
+            [7, `-Users-${NAME}-Github-app`],
+        ])
     })
 
-    test('URLs and names inside a path pass', () => {
+    test('folders under the home that hold your own files, $HOME, and computer names fail', () => {
         const text = [
-            `https://github.com/Users/${NAME} and http://x/home/${NAME}`,
-            `src/home/${NAME}/page.tsx`,
+            `see ~/${GITHUB}/app and ~/${DOCS}/a.md`,
+            `~/${DESK}/x, ~/${DOWN}/y, ${HOME_VAR}/z`,
+            `ssh ${MAC}.local`,
         ].join('\n')
 
-        expect(hitsIn(text)).toEqual([])
+        expect(hitsIn(text)).toEqual([
+            `~/${GITHUB}/app`,
+            `~/${DOCS}/a.md`,
+            `~/${DESK}/x`,
+            `~/${DOWN}/y`,
+            `${HOME_VAR}/z`,
+            `${MAC}.local`,
+        ])
+        expect(
+            formatHits({ hits: [{ where: 'docs/a.md:2', hit: '/home/x' }] })
+        ).toContain('docs/a.md:2: /home/x')
     })
 })
