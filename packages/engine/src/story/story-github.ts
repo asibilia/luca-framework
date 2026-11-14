@@ -6,7 +6,10 @@ import {
     unpackStory,
     type StoryUnpack,
 } from './story-comments'
+import { redactStory } from './story-redact'
 import type { Story } from './story-schema'
+
+import type { KnownRoots } from '../tracker/redact-private-paths'
 
 /**
  * A story's shared home on GitHub (#738): its comments on the PR and the
@@ -114,21 +117,32 @@ export const loadSharedStory = async ({
 /**
  * Posts a story on its PR: rewrites the story comments that are there,
  * adds the ones that are missing, and deletes the ones left over. Other
- * comments are never touched.
+ * comments are never touched. The story posted has no path from this
+ * computer in it (`redactStory`).
  *
- * @returns How many comments were updated, created, and deleted.
+ * @param known - This computer's folders. Defaults to `localRoots()`.
+ * @returns How many story comments the PR now has, and how many were
+ *   updated, created, and deleted.
  */
 export const postSharedStory = async ({
     gh,
     story,
+    known,
 }: {
     gh: Gh
     story: Story
-}): Promise<{ updated: number; created: number; deleted: number }> => {
+    known?: KnownRoots
+}): Promise<{
+    comments: number
+    updated: number
+    created: number
+    deleted: number
+}> => {
     const { repo, pr_number } = story
+    const bodies = packStory({ story: redactStory({ story, known }) })
     const actions = planCommentSync({
         existing: await prComments({ gh, repo, pr_number }),
-        bodies: packStory({ story }),
+        bodies,
     })
     for (const step of actions) {
         const done =
@@ -172,6 +186,7 @@ export const postSharedStory = async ({
     const count = (action: string) =>
         actions.filter((step) => step.action === action).length
     return {
+        comments: bodies.length,
         updated: count('update'),
         created: count('create'),
         deleted: count('delete'),

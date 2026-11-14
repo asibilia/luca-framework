@@ -1,4 +1,3 @@
-import { packStory } from './story-comments'
 import {
     addReadyLabel,
     defaultStoryHome,
@@ -84,11 +83,5 @@ export const saveStoryWith = async ({
         repo,
         pr_number,
     })
-    return {
-        status: 'saved',
-        home: 'shared',
-        comments: packStory({ story }).length,
-        ...posted,
-        removed_private,
-    }
+    return { status: 'saved', home: 'shared', ...posted, removed_private }
 }

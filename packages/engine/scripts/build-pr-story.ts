@@ -26,6 +26,14 @@ import {
 /** The folder whose non-test files are the bundle's source. */
 export const STORY_SOURCE_DIR = join(ENGINE_DIR, 'src', 'story')
 
+/**
+ * The files outside `src/story/` the bundle takes in, which its hash must
+ * cover too: the redaction a shared story goes through.
+ */
+export const OUTSIDE_SOURCES = [
+    join(ENGINE_DIR, 'src', 'tracker', 'redact-private-paths.ts'),
+]
+
 /** The bundle the skill ships. */
 export const BUNDLE_FILE = join(
     PR_PREP_SKILL_DIR,
@@ -38,7 +46,7 @@ export const HASH_LINE = '// source-sha256: '
 
 /**
  * The hash of the bundle's source: every non-test file in `src/story/`,
- * by name, plus the Zod version it is built with.
+ * by name, the `OUTSIDE_SOURCES`, plus the Zod version it is built with.
  */
 export const sourceHash = async (): Promise<string> => {
     const files = (
@@ -52,6 +60,10 @@ export const sourceHash = async (): Promise<string> => {
     for (const file of files) {
         hash.update(`${file}\n`)
         hash.update(await Bun.file(join(STORY_SOURCE_DIR, file)).text())
+    }
+    for (const path of OUTSIDE_SOURCES) {
+        hash.update(`${path.slice(ENGINE_DIR.length)}\n`)
+        hash.update(await Bun.file(path).text())
     }
     const zod = await Bun.file(
         join(ENGINE_DIR, '..', '..', 'node_modules', 'zod', 'package.json')
