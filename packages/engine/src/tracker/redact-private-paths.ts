@@ -40,11 +40,11 @@ const PLAIN_HOME =
  *   through spaces and parentheses, up to the end of the line, a quote, a
  *   bracket that closes one opened before it, or a `:line:col`.
  * - `../` climbed four or more times becomes `[outside]`, and a computer's
- *   name (`<name>.local`, `<Name>s-MacBook-Pro`) `[host]`.
+ *   name (`<name>.local`, `<name>-MacBook-Pro`) `[host]`.
  *
  * Left as they are: web URLs (`https://github.com/Users/x`), tool folders
  * with nothing private after them (`~/.claude/skills`), a web route with
- * nothing after the name (`/home/feed`), and markers (`<!-- luca:... -->`).
+ * nothing after the name (`/home/<route>`), and markers (`<!-- luca:... -->`).
  * On an error, a plain replace of home folders is tried, then
  * `REDACTION_FAILED_TEXT`.
  *

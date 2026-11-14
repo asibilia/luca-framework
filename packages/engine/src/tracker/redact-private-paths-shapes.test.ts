@@ -10,7 +10,12 @@ import { redactPrivatePaths, type KnownRoots } from './redact-private-paths'
 const MAC = ['Jdoes', 'MacBook', 'Pro'].join('-')
 const HOME_VAR = ['$', 'HOME'].join('')
 const HOME_BRACED = ['$', '{HOME}'].join('')
-const BUILD_HOST = ['build', 'local'].join('.')
+const BUILD_HOST = ['build-01', 'local'].join('.')
+const MBP = ['jdoe-mbp', 'local'].join('.')
+const ROUTE = ['/home', 'feed'].join('/')
+const LIST = ['/Users', 'list'].join('/')
+const PAGE = ['/home', 'page.tsx'].join('/')
+const SMITH = ['C:', 'Users', 'John Smith', 'src', 'a.ts'].join('\\')
 
 /** [input, output], with no known roots. */
 const SHAPES: [string, string][] = [
@@ -33,7 +38,7 @@ const SHAPES: [string, string][] = [
         '[home]/…/settings.json',
     ],
     ['/Users/jdoe/app (copy)/secret/a.ts', '[home]/…/a.ts'],
-    ['C:\\Users\\John Smith\\src\\a.ts', '[home]\\…\\a.ts'],
+    [SMITH, '[home]\\…\\a.ts'],
     ['/Users/jdoe/Github/*/a.ts', '[home]/…/a.ts'],
     ['at f (/Users/jdoe/Github/app/a.ts:3:7)', 'at f ([home]/…/a.ts:3:7)'],
     ['`/Users/jdoe/My Projects/a.ts` is missing', '`[home]/…/a.ts` is missing'],
@@ -78,6 +83,11 @@ const SHAPES: [string, string][] = [
     // 8. Computer names; an account name alone stays (it is also an npm scope).
     [`Committer: J Doe <jdoe@${MAC}.local>`, 'Committer: J Doe <jdoe@[host]>'],
     [`ssh ${MAC} and ${BUILD_HOST}`, 'ssh [host] and [host]'],
+    [`http://${MBP}:3000/x`, 'http://[host]:3000/x'],
+    [
+        'PATH=/usr/bin:/Users/jdoe/.bun/bin:/bin',
+        'PATH=/usr/bin:[home]/…/bin:/bin',
+    ],
     // A sentence's full stop stays outside the path.
     ['see /Users/jdoe/x/a.ts.', 'see [home]/…/a.ts.'],
     ['"/home/jdoe"', '"[home]"'],
@@ -85,12 +95,12 @@ const SHAPES: [string, string][] = [
 
 /** Text that must come out exactly as it went in. */
 const UNTOUCHED = [
-    'GET /home/feed returned 500; route /Users/list',
+    `GET ${ROUTE} returned 500; route ${LIST}`,
     'approx ~/5',
     'Read ~/.claude/skills and ~/.bun/bin',
     'https://github.com/Users/foo and http://localhost:3000/home/jdoe/feed',
     'settings.local.json, .env.local and @jdoe/luca by jdoe',
-    'src/home/page.tsx and /home/.config/luca/.env',
+    `src${PAGE} and /home/.config/luca/.env`,
     '<!-- luca:run-1:42:0 -->',
 ]
 

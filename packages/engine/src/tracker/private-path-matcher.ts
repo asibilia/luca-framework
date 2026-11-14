@@ -102,6 +102,9 @@ const HOME_PREFIX = String.raw`(?:~|\$HOME|\$\{HOME\}|${UNIX_SEP}(?:Users|home)$
 const WEB_URL =
     /(?<![\w+.-])(?:https?|wss?|ftp|ssh|git):\/\/(?:[^\s/@]+@)?(?:localhost|[\w-]+(?:\.[\w-]+)+)(?::\d+)?[^\s<>"'`)\]]*/gi
 
+/** A URL whose host is a computer's own `.local` name. */
+const LOCAL_HOST_URL = /^[^/]*\/\/(?:[^\s/@]+@)?[^\s/:]*\.local(?![\w.-])/i
+
 const MAC_NAMES = String.raw`(?:MacBook(?:-Pro|-Air)?|iMac|Mac-mini|Mac-Studio|Mac-Pro)`
 
 /** The rules for any computer, in the order they claim text. */
@@ -210,10 +213,13 @@ const GENERIC_RULES: Rule[] = [
         ),
         tail: 'none',
     },
+    // `<name>.local` after an `@`, or with a hyphen or digit in it: a bare
+    // `config.local` is more often code than a computer.
     {
         kind: 'host',
         form: 'host',
-        pattern: /(?<![\w.-])[A-Za-z0-9][\w-]*\.local(?![\w.-])/gi,
+        pattern:
+            /(?:(?<=@)[A-Za-z0-9][\w-]*|(?<![\w.-])[A-Za-z0-9]*[\d-][\w-]*)\.local(?![\w.-])/gi,
         tail: 'none',
     },
 ]
@@ -320,8 +326,8 @@ const NEXT_PATH = /^(?:\s|[/~$\-"'`]|[A-Za-z]:[\\/]|\.\.?[\\/]|%2F)/i
 /**
  * Where a path that starts at `from` ends, and its separators. It runs
  * through spaces and parentheses, and stops at the end of the line, a
- * quote or backtick, a bracket closing one opened before the path, a
- * `:line`, a space before another path, or text already claimed.
+ * quote or backtick, a bracket closing one opened before the path, a `:`
+ * (`:line:col`), a space before another path, or text already claimed.
  */
 const scanPath = ({
     text,
@@ -349,14 +355,20 @@ const scanPath = ({
         const char = text.charAt(at)
         const next = text.slice(at + 1)
         if ('\n\r\t"`<>;|\\'.includes(char)) break
-        if (char === "'" && opener === "'") break
+        if (
+            char === "'" &&
+            (opener === "'" || /^(?:[\s,;)\]}.:]|$)/.test(next))
+        ) {
+            break
+        }
         if (char in depth) depth[char] = (depth[char] ?? 0) + 1
         const open = CLOSERS[char]
         if (open !== undefined) {
             if ((depth[open] ?? 0) === 0) break
             depth[open] = (depth[open] ?? 0) - 1
         }
-        if (char === ':' && (next === '' || /^[\d\s]/.test(next))) break
+        // `:line:col`, `: message`, or the next path in a `PATH`-style list.
+        if (char === ':') break
         if (char === ' ' && (next === '' || NEXT_PATH.test(next))) break
         at += 1
     }
@@ -378,6 +390,7 @@ const collapse = ({
     root_end,
     name,
     known_home_name,
+    bare_names,
     claimed,
 }: {
     text: string
@@ -386,6 +399,7 @@ const collapse = ({
     root_end: number
     name: string | null
     known_home_name: string | null
+    bare_names: boolean
     claimed: (at: number) => boolean
 }): PrivatePathMatch | null => {
     const root = text.slice(start, root_end)
@@ -429,7 +443,8 @@ const collapse = ({
             account !== null &&
             known_home_name !== null &&
             account.toLowerCase() === known_home_name.toLowerCase()
-        if (rule.bare === 'checked' && !trailing && !quoted && !known) {
+        const counts = bare_names || trailing || quoted || known
+        if (rule.bare === 'checked' && !counts) {
             return null
         }
         return {
@@ -454,6 +469,10 @@ const collapse = ({
  * A path inside a web URL (`https://github.com/Users/x`) is left alone;
  * one inside any other URL (`vscode://file/Users/...`) is matched.
  *
+ * @param bare_names - Whether `/home/<name>` with nothing after it counts
+ *   even when it isn't the known home, quoted, or followed by a separator.
+ *   The lint says yes; the redaction leaves web routes (`/home/<route>`) alone.
+ *
  * @example
  * matchPrivatePaths({ text: 'at /Users/jdoe/app/a.ts' })
  * // [{ start: 3, end: 23, kind: 'home', form: 'unix', name: 'jdoe', first: 'app', replacement: '[home]/…/a.ts' }]
@@ -461,14 +480,16 @@ const collapse = ({
 export const matchPrivatePaths = ({
     text,
     known = {},
+    bare_names = false,
 }: {
     text: string
     known?: KnownRoots
+    bare_names?: boolean
 }): PrivatePathMatch[] => {
-    const taken: [number, number][] = [...text.matchAll(WEB_URL)].map((url) => [
-        url.index,
-        url.index + url[0].length,
-    ])
+    // A computer's own `.local` name is not a web host.
+    const taken: [number, number][] = [...text.matchAll(WEB_URL)]
+        .filter((url) => !LOCAL_HOST_URL.test(url[0]))
+        .map((url) => [url.index, url.index + url[0].length])
     const claimed = (at: number) =>
         taken.some(([start, end]) => at >= start && at < end)
     const overlaps = (start: number, end: number) =>
@@ -498,6 +519,7 @@ export const matchPrivatePaths = ({
                           root_end,
                           name,
                           known_home_name,
+                          bare_names,
                           claimed,
                       })
                     : {
