@@ -3,7 +3,7 @@
  */
 import compact from 'lodash/compact'
 
-import { fenced, plural } from './stuck-format'
+import { fenced, plural, RUNS_FOLDER_NOTE, worktreeLabel } from './stuck-format'
 import { leftoverAllowHint, reasonLine } from './ticket-stuck-text'
 
 import type { StuckReason } from '../journal/journal-record'
@@ -71,7 +71,7 @@ export const finalStuckComment = ({
             `Why: ${FINAL_REASON_LINES[stuck.reason] ?? reasonLine({ reason: stuck.reason })}`,
             `Tried: ${tried.length === 0 ? 'Nothing more: another try would fail the same way.' : `${tried.join(', ')}.`}`,
             `Suggestion: ${finalSuggestion({ reason: stuck.reason })}`,
-            `Run branch worktree: \`${run_branch.path}\` (a \`retry\` keeps your edits there)`,
+            `Run branch worktree: \`${worktreeLabel(run_branch)}\` (a \`retry\` keeps your edits there). ${RUNS_FOLDER_NOTE}`,
         ].join('\n'),
         `Last error:\n\n${fenced(stuck.detail)}`,
         [
