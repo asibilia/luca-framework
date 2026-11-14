@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Walk map: outline (mockup B)</title>
+<style>
+:root {
+  --bg: var(--vscode-sideBar-background, #181818);
+  --ed: var(--vscode-editor-background, #1f1f1f);
+  --fg: var(--vscode-foreground, #cccccc);
+  --dim: var(--vscode-descriptionForeground, #9d9d9d);
+  --focus: var(--vscode-focusBorder, #0078d4);
+  --hover: var(--vscode-list-hoverBackground, #2a2d2e);
+  --sel: var(--vscode-list-activeSelectionBackground, #04395e);
+  --line: var(--vscode-panel-border, #2b2b2b);
+  --badge: var(--vscode-badge-background, #616161);
+  --badgefg: var(--vscode-badge-foreground, #f8f8f8);
+  --red: var(--vscode-charts-red, #f14c4c);
+  --yellow: var(--vscode-charts-yellow, #cca700);
+  --green: var(--vscode-charts-green, #89d185);
+  --blue: var(--vscode-charts-blue, #3794ff);
+  --purple: var(--vscode-charts-purple, #b180d7);
+  --orange: var(--vscode-charts-orange, #d18616);
+  --added: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+  --deleted: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39);
+  --modified: var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+  --warn: var(--vscode-editorWarning-foreground, #cca700);
+  --err: var(--vscode-errorForeground, #f85149);
+  --link: var(--vscode-textLink-foreground, #4daafc);
+  --btn: var(--vscode-button-background, #0078d4);
+  --btnfg: var(--vscode-button-foreground, #ffffff);
+  --btn2: var(--vscode-button-secondaryBackground, #313131);
+  --btn2fg: var(--vscode-button-secondaryForeground, #cccccc);
+  --font: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif);
+  --fs: var(--vscode-font-size, 13px);
+  --mono: var(--vscode-editor-font-family, ui-monospace, Menlo, Consolas, monospace);
+  --tick: color-mix(in srgb, var(--fg) 13%, transparent);
+  --barw: 128px;
+  --rowh: 24px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ed); color: var(--fg); font-family: var(--font); font-size: var(--fs); line-height: 1.4; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.mockbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 5px 12px; font-size: 11px; color: var(--dim); border-bottom: 1px dashed var(--line); }
+.mockbar .sp { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 2px 8px; cursor: pointer; color: var(--dim); font-size: 11px; }
+.seg button[aria-pressed="true"] { background: var(--sel); color: var(--fg); }
+
+.frame { margin: 0 auto; background: var(--bg); min-height: calc(100vh - 30px); container-type: inline-size; container-name: app; }
+.frame.narrow { max-width: 420px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.app { display: block; }
+@container app (min-width: 640px) {
+  .app { display: grid; grid-template-columns: 340px minmax(0, 1fr); align-items: start; }
+  .aside { position: sticky; top: 0; max-height: 100vh; overflow: auto; border-right: 1px solid var(--line); }
+  .ledger { --barw: 170px; }
+}
+
+/* header */
+.aside { padding: 12px 14px 14px; }
+.kicker { color: var(--dim); font-size: 11px; }
+h1 { font-size: 14px; font-weight: 600; margin: 2px 0 6px; line-height: 1.35; }
+.what { color: var(--fg); margin: 0; }
+.what.clamp { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.more { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; font-size: 12px; }
+.ba { margin: 6px 0 0; font-size: 12px; }
+.ba dt { color: var(--dim); margin-top: 6px; }
+.ba dd { margin: 0; }
+.counts { margin: 8px 0 0; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.counts b { color: var(--fg); font-weight: 600; }
+.counts .a { color: var(--added); }
+.counts .d { color: var(--deleted); }
+
+.strip { display: flex; gap: 2px; margin: 12px 0 5px; height: 10px; }
+.strip button { flex: 1; min-width: 0; border: 0; padding: 0; border-radius: 1px; cursor: pointer; background: color-mix(in srgb, var(--fg) 14%, transparent); }
+.strip button.walked { background: color-mix(in srgb, var(--blue) 45%, transparent); }
+.strip button.good { background: var(--green); }
+.strip button.current { background: var(--focus); box-shadow: 0 0 0 1px var(--bg), 0 0 0 2px var(--focus); }
+.strip button.lit { background: color-mix(in srgb, var(--orange) 70%, transparent); }
+.strip button.loose { flex: 3; }
+.slegend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.slegend i { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 4px; vertical-align: -0.5px; }
+
+.pin { margin-top: 14px; border-left: 2px solid var(--purple); padding: 6px 10px 8px; background: color-mix(in srgb, var(--purple) 7%, transparent); }
+.pin h2, .riskbox h2 { font-size: 12px; font-weight: 600; margin: 0 0 3px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pin p { margin: 0; font-size: 12px; }
+.pin .src { color: var(--dim); font-size: 11px; margin-top: 5px; }
+.riskbox { margin-top: 8px; border-left: 2px solid var(--red); padding: 6px 10px 8px; background: color-mix(in srgb, var(--red) 7%, transparent); font-size: 12px; }
+.riskbox p { margin: 0; }
+.jump { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; font-size: 12px; text-align: left; }
+.jump:hover { text-decoration: underline; }
+.jump.off { color: var(--dim); cursor: default; text-decoration: none; }
+
+.nsd { display: inline-block; font-size: 10px; line-height: 14px; padding: 0 5px; border-radius: 7px; border: 1px dashed var(--warn); color: var(--warn); font-weight: 400; white-space: nowrap; cursor: help; vertical-align: 1px; }
+.der { display: inline-block; font-size: 10px; line-height: 14px; padding: 0 4px; color: var(--dim); border-bottom: 1px dotted var(--dim); cursor: help; white-space: nowrap; font-weight: 400; }
+
+.legend { margin-top: 14px; font-size: 11px; color: var(--dim); display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; }
+.legend span { display: flex; gap: 5px; align-items: center; }
+.legend summary { grid-column: 1 / -1; cursor: pointer; }
+
+.nostory { margin-top: 12px; padding: 10px; border: 1px dashed var(--line); font-size: 12px; }
+.nostory p { margin: 0 0 8px; }
+.pbtn { background: var(--btn); color: var(--btnfg); border: 0; padding: 4px 11px; border-radius: 2px; cursor: pointer; font-size: 12px; }
+.sbtn { background: var(--btn2); color: var(--btn2fg); border: 0; padding: 4px 11px; border-radius: 2px; cursor: pointer; font-size: 12px; }
+.sbtn[aria-pressed="true"] { background: color-mix(in srgb, var(--green) 25%, var(--btn2)); }
+.note { font-size: 11px; color: var(--dim); margin-top: 6px; min-height: 1em; }
+
+/* ledger */
+.ledger { position: relative; min-width: 0; }
+.tools { position: sticky; top: 0; z-index: 3; background: var(--bg); border-bottom: 1px solid var(--line); padding: 7px 10px 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.chip { background: none; border: 1px solid var(--line); border-radius: 11px; padding: 1px 9px; cursor: pointer; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--focus); color: var(--fg); background: color-mix(in srgb, var(--focus) 15%, transparent); }
+.chips .sp { flex: 1; }
+.tog { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--dim); cursor: pointer; }
+.cap { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 11px; color: var(--dim); }
+.ruler { display: grid; grid-template-columns: 16px 26px minmax(0, 1fr) auto var(--barw) 46px; height: 18px; margin: 4px -10px 0; padding: 0 10px; font-size: 10px; color: var(--dim); }
+.ruler .rl { grid-column: 3 / 5; align-self: end; padding-bottom: 2px; }
+.ruler .scale { grid-column: 5; position: relative; }
+.ruler .scale span { position: absolute; bottom: 2px; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.ruler .scale span::after { content: ""; position: absolute; left: 50%; top: 13px; width: 1px; height: 4px; background: var(--dim); }
+.ruler .un { grid-column: 6; align-self: end; padding-bottom: 2px; text-align: right; }
+
+.list { padding-bottom: 46px; }
+.it { display: grid; grid-template-columns: 16px 26px minmax(0, 1fr) auto var(--barw) 46px; align-items: center; min-height: var(--rowh); padding: 0 10px; cursor: pointer; position: relative; outline: none; }
+.it:hover { background: var(--hover); }
+.it.focus { background: var(--sel); }
+.it:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; }
+.it > .bar { align-self: stretch; display: flex; align-items: center;
+  background-image: linear-gradient(var(--tick), var(--tick)), linear-gradient(var(--tick), var(--tick)), linear-gradient(var(--tick), var(--tick));
+  background-size: 1px 100%; background-repeat: no-repeat; background-position: var(--t1) 0, var(--t2) 0, var(--t3) 0; }
+.bar i { display: block; height: 7px; border-radius: 0 2px 2px 0; background: color-mix(in srgb, var(--added) 75%, transparent); position: relative; }
+.bar i b { position: absolute; right: 0; top: 0; bottom: 0; background: var(--deleted); border-radius: 0 2px 2px 0; }
+.it.noisy .bar i { background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--fg) 30%, transparent) 0 3px, transparent 3px 5px); }
+.it.focus .bar i, .it.cur .bar i { background: var(--focus); }
+.num { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--dim); }
+.it.big .num { color: var(--fg); }
+.sn { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--dim); text-align: right; padding-right: 6px; }
+.nm { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.nm b { font-weight: 400; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 100%; }
+.nm .dir { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.nm .le { font-size: 10px; color: var(--dim); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; flex-shrink: 0; }
+.nm .st { font-size: 10px; width: 9px; flex-shrink: 0; }
+.st.A { color: var(--added); } .st.M { color: var(--modified); }
+.nm .chg { font-size: 10px; color: var(--orange); flex-shrink: 0; }
+.mk { display: flex; gap: 5px; align-items: center; padding: 0 6px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.mk span { display: inline-flex; align-items: center; gap: 1px; }
+.mk svg, .legend svg, .gl svg, .aside svg { width: 12px; height: 12px; flex-shrink: 0; }
+.ic-risk { color: var(--red); } .ic-conv { color: var(--warn); } .ic-unt { color: var(--orange); }
+.ic-blast { color: var(--purple); } .ic-draft { color: var(--blue); } .ic-thread { color: var(--link); }
+.gl { display: flex; align-items: center; }
+.g-good { color: var(--green); } .g-walked { color: var(--blue); } .g-current { color: var(--focus); } .g-none { color: var(--dim); }
+
+.it.grp { margin-top: 6px; font-weight: 600; border-top: 1px solid var(--line); }
+.it.grp .nm { gap: 6px; align-items: center; }
+.it.grp .gn, .it.grp .mini { flex-shrink: 0; }
+.it.grp .nsd { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.it.grp .mini { font-weight: 400; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.it.grp .num { color: var(--fg); font-weight: 400; }
+.chev { display: inline-block; width: 10px; color: var(--dim); transition: transform .12s; }
+.open > .gl .chev, .it.open .chev { transform: rotate(90deg); }
+.it.fold { color: var(--dim); font-size: 12px; }
+.it.fold .nm { font-style: normal; }
+.it.run { color: var(--dim); font-size: 12px; }
+.it.run .nm { white-space: normal; }
+.it.run { padding-top: 3px; padding-bottom: 3px; }
+.mode-none .nm .dir { display: none !important; }
+.it.lit .nm b { color: var(--fg); font-weight: 600; }
+.it.lit { box-shadow: inset 2px 0 0 var(--orange); }
+.it.dimmed .nm b { color: var(--dim); }
+.it.noisy .nm b { color: var(--dim); }
+.ntag { font-size: 10px; color: var(--dim); flex-shrink: 0; }
+
+.detail { margin: 0 10px 8px 42px; padding: 8px 10px 10px; border-left: 1px solid var(--focus); background: var(--ed); font-size: 12px; }
+.detail h3 { font-size: 12px; margin: 0 0 2px; font-weight: 600; }
+.detail .why { color: var(--fg); margin: 0 0 8px; }
+.ch { padding: 6px 0; border-top: 1px solid var(--line); }
+.ch .t { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.ch .t strong { font-weight: 600; }
+.ch .ln { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ch dl { margin: 4px 0 0; display: grid; grid-template-columns: 64px 1fr; gap: 2px 8px; }
+.ch dt { color: var(--dim); }
+.ch dd { margin: 0; }
+.ch code, .detail code { font-family: var(--mono); font-size: 11px; }
+.tag { display: inline-block; font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; margin: 0 3px 2px 0; }
+.flagm { color: var(--fg); }
+.flagm .k { color: var(--red); } .flagm .k.convention, .flagm .k.cleanliness { color: var(--warn); }
+.links { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.links h4, .notes h4 { margin: 0 0 3px; font-size: 11px; font-weight: 600; color: var(--dim); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.links ul, .notes ul { list-style: none; margin: 0 0 6px; padding: 0; }
+.links li, .notes li { padding: 1px 0; }
+.lk { display: inline-block; min-width: 64px; color: var(--dim); font-size: 11px; }
+.links .nt { color: var(--dim); }
+.notes { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.acts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+
+.peek { position: sticky; bottom: 0; z-index: 3; background: var(--bg); border-top: 1px solid var(--line); padding: 5px 10px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+.peek b { color: var(--fg); font-weight: 600; }
+.empty { padding: 16px 12px; color: var(--dim); }
+.foot { padding: 10px 12px 18px; color: var(--dim); font-size: 11px; border-top: 1px solid var(--line); }
+@container app (max-width: 639px) {
+  .nm .dir { display: none; }
+  .it.focus .nm .dir, .it:hover .nm .dir { display: inline; }
+  .nm .chg { display: none; }
+  .detail { margin-left: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="mockbar" role="region" aria-label="Mockup controls">
+  <span>Mockup B, outline. Suits the narrow side panel best, also works wide.</span>
+  <span class="sp"></span>
+  <span class="seg" id="modeSeg" role="group" aria-label="Visit">
+    <button data-mode="first">First visit</button><button data-mode="second">Second visit</button><button data-mode="none">No story</button>
+  </span>
+  <span class="seg" id="widthSeg" role="group" aria-label="Width">
+    <button data-w="narrow">Side panel</button><button data-w="wide">Editor tab</button>
+  </span>
+  <span class="seg" id="themeSeg" role="group" aria-label="Theme">
+    <button data-theme="dark">Dark</button><button data-theme="light">Light</button>
+  </span>
+</div>
+<div class="frame" id="frame">
+  <div class="app">
+    <section class="aside" id="aside" aria-label="Pull request summary"></section>
+    <section class="ledger" id="ledger" aria-label="Files">
+      <div class="tools" id="tools"></div>
+      <div class="list" id="list" role="tree" aria-label="Files in walk order"></div>
+      <div class="peek" id="peek" aria-live="polite"></div>
+    </section>
+  </div>
+  <div class="foot">Reviewer progress, drafts and threads here are sample state for the mockup. Groups and noise are guessed from paths.</div>
+</div>
+
+<script>
+window.STORY = {"repo":"asibilia/range-finder--classic","pr_number":68,"title":"Spec: armory planner, slice A (a viewer with pre-made numbers) (#56)","head_sha":"eb81be7","written_by":"Claude Opus 5.5 (luca-pr-prep, update after review fixes)","summary":{"kind":"enhancement","what_changed":"Adds a new private package, @goturbo/armory: a React page bundled by Bun that opens a results file the gear sim made offline. It shows the character's gear on the left around a placeholder model, each slot's best upgrade, an item picker with a wishlist, and on the right a card with the fight readings, charts, the role sliders that pick between ready-made plans, damage split, stat weights and checks, plus talents and Pawn-string dialogs. The results file contract is a strict Zod 4 schema with eighteen cross-field rules and a generated JSON Schema, and the package ships two hand-made Truncha samples and a README. An error boundary, a function component over the react-error-boundary package, keeps a bad file from blanking the page. The repo's scripts, catalog, commit scopes, AGENTS.md, CONTEXT.md and changeset docs include the package, and its tests join check:all. Thirteen review-fix commits since the first story changed the layout, the out_of_mana_s contract, talent bounds, duplicate rules, gain rounding, read errors and page-wide drops, and the tests, then swapped the hand-written error boundary class for react-error-boundary and dropped the flex CSS the two-column grid replaced.","before":"The repo held only the Turbo addon and the Turbo site. Sim results existed only as a Markdown report outside the repo, and CI's only test step was the addon's Lua tests.","after":"`bun run dev:armory` serves a page that reads a results file in the browser (picked, dropped anywhere on the page, or the bundled sample) and lays the character out like an armory, gear left and card right. A wrong, unreadable or mismatched file shows a clear message, and a render error shows Start over instead of a blank page. `bun run check` now type-checks, lints and tests the armory package too, and `bun run armory:schema` regenerates the JSON Schema the runner validates against.","feedback_wanted":{"text":"The out_of_mana_s change: null used to mean \"never runs dry\" and now means \"not simmed\", with \"never\" added, under the same schema_version 1. Check whether any file or runner already wrote the old meaning. Also the DOM helper (a CommonJS tests/dom.js imported first in each rendering test) still holds, now that the test that ran armory and addon tests together is gone.","source":"guessed"},"counts":{"files_added":41,"files_changed":6,"files_deleted":0,"lines_added":12429,"lines_removed":12},"review_minutes":100,"flags":[{"kind":"risk","rule":"Test helper module format","rule_source":null,"path":"packages/armory/tests/dom.js","line":15,"message":"dom.js uses require and module.exports inside a \"type\": \"module\" package, so it relies on Bun detecting CommonJS by syntax; any other runner would load it as ESM and fail."}]},"entry_path":"package.json","architecture_note":"A new, separate package, packages/armory (@goturbo/armory). It is a React 19 page bundled by Bun's HTML bundler with no server. Its one boundary is results-file.ts, the Zod 4 contract every component takes its types from, which also generates the JSON Schema for the external gear-sim runner through a dev script in packages/armory/scripts/. App wraps the page in an error boundary, a function component over the react-error-boundary package, so the package has no class; Planner holds all state, and the components below it are presentational. The tests use a happy-dom harness that each rendering file imports first. The package joins the root catalog, type-check and check:all. The addon and the Turbo site are untouched.","links":[{"from":"package.json","to":"packages/armory/package.json","kind":"calls","note":"dev:armory and build:armory cd into the package and run its scripts."},{"from":"package.json","to":"packages/armory/scripts/write-results-schema.ts","kind":"calls","note":"armory:schema"},{"from":".github/workflows/ci.yml","to":"package.json","kind":"calls","note":"CI runs bun run check, which now includes type-check:armory and test:armory."},{"from":"packages/armory/package.json","to":"packages/armory/src/index.html","kind":"calls","note":"bun src/index.html and bun build src/index.html"},{"from":"packages/armory/src/index.html","to":"packages/armory/src/main.tsx","kind":"imports","note":null},{"from":"packages/armory/src/index.html","to":"packages/armory/src/styles.css","kind":"imports","note":null},{"from":"packages/armory/src/main.tsx","to":"packages/armory/src/app.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/results-file.ts","kind":"calls","note":"readResultsFile"},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/sample-truncha.json","kind":"reads","note":"Bundled sample."},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/bring-in.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/gear-pane.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/plans.ts","kind":"calls","note":"defaultPlan, closestPlan"},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/role-sliders.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/card.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/item-picker.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/talents.tsx","kind":"imports","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/pawn.tsx","kind":"imports","note":null},{"from":"packages/armory/src/gear-pane.tsx","to":"packages/armory/src/gains.ts","kind":"calls","note":null},{"from":"packages/armory/src/gear-pane.tsx","to":"packages/armory/src/slot-labels.ts","kind":"imports","note":null},{"from":"packages/armory/src/item-picker.tsx","to":"packages/armory/src/dialog.tsx","kind":"imports","note":null},{"from":"packages/armory/src/talents.tsx","to":"packages/armory/src/dialog.tsx","kind":"imports","note":null},{"from":"packages/armory/src/pawn.tsx","to":"packages/armory/src/dialog.tsx","kind":"imports","note":null},{"from":"packages/armory/src/role-sliders.tsx","to":"packages/armory/src/plans.ts","kind":"imports","note":null},{"from":"packages/armory/scripts/write-results-schema.ts","to":"packages/armory/src/results-file.schema.json","kind":"configures","note":"Writes the file."},{"from":"packages/armory/tests/open-app.tsx","to":"packages/armory/tests/dom.js","kind":"imports","note":"Must be first."},{"from":"packages/armory/tests/results-file.test.ts","to":"packages/armory/src/results-file.ts","kind":"tests","note":null},{"from":"packages/armory/tests/card.test.tsx","to":"packages/armory/src/card.tsx","kind":"tests","note":null},{"from":"packages/armory/tests/plan-view.test.tsx","to":"packages/armory/src/plans.ts","kind":"tests","note":null},{"from":"packages/armory/tests/upgrades.test.tsx","to":"packages/armory/src/item-picker.tsx","kind":"tests","note":null},{"from":"packages/armory/tests/talents-pawn.test.tsx","to":"packages/armory/src/talents.tsx","kind":"tests","note":null},{"from":"packages/armory/tests/open-file.test.tsx","to":"packages/armory/src/bring-in.tsx","kind":"tests","note":null},{"from":"packages/armory/tests/repo-setup.test.ts","to":"package.json","kind":"tests","note":"Reads scripts and catalog; runs type-check, build, lint, nested bun test."},{"from":"packages/armory/tsconfig.json","to":"packages/armory/src/app.tsx","kind":"configures","note":null},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/error-boundary.tsx","kind":"imports","note":"App wraps Planner in it."},{"from":"packages/armory/src/app.tsx","to":"packages/armory/src/card.tsx","kind":"calls","note":"Passes the role sliders as the Card's sliders prop."},{"from":"packages/armory/src/bring-in.tsx","to":"packages/armory/src/results-file.ts","kind":"imports","note":"SCHEMA_VERSION for the version message."},{"from":"packages/armory/scripts/write-results-schema.ts","to":"packages/armory/src/results-file.ts","kind":"calls","note":"resultsFileJsonSchema."},{"from":"packages/armory/tests/error-boundary.test.tsx","to":"packages/armory/src/error-boundary.tsx","kind":"tests","note":null},{"from":"packages/armory/tests/gains.test.ts","to":"packages/armory/src/gains.ts","kind":"tests","note":null},{"from":"packages/armory/tests/plans.test.ts","to":"packages/armory/src/plans.ts","kind":"tests","note":null},{"from":"packages/armory/tests/layout-css.test.ts","to":"packages/armory/src/styles.css","kind":"reads","note":null},{"from":"AGENTS.md","to":"packages/armory/README.md","kind":"reads","note":"The Where things live row points to it."}],"groups":[{"id":"wiring","name":"Wiring","blurb":"Root scripts, the package manifest and config that make the page run."},{"id":"page","name":"The page","blurb":"Entry, mount, App and its state, the error boundary, the styles."},{"id":"contract","name":"The contract","blurb":"The results-file schema, its generated JSON Schema and the samples."},{"id":"parts","name":"The parts","blurb":"Presentational components and the small helpers they call."},{"id":"tests","name":"Tests","blurb":"The happy-dom harness and the test files."},{"id":"docs","name":"Docs","blurb":"Agent guide, glossary, README and changeset."}],"files":[{"path":"package.json","status":"modified","in_walk":true,"role":"Root scripts (dev, build, schema, type-check, test for armory), the dependency catalog and the repo description.","add":19,"del":4,"group":"wiring","noise":null},{"path":"packages/armory/package.json","status":"added","in_walk":true,"role":"The @goturbo/armory package: catalog dependencies and its build, dev, test and type-check scripts.","add":29,"del":0,"group":"wiring","noise":null},{"path":"packages/armory/src/index.html","status":"added","in_walk":true,"role":"The HTML entry Bun bundles: links the stylesheet and loads main.tsx.","add":13,"del":0,"group":"page","noise":null},{"path":"packages/armory/src/main.tsx","status":"added","in_walk":true,"role":"Mounts App into #root under StrictMode.","add":13,"del":0,"group":"page","noise":null},{"path":"packages/armory/src/app.tsx","status":"added","in_walk":true,"role":"The page: loads a file, holds the wishlist, dialog, mix and plan-view state, and lays out every part.","add":315,"del":0,"group":"page","noise":null},{"path":"packages/armory/src/bring-in.tsx","status":"added","in_walk":true,"role":"The new-visitor state: file picker, drop target, sample button and read errors.","add":91,"del":0,"group":"page","noise":null},{"path":"packages/armory/src/results-file.ts","status":"added","in_walk":true,"role":"The results-file contract: strict Zod schema, cross-field rules, readResultsFile and the JSON Schema text.","add":528,"del":0,"group":"contract","noise":null},{"path":"packages/armory/src/results-file.schema.json","status":"added","in_walk":true,"role":"Generated JSON Schema for the sim runner to validate against.","add":1096,"del":0,"group":"contract","noise":"generated"},{"path":"packages/armory/src/sample-truncha.json","status":"added","in_walk":true,"role":"The full hand-made Truncha sample, bundled as the page's sample character.","add":2984,"del":0,"group":"contract","noise":"sample data"},{"path":"packages/armory/src/sample-truncha-first-run.json","status":"added","in_walk":true,"role":"A small sample shaped like the runner's first output: one plan, no timeline, pulls, time to die or best build.","add":2073,"del":0,"group":"contract","noise":"sample data"},{"path":"packages/armory/src/gear-pane.tsx","status":"added","in_walk":true,"role":"The gear pane: 17 slot buttons in worn or plan view, bag upgrades, model placeholder and character sheet.","add":239,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/gains.ts","status":"added","in_walk":true,"role":"Reads an alternative's gain (DPS over EP), formats it and sizes it big or small.","add":56,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/slot-labels.ts","status":"added","in_walk":true,"role":"Slot labels and which slots sit left, right and bottom.","add":44,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/plans.ts","status":"added","in_walk":true,"role":"The default plan, live roles and the plan closest to the sliders.","add":51,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/role-sliders.tsx","status":"added","in_walk":true,"role":"The four role range inputs and their notes.","add":80,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/card.tsx","status":"added","in_walk":true,"role":"The card: fight picker and settings, readings table, time or pull chart, damage split, stat weights, checks.","add":514,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/item-picker.tsx","status":"added","in_walk":true,"role":"The item picker dialog and the wishlist dialog.","add":126,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/dialog.tsx","status":"added","in_walk":true,"role":"The shared modal dialog with a hand-written focus trap.","add":85,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/talents.tsx","status":"added","in_walk":true,"role":"The talents dialog: build radio group and tier-by-column grid.","add":127,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/pawn.tsx","status":"added","in_walk":true,"role":"The Pawn strings dialog with Copy buttons.","add":69,"del":0,"group":"parts","noise":null},{"path":"packages/armory/src/styles.css","status":"added","in_walk":true,"role":"Plain layout styles on CSS custom-property tokens.","add":476,"del":0,"group":"page","noise":null},{"path":"packages/armory/tests/dom.js","status":"added","in_walk":false,"role":"CommonJS test helper that registers happy-dom globals and removes them after each file.","add":27,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/dom.d.ts","status":"added","in_walk":false,"role":"Types for dom.js's teardownDom export.","add":2,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/open-app.tsx","status":"added","in_walk":false,"role":"Shared test helpers: render the app, pick or load a file, build variants, read a readings row.","add":79,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tsconfig.json","status":"added","in_walk":false,"role":"The package's TypeScript config: react-jsx, DOM libs, tests included.","add":18,"del":0,"group":"wiring","noise":null},{"path":"bun.lock","status":"modified","in_walk":false,"role":"Lockfile with the armory workspace and its new dependencies.","add":93,"del":1,"group":"wiring","noise":"lockfile"},{"path":"commit.config.ts","status":"modified","in_walk":false,"role":"Commit scopes: adds armory.","add":1,"del":0,"group":"wiring","noise":null},{"path":"AGENTS.md","status":"modified","in_walk":false,"role":"Agent guide: the armory paragraph, its row, check:all contents, every package private.","add":9,"del":3,"group":"docs","noise":null},{"path":"CONTEXT.md","status":"modified","in_walk":false,"role":"Glossary: The armory planner section with four entries.","add":18,"del":0,"group":"docs","noise":null},{"path":".changeset/README.md","status":"modified","in_walk":false,"role":"Changeset guide: names @goturbo/armory and says every package is private.","add":4,"del":4,"group":"docs","noise":null},{"path":".changeset/luca-spec-56-20261114t173522z-d086f282.md","status":"added","in_walk":false,"role":"This PR's changeset: a minor bump for @goturbo/armory.","add":5,"del":0,"group":"docs","noise":null},{"path":"packages/armory/tests/app.test.tsx","status":"added","in_walk":false,"role":"Smoke test: the page renders its Armory planner h1.","add":19,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/dom-teardown.test.tsx","status":"added","in_walk":false,"role":"Checks teardownDom leaves globalThis.window undefined.","add":24,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/open-file.test.tsx","status":"added","in_walk":false,"role":"Tests the new-visitor state, wrong files, loading, header and gear pane.","add":365,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/upgrades.test.tsx","status":"added","in_walk":false,"role":"Tests slot gains, the item picker, the wishlist and dialog focus.","add":447,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/card.test.tsx","status":"added","in_walk":false,"role":"Tests the card: fights, readings, charts, split, weights, checks, provisional.","add":494,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/plan-view.test.tsx","status":"added","in_walk":false,"role":"Tests the plan view and the role sliders.","add":367,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/talents-pawn.test.tsx","status":"added","in_walk":false,"role":"Tests the talents and Pawn strings dialogs and their keyboard behaviour.","add":307,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/results-file.test.ts","status":"added","in_walk":false,"role":"Tests the schema, cross-field rules, samples and the generated JSON Schema.","add":528,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/repo-setup.test.ts","status":"added","in_walk":false,"role":"Tests the repo wiring: docs, package, scripts, lint, build and the root test run.","add":244,"del":0,"group":"tests","noise":null},{"path":"packages/armory/scripts/write-results-schema.ts","status":"added","in_walk":true,"role":"Dev script that writes the JSON Schema (moved from src/).","add":15,"del":0,"group":"contract","noise":null},{"path":"packages/armory/src/error-boundary.tsx","status":"added","in_walk":true,"role":"Catches a render error and offers Start over, through react-error-boundary.","add":40,"del":0,"group":"page","noise":null},{"path":"packages/armory/tests/error-boundary.test.tsx","status":"added","in_walk":false,"role":"Error boundary tests.","add":105,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/gains.test.ts","status":"added","in_walk":false,"role":"Gain rounding unit tests.","add":75,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/layout-css.test.ts","status":"added","in_walk":false,"role":"Checks the two-column CSS rule.","add":15,"del":0,"group":"tests","noise":null},{"path":"packages/armory/tests/plans.test.ts","status":"added","in_walk":false,"role":"Plan tie-break unit tests.","add":55,"del":0,"group":"tests","noise":null},{"path":"packages/armory/README.md","status":"added","in_walk":false,"role":"How to run the armory planner and what the samples hold.","add":45,"del":0,"group":"docs","noise":null}],"stops":[{"id":"s1","n":1,"kind":"walk","path":"package.json","title":"Root scripts and catalog","why_here":"Everything starts from a root script: `bun run dev:armory` serves the page, and `bun run check` (CI) now type-checks and tests it.","changes":[{"id":"c1","path":"package.json","start":22,"end":30,"symbol":"scripts","title":"armory:schema, build:armory, check:all, dev:armory","from":null,"how":"Start: these scripts are how anyone runs, builds or checks the new page.","why":"dev:armory and build:armory hand off to the package's own scripts. armory:schema runs the schema writer, now in packages/armory/scripts/. check:all now ends with test:armory, so CI runs the armory tests.","check":"armory:schema points at packages/armory/scripts/write-results-schema.ts, the writer's new home. Confirm nothing still names the old src/ path.","covered":true,"tests":["check:all runs test:armory","build:armory writes packages/armory/dist/index.html, which git ignores"],"proof_note":"The script strings are read from the file, and build:armory is actually run.","serves":["ticket #64, AC8","ticket #64, AC7","ticket #57, AC8"],"blast":2,"blast_out":1,"flags":[]},{"id":"c2","path":"package.json","start":44,"end":48,"symbol":"scripts","title":"test:armory and type-check:armory","from":"c1","how":"check:all calls these two scripts.","why":"test:armory runs the package's tests with --isolate, and type-check:armory joins the root type-check.","check":"test:armory uses --isolate, so each file gets a fresh global and dom.js registers happy-dom again in each one.","covered":true,"tests":["test:armory is bun test --isolate packages/armory","type-check runs type-check:armory"],"proof_note":"The script strings are read from the file. type-check:armory itself runs in check:all, no longer inside a test.","serves":["ticket #64, AC9","ticket #64, AC6"],"blast":2,"blast_out":0,"flags":[]},{"id":"c3","path":"package.json","start":57,"end":70,"symbol":"workspaces.catalog","title":"New catalog entries","from":"c1","how":"The package these scripts run takes every dependency from the catalog.","why":"React, React DOM, react-error-boundary, Zod 4, happy-dom's registrator, Testing Library and React types become catalog entries, so the armory package can use `catalog:` and pass syncpack.","check":"The caret ranges were picked offline. Check that the lockfile resolved them to releases older than 7 days (react 19.3.1, zod 4.6.7, react-error-boundary 6.1.6, …). react-error-boundary 6.1.6 was published 2026-09-20.","covered":true,"tests":["is named @goturbo/armory, private, and takes every dependency from the catalog"],"proof_note":"Also asserts zod's catalog range is 4.x.","serves":["spec #56"],"blast":2,"blast_out":0,"flags":[]},{"id":"c4","path":"package.json","start":3,"end":3,"symbol":"description","title":"Description names @goturbo/armory","from":"c1","how":"Same file, same wiring.","why":"The monorepo description now lists the third package.","check":"The wording matches the glossary's 'armory planner'.","covered":true,"tests":["the root package.json description names @goturbo/armory"],"proof_note":"String check.","serves":["ticket #64, AC11"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s2","n":2,"kind":"walk","path":"packages/armory/package.json","title":"The armory package","why_here":"dev:armory and build:armory cd into this package and run its scripts.","changes":[{"id":"c5","path":"packages/armory/package.json","start":1,"end":29,"symbol":null,"title":"@goturbo/armory manifest","from":"c1","how":"`cd packages/armory && bun run dev` lands here.","why":"Declares the private package, its catalog dependencies (react, react-dom, react-error-boundary and zod at runtime, the test libraries as dev), and dev and build scripts that point Bun's HTML bundler at src/index.html.","check":"build writes to dist/, which .gitignore and ESLint already skip. The repo-setup test checks git check-ignore.","covered":true,"tests":["is named @goturbo/armory, private, and takes every dependency from the catalog"],"proof_note":"Name, private flag and catalog use are asserted.","serves":["ticket #64, AC3"],"blast":3,"blast_out":0,"flags":[]}]},{"id":"s3","n":3,"kind":"walk","path":"packages/armory/src/index.html","title":"The HTML entry","why_here":"Bun's bundler starts from this file for both dev and build.","changes":[{"id":"c6","path":"packages/armory/src/index.html","start":1,"end":13,"symbol":null,"title":"Page shell","from":"c5","how":"The package's dev and build scripts name src/index.html.","why":"A minimal document with #root, the stylesheet and the module script main.tsx. Bun bundles TSX and CSS from these references.","check":"The title and lang are set, and the stylesheet and script paths are relative, so the dist build works from any folder.","covered":true,"tests":["build:armory writes packages/armory/dist/index.html, which git ignores"],"proof_note":"The build is run and its output checked.","serves":["spec #56"],"blast":2,"blast_out":0,"flags":[]}]},{"id":"s4","n":4,"kind":"walk","path":"packages/armory/src/main.tsx","title":"Mount the app","why_here":"index.html's module script runs this first.","changes":[{"id":"c7","path":"packages/armory/src/main.tsx","start":1,"end":13,"symbol":null,"title":"createRoot and StrictMode","from":"c6","how":"index.html loads ./main.tsx.","why":"Finds #root (and throws if it's missing) and renders App inside StrictMode.","check":"Under StrictMode, effects run twice in dev. The Dialog effect captures the opener and restores focus on cleanup, so check that focus still ends on Close after the double run.","covered":false,"tests":[],"proof_note":"No test covers this. Tests render App directly, not main.tsx.","serves":["spec #56"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s5","n":5,"kind":"walk","path":"packages/armory/src/app.tsx","title":"The page and its state","why_here":"App is the one stateful component. Every later stop is something it renders or calls.","changes":[{"id":"c8","path":"packages/armory/src/app.tsx","start":137,"end":315,"symbol":"App, Planner","title":"Error boundary, state, page drop and layout","from":"c7","how":"main.tsx renders <App />.","why":"App now only wraps Planner in the ErrorBoundary. Planner holds the loaded file or error, the wishlist (a Map keyed by item id), the open dialog, the slider mix, showPlan and switched. `open` resets the mix to the defaul…","check":"The spec says a drop anywhere on the page loads it, but the window listener loads only while no file is open (`waiting`); once a file is open a drop is swallowed. Check that this is what the owner wants. Also check the effect: it re-subscribes when `waiting` flips and captures `open` from that render.","covered":true,"tests":["dropping the sample anywhere on the page loads it","once a file is open, a drop on the page is ignored and the browser does not open it","What to gear for sits in the card, after the fight chart and before the damage split","moving a slider on the worn view switches to the plan and says so, until Show what I wear","the page is wrapped in the boundary"],"proof_note":"Driven through the rendered page.","serves":["ticket #61, AC10","ticket #61, AC9","ticket #59, AC9","spec #56, changes after review of PR #68"],"blast":5,"blast_out":0,"flags":[]},{"id":"c9","path":"packages/armory/src/app.tsx","start":26,"end":58,"symbol":"load, readFile","title":"Read a picked or dropped file","from":"c8","how":"App's onFile and onSample call these.","why":"readFile reads the File's text in the browser. A rejected file.text() (a folder, or a file the browser can't read) now maps to an unreadable error, and a JSON.parse failure to not-json. load maps readResultsFile's outco…","check":"Both awaits are caught, so `void readFile(...).then(open)` can no longer reject. Check that load itself can't throw: readResultsFile uses safeParse.","covered":true,"tests":["a .json file that is not JSON says it is not JSON","a file that cannot be read says so","a file of schema version 2 names its version","a file without character.level lists the problem by its path"],"proof_note":"Each error kind is driven through a real upload.","serves":["ticket #58, AC3","ticket #58, AC6","spec #56, changes after review of PR #68"],"blast":1,"blast_out":0,"flags":[]},{"id":"c10","path":"packages/armory/src/app.tsx","start":60,"end":135,"symbol":"Header, GearTop","title":"Character header and view switch","from":"c8","how":"App renders Header once a file loads, and GearTop above the gear.","why":"Header shows the sample note, the name as h1, the level line, the UTC export date and the Wishlist/Talents/Pawn buttons. GearTop shows the 'What you wear' or 'Sim's plan: …' heading, the toggle button and the switched n…","check":"The export date uses toISOString().slice(0, 10), which is the UTC date, as section 5 asks.","covered":true,"tests":["Look at a sample character loads Truncha with the level line and export date","pressing Show the sim's plan shows Max damage and Ferine Leggings in Legs"],"proof_note":"Header and toggle text asserted.","serves":["ticket #58, AC8","ticket #61, AC2","ticket #58, AC9"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s24","n":6,"kind":"walk","path":"packages/armory/src/error-boundary.tsx","title":"The error boundary","why_here":"App's first and only job now is to wrap the page in this boundary.","changes":[{"id":"c65","path":"packages/armory/src/error-boundary.tsx","start":1,"end":40,"symbol":"ErrorBoundary","title":"Catch a render error, offer Start over","from":"c8","how":"App renders Planner inside this boundary.","why":"A render error anywhere in the page (from a file the schema let through) showed a blank page. ErrorBoundary is a function component that wraps react-error-boundary's boundary with a WentWrong fallback: \"Something went w…","check":"Start over now calls resetErrorBoundary instead of bumping a key. Check that the reset really remounts Planner so the loaded file and the wishlist are dropped (the Start over test asserts the new-visitor state). The raw error message is still shown to the user as text; confirm that is wanted.","covered":true,"tests":["is a function component (no class), from react-error-boundary","a render error shows the message, the error and Start over","Start over after an error brings back the new-visitor state","the page is wrapped in the boundary"],"proof_note":"A test-only component throws on demand. A new test checks ErrorBoundary has no isReactComponent on its prototype, so it is not a class.","serves":["spec #56, changes after review of PR #68"],"blast":2,"blast_out":0,"flags":[]}]},{"id":"s6","n":7,"kind":"walk","path":"packages/armory/src/bring-in.tsx","title":"Bring your character in","why_here":"With no file loaded, App renders BringIn first.","changes":[{"id":"c11","path":"packages/armory/src/bring-in.tsx","start":47,"end":91,"symbol":"BringIn","title":"Steps, picker, drop box, sample button","from":"c8","how":"App renders BringIn while file is null, passing onFile and onSample.","why":"Lists the three steps to bring a character in, then a labelled file input (accept .json), the drop box, the 'coming later' line and the sample button. The input is cleared after each pick. The drop box no longer has its…","check":"The drop box is now only a labelled region with text; its drop works because the event bubbles to window. Confirm nothing else relied on its onDrop.","covered":true,"tests":["shows the bring-your-character-in state with a picker, a drop target and the sample button","lists the three steps to bring a character in, in order","dropping the sample on the drop target loads it"],"proof_note":"Drop tested with fireEvent.drop on the box and on the page.","serves":["ticket #58, AC1","ticket #58, AC7","spec #56, changes after review of PR #68"],"blast":1,"blast_out":0,"flags":[]},{"id":"c12","path":"packages/armory/src/bring-in.tsx","start":1,"end":45,"symbol":"ReadError, ErrorMessage","title":"Read error messages","from":"c11","how":"BringIn shows ErrorMessage above the picker.","why":"Renders the four read errors in a role=alert: unreadable (new), not JSON, wrong version, and invalid with its problem lines. The version message now reads the version the planner takes from SCHEMA_VERSION instead of a w…","check":"bring-in.tsx now imports SCHEMA_VERSION from results-file.ts, a value import (not type-only) from the contract module. That is fine for the bundle, but check the message still reads 'version 1' as the tests expect.","covered":true,"tests":["a file that cannot be read says so","a file of schema version 2 names its version","a file without character.level lists the problem by its path"],"proof_note":"Every variant is tested in open-file.test.tsx.","serves":["ticket #58, AC4","ticket #58, AC5","spec #56, changes after review of PR #68"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s7","n":8,"kind":"walk","path":"packages/armory/src/results-file.ts","title":"The results-file contract","why_here":"load() hands every file to readResultsFile. This schema is the source of truth for the page's types and for the sim runner.","changes":[{"id":"c13","path":"packages/armory/src/results-file.ts","start":496,"end":518,"symbol":"readResultsFile","title":"Version check, parse, problem lines","from":"c9","how":"load() calls readResultsFile on the parsed JSON.","why":"A numeric schema_version other than 1 short-circuits to reason 'version'. Anything else that fails parsing becomes 'invalid', with each issue written as its dotted path (or '(file)'), a colon, a space and the message.","check":"A text schema_version '1' or a missing one falls through to 'invalid', as the spec says.","covered":true,"tests":["a copy with schema_version 2 gives reason version with version 2","an extra top-level account key gives a line starting (file): ","a fights.0.duration_s given as the text \"30\" gives a line starting fights.0.duration_s: "],"proof_note":"Pure schema seam.","serves":["ticket #57, AC5","ticket #57, AC7","ticket #57, AC6"],"blast":2,"blast_out":0,"flags":[]},{"id":"c14","path":"packages/armory/src/results-file.ts","start":8,"end":321,"symbol":"baseSchema","title":"Strict Zod shape","from":"c13","how":"readResultsFile parses with this schema.","why":"Encodes the spec's shape with strictObject at every level, so camelCase or extra keys such as realm or account are refused. It uses ISO datetimes with an offset, a gear record that needs all 17 slots, nullable timeline,…","check":"out_of_mana_s changed meaning: null was 'never runs dry' and is now 'not simmed'. Any file written to the old contract silently reads Not simmed where it meant Never, under the same schema_version 1. Decide whether that needs a version bump or is fine because no runner writes the field yet.","covered":true,"tests":["a file with schemaVersion in place of schema_version is refused as invalid","an extra realm key on character is refused, and so is an extra top-level account key","a tier of 5000000000 is refused on that talent","tier 9, column 6 and max rank 10 at rank 10 parse","takes a number, never or null, and nothing else"],"proof_note":"Strictness, talent bounds and the three out_of_mana_s values are tested.","serves":["ticket #57, AC2","ticket #57, AC3","spec #56","spec #56, changes after review of PR #68","spec #56, changes after review of PR #68"],"blast":11,"blast_out":0,"flags":[]},{"id":"c15","path":"packages/armory/src/results-file.ts","start":323,"end":459,"symbol":"checkCrossFields","title":"The eighteen cross-field rules","from":"c13","how":"superRefine runs these after the shape passes.","why":"Each rule adds a custom issue with its exact message and a path. Fight and plan references must resolve, slots must appear exactly once, a worn result must exist for every fight, gear/fight pairs must not repeat, best.r…","check":"The shared-cell rule reports once on talents.yours, not on each clashing talent, and the rank rule checks only talents.yours, not talents.best.ranks (whose rank is bounded 0 to 10 but not against max_rank). Check that is enough.","covered":true,"tests":["refuse a file whose fight or plan names point at nothing, each with its own message","refuse a file whose slots, plans, results or best build repeat or miss entries, each with its own message","refuse a chain fight without a setup, a timeline on a chain result and pulls on a single result, each with its own message","two talents on the same tier and column are refused on talents.yours","each duplicate is refused with its own message"],"proof_note":"Each rule is broken on a fresh sample copy and matched by message.","serves":["ticket #57, AC4","spec #56, changes after review of PR #68"],"blast":1,"blast_out":0,"flags":[]},{"id":"c16","path":"packages/armory/src/results-file.ts","start":461,"end":494,"symbol":"FILE_DESCRIPTION, resultsFileSchema","title":"Rules written for the runner","from":"c14","how":"The shape plus refinements become the exported schema, with a title and description.","why":"The JSON Schema drops refinements, so the description spells out all eighteen cross-field rules and the runner's two unchecked duties in plain words. The six rules added after review are listed too.","check":"Keep this list in step with checkCrossFields. Nothing ties the two together.","covered":true,"tests":["bun run armory:schema writes the JSON Schema, and the committed text matches a fresh one"],"proof_note":"Covered only through the generated text.","serves":["spec #56"],"blast":11,"blast_out":0,"flags":[]},{"id":"c17","path":"packages/armory/src/results-file.ts","start":520,"end":528,"symbol":"resultsFileJsonSchema","title":"JSON Schema text","from":"c16","how":"Turns the exported schema into the committed JSON text.","why":"Calls z.toJSONSchema, moves title and description up front, and writes two-space JSON with a final newline.","check":"Output depends on the resolved Zod version. A Zod bump can change the text and fail the comparison test.","covered":true,"tests":["bun run armory:schema writes the JSON Schema, and the committed text matches a fresh one"],"proof_note":"Writes a fresh copy to a temp folder and compares.","serves":["ticket #57, AC8"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s8","n":9,"kind":"walk","path":"packages/armory/scripts/write-results-schema.ts","title":"Schema writer script","why_here":"The only caller of resultsFileJsonSchema, run by `bun run armory:schema`. It moved here from src/ after review.","changes":[{"id":"c18","path":"packages/armory/scripts/write-results-schema.ts","start":1,"end":15,"symbol":null,"title":"Write results-file.schema.json, or a given path","from":"c1","how":"The root armory:schema script runs this file.","why":"Writes the JSON Schema text to src/results-file.schema.json, or to the path given as its first argument. The test passes a temp path, so it no longer overwrites the committed file.","check":"With an argument it writes wherever it is told (resolved from the cwd). It is a dev script run by hand or by the test, so that is fine; check the default still lands in src/.","covered":true,"tests":["bun run armory:schema writes the JSON Schema, and the committed text matches a fresh one"],"proof_note":"The test runs the script with a temp path.","serves":["ticket #57, AC8"],"blast":2,"blast_out":0,"flags":[]}]},{"id":"s9","n":10,"kind":"walk","path":"packages/armory/src/results-file.schema.json","title":"Generated JSON Schema","why_here":"The file the writer produces.","changes":[{"id":"c19","path":"packages/armory/src/results-file.schema.json","start":1,"end":1096,"symbol":null,"title":"Committed JSON Schema","from":"c18","how":"write-results-schema.ts writes this file.","why":"The shape-only schema the external runner validates against, with the rules description at the top.","check":"Don't review it by hand. Check that out_of_mana_s is an anyOf of number, the const \"never\" and null, that the talent fields carry their minimum and maximum, and that the description lists the eighteen rules.","covered":true,"tests":["bun run armory:schema writes the JSON Schema, and the committed text matches a fresh one"],"proof_note":"Text comparison against a fresh build in a temp folder.","serves":["spec #56"],"blast":2,"blast_out":0,"flags":[]}]},{"id":"s10","n":11,"kind":"walk","path":"packages/armory/src/sample-truncha.json","title":"The full sample","why_here":"App bundles this file as the sample character, and most tests load it.","changes":[{"id":"c20","path":"packages/armory/src/sample-truncha.json","start":1,"end":2984,"symbol":null,"title":"Hand-made Truncha results file","from":"c8","how":"App imports it for 'Look at a sample character'.","why":"A full schema-v1 file: 17 slots, 4 fights (chain-4 as default), 3 plans, 14 results, 18 talents with a best build, and sample: true. Results that never run dry now say \"never\" instead of null.","check":"No realm, account, guid, path or caps key appears. The worn neck copies its alternative's details, and the worn main hand keeps the defaults (both noted by the run).","covered":true,"tests":["parses with the schema","has 17 slots, 4 fights, 3 plans, 14 results, 18 talents, and a best build with Flurry 5 and Anticipation 0","no realm, account, guid, path or caps key appears anywhere in either sample","the full sample says never where it never runs dry, and the first-run sample has every one null"],"proof_note":"Also exercised by every app test.","serves":["ticket #57, AC1","ticket #57, AC9","ticket #57, AC12"],"blast":6,"blast_out":0,"flags":[]}]},{"id":"s11","n":12,"kind":"walk","path":"packages/armory/src/sample-truncha-first-run.json","title":"The first-run sample","why_here":"The schema's nullable fields need a file that uses them, to test the page's empty states.","changes":[{"id":"c21","path":"packages/armory/src/sample-truncha-first-run.json","start":1,"end":2073,"symbol":null,"title":"Small runner-shaped sample","from":"c14","how":"Nullable timeline, pulls, time_to_die_s and best in the schema need a fixture that sets them null.","why":"One plan (max-damage), best null, and every timeline, pulls, time_to_die_s and out_of_mana_s null, shaped like the runner's first output, which doesn't read the sim's tto yet.","check":"Its four out_of_mana_s numbers became null, so the card now really shows Not simmed for it. Check no test still expects the old 0:48 and 0:57 from this file.","covered":true,"tests":["parses, has one plan, and has no best build, timeline, pulls or time to die","the full sample says never where it never runs dry, and the first-run sample has every one null","the first-run sample reads Not simmed for out of mana"],"proof_note":"Also drives empty-state tests in card, plan-view and talents-pawn.","serves":["ticket #57, AC10","spec #56, changes after review of PR #68"],"blast":4,"blast_out":0,"flags":[]}]},{"id":"s12","n":13,"kind":"walk","path":"packages/armory/src/gear-pane.tsx","title":"The gear pane","why_here":"App renders GearPane in every state, with empty outlines before a file loads.","changes":[{"id":"c22","path":"packages/armory/src/gear-pane.tsx","start":194,"end":239,"symbol":"GearPane","title":"Columns around the middle","from":"c8","how":"App renders <GearPane file plan top onOpenSlot />.","why":"Lays out the left, right and bottom slot columns in DOM order, puts bag upgrades under the left column, and puts the model placeholder and sheet in the middle.","check":"DOM order is left, then right, then bottom, which the order test relies on. CSS grid areas place them visually.","covered":true,"tests":["the slots run left column, right column, then the bottom row","shows 17 empty slot buttons and no Wishlist, Talents or Export Pawn string button"],"proof_note":"Order and empty state asserted.","serves":["ticket #58, AC10","ticket #58, AC2"],"blast":1,"blast_out":0,"flags":[]},{"id":"c23","path":"packages/armory/src/gear-pane.tsx","start":88,"end":139,"symbol":"SlotButton","title":"One slot button and its accessible name","from":"c22","how":"Each column maps its slots to SlotButton.","why":"Shows 'Label: Empty' with no file. Otherwise it builds 'Label: item, +gain' or ', same as what you wear' as the aria-label, with the quality glyph, gain badge and note.","check":"Empty-state buttons have no onClick, so they do nothing. A filled slot with a gain gets the gain in its name, which the tests rely on.","covered":true,"tests":["shows the worn legs and an empty trinket slot","in the plan view Relic is the same as what you wear and Legs replaces the worn legguards"],"proof_note":"Names asserted exactly.","serves":["ticket #58, AC11","ticket #61, AC3"],"blast":1,"blast_out":0,"flags":[]},{"id":"c24","path":"packages/armory/src/gear-pane.tsx","start":27,"end":86,"symbol":"wornView, planView","title":"What a slot shows in each view","from":"c23","how":"SlotButton picks planView or wornView depending on whether a plan is passed.","why":"The worn view shows the worn item, the best upgrade's gain and 'Best: …' (or the source text). The plan view shows 'Same as what you wear' when the plan's item matches the worn one. Otherwise it shows the plan item, its…","check":"planView uses isUpgrade, but wornView takes bestUpgrade, which also uses isUpgrade now, so both views agree on what +0.0 means. A plan slot that is null while something is worn still shows 'Nothing equipped' with 'Replaces <worn>'.","covered":true,"tests":["a Back first alternative with gain_ep 0 shows no gain and the worn source text","a Back first alternative gaining 0.04 EP, shown as +0.0, shows no gain and the worn source text","a plan item in a slot with nothing worn reads Replaces nothing","Survival at 80 picks Damage and survival and puts Kodohide Legguards in Legs"],"proof_note":"Both views are driven.","serves":["ticket #59, AC4","ticket #61, AC8"],"blast":1,"blast_out":0,"flags":[]},{"id":"c25","path":"packages/armory/src/gear-pane.tsx","start":141,"end":192,"symbol":"BagUpgrades, CharacterSheet","title":"Bag upgrades and the sheet","from":"c22","how":"GearPane renders them under the left column and in the middle.","why":"Lists each bag upgrade sentence. Shows the 13 sheet rows (whole numbers, then percentages to two decimals) and the buffed or unbuffed note.","check":"Numbers use String() with no thousands separator, as section 5 asks.","covered":true,"tests":["the middle shows the model placeholder, the sheet and the buffed note","the bag upgrade shows under the left column"],"proof_note":"Sheet values matched in page text.","serves":["ticket #58, AC12","ticket #59, AC12"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s13","n":14,"kind":"walk","path":"packages/armory/src/gains.ts","title":"Reading a gain","why_here":"The slot views call gainOf, formatGain, gainSize and bestUpgrade.","changes":[{"id":"c26","path":"packages/armory/src/gains.ts","start":1,"end":56,"symbol":"gainOf, shownValue, formatGain, gainSize, isUpgrade, bestUpgrade","title":"Gain rules","from":"c24","how":"wornView and planView compute gains here.","why":"gainOf picks DPS over EP. shownValue rounds the gain to one decimal, half away from zero, and formatGain, gainSize and the new isUpgrade all decide on that shown value, so a badge never disagrees with its number: 14.96…","check":"shownValue rounds |value|*10 with Math.round, so half rounds away from zero; floating error (14.95 stored as 14.9499...) can still tip it either way. Check the test values sit safely off the .x5 edge.","covered":true,"tests":["15.0 EP is big, 14.96 EP shows +15.0 EP and is big, 14.94 EP is small","a gain of 0.04 EP shows as +0.0, so it is no upgrade","a gain of -0.04 EP shows +0.0 EP, not -0.0","the Neck gain is drawn small and the Legs gain big"],"proof_note":"Unit tests in gains.test.ts, plus the page tests.","serves":["ticket #59, AC3","ticket #59, AC1","spec #56, changes after review of PR #68"],"blast":4,"blast_out":0,"flags":[]}]},{"id":"s14","n":15,"kind":"walk","path":"packages/armory/src/slot-labels.ts","title":"Slot words and placement","why_here":"GearPane takes its columns from here.","changes":[{"id":"c27","path":"packages/armory/src/slot-labels.ts","start":1,"end":44,"symbol":"SLOT_LABELS, LEFT_SLOTS, RIGHT_SLOTS, BOTTOM_SLOTS","title":"Labels and columns","from":"c22","how":"GearPane maps these lists to columns.","why":"Maps each Slot to its spec label and splits the 17 slots 6/8/3.","check":"Record<Slot, string> makes the compiler catch a missing label.","covered":true,"tests":["the slots run left column, right column, then the bottom row"],"proof_note":"Order and labels asserted.","serves":["ticket #58, AC10"],"blast":2,"blast_out":0,"flags":[]}]},{"id":"s15","n":16,"kind":"walk","path":"packages/armory/src/plans.ts","title":"Choosing a plan","why_here":"App's open() and render call defaultPlan and closestPlan.","changes":[{"id":"c28","path":"packages/armory/src/plans.ts","start":1,"end":51,"symbol":"defaultPlan, isLive, closestPlan","title":"Default and closest plan","from":"c8","how":"App seeds the mix from defaultPlan and computes the shown plan with closestPlan.","why":"The default plan has the highest mix.damage (the first on a tie). A role is live when any plan scores it above 0. The closest plan is the one at the smallest Euclidean distance over the live roles, using strict < so the…","check":"With no live roles, Math.hypot() returns 0 for every plan, so the first plan wins. Check that this is fine for a file whose plans all have a zero mix.","covered":true,"tests":["Survival at 80 picks Damage and survival and puts Kodohide Legguards in Legs","then Damage at 40 picks Max survival, which heads the card plan column","the one-plan sample says so, enables only Damage, and keeps Max damage when it moves","on equal max damage, the first plan in file order wins","on equal distance, the first plan in file order wins"],"proof_note":"Through the page.","serves":["spec #56","ticket #61, AC5"],"blast":5,"blast_out":0,"flags":[]}]},{"id":"s16","n":17,"kind":"walk","path":"packages/armory/src/role-sliders.tsx","title":"Role sliders","why_here":"App renders RoleSliders under the gear pane when the file has plans.","changes":[{"id":"c29","path":"packages/armory/src/role-sliders.tsx","start":1,"end":80,"symbol":"RoleSliders, RoleSlider","title":"Four native range inputs","from":"c8","how":"App passes plans, mix, plan and moveSlider.","why":"Each role is a labelled range input from 0 to 100 in steps of 1. A role that isn't live is disabled at 0 with 'Not simmed yet' and the matching aria-valuetext. The section also shows the closest plan line, the 'Nothing…","check":"The spec's Testing Decisions ask for 'sliders move with arrow keys'. No test does that (the run skipped it because happy-dom may not step range inputs). Native inputs should handle arrow keys, but it is unverified.","covered":true,"tests":["Healing and Utility are disabled and Not simmed yet; Damage and Survival are enabled","each slider is a native range input from 0 to 100 in steps of 1","the page always says the sliders pick from ready-made plans"],"proof_note":"Values set with change events.","serves":["ticket #61, AC6","ticket #61, AC13","ticket #61, AC11","ticket #61, AC12"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s17","n":18,"kind":"walk","path":"packages/armory/src/card.tsx","title":"The card","why_here":"App renders Card beside the gear once a file loads, with the slider-picked plan.","changes":[{"id":"c30","path":"packages/armory/src/card.tsx","start":457,"end":514,"symbol":"Card","title":"Fight select, the sliders slot and the card's parts","from":"c8","how":"App renders <Card file plan />.","why":"Holds the chosen fight (starting on default_fight_id), finds the worn and plan results for it, builds the readings columns, and picks the pull chart for a chain fight or the time chart otherwise. After review the Card t…","check":"fightId comes from useState(file.default_fight_id) and Card has no key. That is safe only because slice A can't open a second file once one is loaded.","covered":true,"tests":["lists the four fights and starts on the chain fight","What to gear for sits in the card, after the fight chart and before the damage split","a picked plan with no chain result reads Not simmed and leaves the pull chart to what you wear, until a fight it has"],"proof_note":"Default fight, slider placement and the missing-result path.","serves":["ticket #60, AC1","spec #56, changes after review of PR #68"],"blast":1,"blast_out":0,"flags":[]},{"id":"c31","path":"packages/armory/src/card.tsx","start":32,"end":65,"symbol":"minutesSeconds, FightSettings","title":"Time format and fight settings","from":"c30","how":"Card renders FightSettings under the select.","why":"m:ss rounds whole seconds down. The settings are read-only list lines, with Pull length for a chain fight and the setup lines only when a setup is present.","check":"minutesSeconds floors, so 47.6 s reads 0:47, as AC10 asks.","covered":true,"tests":["the 2-minute fight shows its settings as read-only text","an out of mana time of 47.6 s reads 0:47"],"proof_note":"Checks there is no editable control.","serves":["ticket #60, AC2","ticket #60, AC10"],"blast":1,"blast_out":0,"flags":[]},{"id":"c32","path":"packages/armory/src/card.tsx","start":67,"end":150,"symbol":"Readings","title":"Readings table and provisional marker","from":"c30","how":"Card passes the worn and plan columns.","why":"Rows are DPS, Health, Armor, Out of mana at, and Time to die (only when some column has one). A missing result reads 'Not simmed'. The Provisional marker is focusable and tied to its tooltip text by aria-describedby. Ou…","check":"The provisional text is rendered only when provisional is true, which the run took to satisfy 'always in the page'. CSS hides it visually until hover or focus.","covered":true,"tests":["the 2-minute fight reads what you wear against Max damage","out of mana reads m:ss for a time, Never for never and Not simmed for null","the sample shows the Provisional marker described by its text"],"proof_note":"Read via the readingRow helper.","serves":["ticket #60, AC5","ticket #60, AC7","ticket #60, AC19","spec #56, changes after review of PR #68"],"blast":1,"blast_out":0,"flags":[]},{"id":"c33","path":"packages/armory/src/card.tsx","start":152,"end":297,"symbol":"Legend, TimeChart, wornManaWords, planManaWords","title":"DPS and mana over the fight","from":"c30","how":"Card renders TimeChart for single fights.","why":"Draws polylines for worn (and the plan, when it has a timeline), dashed out-of-mana markers, the legend filtered to what's drawn, and the run-out sentences. Without a worn timeline it shows 'No fight timeline in this fi…","check":"wornManaWords and planManaWords are near copies (subject and verb differ). A not-simmed result draws no marker; check the chart and the sentence still agree for each of the three values.","covered":true,"tests":["the 2-minute fight draws the chart with its legend and out-of-mana markers","worn gear that never runs dry keeps mana to the end","a plan that never runs dry keeps mana to the end","out of mana not simmed says the sim did not check it, with no marker"],"proof_note":"Labels, markers and sentences asserted.","serves":["ticket #60, AC12","spec #56, changes after review of PR #68"],"blast":2,"blast_out":0,"flags":[]},{"id":"c34","path":"packages/armory/src/card.tsx","start":299,"end":393,"symbol":"dryPull, PullChart","title":"DPS and mana per pull","from":"c30","how":"Card renders PullChart for chain fights.","why":"Per pull, draws a DPS bar and start and end mana bars for worn and the plan, plus the run-dry sentences (a pull runs dry when mana_end is 0). Null pulls show 'No pull data in this file.' The run-dry sentences now come f…","check":"The note 'Each pull shows a DPS bar, then mana at the start and mana at the end (the paler bar).' is not one of the spec's strings. The run added it on purpose. Decide whether to keep it.","covered":true,"tests":["shows pull length, pulls, out of mana times, the pull chart and the run-dry sentences","a chain fight that never runs dry keeps mana through every pull","a chain fight with out of mana not simmed says the sim did not check it","a chain fight with pulls null says there is no pull data"],"proof_note":"Chain path covered, all three out_of_mana_s values.","serves":["ticket #60, AC3","ticket #60, AC4"],"blast":1,"blast_out":0,"flags":[]},{"id":"c35","path":"packages/armory/src/card.tsx","start":395,"end":455,"symbol":"DamageSplit, StatWeights, Checks","title":"Damage split, stat weights, checks","from":"c30","how":"Card renders these under the chart.","why":"Shows whole-percent damage shares, stat weights to two decimals with spec labels (or 'No stat weights for this fight.'), and a <details> with the pass/fail counts and one line per check.","check":"The damage split always uses the worn result, never the plan's, as the spec says.","covered":true,"tests":["Where the damage comes from lists Melee first and Lightning Shield last","the stat weights are in attack power, with Intellect and Mana per 5 s on the 2-minute fight","a copy with one failed check counts it and lists it as Failed"],"proof_note":"All three parts asserted.","serves":["ticket #60, AC16","ticket #60, AC17","ticket #60, AC18"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s18","n":19,"kind":"walk","path":"packages/armory/src/item-picker.tsx","title":"Item picker and wishlist","why_here":"Clicking a slot or the Wishlist button makes App open these dialogs.","changes":[{"id":"c36","path":"packages/armory/src/item-picker.tsx","start":11,"end":91,"symbol":"ItemPicker","title":"Ranked alternatives with wishlist toggles","from":"c8","how":"App renders ItemPicker when dialog.kind is 'picker'.","why":"Shows the worn item, then the alternatives in file order minus the worn id, each with its gain, source, 'Needs level N' above the character's level, Classic data, and an aria-pressed wishlist toggle.","check":"A gain of 0 or less is still listed here, unlike on the slot. The worn-id filter keeps the Neck picker at 4 rows.","covered":true,"tests":["the Hands picker shows what you wear, then Gloves of the Greatfather first","the Neck picker lists Mark of the Marsh at -1.7 EP and leaves out the worn pendant","Add to wishlist toggles to a pressed On your wishlist and back, and the header counts"],"proof_note":"Through the page.","serves":["ticket #59, AC5","ticket #59, AC8","ticket #59, AC10"],"blast":1,"blast_out":0,"flags":[]},{"id":"c37","path":"packages/armory/src/item-picker.tsx","start":93,"end":126,"symbol":"WishlistDialog","title":"Wishlist dialog","from":"c8","how":"App renders it when dialog.kind is 'wishlist'.","why":"Lists each entry with the slot label it was first added from and its source text, plus a Remove button, or shows 'Nothing on your wishlist yet.'","check":"After Remove, the focused button disappears. The document-level key listener in Dialog keeps Escape and Tab working, and a test covers this.","covered":true,"tests":["the wishlist dialog lists the item with its slot and source, and Remove empties it","Quick Strike Ring added from Finger 1 shows once in the wishlist, under Finger 1"],"proof_note":"Through the page.","serves":["ticket #59, AC11"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s19","n":20,"kind":"walk","path":"packages/armory/src/dialog.tsx","title":"The shared modal","why_here":"The picker, wishlist, talents and Pawn dialogs all wrap their content in Dialog.","changes":[{"id":"c38","path":"packages/armory/src/dialog.tsx","start":1,"end":85,"symbol":"Dialog","title":"Hand-written focus trap","from":"c36","how":"ItemPicker renders <Dialog title=…>.","why":"role=dialog, aria-modal and aria-labelledby the title. Focus moves to Close on mount. A document keydown listener handles Escape and wraps Tab and Shift+Tab across the focusable elements inside, and cleanup gives focus…","check":"The rest of the page isn't made inert or aria-hidden (the tests query header buttons with hidden: true). Under StrictMode's double effect, check that the opener captured on the second run is still the real opener.","covered":true,"tests":["the picker takes focus, keeps Tab inside, closes on Escape and gives focus back to the slot","after Remove from the keyboard, Escape still closes the wishlist and gives focus back to its button","the talents dialog takes focus, keeps Tab inside, closes on Escape and gives focus back"],"proof_note":"Keyboard paths through happy-dom.","serves":["ticket #59, AC13","ticket #59, AC15","ticket #62, AC10"],"blast":3,"blast_out":0,"flags":[]}]},{"id":"s20","n":21,"kind":"walk","path":"packages/armory/src/talents.tsx","title":"Talents dialog","why_here":"The header's Talents button makes App open it.","changes":[{"id":"c39","path":"packages/armory/src/talents.tsx","start":73,"end":127,"symbol":"TalentsDialog","title":"Build radio group and best-build line","from":"c8","how":"App renders TalentsDialog when dialog.kind is 'talents'.","why":"Shows the points, a Build radiogroup that starts on Best simmed when best exists (otherwise Best simmed is disabled with 'No best build in this file.'), and the best build's DPS gain with its fight label.","check":"If best.fight_id isn't found, it falls back to the raw id. The schema already refuses that case.","covered":true,"tests":["Talents opens a dialog with 21 points and a Build radio group on Best simmed","with best null, Best simmed is disabled, Your build is checked, and No best build in this file. shows"],"proof_note":"Both best and null-best paths.","serves":["ticket #62, AC1","ticket #62, AC6"],"blast":1,"blast_out":0,"flags":[]},{"id":"c40","path":"packages/armory/src/talents.tsx","start":14,"end":71,"symbol":"TalentGrid","title":"Tier-by-column grid","from":"c39","how":"TalentsDialog renders the grid for the chosen build.","why":"A table with one row per tier and one cell per column up to the highest of each, with empty cells in the gaps. In Best simmed, a talent whose rank differs is marked data-changed and labelled 'changed from'.","check":"The run's review called the aria-label on a role-less div a should_fix, and role=\"group\" has been added since. Check that screen readers announce it.","covered":true,"tests":["Best simmed marks Flurry 5/5 changed from 4/5 and Anticipation 0/3 changed","talents sit by tier and column, 18 in the grid"],"proof_note":"Placement and markings asserted.","serves":["ticket #62, AC2","ticket #62, AC4"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s21","n":22,"kind":"walk","path":"packages/armory/src/pawn.tsx","title":"Pawn strings dialog","why_here":"The header's Export Pawn string button makes App open it.","changes":[{"id":"c41","path":"packages/armory/src/pawn.tsx","start":1,"end":69,"symbol":"PawnDialog, PawnRow","title":"Copy with a 2-second note","from":"c8","how":"App renders PawnDialog when dialog.kind is 'pawn'.","why":"Each string sits in a labelled read-only textarea with a Copy button. writeText success shows 'Copied' and failure (including a missing clipboard) shows 'Copy failed', each for 2 s. The timer restarts on each click and…","check":"Rows are keyed by label. Two Pawn strings with the same label would collide.","covered":true,"tests":["Export Pawn string opens Pawn strings with the how-to and both strings in read-only text boxes","Copy writes the string, reads Copied, then Copy again after 2 seconds","a rejected clipboard write reads Copy failed, then Copy again after 2 seconds"],"proof_note":"The clipboard is mocked, and the tests wait the real 2 s.","serves":["ticket #62, AC7","ticket #62, AC8","ticket #62, AC9"],"blast":1,"blast_out":0,"flags":[]}]},{"id":"s22","n":23,"kind":"walk","path":"packages/armory/src/styles.css","title":"Plain styles on tokens","why_here":"index.html links this stylesheet. It places the layout the components describe.","changes":[{"id":"c42","path":"packages/armory/src/styles.css","start":1,"end":476,"symbol":null,"title":"Design tokens and layout","from":"c6","how":"index.html links ./styles.css.","why":"Custom-property tokens for colour, type and spacing. A grid gear pane with top/left/middle/right/bottom areas, quality colours, filled or outlined gain badges, the dialog overlay, the provisional tooltip on hover or foc…","check":"The .planner-body grid (line 465) and its 64rem media query (line 470) are now the only layout rule for the two columns. The media query repeats display: grid, which the base rule already sets; check that is harmless and whether to keep it.","covered":true,"tests":["at desktop width the gear and the card sit side by side in two columns"],"proof_note":"Only the two-column rule is tested, by matching the CSS text; nothing renders it.","serves":["spec #56","spec #56, changes after review of PR #68"],"blast":2,"blast_out":0,"flags":[]}]},{"id":"s23","n":24,"kind":"loose_ends","path":null,"title":"Test harness, tests, config and docs","why_here":"These changes sit outside the page's call chain: the test harness and the test files, the TypeScript and lock configuration, the commit scope, the glossary and agent guide, and the changesets.","changes":[{"id":"c43","path":"packages/armory/tests/dom.js","start":1,"end":27,"symbol":"teardownDom","title":"happy-dom registrar in CommonJS","from":null,"how":"Every rendering test file imports it first.","why":"Registers happy-dom's globals before React DOM and Testing Library load (they read document once on load), and unregisters them in afterAll. A leftover window would make the addon's Lua WebAssembly loader load as a brow…","check":"It relies on Bun evaluating CommonJS imports before ES module bodies, inside a \"type\": \"module\" package. Confirm every rendering test file imports './dom' first, including the new error-boundary.test.tsx.","covered":true,"tests":["its teardown leaves globalThis.window undefined"],"proof_note":"Teardown is tested. The mixed armory-and-addon run is no longer tested; the root `bun run check` runs both suites.","serves":["ticket #64, AC10","spec #56"],"blast":9,"blast_out":0,"flags":[{"kind":"risk","rule":"Test helper module format","message":"require/module.exports in a \"type\": \"module\" package works only because Bun detects CommonJS by syntax. Node or another runner would load it as ESM and fail.","line":15}]},{"id":"c44","path":"packages/armory/tests/dom.d.ts","start":1,"end":2,"symbol":"teardownDom","title":"Types for dom.js","from":null,"how":"tsc needs a type for the JS helper's export.","why":"Declares teardownDom so dom-teardown.test.tsx type-checks.","check":"Keep it in step with dom.js's exports.","covered":false,"tests":[],"proof_note":"No test covers this. bun run type-check (in check:all) type-checks it; the test that ran type-check:armory was removed.","serves":["ticket #64, AC10"],"blast":1,"blast_out":0,"flags":[]},{"id":"c45","path":"packages/armory/tests/open-app.tsx","start":1,"end":79,"symbol":"openFile, openSample, variant, readingRow","title":"Shared app test helpers","from":null,"how":"The app test files import these after './dom'.","why":"Renders App, picks a JSON File, builds sample variants with structuredClone, and waits for the character's h1 (not just any h1). It also reads a readings-table row. It replaced five drifting per-file copies.","check":"openFile waits for the h1 named after the character. The old copy that waited for any h1 didn't wait for the file.","covered":true,"tests":["lists the four fights and starts on the chain fight"],"proof_note":"Used by every app test file.","serves":["spec #56"],"blast":5,"blast_out":0,"flags":[]},{"id":"c46","path":"packages/armory/tsconfig.json","start":1,"end":18,"symbol":null,"title":"Package tsconfig","from":null,"how":"type-check:armory runs tsc in this package.","why":"react-jsx, DOM libs, bun types, strict, bundler resolution and JSON modules, with src and tests included. It now also includes scripts/, so the moved schema writer is type-checked.","check":"It uses tab indentation, while the other new JSON files use spaces. That is harmless.","covered":false,"tests":[],"proof_note":"No test covers this. type-check:armory (in check:all) uses it; the test that ran it was removed.","serves":["spec #56"],"blast":1,"blast_out":0,"flags":[]},{"id":"c47","path":"bun.lock","start":32,"end":76,"symbol":null,"title":"Armory workspace and catalog in the lock","from":null,"how":"bun install regenerated it.","why":"Adds the packages/armory workspace and the new catalog entries, resolved to react 19.3.1, zod 4.6.7, react-error-boundary 6.1.6 (line 476), @testing-library/react 16.3.3 and their transitive packages.","check":"The resolutions should respect bunfig's 7-day minimum release age, which the run couldn't check offline.","covered":false,"tests":[],"proof_note":"No test covers this. The engine's frozen install exercises it.","serves":["spec #56"],"blast":1,"blast_out":1,"flags":[]},{"id":"c48","path":"commit.config.ts","start":26,"end":26,"symbol":"scopes","title":"armory commit scope","from":null,"how":"Commit tooling, not page code.","why":"Adds the 'armory' scope labelled 'The armory planner'.","check":"The label matches the glossary term.","covered":true,"tests":["has the scope armory"],"proof_note":"Imports the config.","serves":["ticket #64, AC5"],"blast":1,"blast_out":0,"flags":[]},{"id":"c49","path":"AGENTS.md","start":13,"end":16,"symbol":null,"title":"Armory planner paragraph","from":null,"how":"Docs.","why":"Says the repo also holds the armory planner, which is separate from the addon and the site and doesn't ship with the addon.","check":"Line 5 still says Turbo 'That is all it does now.', which reads fine because it refers to the addon. Confirm that this answers the spec's 'instead of quietly breaking the rule'.","covered":true,"tests":["has the armory planner paragraph right after the first one"],"proof_note":"Exact paragraph pinned.","serves":["ticket #64, AC1"],"blast":1,"blast_out":0,"flags":[]},{"id":"c50","path":"AGENTS.md","start":22,"end":25,"symbol":null,"title":"check:all now lists the armory tests","from":null,"how":"Docs.","why":"Keeps the ground rule's description of check:all accurate.","check":"Line 23 runs past the file's wrap width.","covered":false,"tests":[],"proof_note":"No test covers this.","serves":[],"blast":0,"blast_out":0,"flags":[{"kind":"cleanliness","rule":"Wrap prose like the rest of the file","message":"The edited line runs well past the file's wrap width.","line":23}]},{"id":"c51","path":"AGENTS.md","start":54,"end":54,"symbol":null,"title":"Where things live row, with the README","from":null,"how":"Docs.","why":"Adds packages/armory/ to the table, now pointing at its README for how to run it and the samples.","check":"The row text is pinned by the test.","covered":true,"tests":["has a Where things live row for packages/armory/"],"proof_note":"Exact row.","serves":["ticket #64, AC1"],"blast":1,"blast_out":0,"flags":[]},{"id":"c52","path":"AGENTS.md","start":86,"end":89,"symbol":null,"title":"Every package is private","from":null,"how":"Docs.","why":"Replaces 'both packages' now that there are three.","check":"README.md and the CI comments may still say 'both' (the run treated those as nits).","covered":true,"tests":["says every package is private, not both packages"],"proof_note":"String check.","serves":["ticket #64, AC11"],"blast":1,"blast_out":0,"flags":[]},{"id":"c53","path":"CONTEXT.md","start":69,"end":85,"symbol":"The armory planner","title":"Glossary section","from":null,"how":"Docs.","why":"Adds Armory planner, Results file, Plan and Export addon, each with its _Avoid_ line, after The addon.","check":"The _Avoid_ lines start lowercase, unlike older entries. The ticket fixes that text and the test pins it.","covered":true,"tests":["has The armory planner section after The addon, with its four entries"],"proof_note":"Entries pinned.","serves":["ticket #64, AC2"],"blast":2,"blast_out":0,"flags":[]},{"id":"c54","path":".changeset/README.md","start":5,"end":9,"symbol":null,"title":"Changeset guide names armory","from":null,"how":"Docs.","why":"Lists @goturbo/armory as a package to pick and says every package is private.","check":"The wording matches AGENTS.md.","covered":false,"tests":[],"proof_note":"No test covers this.","serves":[],"blast":1,"blast_out":0,"flags":[]},{"id":"c55","path":".changeset/luca-spec-56-20261114t173522z-d086f282.md","start":1,"end":5,"symbol":null,"title":"Minor changeset for armory","from":null,"how":"Release bookkeeping.","why":"Every PR into main needs a changeset. This one is a minor bump for @goturbo/armory.","check":"Only armory is bumped, so the addon's version tag won't move.","covered":false,"tests":[],"proof_note":"No test covers this. require-changesets.yml checks that it exists.","serves":[],"blast":1,"blast_out":1,"flags":[]},{"id":"c56","path":"packages/armory/tests/app.test.tsx","start":1,"end":19,"symbol":null,"title":"Smoke test","from":null,"how":"Test file.","why":"Renders App on happy-dom and finds the h1.","check":"It imports './dom' first.","covered":true,"tests":["shows a level-one heading Armory planner"],"proof_note":"Is the test.","serves":["ticket #64, AC4"],"blast":0,"blast_out":0,"flags":[]},{"id":"c57","path":"packages/armory/tests/dom-teardown.test.tsx","start":1,"end":24,"symbol":null,"title":"Teardown test","from":null,"how":"Test file.","why":"Renders, cleans up, tears down, and checks that window is gone.","check":"afterAll calls teardownDom a second time, which is safe because it is idempotent.","covered":true,"tests":["its teardown leaves globalThis.window undefined"],"proof_note":"Is the test.","serves":["ticket #64, AC10"],"blast":0,"blast_out":0,"flags":[]},{"id":"c58","path":"packages/armory/tests/open-file.test.tsx","start":1,"end":365,"symbol":null,"title":"Opening a file tests","from":null,"how":"Test file.","why":"Covers #58: the new-visitor state, empty slots, the three errors, recovery, drop, the sample, the header, slot order, the sheet. After review: the three steps, an unreadable file, and drops anywhere on the page.","check":"slotLabelsInOrder checks DOM order, not visual placement.","covered":true,"tests":["Opening a file tests"],"proof_note":"It is a test file.","serves":["ticket #58, AC1"],"blast":0,"blast_out":0,"flags":[]},{"id":"c59","path":"packages/armory/tests/upgrades.test.tsx","start":1,"end":447,"symbol":null,"title":"Upgrades, picker, wishlist tests","from":null,"how":"Test file.","why":"Covers #59: gains and sizes, the picker rows, the wishlist toggle and dialog, and focus in both dialogs, including after Remove. After review: a gain shown as +0.0, and an alternative with no gain at all.","check":"headerButton queries with hidden: true because the page behind the modal may be aria-hidden.","covered":true,"tests":["Upgrades, picker, wishlist tests"],"proof_note":"It is a test file.","serves":["ticket #59, AC2"],"blast":0,"blast_out":0,"flags":[]},{"id":"c60","path":"packages/armory/tests/card.test.tsx","start":1,"end":494,"symbol":null,"title":"Card tests","from":null,"how":"Test file.","why":"Covers #60: fights, settings, readings, both charts, sentences, split, weights, checks, provisional. After review: the three out_of_mana_s values in the table, both charts and the sentences.","check":"chart() throws if the labelled element isn't an SVG, which guards against a matching text node.","covered":true,"tests":["Card tests"],"proof_note":"It is a test file.","serves":["ticket #60, AC5"],"blast":0,"blast_out":0,"flags":[]},{"id":"c61","path":"packages/armory/tests/plan-view.test.tsx","start":1,"end":367,"symbol":null,"title":"Plan view and slider tests","from":null,"how":"Test file.","why":"Covers #61, plus the spec §9 path where a picked plan has no result on the chain fight. After review: the sliders inside the card, the picker from the plan view, and Replaces nothing.","check":"There is no arrow-key slider test, though the spec's Testing Decisions list one.","covered":true,"tests":["Plan view and slider tests"],"proof_note":"It is a test file.","serves":["ticket #61, AC1"],"blast":0,"blast_out":0,"flags":[]},{"id":"c62","path":"packages/armory/tests/talents-pawn.test.tsx","start":1,"end":307,"symbol":null,"title":"Talents and Pawn tests","from":null,"how":"Test file.","why":"Covers #62: the build radios, changed marks, grid placement, best-build line, Pawn copy timing and the keyboard trap.","check":"The clipboard is replaced after userEvent.setup(), because user-event installs its own stub. The 2-second waits are real, so this file is slow.","covered":true,"tests":["the dialog says what the best build gains"],"proof_note":"Is the test.","serves":["ticket #62, AC5"],"blast":0,"blast_out":0,"flags":[]},{"id":"c63","path":"packages/armory/tests/results-file.test.ts","start":1,"end":528,"symbol":null,"title":"Schema and JSON Schema tests","from":null,"how":"Test file.","why":"Covers #57: both samples, strictness, versions, problem-line format, each cross-field rule by message, and the JSON Schema. After review: talent bounds, the three out_of_mana_s values, and the duplicate rules; the JSON…","check":"The JSON Schema test only reads the committed file and writes its fresh copy to a temp folder, cleaned up in finally. Check that it also asserts the committed file is unchanged afterwards (it does, at the end).","covered":true,"tests":["bun run armory:schema writes the JSON Schema, and the committed text matches a fresh one"],"proof_note":"It is a test file.","serves":["ticket #57, AC4"],"blast":0,"blast_out":0,"flags":[{"kind":"cleanliness","rule":"No stale workarounds","message":"The computed-path dynamic import and its 'before the module exists' comment are left over now that results-file.ts exists, so readResultsFile is typed loosely.","line":14}]},{"id":"c64","path":"packages/armory/tests/repo-setup.test.ts","start":1,"end":244,"symbol":null,"title":"Repo wiring tests","from":null,"how":"Test file.","why":"Covers #64. It reads AGENTS.md, CONTEXT.md and the package files as a contract, runs build:armory (nothing else does), and checks ESLint takes the .tsx files with the Prettier rule on. After review it no longer runs tsc…","check":"The build test still writes packages/armory/dist/ during test:armory; it checks git ignores it. Is a real build inside the test run acceptable, given check:all went from 19.3 s to 13.3 s without the rest?","covered":true,"tests":["build:armory writes packages/armory/dist/index.html, which git ignores","takes the package .tsx files, with the Prettier rule on"],"proof_note":"It is a test file.","serves":["ticket #64, AC13","ticket #64, AC12"],"blast":0,"blast_out":0,"flags":[]},{"id":"c66","path":"packages/armory/tests/error-boundary.test.tsx","start":1,"end":105,"symbol":null,"title":"Error boundary tests","from":null,"how":"Test file.","why":"Checks that ErrorBoundary is a function component and not a class, then throws from a test-only Tripwire inside the boundary to check the message, the error text, Start over bringing back the new-visitor state, and that…","check":"The last test calls App() as a plain function to read its root element type. Check that stays valid if App gains hooks.","covered":true,"tests":["Error boundary tests"],"proof_note":"It is a test file.","serves":["spec #56, changes after review of PR #68"],"blast":0,"blast_out":0,"flags":[]},{"id":"c67","path":"packages/armory/tests/gains.test.ts","start":1,"end":75,"symbol":null,"title":"Gain rounding tests","from":null,"how":"Test file.","why":"Unit tests for big and small on the shown value, +0.0 being no upgrade, no -0.0, and an alternative with no gain.","check":"The edge values (14.96, 14.94, 2.96, 2.94, 0.04, 0.05) sit off the .x5 rounding edge except 0.05; check 0.05 rounds up reliably.","covered":true,"tests":["Gain rounding tests"],"proof_note":"It is a test file.","serves":["spec #56, changes after review of PR #68"],"blast":0,"blast_out":0,"flags":[]},{"id":"c68","path":"packages/armory/tests/layout-css.test.ts","start":1,"end":15,"symbol":null,"title":"Two-column layout test","from":null,"how":"Test file.","why":"Reads styles.css as text and matches the 64rem media query's .planner-body grid.","check":"It matches the CSS text with a regex; it doesn't render anything, so it can't catch an earlier rule overriding the grid.","covered":true,"tests":["Two-column layout test"],"proof_note":"It is a test file.","serves":["spec #56, changes after review of PR #68"],"blast":0,"blast_out":0,"flags":[]},{"id":"c69","path":"packages/armory/tests/plans.test.ts","start":1,"end":55,"symbol":null,"title":"Plan tie-break tests","from":null,"how":"Test file.","why":"Unit tests that defaultPlan and closestPlan break ties by file order, and a nearer plan beats an earlier one.","check":"These test plans.ts directly, which only the page tests reached before.","covered":true,"tests":["Plan tie-break tests"],"proof_note":"It is a test file.","serves":[],"blast":0,"blast_out":0,"flags":[]},{"id":"c70","path":"packages/armory/README.md","start":1,"end":45,"symbol":null,"title":"Armory package README","from":null,"how":"Docs.","why":"How to run the page, the other scripts, the results-file contract (Zod as source of truth, the generated JSON Schema, null means not simmed) and what is made up in the two samples.","check":"It says null means \"not simmed\" in every part of the file. Check that matches the schema now that out_of_mana_s uses \"never\".","covered":false,"tests":[],"proof_note":"No test covers this. repo-setup pins only the AGENTS.md row that points here.","serves":[],"blast":1,"blast_out":0,"flags":[]}]}],"no_story_files":[{"path":".changeset/README.md","status":"modified","add":4,"del":4},{"path":".changeset/luca-spec-56-20261114t173522z-d086f282.md","status":"added","add":5,"del":0},{"path":"AGENTS.md","status":"modified","add":9,"del":3},{"path":"CONTEXT.md","status":"modified","add":18,"del":0},{"path":"bun.lock","status":"modified","add":93,"del":1},{"path":"commit.config.ts","status":"modified","add":1,"del":0},{"path":"package.json","status":"modified","add":19,"del":4},{"path":"packages/armory/README.md","status":"added","add":45,"del":0},{"path":"packages/armory/package.json","status":"added","add":29,"del":0},{"path":"packages/armory/scripts/write-results-schema.ts","status":"added","add":15,"del":0},{"path":"packages/armory/src/app.tsx","status":"added","add":315,"del":0},{"path":"packages/armory/src/bring-in.tsx","status":"added","add":91,"del":0},{"path":"packages/armory/src/card.tsx","status":"added","add":514,"del":0},{"path":"packages/armory/src/dialog.tsx","status":"added","add":85,"del":0},{"path":"packages/armory/src/error-boundary.tsx","status":"added","add":40,"del":0},{"path":"packages/armory/src/gains.ts","status":"added","add":56,"del":0},{"path":"packages/armory/src/gear-pane.tsx","status":"added","add":239,"del":0},{"path":"packages/armory/src/index.html","status":"added","add":13,"del":0},{"path":"packages/armory/src/item-picker.tsx","status":"added","add":126,"del":0},{"path":"packages/armory/src/main.tsx","status":"added","add":13,"del":0},{"path":"packages/armory/src/pawn.tsx","status":"added","add":69,"del":0},{"path":"packages/armory/src/plans.ts","status":"added","add":51,"del":0},{"path":"packages/armory/src/results-file.schema.json","status":"added","add":1096,"del":0},{"path":"packages/armory/src/results-file.ts","status":"added","add":528,"del":0},{"path":"packages/armory/src/role-sliders.tsx","status":"added","add":80,"del":0},{"path":"packages/armory/src/sample-truncha-first-run.json","status":"added","add":2073,"del":0},{"path":"packages/armory/src/sample-truncha.json","status":"added","add":2984,"del":0},{"path":"packages/armory/src/slot-labels.ts","status":"added","add":44,"del":0},{"path":"packages/armory/src/styles.css","status":"added","add":476,"del":0},{"path":"packages/armory/src/talents.tsx","status":"added","add":127,"del":0},{"path":"packages/armory/tests/app.test.tsx","status":"added","add":19,"del":0},{"path":"packages/armory/tests/card.test.tsx","status":"added","add":494,"del":0},{"path":"packages/armory/tests/dom-teardown.test.tsx","status":"added","add":24,"del":0},{"path":"packages/armory/tests/dom.d.ts","status":"added","add":2,"del":0},{"path":"packages/armory/tests/dom.js","status":"added","add":27,"del":0},{"path":"packages/armory/tests/error-boundary.test.tsx","status":"added","add":105,"del":0},{"path":"packages/armory/tests/gains.test.ts","status":"added","add":75,"del":0},{"path":"packages/armory/tests/layout-css.test.ts","status":"added","add":15,"del":0},{"path":"packages/armory/tests/open-app.tsx","status":"added","add":79,"del":0},{"path":"packages/armory/tests/open-file.test.tsx","status":"added","add":365,"del":0},{"path":"packages/armory/tests/plan-view.test.tsx","status":"added","add":367,"del":0},{"path":"packages/armory/tests/plans.test.ts","status":"added","add":55,"del":0},{"path":"packages/armory/tests/repo-setup.test.ts","status":"added","add":244,"del":0},{"path":"packages/armory/tests/results-file.test.ts","status":"added","add":528,"del":0},{"path":"packages/armory/tests/talents-pawn.test.tsx","status":"added","add":307,"del":0},{"path":"packages/armory/tests/upgrades.test.tsx","status":"added","add":447,"del":0},{"path":"packages/armory/tsconfig.json","status":"added","add":18,"del":0}],"demo":{"done_stop_ids":["s1","s2","s3","s4","s5"],"current_stop_id":"s24","looks_good":["package.json","packages/armory/package.json","packages/armory/src/index.html","packages/armory/src/main.tsx"],"drafts":[{"path":"packages/armory/src/app.tsx","line":214,"body":"Should the page-wide drop still work once a file is open? The spec says anywhere."},{"path":"packages/armory/src/results-file.ts","line":96,"body":"out_of_mana_s: is any runner already writing null as \"never\"?"}],"threads":[{"path":"packages/armory/src/results-file.ts","line":96,"author":"reviewer","resolved":false,"body":"Same schema_version but a new meaning for null?"}],"second_visit":{"since":"a1b2c3d","changed":["packages/armory/src/app.tsx","packages/armory/src/error-boundary.tsx","packages/armory/src/results-file.ts","packages/armory/src/styles.css","packages/armory/tests/error-boundary.test.tsx"]}}};
+</script>
+<script>
+(() => {
+const S = window.STORY;
+const D = S.demo;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = n => n.toLocaleString('en-US');
+const md = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+
+/* ---------- themes (mockup only) ---------- */
+const THEMES = {
+  dark: { 'sideBar-background': '#181818', 'editor-background': '#1f1f1f', foreground: '#cccccc', descriptionForeground: '#9d9d9d', focusBorder: '#0078d4', 'list-hoverBackground': '#2a2d2e', 'list-activeSelectionBackground': '#04395e', 'panel-border': '#2b2b2b', 'badge-background': '#616161', 'charts-red': '#f14c4c', 'charts-yellow': '#cca700', 'charts-green': '#89d185', 'charts-blue': '#3794ff', 'charts-purple': '#b180d7', 'charts-orange': '#d18616', 'gitDecoration-addedResourceForeground': '#81b88b', 'gitDecoration-deletedResourceForeground': '#c74e39', 'gitDecoration-modifiedResourceForeground': '#e2c08d', 'editorWarning-foreground': '#cca700', errorForeground: '#f85149', 'textLink-foreground': '#4daafc', 'button-background': '#0078d4', 'button-foreground': '#ffffff', 'button-secondaryBackground': '#313131', 'button-secondaryForeground': '#cccccc' },
+  light: { 'sideBar-background': '#f8f8f8', 'editor-background': '#ffffff', foreground: '#3b3b3b', descriptionForeground: '#717171', focusBorder: '#005fb8', 'list-hoverBackground': '#f0f0f0', 'list-activeSelectionBackground': '#e4e6f1', 'panel-border': '#e5e5e5', 'badge-background': '#cccccc', 'charts-red': '#e51400', 'charts-yellow': '#bf8803', 'charts-green': '#388a34', 'charts-blue': '#1a85ff', 'charts-purple': '#652d90', 'charts-orange': '#d18616', 'gitDecoration-addedResourceForeground': '#587c0c', 'gitDecoration-deletedResourceForeground': '#ad0707', 'gitDecoration-modifiedResourceForeground': '#895503', 'editorWarning-foreground': '#bf8803', errorForeground: '#e51400', 'textLink-foreground': '#005fb8', 'button-background': '#005fb8', 'button-foreground': '#ffffff', 'button-secondaryBackground': '#e5e5e5', 'button-secondaryForeground': '#3b3b3b' }
+};
+function applyTheme(t) {
+  for (const [k, v] of Object.entries(THEMES[t])) document.documentElement.style.setProperty('--vscode-' + k, v);
+  document.documentElement.style.colorScheme = t;
+}
+
+/* ---------- size scale: shared log ruler ---------- */
+const MAXL = 4000;
+const pos = n => Math.log10(n + 1) / Math.log10(MAXL + 1) * 100;
+document.documentElement.style.setProperty('--t1', pos(10) + '%');
+document.documentElement.style.setProperty('--t2', pos(100) + '%');
+document.documentElement.style.setProperty('--t3', pos(1000) + '%');
+
+/* ---------- derived model ---------- */
+const files = S.files;
+const fileBy = new Map(files.map(f => [f.path, f]));
+const stopBy = new Map();
+const loose = S.stops.find(s => s.kind === 'loose_ends');
+S.stops.forEach((s, i) => { s.idx = i; if (s.path) stopBy.set(s.path, s); });
+const changesBy = new Map();
+const changeById = new Map();
+for (const s of S.stops) for (const c of s.changes) {
+  c.stop = s; changeById.set(c.id, c);
+  if (!changesBy.has(c.path)) changesBy.set(c.path, []);
+  changesBy.get(c.path).push(c);
+}
+const looseOrder = new Map();
+loose.changes.forEach((c, i) => { if (!looseOrder.has(c.path)) looseOrder.set(c.path, i); });
+for (const f of files) {
+  const st = stopBy.get(f.path);
+  f.stop = st || null;
+  f.order = st ? st.idx : 100 + (looseOrder.has(f.path) ? looseOrder.get(f.path) : 99);
+  f.size = f.add + f.del;
+  const cs = changesBy.get(f.path) || [];
+  f.changes = cs;
+  const fl = cs.flatMap(c => c.flags);
+  f.risk = fl.filter(x => x.kind === 'risk').length;
+  f.conv = fl.filter(x => x.kind !== 'risk').length;
+  f.untested = cs.some(c => !c.covered);
+  f.blast = cs.reduce((m, c) => Math.max(m, c.blast || 0), 0);
+  f.blastOut = cs.reduce((m, c) => Math.max(m, c.blast_out || 0), 0);
+  f.drafts = D.drafts.filter(d => d.path === f.path);
+  f.threads = D.threads.filter(t => t.path === f.path && !t.resolved);
+  f.peek = (cs.find(c => c.flags.length) || cs[0] || {}).check || f.role;
+  const firstFlag = fl[0];
+  f.peekFlag = firstFlag ? firstFlag.message : '';
+}
+const needsLook = f => f.risk || f.conv || f.untested || f.blastOut > 0 || f.drafts.length || f.threads.length;
+const groupFiles = g => files.filter(f => f.group === g.id).sort((a, b) => a.order - b.order);
+const changed = new Set(D.second_visit.changed);
+
+/* ---------- state ---------- */
+const st = {
+  mode: 'first', filter: 'all', showNoise: false, theme: 'dark', width: 'narrow',
+  collapsed: new Set(), openRows: new Set(), openNoise: new Set(), openRuns: new Set(),
+  focusKey: null, hoverKey: null, summaryOpen: false, good: new Set(), done: new Set(), current: null, note: ''
+};
+function resetMode() {
+  st.openRows.clear(); st.openNoise.clear(); st.openRuns.clear(); st.collapsed.clear(); st.note = '';
+  st.filter = 'all';
+  if (st.mode === 'first') {
+    st.good = new Set(D.looks_good); st.done = new Set(D.done_stop_ids); st.current = D.current_stop_id;
+  } else if (st.mode === 'second') {
+    st.good = new Set(files.filter(f => !changed.has(f.path)).map(f => f.path));
+    st.done = new Set(S.stops.map(s => s.id)); st.current = null;
+  } else {
+    st.good = new Set(); st.done = new Set(); st.current = null;
+  }
+  st.focusKey = null;
+}
+
+function fileState(f) {
+  if (st.good.has(f.path)) return 'good';
+  if (st.mode !== 'first') return 'none';
+  if (f.stop && f.stop.id === st.current) return 'current';
+  if (f.stop && st.done.has(f.stop.id)) return 'walked';
+  return 'none';
+}
+function stopState(s) {
+  const fs = s.path ? [fileBy.get(s.path)] : [...new Set(s.changes.map(c => c.path))].map(p => fileBy.get(p)).filter(Boolean);
+  if (fs.length && fs.every(f => st.good.has(f.path))) return 'good';
+  if (s.id === st.current) return 'current';
+  if (st.mode === 'second' && fs.some(f => changed.has(f.path))) return 'lit';
+  if (st.done.has(s.id)) return 'walked';
+  return 'left';
+}
+
+/* ---------- icons ---------- */
+const I = {
+  risk: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 11V1.5M3 2h6l-1.6 2.3L9 6.6H3" stroke-linejoin="round"/></svg>',
+  conv: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M6 1.3 11 10.5H1z" stroke-linejoin="round"/><path d="M6 4.6v3M6 8.8v.4"/></svg>',
+  unt: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 1.6"><circle cx="6" cy="6" r="4.4"/></svg>',
+  blast: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="6" cy="6" r="1.6" fill="currentColor"/><circle cx="6" cy="6" r="4.5" opacity=".7"/></svg>',
+  draft: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 10l.6-2.6L8.2 1.8l2 2-5.6 5.6z" stroke-linejoin="round"/></svg>',
+  thread: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1.5 2h9v6H5l-2.5 2.2V8h-1z" stroke-linejoin="round"/></svg>',
+  good: '<svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="currentColor"/><path d="M3.6 6.1l1.6 1.6 3.2-3.4" fill="none" stroke="var(--bg)" stroke-width="1.4"/></svg>',
+  walked: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="6" r="4.5"/><circle cx="6" cy="6" r="2" fill="currentColor" stroke="none"/></svg>',
+  current: '<svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.7 3.5 8.5 6 4.7 8.5z" fill="currentColor"/></svg>',
+  none: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".7"><circle cx="6" cy="6" r="4.5"/></svg>'
+};
+const STATE_WORD = { good: 'Looks good', walked: 'Walked', current: 'You are here', none: 'Not looked at' };
+const NSD = (field) => `<span class="nsd" title="Needs story data: ${esc(field)}">needs story data</span>`;
+const DER = (why) => `<span class="der" title="${esc(why)}">derived</span>`;
+
+function barHtml(add, del) {
+  const n = add + del;
+  const w = pos(n);
+  const dw = n ? del / n * 100 : 0;
+  return `<span class="bar"><i style="width:${w.toFixed(2)}%">${dw ? `<b style="width:${Math.max(dw, 4).toFixed(1)}%"></b>` : ''}</i></span>`;
+}
+function markers(f) {
+  const m = [];
+  if (f.risk) m.push(`<span class="ic-risk" title="Risk flag">${I.risk}</span>`);
+  if (f.conv) m.push(`<span class="ic-conv" title="Cleanliness or convention flag">${I.conv}</span>`);
+  if (f.untested) m.push(`<span class="ic-unt" title="Has an untested change">${I.unt}</span>`);
+  if (f.blast >= 3 || f.blastOut) m.push(`<span class="ic-blast" title="${f.blast} dependents in this PR${f.blastOut ? ', ' + f.blastOut + ' outside it' : ''}">${I.blast}${f.blast}${f.blastOut ? '+' : ''}</span>`);
+  if (f.drafts.length) m.push(`<span class="ic-draft" title="${f.drafts.length} draft comment${f.drafts.length > 1 ? 's' : ''}">${I.draft}${f.drafts.length}</span>`);
+  if (f.threads.length) m.push(`<span class="ic-thread" title="${f.threads.length} open thread${f.threads.length > 1 ? 's' : ''}">${I.thread}${f.threads.length}</span>`);
+  return m.join('');
+}
+function split(p) { const i = p.lastIndexOf('/'); return i < 0 ? ['', p] : [p.slice(0, i), p.slice(i + 1)]; }
+
+/* ---------- aside ---------- */
+function renderAside() {
+  const a = $('#aside');
+  const c = S.summary.counts;
+  const nFiles = c.files_added + c.files_changed + c.files_deleted;
+  const head = `<div class="kicker">#${S.pr_number} in ${esc(S.repo)}</div><h1>${esc(S.title)}</h1>`;
+  if (st.mode === 'none') {
+    const good = files.filter(f => st.good.has(f.path)).length;
+    a.innerHTML = head + `<div class="counts"><b>${nFiles}</b> files, <span class="a">+${fmt(c.lines_added)}</span> <span class="d">&minus;${fmt(c.lines_removed)}</span></div>
+      <div class="strip" aria-label="Files that look good">${S.no_story_files.map(f => `<button tabindex="-1" class="${st.good.has(f.path) ? 'good' : ''}" title="${esc(f.path)}" data-jump="${esc(f.path)}"></button>`).join('')}</div>
+      <div class="slegend"><span><i style="background:var(--green)"></i>${good} of ${nFiles} files look good</span></div>
+      <div class="nostory"><p>No story for this PR. You can still look through the files and mark each one, but there are no stops, groups or risk notes.</p>
+      <button class="pbtn" id="writeStory">Write the story</button><div class="note" id="wsNote">${esc(st.note)}</div></div>`;
+    $('#writeStory').onclick = () => { st.note = 'In the app this asks the agent to write a story. It takes a few minutes.'; renderAside(); };
+    bindJumps(a);
+    return;
+  }
+  const sm = S.summary;
+  const counts = { good: 0, current: 0, walked: 0, left: 0, lit: 0 };
+  const segs = S.stops.map(s => {
+    const ss = stopState(s); counts[ss]++;
+    const label = s.kind === 'loose_ends' ? 'Loose ends' : 'Stop ' + s.n;
+    const jumpPath = s.path || (loose.changes.find(c => !st.good.has(c.path)) || loose.changes[0]).path;
+    return `<button tabindex="-1" class="${ss}${s.kind === 'loose_ends' ? ' loose' : ''}" title="${esc(label + ': ' + s.title + ' (' + ({ good: 'looks good', current: 'you are here', walked: 'walked', left: 'not walked', lit: 'changed since your last review' })[ss] + ')')}" data-jump="${esc(jumpPath)}"></button>`;
+  }).join('');
+  const drafts = D.drafts.length, open = D.threads.filter(t => !t.resolved).length;
+  let legend;
+  if (st.mode === 'second') {
+    const left = files.filter(f => changed.has(f.path) && !st.good.has(f.path)).length;
+    legend = `<span><i style="background:var(--green)"></i>${counts.good} stops still look good</span><span><i style="background:color-mix(in srgb,var(--orange) 70%,transparent)"></i>${counts.lit} changed</span><span>${left} of ${changed.size} changed files left</span>`;
+  } else {
+    const curStop = S.stops.find(s => s.id === st.current);
+    legend = `<span><i style="background:color-mix(in srgb,var(--blue) 45%,transparent)"></i>${counts.walked} walked</span><span><i style="background:var(--green)"></i>${counts.good} look good</span>${curStop ? `<span><i style="background:var(--focus)"></i>stop ${curStop.n} now</span>` : ''}<span><i style="background:color-mix(in srgb,var(--fg) 14%,transparent)"></i>${counts.left} left</span>`;
+  }
+  const fw = sm.feedback_wanted;
+  const rf = sm.flags[0];
+  a.innerHTML = head + `
+    <p class="what ${st.summaryOpen ? '' : 'clamp'}">${md(sm.what_changed)}</p>
+    <button class="more" id="moreBtn" aria-expanded="${st.summaryOpen}">${st.summaryOpen ? 'Show less' : 'Before and after'}</button>
+    ${st.summaryOpen ? `<dl class="ba"><dt>Before</dt><dd>${md(sm.before)}</dd><dt>After</dt><dd>${md(sm.after)}</dd></dl>` : ''}
+    <div class="counts"><b>${nFiles}</b> files, <span class="a">+${fmt(sm.counts.lines_added)}</span> <span class="d">&minus;${fmt(sm.counts.lines_removed)}</span>, <b>${S.stops.length}</b> stops, about <b>${sm.review_minutes}</b> minutes</div>
+    ${st.mode === 'second' ? `<div class="counts">Since your last review at <code>${esc(D.second_visit.since)}</code>, ${changed.size} files changed.</div>` : ''}
+    <div class="strip" aria-label="Progress by stop">${segs}</div>
+    <div class="slegend">${legend}</div>
+    <div class="slegend" style="margin-top:4px"><span class="ic-draft" style="display:inline-flex;gap:3px;align-items:center">${I.draft}${drafts} drafts</span><span class="ic-thread" style="display:inline-flex;gap:3px;align-items:center">${I.thread}${open} open thread</span></div>
+    <div class="pin" role="note">
+      <h2>The writer was least sure about ${NSD('a stop or change id on summary.feedback_wanted, so it can be pinned to rows')}</h2>
+      <p>${md(fw.text)}</p>
+      <div class="src">${fw.source === 'guessed' ? 'Guessed by the story writer, not asked by the author.' : 'Asked by the author.'} Not pinned to rows yet.</div>
+    </div>
+    ${rf ? `<div class="riskbox" role="note"><h2><span class="ic-risk" style="display:inline-flex">${I.risk}</span>${esc(rf.rule)}</h2><p>${esc(rf.message)}</p>
+      <button class="jump" data-jump="${esc(rf.path)}">${esc(split(rf.path)[1])}, line ${rf.line}</button></div>` : ''}
+    <details class="legend"><summary>What the marks mean</summary>
+      <span class="g-good">${I.good}<span style="color:var(--dim)">looks good</span></span><span class="g-walked">${I.walked}<span style="color:var(--dim)">walked</span></span>
+      <span class="g-current">${I.current}<span style="color:var(--dim)">you are here</span></span><span class="g-none">${I.none}<span>not looked at</span></span>
+      <span class="ic-risk">${I.risk}<span style="color:var(--dim)">risk flag</span></span><span class="ic-conv">${I.conv}<span style="color:var(--dim)">cleanliness flag</span></span>
+      <span class="ic-unt">${I.unt}<span style="color:var(--dim)">untested</span></span><span class="ic-blast">${I.blast}<span style="color:var(--dim)">3 or more dependents, + if outside the PR</span></span>
+      <span class="ic-draft">${I.draft}<span style="color:var(--dim)">your drafts</span></span><span class="ic-thread">${I.thread}<span style="color:var(--dim)">open threads</span></span>
+    </details>`;
+  $('#moreBtn').onclick = () => { st.summaryOpen = !st.summaryOpen; renderAside(); };
+  bindJumps(a);
+}
+function bindJumps(root) {
+  root.querySelectorAll('[data-jump]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); jumpTo(b.dataset.jump); }));
+}
+
+/* ---------- tools ---------- */
+function renderTools() {
+  const t = $('#tools');
+  const pool = st.mode === 'none' ? S.no_story_files.map(f => fileBy.get(f.path) || f) : files;
+  const nAll = pool.length;
+  const nLook = files.filter(needsLook).length;
+  const nNot = pool.filter(passesNot).length;
+  const chips = st.mode === 'none'
+    ? [['all', 'All', nAll], ['not', 'Not looked at', nNot]]
+    : [['all', 'All', nAll], ['look', 'Needs a look', nLook], ['not', st.mode === 'second' ? 'Left to look at' : 'Not walked', nNot]];
+  t.innerHTML = `<div class="chips" role="group" aria-label="Filter">${chips.map(([k, l, n]) => `<button class="chip" data-f="${k}" aria-pressed="${st.filter === k}">${l} ${n}</button>`).join('')}
+    <span class="sp"></span>${st.mode === 'none' ? '' : `<label class="tog"><input type="checkbox" id="noiseTog" ${st.showNoise ? 'checked' : ''}> Show noise</label>`}</div>
+    ${st.mode === 'none' ? `<div class="cap">By folder, from the diff</div>` : `<div class="cap">Grouped by a guess from folder names ${NSD('map.groups on the story')}</div>`}
+    <div class="ruler" aria-hidden="true"><span class="rl">${st.mode === 'none' ? 'File' : 'Stop and file'}</span><span class="scale"><span style="left:${pos(10)}%">10</span><span style="left:${pos(100)}%">100</span><span style="left:${pos(1000)}%">1k</span></span><span class="un">lines</span></div>`;
+  t.querySelectorAll('.chip').forEach(b => b.onclick = () => { st.filter = b.dataset.f; render(); });
+  const nt = $('#noiseTog');
+  if (nt) nt.onchange = () => { st.showNoise = nt.checked; render(); };
+}
+
+/* ---------- list ---------- */
+function passesNot(f) { const o = st.filter; st.filter = 'not'; const r = passes(f); st.filter = o; return r; }
+function passes(f) {
+  if (st.filter === 'look') return !!needsLook(f);
+  if (st.filter === 'not') return st.mode === 'none' ? !st.good.has(f.path) : st.mode === 'second' ? changed.has(f.path) && !st.good.has(f.path) : fileState(f) === 'none';
+  return true;
+}
+function fileRow(f, extra = '') {
+  const s = fileState(f);
+  const [dir, base] = split(f.path);
+  const key = 'f:' + f.path;
+  const open = st.openRows.has(key);
+  const lit = st.mode === 'second' && changed.has(f.path);
+  const cls = ['it', 'file', f.noise && st.mode !== 'none' ? 'noisy' : '', s === 'current' ? 'cur' : '', f.size >= 300 ? 'big' : '', lit ? 'lit' : '', open ? 'open' : '', extra].filter(Boolean).join(' ');
+  const stopCell = st.mode === 'none' ? '' : (f.stop ? f.stop.n : '');
+  const status = f.status === 'added' ? 'A' : f.status === 'deleted' ? 'D' : 'M';
+  const tags = st.mode === 'none' ? '' :
+    (!f.stop ? '<span class="le" title="Only in the loose ends stop">loose end</span>' : '') +
+    (f.noise ? `<span class="ntag">${esc(f.noise)}</span>` : '') +
+    (lit ? '<span class="chg">changed</span>' : '');
+  return `<div class="${cls}" role="treeitem" aria-level="2" aria-expanded="${open}" tabindex="-1" data-key="${esc(key)}" aria-label="${esc(base + ', ' + fmt(f.size) + ' lines, ' + STATE_WORD[s])}">
+    <span class="gl g-${s}" title="${STATE_WORD[s]}">${I[s]}</span><span class="sn">${stopCell}</span>
+    <span class="nm"><span class="st ${status}" title="${f.status}">${status}</span><b>${esc(base)}</b>${tags}<span class="dir">${esc(dir)}</span></span>
+    <span class="mk">${st.mode === 'none' ? '' : markers(f)}</span>${barHtml(f.add, f.del)}<span class="num" title="+${f.add} &minus;${f.del}">${fmt(f.size)}</span></div>` + (open ? detailHtml(f) : '');
+}
+function emptyBar() { return `<span class="bar"></span>`; }
+
+function renderList() {
+  const L = $('#list');
+  let h = '';
+  if (st.mode === 'none') {
+    const dirs = new Map();
+    for (const nf of S.no_story_files) {
+      const f = fileBy.get(nf.path) || Object.assign({ size: nf.add + nf.del }, nf);
+      if (!passes(f)) continue;
+      const d = split(nf.path)[0] || '(repo root)';
+      if (!dirs.has(d)) dirs.set(d, []);
+      dirs.get(d).push(f);
+    }
+    for (const [d, fs] of [...dirs].sort((a, b) => a[0].localeCompare(b[0]))) {
+      const key = 'g:' + d;
+      const col = st.collapsed.has(key);
+      const tot = fs.reduce((s, f) => s + f.size, 0);
+      const g = fs.filter(f => st.good.has(f.path)).length;
+      h += `<div class="it grp ${col ? '' : 'open'}" role="treeitem" aria-level="1" aria-expanded="${!col}" tabindex="-1" data-key="${esc(key)}">
+        <span class="gl"><span class="chev">&#9656;</span></span><span></span><span class="nm"><span>${esc(d)}</span><span class="mini" title="${g} of ${fs.length} files look good">${g} of ${fs.length}</span></span><span></span>${emptyBar()}<span class="num">${fmt(tot)}</span></div>`;
+      if (!col) for (const f of fs.sort((a, b) => a.path.localeCompare(b.path))) h += fileRow(f);
+    }
+  } else {
+    for (const g of S.groups) {
+      const all = groupFiles(g);
+      const vis = all.filter(passes);
+      if (!vis.length) continue;
+      const key = 'g:' + g.id;
+      const col = st.collapsed.has(key);
+      const tot = all.reduce((s, f) => s + f.size, 0);
+      const good = all.filter(f => st.good.has(f.path)).length;
+      h += `<div class="it grp ${col ? '' : 'open'}" role="treeitem" aria-level="1" aria-expanded="${!col}" tabindex="-1" data-key="${esc(key)}" title="${esc(g.blurb)}">
+        <span class="gl"><span class="chev">&#9656;</span></span><span></span>
+        <span class="nm"><span class="gn">${esc(g.name)}</span><span class="mini" title="${good} of ${all.length} files look good">${good} of ${all.length}</span>${NSD('map.groups: this group is guessed from folder names')}</span>
+        <span></span>${emptyBar()}<span class="num" title="Lines in this group">${fmt(tot)}</span></div>`;
+      if (col) continue;
+      const main = vis.filter(f => !f.noise);
+      const noise = vis.filter(f => f.noise);
+      if (st.mode === 'second') {
+        let run = [], ri = 0;
+        const flush = () => {
+          if (!run.length) return;
+          const rk = 'u:' + g.id + ':' + ri++;
+          if (st.openRuns.has(rk)) { run.forEach(f => h += fileRow(f, 'dimmed')); run = []; return; }
+          const ns = run.filter(f => f.stop).length, nl = run.length - ns;
+          const what = [ns ? ns + (ns === 1 ? ' stop' : ' stops') : '', nl ? nl + (nl === 1 ? ' file' : ' files') : ''].filter(Boolean).join(' and ');
+          const lines = run.reduce((s, f) => s + f.size, 0);
+          const allGood = run.every(f => st.good.has(f.path));
+          h += `<div class="it run" role="treeitem" aria-level="2" aria-expanded="false" tabindex="-1" data-key="${rk}">
+            <span class="gl g-${allGood ? 'good' : 'none'}">${I[allGood ? 'good' : 'none']}</span><span></span>
+            <span class="nm"><span>Unchanged since your last review (${what}, ${allGood ? 'still looks good' : 'some not looked at'})</span></span><span></span>${emptyBar()}<span class="num">${fmt(lines)}</span></div>`;
+          run = [];
+        };
+        for (const f of main) { if (changed.has(f.path)) { flush(); h += fileRow(f); } else run.push(f); }
+        flush();
+      } else {
+        for (const f of main) h += fileRow(f);
+      }
+      if (noise.length) {
+        const nk = 'n:' + g.id;
+        const open = st.showNoise || st.openNoise.has(nk);
+        const lines = noise.reduce((s, f) => s + f.size, 0);
+        const kinds = [...new Set(noise.map(f => f.noise))].join(', ');
+        h += `<div class="it fold ${open ? 'open' : ''}" role="treeitem" aria-level="2" aria-expanded="${open}" tabindex="-1" data-key="${nk}">
+          <span class="gl"><span class="chev">&#9656;</span></span><span></span>
+          <span class="nm"><span>Noise (${noise.length} ${noise.length === 1 ? 'file' : 'files'}, ${fmt(lines)} lines)</span><span class="ntag">${esc(kinds)}</span>${DER('Lockfile and generated are found from the path and a configures link. Sample data is a guess; a noise flag on the story would make it exact.')}</span>
+          <span></span>${emptyBar()}<span class="num">${fmt(lines)}</span></div>`;
+        if (open) noise.forEach(f => h += fileRow(f));
+      }
+    }
+  }
+  L.innerHTML = h || `<div class="empty">Nothing matches this filter. Choose All to see every file.</div>`;
+  bindList();
+}
+
+function detailHtml(f) {
+  const s = f.stop;
+  const good = st.good.has(f.path);
+  let h = `<div class="detail" role="group" aria-label="Changes in ${esc(split(f.path)[1])}">`;
+  if (st.mode === 'none') {
+    h += `<p class="why">${f.status === 'added' ? 'Added' : 'Changed'}: <span style="color:var(--added)">+${f.add}</span> <span style="color:var(--deleted)">&minus;${f.del}</span>. No story, so no notes for this file.</p>`;
+  } else {
+    h += s ? `<h3>Stop ${s.n}. ${esc(s.title)}</h3><p class="why">${md(s.why_here)}</p>`
+           : `<h3>Loose ends</h3><p class="why">${md(f.role)}</p>`;
+    if (f.noise) h += `<p class="why" style="color:var(--dim)">Folded as ${esc(f.noise)} ${DER('Guessed from the path')}</p>`;
+    for (const c of f.changes) {
+      const from = c.from ? changeById.get(c.from) : null;
+      const next = [...changeById.values()].filter(x => x.from === c.id && x.path !== c.path);
+      h += `<div class="ch"><div class="t"><strong>${esc(c.title)}</strong><span class="ln">lines ${c.start} to ${c.end}${c.symbol ? ', ' + esc(c.symbol) : ''}</span></div><dl>
+        <dt>Check</dt><dd>${md(c.check)}</dd>
+        <dt>Proof</dt><dd>${c.covered ? md(c.proof_note || '') + (c.tests.length ? '<br>' + c.tests.map(t => `<span class="tag">${esc(t)}</span>`).join('') : '') : `<span class="ic-unt">Untested.</span> ${md(c.proof_note || '')}`}</dd>
+        ${c.serves.length ? `<dt>Serves</dt><dd>${c.serves.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</dd>` : ''}
+        <dt>Reach</dt><dd>${c.blast} ${c.blast === 1 ? 'dependent' : 'dependents'} in this PR${c.blast_out ? `, <span class="ic-blast">${c.blast_out} outside it</span>` : ''}</dd>
+        ${c.flags.map(fl => `<dt>Flag</dt><dd class="flagm"><span class="k ${fl.kind}">${esc(fl.kind)}</span>, line ${fl.line}: ${esc(fl.message)}</dd>`).join('')}
+        ${from ? `<dt>From</dt><dd><button class="jump" data-jump="${esc(from.path)}">${esc(from.title)}</button> <span style="color:var(--dim)">in ${esc(split(from.path)[1])}</span></dd>` : ''}
+        ${next.length ? `<dt>Leads to</dt><dd>${next.map(n => `<button class="jump" data-jump="${esc(n.path)}">${esc(split(n.path)[1])}</button>`).join(', ')}</dd>` : ''}
+      </dl></div>`;
+    }
+    const notes = [...f.drafts.map(d => `<li><span class="ic-draft">Your draft</span>, line ${d.line}: ${esc(d.body)}</li>`), ...f.threads.map(t => `<li><span class="ic-thread">Open thread</span> by ${esc(t.author)}, line ${t.line}: ${esc(t.body)}</li>`)];
+    if (notes.length) h += `<div class="notes"><h4>Comments</h4><ul>${notes.join('')}</ul></div>`;
+    const out = S.links.filter(l => l.from === f.path), inc = S.links.filter(l => l.to === f.path);
+    const li = (l, other) => `<li><span class="lk">${esc(l.kind)}</span>${fileBy.has(other) ? `<button class="jump" data-jump="${esc(other)}">${esc(split(other)[1])}</button>` : `<span class="jump off" title="Not changed in this PR">${esc(other)}</span>`} <span class="nt">${esc(l.note)}</span></li>`;
+    if (out.length || inc.length) {
+      h += `<div class="links"><h4>Connects to ${NSD('which way data flows, beyond the link kind and note')}</h4>`;
+      if (out.length) h += `<ul aria-label="Outgoing">${out.map(l => li(l, l.to)).join('')}</ul>`;
+      if (inc.length) h += `<h4>Used by</h4><ul aria-label="Incoming">${inc.map(l => li(l, l.from)).join('')}</ul>`;
+      h += `</div>`;
+    }
+  }
+  h += `<div class="acts"><button class="pbtn" data-diff="${esc(f.path)}">Open in diff</button><button class="sbtn" data-good="${esc(f.path)}" aria-pressed="${good}">${good ? 'Looks good' : 'Mark looks good'}</button><span class="note" data-diffnote></span></div></div>`;
+  return h;
+}
+
+/* ---------- behaviour ---------- */
+function items() { return [...document.querySelectorAll('#list [data-key]')]; }
+function itemFor(k) { return items().find(e => e.dataset.key === k); }
+function setFocus(el, scroll = true) {
+  if (!el) return;
+  items().forEach(e => { e.tabIndex = -1; e.classList.remove('focus'); });
+  el.tabIndex = 0; el.classList.add('focus'); st.focusKey = el.dataset.key;
+  el.focus({ preventScroll: !scroll });
+  if (scroll) el.scrollIntoView({ block: 'nearest' });
+  updatePeek();
+}
+function fileOf(key) { return key && key.startsWith('f:') ? fileBy.get(key.slice(2)) || S.no_story_files.find(f => f.path === key.slice(2)) : null; }
+function updatePeek() {
+  const p = $('#peek');
+  const k = st.hoverKey || st.focusKey;
+  const f = fileOf(k);
+  if (!f) { p.innerHTML = st.mode === 'none' ? 'Arrows move, right opens, space marks looks good.' : 'Arrows move, right opens, left closes, space marks looks good.'; return; }
+  if (st.mode === 'none') { p.innerHTML = `<b>${esc(split(f.path)[1])}</b>: +${f.add} &minus;${f.del}`; return; }
+  p.innerHTML = f.peekFlag ? `<b>Flag:</b> ${esc(f.peekFlag)}` : `<b>Check this:</b> ${md(f.peek)}`;
+  p.title = p.textContent;
+}
+function toggle(set, k) { set.has(k) ? set.delete(k) : set.add(k); }
+function activate(el, how) {
+  const k = el.dataset.key, t = k[0];
+  if (t === 'g') { if (how === 'open') st.collapsed.delete(k); else if (how === 'close') st.collapsed.add(k); else toggle(st.collapsed, k); }
+  else if (t === 'f') { if (how === 'open') st.openRows.add(k); else if (how === 'close') st.openRows.delete(k); else toggle(st.openRows, k); }
+  else if (t === 'n') { if (st.showNoise && how !== 'open') { st.showNoise = false; st.openNoise.delete(k); } else if (how === 'open') st.openNoise.add(k); else if (how === 'close') st.openNoise.delete(k); else toggle(st.openNoise, k); }
+  else if (t === 'u') { st.openRuns.add(k); render(); const first = items().find(e => e.classList.contains('dimmed')); setFocus(first); return; }
+  render(); setFocus(itemFor(k));
+}
+function toggleGood(path) {
+  toggle(st.good, path);
+  const k = st.focusKey;
+  render(); if (k) setFocus(itemFor(k), false);
+}
+function groupHeaderOf(el) {
+  let e = el.previousElementSibling;
+  while (e && !e.classList.contains('grp')) e = e.previousElementSibling;
+  return e;
+}
+function bindList() {
+  const L = $('#list');
+  items().forEach(el => {
+    el.addEventListener('click', () => { setFocus(el, false); activate(el, 'toggle'); });
+    el.addEventListener('mouseenter', () => { st.hoverKey = el.dataset.key; updatePeek(); });
+    el.addEventListener('mouseleave', () => { st.hoverKey = null; updatePeek(); });
+  });
+  L.querySelectorAll('[data-good]').forEach(b => b.onclick = e => { e.stopPropagation(); toggleGood(b.dataset.good); });
+  L.querySelectorAll('[data-diff]').forEach(b => b.onclick = e => { e.stopPropagation(); const n = b.parentElement.querySelector('[data-diffnote]'); n.textContent = 'In the app this opens ' + split(b.dataset.diff)[1] + ' in the diff editor.'; });
+  bindJumps(L);
+  const f = st.focusKey && itemFor(st.focusKey);
+  const first = f || items()[0];
+  if (first) { first.tabIndex = 0; if (f) f.classList.add('focus'); }
+}
+$('#list').addEventListener('keydown', e => {
+  const el = e.target.closest('[data-key]');
+  if (!el || e.target !== el) return;
+  const all = items(), i = all.indexOf(el), k = el.dataset.key, t = k[0];
+  const isOpen = el.getAttribute('aria-expanded') === 'true';
+  switch (e.key) {
+    case 'ArrowDown': setFocus(all[Math.min(i + 1, all.length - 1)]); break;
+    case 'ArrowUp': setFocus(all[Math.max(i - 1, 0)]); break;
+    case 'Home': setFocus(all[0]); break;
+    case 'End': setFocus(all[all.length - 1]); break;
+    case 'ArrowRight':
+      if (t === 'g' && isOpen) setFocus(all[i + 1]);
+      else if (!isOpen) activate(el, 'open');
+      break;
+    case 'ArrowLeft':
+      if (t !== 'g' && isOpen) activate(el, 'close');
+      else if (t === 'g') { if (isOpen) activate(el, 'close'); }
+      else setFocus(groupHeaderOf(el));
+      break;
+    case 'Enter': activate(el, 'toggle'); break;
+    case ' ':
+      if (t === 'f') toggleGood(k.slice(2)); else activate(el, 'toggle');
+      break;
+    default: return;
+  }
+  e.preventDefault();
+});
+
+function jumpTo(path) {
+  const f = fileBy.get(path) || S.no_story_files.find(x => x.path === path);
+  if (!f) return;
+  st.filter = 'all';
+  if (st.mode === 'none') st.collapsed.delete('g:' + (split(path)[0] || '(repo root)'));
+  else {
+    st.collapsed.delete('g:' + f.group);
+    if (f.noise) st.openNoise.add('n:' + f.group);
+    if (st.mode === 'second' && !changed.has(path)) {
+      render();
+      const runs = items().filter(e => e.dataset.key.startsWith('u:' + f.group + ':'));
+      runs.forEach(r => st.openRuns.add(r.dataset.key));
+    }
+  }
+  const k = 'f:' + path;
+  render();
+  setFocus(itemFor(k));
+}
+
+function render() { renderAside(); renderTools(); renderList(); updatePeek(); syncSegs(); }
+function syncSegs() {
+  document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === st.mode));
+  document.querySelectorAll('#themeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === st.theme));
+  document.querySelectorAll('#widthSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.w === st.width));
+  $('#frame').classList.toggle('narrow', st.width === 'narrow');
+  $('#frame').classList.toggle('mode-none', st.mode === 'none');
+}
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { st.mode = b.dataset.mode; resetMode(); render(); });
+document.querySelectorAll('#themeSeg button').forEach(b => b.onclick = () => { st.theme = b.dataset.theme; applyTheme(st.theme); syncSegs(); });
+document.querySelectorAll('#widthSeg button').forEach(b => b.onclick = () => { st.width = b.dataset.w; syncSegs(); });
+
+const q = new URLSearchParams(location.search);
+st.width = q.get('w') || (window.innerWidth >= 900 ? 'wide' : 'narrow');
+st.mode = q.get('mode') || 'first';
+st.theme = q.get('theme') || 'dark';
+applyTheme(st.theme);
+resetMode();
+render();
+if (q.get('open')) jumpTo(q.get('open')), st.openRows.add('f:' + q.get('open')), render(), setFocus(itemFor('f:' + q.get('open')));
+})();
+</script>
+</body>
+</html>
