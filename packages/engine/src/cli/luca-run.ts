@@ -60,6 +60,7 @@ import {
     muninnSettings,
 } from '../memory/muninn-mcp-client'
 import { createGitHubTracker, githubRepoOf } from '../tracker/github-tracker'
+import { localRoots, type KnownRoots } from '../tracker/redact-private-paths'
 
 const log = (line: string) => {
     console.log(line)
@@ -120,6 +121,13 @@ const usageLine = () =>
         log,
     })
 
+/**
+ * This computer's folders a run's comments and PR must not show: the home
+ * and temp folders, the runs folder, and the repo the run builds.
+ */
+const knownRoots = ({ repo }: { repo: string }): KnownRoots =>
+    localRoots({ runs_dir: defaultRunsDir(), worktree_roots: [repo] })
+
 const run = async ({
     args,
     board,
@@ -149,6 +157,7 @@ const run = async ({
                 createGitHubTracker({
                     repo: await githubRepoOf({ repo }),
                     log,
+                    known_roots: knownRoots({ repo }),
                 }),
             launcher: createClaudeLauncher({}),
             decision_model: await decisionModelSetup(),
@@ -162,6 +171,7 @@ const run = async ({
     const tracker = createGitHubTracker({
         repo: await githubRepoOf({ repo: args.repo }),
         log,
+        known_roots: knownRoots({ repo: args.repo }),
     })
     return runSpec({
         spec_number: args.spec_number,

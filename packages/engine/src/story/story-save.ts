@@ -1,4 +1,3 @@
-import { packStory } from './story-comments'
 import {
     addReadyLabel,
     defaultStoryHome,
@@ -9,6 +8,8 @@ import {
 import type { StoryHome } from './story-pick'
 import type { Story } from './story-schema'
 import { removePrivateStory, savePrivateStory } from './story-store'
+
+import type { KnownRoots } from '../tracker/redact-private-paths'
 
 /** What one save did, or why the shared home refused it. */
 export type StorySaveResult =
@@ -41,6 +42,8 @@ export type StorySaveResult =
  *
  * @param home - Forces a home. Left out, the home is picked by
  *   `defaultStoryHome`.
+ * @param known - This computer's folders, for taking its paths out of a
+ *   shared story (`postSharedStory`). Defaults to `localRoots()`.
  * @example
  * const saved = await saveStoryWith({ gh, story, stories_dir })
  */
@@ -49,11 +52,13 @@ export const saveStoryWith = async ({
     story,
     stories_dir,
     home,
+    known,
 }: {
     gh: Gh
     story: Story
     stories_dir: string
     home?: StoryHome
+    known?: KnownRoots
 }): Promise<StorySaveResult> => {
     const { repo, pr_number } = story
     const picked = home ?? (await defaultStoryHome({ gh, repo })).home
@@ -77,18 +82,12 @@ export const saveStoryWith = async ({
             pr_head_sha: pr.head_sha,
         }
     }
-    const posted = await postSharedStory({ gh, story })
+    const posted = await postSharedStory({ gh, story, known })
     await addReadyLabel({ gh, repo, pr_number })
     const removed_private = await removePrivateStory({
         stories_dir,
         repo,
         pr_number,
     })
-    return {
-        status: 'saved',
-        home: 'shared',
-        comments: packStory({ story }).length,
-        ...posted,
-        removed_private,
-    }
+    return { status: 'saved', home: 'shared', ...posted, removed_private }
 }

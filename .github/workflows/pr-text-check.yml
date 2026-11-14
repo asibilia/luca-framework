@@ -1,0 +1,40 @@
+# Checks that a pull request's title and body hold no path to a private
+# folder, with the same matcher as `bun run lint` (scripts/check-private-paths.ts).
+# A squash merge makes the body a commit message on main.
+#
+# It is its own small job, apart from pr-check.yml, so that editing the
+# title or body re-runs it (the `edited` event) without re-running the
+# full checks. The title and body come from the event payload through env,
+# never into `run:`. The matcher has no dependencies, so no install step.
+
+name: PR text check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  text:
+    name: No private paths in the PR's title and body
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Check the title and body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" | bun scripts/check-private-paths.ts --stdin

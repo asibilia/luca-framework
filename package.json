@@ -19,7 +19,7 @@
   "private": true,
   "scripts": {
     "commit": "bunx --bun @alecsibilia/commit",
-    "lint": "eslint . && bun scripts/check-file-size.ts",
+    "lint": "eslint . && bun scripts/check-file-size.ts && bun scripts/check-private-paths.ts",
     "lint:fix": "eslint . --fix",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "version": "changeset version && bun install"

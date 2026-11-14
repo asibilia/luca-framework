@@ -54,7 +54,7 @@ Tests:
 
 ## The PR story
 
-The `/luca-pr-prep` skill writes a pull request's story: a versioned guide that walks a reviewer through the change in call order, checked against one schema, and saved as PR comments with the `review-ready` label in the owner's own repos or as a private file anywhere else.
+The `/luca-pr-prep` skill writes a pull request's story: a versioned guide that walks a reviewer through the change in call order, checked against one schema, and saved as PR comments with the `review-ready` label in the owner's own repos or as a private file anywhere else. A posted story holds no path from the computer that wrote it.
 
 Reached by: `/luca-pr-prep [PR number or URL]` in Claude Code; `readStory` and `unpackStory` from `@luca/engine` in a reader.
 
@@ -62,6 +62,7 @@ Tests:
 
 - `packages/engine/src/story/story-schema.test.ts`
 - `packages/engine/src/story/story-comments.test.ts`
+- `packages/engine/src/story/story-redaction.test.ts`
 - `packages/engine/src/story/story-store.test.ts`
 - `packages/engine/src/story/story-cli.test.ts`
 - `packages/engine/src/tracker/github-tracker-story.test.ts`

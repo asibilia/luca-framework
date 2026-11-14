@@ -48,7 +48,13 @@ final_review_stuck
   so one already told keeps waiting.
 - **The comment** names the ticket, says why in one line, what was tried
   (fix rounds, failed tries, rebases, ...), the last error, a suggestion, the
-  ticket's worktree, and the replies.
+  ticket's worktree, and the replies. The worktree is named inside Luca's runs
+  folder (`runs/<run id>/tickets/<n>`, or `runs/<run id>/run-branch` for the
+  final review), never by a path on the owner's computer; `/luca-unstick`
+  shows the full path on the computer that ran the run. Like every comment
+  and PR the tracker sends, the comment goes through `redactPrivatePaths`
+  first, so a path it recognizes in the last error becomes a token such as
+  `[runs]` or `[home]`.
 - **Replies.** Only comments by the spec's owner (the spec issue's author)
   count, and only a comment that is just a word: `retry`, `skip`, `stop`, or
   `ship`, optionally with a ticket (`retry #12`, `skip 12`). With more than

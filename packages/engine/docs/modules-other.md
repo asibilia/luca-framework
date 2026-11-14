@@ -66,6 +66,8 @@ with a page of its own is listed in the [README](../README.md).
 | `src/tracker/github-tracker-story.ts` | The GitHub tracker's story operations (#742): the #738 `Gh` adapter on the tracker's own runner (each call made once; a network failure throws the tracker's network `TrackerError`, any other failure answers `ok: false`), and `storyHome` and `saveStory` through `saveStoryWith`. |
 | `src/tracker/gh-retry.ts` | Retries for `gh` calls. Each call has a 60 s time limit. A transient failure (a timeout, a cut-off JSON reply, a 5xx, a secondary rate limit, a dropped connection, a GitHub that can't be reached) is tried again after 2 s, then 8 s, and each retry is logged to the run log. Reads throw after the last try; only a 404 reads as none. Writes check whether the first try landed before trying again. A network failure (#701) that outlasts the tries is thrown as a `NetworkGhError`, a `TrackerError` marked `network`, and the engine's step loop waits for GitHub (`src/core/network-wait.ts`). |
 | `src/tracker/post-comment-once.ts` | Engine comments carry an invisible marker, so a step redone after a crash adopts its comment instead of posting it again, and the engine never takes its own comments as replies. |
+| `src/tracker/redact-private-paths.ts` | `redactPrivatePaths`: every path shape `private-path-matcher.ts` finds (home, temp and state folders, computer names) becomes a token such as `[home]`. Pure, idempotent, never throws. The matcher is shared with the repo's lint. |
+| `src/tracker/redacting-tracker.ts` | `withRedaction`: a tracker whose comments and PR title and body go through `redactPrivatePaths`. The GitHub tracker wraps itself in it. |
 
 ## `src/testing/`
 
@@ -146,6 +148,7 @@ The PR story (#738). See [The PR story](pr-story.md).
 | `src/story/story-schema.ts` | `StorySchema` and `STORY_SCHEMA_VERSION`; `readStory`, which tells a good story from a newer or a broken one; `storyPositions`. |
 | `src/story/story-render.ts` | The readable summary at the top of the first story comment. |
 | `src/story/story-comments.ts` | A story as PR comments: `packStory`, `unpackStory`, `isStoryComment`, and `planCommentSync` for replacing a story's own comments. |
+| `src/story/story-redact.ts` | `redactStory`: a story with every text redacted, before `postSharedStory` packs it, since its data is base64 in the comments. |
 | `src/story/story-store.ts` | The private home: one file per PR under the stories folder. |
 | `src/story/story-github.ts` | The shared home through `gh`: reading and posting story comments, the `review-ready` label, and which home a repo gets. |
 | `src/story/story-home.ts` | `StoryHomeSchema` and `StoryHome`: a story's two homes, `shared` and `private`. |
@@ -154,3 +157,4 @@ The PR story (#738). See [The PR story](pr-story.md).
 | `src/story/story-shift.ts`, `story-shift-cli.ts` | Moving a stale story's line numbers to a newer commit (`shiftStory`), and the helper's `shift` command that runs it against `git`. |
 | `src/story/story-cli.ts`, `pr-story-main.ts` | The skill's helper commands, and its entry point with the real `gh` and `git`. |
 | `scripts/build-pr-story.ts`, `scripts/write-story-example.ts` | Build the helper bundle and the example story the skill ships. Both take the skill's folder and file names from `scripts/pr-prep-skill-paths.ts`. |
+| `scripts/generate-v13-manifest.ts` | Builds or checks `src/doctor/v13-files.json`, with `scripts/v13-manifest-specs.ts` (what it looks for), `v13-manifest-read.ts` (`generate`), and `v13-manifest-verify.ts` (the read-only `verify`). |

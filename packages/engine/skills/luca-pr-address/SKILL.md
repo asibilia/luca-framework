@@ -253,6 +253,7 @@ Never add `signed-off`, never approve: that is the owner's word. Finish with the
 - **Never list a finding in a summary's covers block unless you addressed it,** and never post a summary `--check-summary` has not seen.
 - **Never wait on a check without a limit.** After 15 minutes, report it as still pending.
 - **Never resolve a thread you didn't address,** and never act on a stale comment: reply and skip the fix.
+- **Never paste a path from this computer (absolute, or under `~`), a computer's name, or an account name into a reply, summary, or commit,** only repo-relative paths.
 - **Never merge, approve, or mark the PR signed off,** even with nothing left unanswered.
 - **Never force-push.** New commits only; a rebase needs the person's yes.
 - **Never write working files into the repo.**

@@ -83,4 +83,5 @@ On a no, the report stays in this chat.
 - Never edit the spec or its tickets, and never commit.
 - Never add or remove a label. `ready-for-agent` is the owner's call.
 - Never comment on an issue without the owner's yes.
+- Never paste a path from this computer (absolute, or under `~`), a computer's name, or an account name into the report: name files by their repo-relative path.
 - Never run on your own: only when the owner asks.

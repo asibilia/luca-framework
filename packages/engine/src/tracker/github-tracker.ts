@@ -9,6 +9,8 @@ import {
     type GhRunner,
 } from './gh-retry'
 import { gitHubStoryOperations } from './github-tracker-story'
+import { localRoots, type KnownRoots } from './redact-private-paths'
+import { withRedaction } from './redacting-tracker'
 import {
     labelDefinition,
     OpenedPullRequestSchema,
@@ -18,6 +20,8 @@ import {
     type Tracker,
     type TrackerIssue,
 } from './tracker'
+
+import { defaultRunsDir } from '../journal/journal'
 
 export type { GhRunner } from './gh-retry'
 
@@ -92,7 +96,13 @@ const parseOrThrow = <T>({
  * adopted, as is an open PR from the same branch, and a label that already
  * exists counts as created.
  *
+ * Comments and pull requests carry no path from this computer: the tracker
+ * is wrapped in `withRedaction`, so a comment's retry compares the
+ * redacted text.
+ *
  * @param gh - Runs `gh`. Defaults to the real one.
+ * @param known_roots - This computer's folders, for the redaction.
+ *   Defaults to `localRoots` with the runs folder.
  * @param sleep - Waits between tries. Defaults to a real wait.
  * @param log - Writes a retry to the run log. Defaults to stdout.
  *
@@ -106,11 +116,13 @@ export const createGitHubTracker = ({
     sleep,
     log,
     stories_dir,
+    known_roots,
 }: {
     repo: string
     gh?: GhRunner
     /** The private stories folder. Defaults to `storiesDir`'s answer. */
     stories_dir?: string
+    known_roots?: KnownRoots
 } & Partial<GhRetryDeps>): Tracker => {
     const run = gh ?? realGh()
     const calls = createGhCalls({
@@ -290,9 +302,10 @@ export const createGitHubTracker = ({
             : { number: pull.number, url: pull.url }
     }
 
-    return {
+    const known = known_roots ?? localRoots({ runs_dir: defaultRunsDir() })
+    const tracker: Tracker = {
         repo,
-        ...gitHubStoryOperations({ repo, run, stories_dir }),
+        ...gitHubStoryOperations({ repo, run, stories_dir, known }),
         readIssue,
         readSpec: async ({ spec_number }) => {
             const spec = await readIssue({ number: spec_number })
@@ -436,6 +449,7 @@ export const createGitHubTracker = ({
             }
         },
     }
+    return withRedaction({ tracker, known })
 }
 
 /**

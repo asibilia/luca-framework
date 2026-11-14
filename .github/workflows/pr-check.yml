@@ -10,6 +10,10 @@
 #   3. `changeset status` against main, to catch a forgotten changeset.
 #      Skipped on the Version PR's branch (changeset-release/*), which
 #      consumes the changesets.
+#   4. The PR's commit messages hold no path to a private folder (the
+#      repo's files are checked by `bun run lint`, in step 1). The PR's
+#      title and body are checked by pr-text-check.yml, which also runs
+#      when they are edited.
 
 name: PR check
 
@@ -47,6 +51,9 @@ jobs:
 
       - name: Pack the publish package
         run: bun packages/luca/scripts/check-pack.ts
+
+      - name: No private paths in the commit messages
+        run: bun scripts/check-private-paths.ts --commits origin/main..HEAD
 
       - name: Changeset status
         if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}

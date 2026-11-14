@@ -141,11 +141,12 @@ Tests:
 
 ## Repo tooling
 
-The repo's own scripts, outside the packages. The file size limit fails any file of more than 5,000 tokens (bytes / 4), in the pre-commit hook and in `bun run lint`.
+The repo's own scripts, outside the packages. The file size limit fails any file of more than 5,000 tokens (bytes / 4), in the pre-commit hook and in `bun run lint`. The private path check fails any file, a PR's commit message, or its title and body, that holds a private path: a real account's home folder in any form, `$HOME/`, a folder under `~` where people keep their own files, or a computer's name. It shares its matcher with the engine's redaction.
 
-Reached by: `bun scripts/check-file-size.ts [--staged]`, the `.githooks/pre-commit` hook, and `bun run lint`.
+Reached by: `bun scripts/check-file-size.ts [--staged]`, `bun scripts/check-private-paths.ts [--commits <range>]`, the `.githooks/pre-commit` hook (the size limit only), `bun run lint`, and the PR check (commit messages, title and body).
 
 Tests:
 
 - `scripts/check-file-size.test.ts`
 - `scripts/check-file-size.e2e.test.ts`
+- `scripts/check-private-paths.test.ts`

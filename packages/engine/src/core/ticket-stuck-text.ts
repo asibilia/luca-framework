@@ -4,7 +4,7 @@
  */
 import compact from 'lodash/compact'
 
-import { fenced, plural } from './stuck-format'
+import { fenced, plural, RUNS_FOLDER_NOTE, worktreeLabel } from './stuck-format'
 
 import type { StuckReason } from '../journal/journal-record'
 import type {
@@ -161,7 +161,7 @@ export const stuckComment = ({
             `Suggestion: ${suggestion({ reason: stuck.reason, n: ticket })}`,
             worktree === null
                 ? ''
-                : `Worktree: \`${worktree.path}\` (a \`retry\` keeps your code edits there)`,
+                : `Worktree: \`${worktreeLabel(worktree)}\` (a \`retry\` keeps your code edits there). ${RUNS_FOLDER_NOTE}`,
         ]
             .filter(Boolean)
             .join('\n'),
