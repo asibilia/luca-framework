@@ -28,10 +28,11 @@ export const STORY_SOURCE_DIR = join(ENGINE_DIR, 'src', 'story')
 
 /**
  * The files outside `src/story/` the bundle takes in, which its hash must
- * cover too: the redaction a shared story goes through.
+ * cover too: the redaction a shared story goes through, and its matcher.
  */
 export const OUTSIDE_SOURCES = [
     join(ENGINE_DIR, 'src', 'tracker', 'redact-private-paths.ts'),
+    join(ENGINE_DIR, 'src', 'tracker', 'private-path-matcher.ts'),
 ]
 
 /** The bundle the skill ships. */

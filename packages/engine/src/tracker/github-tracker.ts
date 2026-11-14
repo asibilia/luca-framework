@@ -302,9 +302,10 @@ export const createGitHubTracker = ({
             : { number: pull.number, url: pull.url }
     }
 
+    const known = known_roots ?? localRoots({ runs_dir: defaultRunsDir() })
     const tracker: Tracker = {
         repo,
-        ...gitHubStoryOperations({ repo, run, stories_dir }),
+        ...gitHubStoryOperations({ repo, run, stories_dir, known }),
         readIssue,
         readSpec: async ({ spec_number }) => {
             const spec = await readIssue({ number: spec_number })
@@ -448,10 +449,7 @@ export const createGitHubTracker = ({
             }
         },
     }
-    return withRedaction({
-        tracker,
-        known: known_roots ?? localRoots({ runs_dir: defaultRunsDir() }),
-    })
+    return withRedaction({ tracker, known })
 }
 
 /**

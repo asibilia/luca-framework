@@ -29,11 +29,11 @@ describe('redactPrivatePaths', () => {
 
         expect(redactPrivatePaths({ text, known: MAC })).toBe(
             [
-                'Worktree: <runs>/run-1/tickets/11',
-                'at <worktree>/src/sum.ts:3:7',
-                'temp: <tmp>/bun-1/out.txt',
-                'other: <home>/…/notes.md',
-                'home: <home>',
+                'Worktree: [runs]/run-1/tickets/11',
+                'at [worktree]/src/sum.ts:3:7',
+                'temp: [tmp]/bun-1/out.txt',
+                'other: [home]/…/notes.md',
+                'home: [home]',
             ].join('\n')
         )
     })
@@ -51,15 +51,15 @@ describe('redactPrivatePaths', () => {
         const redacted = redactPrivatePaths({ text })
 
         expectNoPrivatePaths(redacted)
-        expect(redacted).toContain('ENOENT <home>/…/a.ts')
-        expect(redacted).toContain('at <home>\\…\\b.ts:1:2')
+        expect(redacted).toContain('ENOENT [home]/…/a.ts')
+        expect(redacted).toContain('at [home]\\…\\b.ts:1:2')
         expect(
             JSON.parse(redacted.split('json: ')[1]?.split('\n')[0] ?? '')
         ).toEqual({
-            path: '<home>\\…\\c.ts',
+            path: '[home]\\…\\c.ts',
         })
-        expect(redacted).toContain('<tmp>/x/e.txt')
-        expect(redacted).toContain('see <home>/…/f.ts and `<home>/g.ts`')
+        expect(redacted).toContain('[tmp]/x/e.txt')
+        expect(redacted).toContain('see [home]/…/f.ts and `[home]/g.ts`')
     })
 
     test('URLs, markers, dotfiles under ~ and plain words stay as they are', () => {
@@ -91,7 +91,7 @@ describe('redactPrivatePaths', () => {
         }
 
         expect(redactPrivatePaths({ text: 'at /Users/me/a/b.ts', known })).toBe(
-            'at <home>/…/b.ts'
+            'at [home]/…/b.ts'
         )
     })
 })

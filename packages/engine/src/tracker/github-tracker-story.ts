@@ -1,6 +1,7 @@
 import { homedir } from 'node:os'
 
 import { ghError, type GhRunner } from './gh-retry'
+import type { KnownRoots } from './redact-private-paths'
 import {
     isTrackerNetworkFailure,
     otherRepoStoryError,
@@ -42,15 +43,18 @@ export const storyGh =
  *
  * @param stories_dir - The private stories folder. Defaults to `storiesDir`
  *   for the real home folder and environment.
+ * @param known - This computer's folders, for redacting a shared story.
  */
 export const gitHubStoryOperations = ({
     repo,
     run,
     stories_dir,
+    known,
 }: {
     repo: string
     run: GhRunner
     stories_dir?: string
+    known?: KnownRoots
 }): Pick<Tracker, 'storyHome' | 'saveStory'> => {
     const gh = storyGh({ run })
     const folder =
@@ -66,6 +70,7 @@ export const gitHubStoryOperations = ({
                     gh,
                     story,
                     stories_dir: folder,
+                    known,
                 })
                 return saved.status === 'saved'
                     ? {

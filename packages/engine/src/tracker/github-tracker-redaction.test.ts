@@ -17,7 +17,7 @@ const KNOWN: KnownRoots = {
 const STUCK =
     'Last error:\n\nENOENT /Users/me/.local/state/luca/runs/run-1/tickets/11/src/a.ts'
 
-const REDACTED = 'Last error:\n\nENOENT <runs>/run-1/tickets/11/src/a.ts'
+const REDACTED = 'Last error:\n\nENOENT [runs]/run-1/tickets/11/src/a.ts'
 
 /** A fake `gh` that keeps every call and answers each with `answer`. */
 const fakeGh = (
@@ -98,7 +98,7 @@ describe('the GitHub tracker sends no paths from this computer', () => {
         })
 
         const create = calls.find((args) => args[1] === 'create') ?? []
-        expect(create[create.indexOf('--title') + 1]).toBe('Fix <home>/…/a.ts')
+        expect(create[create.indexOf('--title') + 1]).toBe('Fix [home]/…/a.ts')
         expect(create[create.indexOf('--body') + 1]).toBe(
             `## Assumptions\n\n${REDACTED}\n\nSee https://github.com/acme/app/pull/3`
         )

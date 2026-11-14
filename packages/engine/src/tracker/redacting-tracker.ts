@@ -23,7 +23,7 @@ import type { Tracker } from './tracker'
  *     known: localRoots({ runs_dir: defaultRunsDir() }),
  * })
  * await tracker.comment({ number: 10, body: 'at /Users/me/a.ts' })
- * // posts 'at <home>/a.ts'
+ * // posts 'at [home]/a.ts'
  */
 export const withRedaction = ({
     tracker,
