@@ -10,10 +10,10 @@
 #   3. `changeset status` against main, to catch a forgotten changeset.
 #      Skipped on the Version PR's branch (changeset-release/*), which
 #      consumes the changesets.
-#   4. The PR's commit messages, title and body hold no path to a private
-#      folder (the repo's files are checked by `bun run lint`, in step 1).
-#      A squash merge makes the body a commit message on main. The title
-#      and body come from the event payload through env, never into `run:`.
+#   4. The PR's commit messages hold no path to a private folder (the
+#      repo's files are checked by `bun run lint`, in step 1). The PR's
+#      title and body are checked by pr-text-check.yml, which also runs
+#      when they are edited.
 
 name: PR check
 
@@ -54,12 +54,6 @@ jobs:
 
       - name: No private paths in the commit messages
         run: bun scripts/check-private-paths.ts --commits origin/main..HEAD
-
-      - name: No private paths in the PR's title and body
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" | bun scripts/check-private-paths.ts --stdin
 
       - name: Changeset status
         if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}

@@ -25,7 +25,7 @@
  *   (`bun.lock`) and files git treats as binary are skipped.
  * - `--commits <range>` (CI, for a PR's commits): the messages of the
  *   commits in `<range>`, such as `origin/main..HEAD`.
- * - `--stdin` (CI, for a PR's title and body): the text on stdin.
+ * - `--stdin` (CI's `pr-text-check.yml`, for a PR's title and body): the text on stdin.
  *
  * Exits 0 and prints nothing when there is no hit; exits 1 and prints each
  * hit as `file:line: hit` (or `commit <sha>: hit`, `stdin:line: hit`) when
