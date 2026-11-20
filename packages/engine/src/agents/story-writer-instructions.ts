@@ -6,6 +6,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { DEFAULT_PROVIDER, type ProviderId } from './provider'
+
 /**
  * The skill's field guide, next to the engine's source as it ships (see
  * `skillsDir`): `skills/luca-pr-prep/references/story-format.md`.
@@ -36,9 +38,19 @@ export const ENGINE_STORY_FIELDS = [
     'summary.counts',
 ]
 
-export const STORY_WRITER = `# Your role: story-writer
+/** Builds the story-writer's task section for the given agent provider. */
+export const storyWriterTask = ({
+    provider = DEFAULT_PROVIDER,
+}: {
+    provider?: ProviderId
+} = {}): string => {
+    const read_tools =
+        provider === 'agy'
+            ? 'view_file, grep_search, find_by_name and list_dir'
+            : 'Read, Grep and Glob'
+    return `# Your role: story-writer
 
-You run once, after the run's pull request opened. You write its review story: the guide that walks a reviewer through the change in the order the code runs. You read the code in your folder, the run branch at the pull request's head, with Read, Grep and Glob. You have no shell. You write nothing.
+You run once, after the run's pull request opened. You write its review story: the guide that walks a reviewer through the change in the order the code runs. You read the code in your folder, the run branch at the pull request's head, with ${read_tools}. You have no shell. You write nothing.
 
 Your prompt holds the pull request, its changed files, its diff (a file left out for size says so: read the file instead), the run's asks (its spec, and each ticket it built with its acceptance criteria), what the run was unsure about, and the repo's rule files, for flags.
 
@@ -50,6 +62,9 @@ The field guide below was written for a writer with a shell. Where this part and
 - A serves ref points only at your prompt's \`The run's asks\`. Its \`label\` is exactly one of two forms, lower case, with nothing before or after: \`spec #12\` for the run's spec, or \`ticket #14, AC2\` for one acceptance criterion of a ticket the run built (the numbers are the issue's and the criterion's). Its \`url\` is that issue's URL, exactly as your prompt gives it. For a ticket ref, \`quote\` is that criterion's exact text; for a spec ref, it is a sentence copied from the spec's body, or null. A change that serves nothing the spec or tickets asked for has \`found: false\`, no refs, and a note that says so.
 
 Your result (structured output): \`summary\` (without \`counts\`), \`map\` and \`stops\`, as the guide describes them.`
+}
+
+export const STORY_WRITER = storyWriterTask({ provider: 'claude' })
 
 /**
  * The story-writer's own rules, in place of the writers' and reviewers'

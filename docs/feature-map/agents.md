@@ -93,6 +93,8 @@ Tests:
 - `packages/engine/src/guards/role-rules-check-commands.test.ts`
 - `packages/engine/src/guards/role-rules-permissions.test.ts`
 - `packages/engine/src/guards/sandbox-settings.test.ts`
+- `packages/engine/src/agents/agy-tool-rules.test.ts`
+- `packages/engine/src/agents/agy-tool-rules-dispatch.test.ts`
 - `packages/engine/src/agents/launch-paths.test.ts`
 - `packages/engine/src/guards/worktree-state.test.ts`
 - `packages/engine/src/guards/shared-git-filters.test.ts`
@@ -115,6 +117,7 @@ Tests:
 - `packages/engine/src/agents/agy-stream-progress.test.ts`
 - `packages/engine/src/agents/agy-stream-result.test.ts`
 - `packages/engine/src/agents/agy-stream-quota.test.ts`
+- `packages/engine/src/agents/agy-hook.test.ts`
 - `packages/engine/src/agents/claude-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher-options.test.ts`
 - `packages/engine/src/agents/claude-launcher-searchers.test.ts`
@@ -124,6 +127,7 @@ Tests:
 - `packages/engine/src/agents/claude-launcher-result.test.ts`
 - `packages/engine/src/agents/claude-launcher-stops.test.ts`
 - `packages/engine/src/agents/role-instructions.test.ts`
+- `packages/engine/src/agents/role-instructions-provider.test.ts`
 - `packages/engine/src/agents/role-instructions-other-role.test.ts`
 - `packages/engine/src/agents/role-instructions-rules-and-sandbox.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`

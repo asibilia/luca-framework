@@ -10,13 +10,14 @@ import {
     SANDBOX,
     shellRules,
 } from './common-instructions'
-import { LEARNER, LEARNER_RULES } from './learner-instructions'
+import { LEARNER_RULES, learnerTask } from './learner-instructions'
+import { DEFAULT_PROVIDER, type ProviderId } from './provider'
 import { LENS, REVIEWER } from './reviewer-instructions'
 import { lensOf, type AgentRole } from './role-results'
 import {
-    STORY_WRITER,
     STORY_WRITER_RULES,
     storyFormat,
+    storyWriterTask,
 } from './story-writer-instructions'
 import { IMPLEMENTER, TEST_WRITER } from './writer-instructions'
 
@@ -45,6 +46,7 @@ export const roleInstructions = ({
     may_edit_tests,
     config,
     messaging,
+    provider = DEFAULT_PROVIDER,
 }: {
     role: AgentRole
     may_edit_tests: boolean
@@ -54,17 +56,25 @@ export const roleInstructions = ({
      * (`canMessage`); the final review's fixers have none.
      */
     messaging?: boolean
+    /** Agent provider (`claude` or `agy`). Defaults to `'claude'`. */
+    provider?: ProviderId
 }): string => {
+    const helpers = provider === 'agy' ? [] : [HELPERS]
     // The learner has no shell and no agent messages, and its rules differ.
     if (role === 'learner')
-        return [LEARNER, HELPERS, SANDBOX, LEARNER_RULES].join('\n\n')
+        return [
+            learnerTask({ provider }),
+            ...helpers,
+            SANDBOX,
+            LEARNER_RULES,
+        ].join('\n\n')
     // The story-writer (#743) has no shell either, carries the skill's
     // field guide word for word, and has rules of its own.
     if (role === 'story-writer')
         return [
-            STORY_WRITER,
+            storyWriterTask({ provider }),
             storyFormat().trim(),
-            HELPERS,
+            ...helpers,
             SANDBOX,
             STORY_WRITER_RULES,
         ].join('\n\n')
@@ -84,7 +94,7 @@ export const roleInstructions = ({
             : []),
         shellRules({ role, config }),
         ...((messaging ?? canMessage({ role })) ? [MESSAGES] : []),
-        HELPERS,
+        ...helpers,
         SANDBOX,
         COMMON,
     ].join('\n\n')
