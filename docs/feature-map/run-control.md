@@ -96,6 +96,7 @@ Tests:
 - `packages/board/server/engine-restart.test.ts`
 - `packages/board/server/engine-restart-not-restarted.test.ts`
 - `packages/board/server/engine-restart-failures.test.ts`
+- `packages/engine/src/journal/agy-replay-provider.e2e.test.ts`
 
 ## The engine config and its reload
 
@@ -111,6 +112,7 @@ Tests:
 - `packages/engine/src/core/decide-config-reload.test.ts`
 - `packages/engine/src/cli/run-config-reload.e2e.test.ts`
 - `packages/board/server/config-reload-panel.test.ts`
+- `packages/engine/src/config/agy-config-override.e2e.test.ts`
 
 ## Plan limits, limit waits and the usage line
 
@@ -135,6 +137,10 @@ Tests:
 - `packages/board/server/usage-line-panel.test.ts`
 - `packages/board/server/board-panel-state-usage.test.ts`
 - `packages/board/server/board-panel-state-waits-and-stops.test.ts`
+- `packages/engine/src/agents/agy-stream-quota.e2e.test.ts`
+- `packages/engine/src/agents/agy-stream-quota-boundaries.e2e.test.ts`
+- `packages/engine/src/core/agy-workflows.e2e.test.ts`
+- `packages/engine/src/core/agy-workflows-lenses-quota.e2e.test.ts`
 
 ## GitHub network errors and the network wait
 

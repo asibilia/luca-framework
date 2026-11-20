@@ -67,6 +67,10 @@ Tests:
 - `packages/engine/src/models/model-score-effort-picks.test.ts`
 - `packages/engine/src/models/calibration.test.ts`
 - `packages/engine/src/cli/luca-command.test.ts`
+- `packages/engine/src/agents/agy-provider-config.e2e.test.ts`
+- `packages/engine/src/core/agy-core-threading.e2e.test.ts`
+- `packages/engine/src/core/agy-cross-feature.e2e.test.ts`
+- `packages/engine/src/jev/agy-model-routing.e2e.test.ts`
 
 ## Agent messages and run notes
 
@@ -103,6 +107,9 @@ Tests:
 - `packages/engine/src/core/agent-guards-refs.e2e.test.ts`
 - `packages/engine/src/core/agent-guards-own-runs.e2e.test.ts`
 - `packages/board/server/shared-git-panel.test.ts`
+- `packages/engine/src/agents/agy-hook.e2e.test.ts`
+- `packages/engine/src/agents/agy-tool-rules.e2e.test.ts`
+- `packages/engine/src/agents/agy-tool-rules-boundaries.e2e.test.ts`
 
 ## Agents and their launcher
 
@@ -141,6 +148,10 @@ Tests:
 - `packages/engine/src/core/run-session-close-ticket-ends.e2e.test.ts`
 - `packages/engine/src/core/run-session-gone.e2e.test.ts`
 - `packages/engine/src/core/run-session-timeout.e2e.test.ts`
+- `packages/engine/src/agents/agy-launcher.e2e.test.ts`
+- `packages/engine/src/agents/agy-launcher-lifecycle.e2e.test.ts`
+- `packages/engine/src/agents/agy-role-instructions.e2e.test.ts`
+- `packages/engine/src/core/agy-cross-feature-runtime.e2e.test.ts`
 
 ## The GitHub tracker
 
