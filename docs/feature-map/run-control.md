@@ -125,6 +125,7 @@ Tests:
 - `packages/engine/src/core/decide-plan-readings.test.ts`
 - `packages/engine/src/core/limit-wait.e2e.test.ts`
 - `packages/engine/src/core/run-limit-many-tickets.e2e.test.ts`
+- `packages/engine/src/limits/limit-wait.test.ts`
 - `packages/engine/src/limits/plan-usage.test.ts`
 - `packages/engine/src/core/decide-usage-line.test.ts`
 - `packages/engine/src/core/usage-line-engine.test.ts`

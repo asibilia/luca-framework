@@ -36,6 +36,7 @@ const WINDOW_WORDS: Record<string, string> = {
     seven_day: 'weekly',
     seven_day_opus: 'weekly Opus',
     seven_day_sonnet: 'weekly Sonnet',
+    agy_quota: 'Antigravity quota',
 }
 
 /**

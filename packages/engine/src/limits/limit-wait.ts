@@ -54,6 +54,8 @@ export const windowName = ({
             return 'weekly Opus'
         case 'seven_day_sonnet':
             return 'weekly Sonnet'
+        case 'agy_quota':
+            return 'Antigravity quota'
         case null:
             return 'unnamed'
         default:

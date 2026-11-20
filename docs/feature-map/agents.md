@@ -112,6 +112,9 @@ Reached by: every agent turn of a real run; the `models.effort` block in a repo'
 
 Tests:
 
+- `packages/engine/src/agents/agy-stream-progress.test.ts`
+- `packages/engine/src/agents/agy-stream-result.test.ts`
+- `packages/engine/src/agents/agy-stream-quota.test.ts`
 - `packages/engine/src/agents/claude-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher-options.test.ts`
 - `packages/engine/src/agents/claude-launcher-searchers.test.ts`
