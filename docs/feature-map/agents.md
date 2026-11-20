@@ -31,6 +31,7 @@ Tests:
 - `packages/engine/src/jev/decision-model-credentials.test.ts`
 - `packages/engine/src/jev/jev-schemas.test.ts`
 - `packages/engine/src/jev/jev-jobs.test.ts`
+- `packages/engine/src/jev/jev-jobs-provider.test.ts`
 - `packages/engine/src/jev/jev-jobs-limits.test.ts`
 - `packages/engine/src/jev/jev-jobs-effort.test.ts`
 - `packages/engine/src/jev/jev-shadow.test.ts`
@@ -50,6 +51,8 @@ Reached by: the `models` block (`floors`, `confidence_bar`, `trial_share`) in a 
 
 Tests:
 
+- `packages/engine/src/agents/provider.test.ts`
+- `packages/engine/src/core/agent-turn-provider.test.ts`
 - `packages/engine/src/jev/model-pick.test.ts`
 - `packages/engine/src/jev/jev-model-pick.e2e.test.ts`
 - `packages/engine/src/jev/jev-model-trial.e2e.test.ts`

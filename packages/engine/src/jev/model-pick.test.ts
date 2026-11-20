@@ -1,9 +1,30 @@
 import { describe, expect, test } from 'bun:test'
 
-import { pickModel, trialGroupOf, type ModelAnswer } from './model-pick'
+import {
+    asksModel,
+    launchPick,
+    LOCKED_PICK,
+    lockedPick,
+    offeredModels,
+    pickModel,
+    redonePick,
+    trialGroupOf,
+    type ModelAnswer,
+    type ModelPick,
+    type ModelReason,
+} from './model-pick'
 
+import { AGY_MODEL_NAMES } from '../agents/provider'
 import type { AgentRole } from '../agents/role-results'
-import { ModelsConfigSchema } from '../config/engine-config'
+import { EngineConfigSchema, ModelsConfigSchema } from '../config/engine-config'
+import {
+    JournalRecordSchema,
+    type JournalEntry,
+    type JournalRecord,
+} from '../journal/journal-record'
+import { replayRun } from '../journal/replay'
+import { intakePassed, practiceTicket } from '../testing/build-fixtures'
+import { PRACTICE_ENGINE_CONFIG } from '../testing/practice-repo'
 
 /**
  * The model pick (#603) and its model trial (#698), called with a config's
@@ -139,5 +160,228 @@ describe('the model pick with a model trial (#698)', () => {
                 trial_group: null,
             })
         }
+    })
+})
+
+const stamp = (entries: JournalEntry[]): JournalRecord[] =>
+    entries.map((entry, index) =>
+        JournalRecordSchema.parse({
+            ...entry,
+            seq: index + 1,
+            time: new Date(0).toISOString(),
+        })
+    )
+
+const agyConfig = ({ floors = {} }: { floors?: object } = {}) =>
+    EngineConfigSchema.parse({
+        ...PRACTICE_ENGINE_CONFIG,
+        models: { provider: 'agy', floors },
+    })
+
+describe('provider-aware model routing (#778 AC5–AC6)', () => {
+    test('lockedPick defaults to opus, returns gemini-4-neon-high for agy, and keeps LOCKED_PICK on opus', () => {
+        expect(LOCKED_PICK).toEqual({
+            model: 'opus',
+            model_reason: 'locked',
+            trial_group: null,
+        })
+        expect(lockedPick()).toEqual(LOCKED_PICK)
+        expect(lockedPick({ provider: 'agy' })).toEqual({
+            model: 'gemini-4-neon-high',
+            model_reason: 'locked',
+            trial_group: null,
+        })
+    })
+
+    test('offeredModels returns provider-ordered tiers at or above the floor', () => {
+        expect(offeredModels({ floor: 'sonnet' })).toEqual(['opus', 'sonnet'])
+        expect(
+            offeredModels({
+                floor: 'gemini-4-argon-high',
+                provider: 'agy',
+            })
+        ).toEqual(['gemini-4-neon-high', 'gemini-4-argon-high'])
+        expect(
+            offeredModels({
+                floor: 'gemini-4-neon-high',
+                provider: 'agy',
+            })
+        ).toEqual([...AGY_MODEL_NAMES])
+        expect(
+            offeredModels({
+                floor: 'gemini-3.8-flash-high',
+                provider: 'agy',
+            })
+        ).toEqual([...AGY_MODEL_NAMES])
+    })
+
+    test('pickModel routes agy roles onto agy tiers and rejects cross-provider picks', () => {
+        const argonFloor = {
+            provider: 'agy',
+            floors: { 'test-writer': 'gemini-4-argon-high' },
+            trial_share: 1,
+        }
+        const neonPick = (model_reason: ModelReason): ModelPick => ({
+            model: 'gemini-4-neon-high',
+            model_reason,
+            trial_group: null,
+        })
+
+        expect(
+            pickOf({
+                role: 'ticket-reviewer',
+                models: argonFloor,
+                answer: answer('gemini-4-argon-high', 0.9, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+            })
+        ).toEqual({
+            model: 'gemini-4-neon-high',
+            model_reason: 'locked',
+            trial_group: null,
+        })
+        expect(
+            pickModel({
+                role: 'test-writer',
+                models: ModelsConfigSchema.parse(argonFloor),
+                failed_cheaper: true,
+                answer: answer('gemini-4-argon-high', 0.9, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+                trial_key: KEY,
+            })
+        ).toEqual(neonPick('after_failure'))
+        expect(
+            pickOf({
+                models: { provider: 'agy' },
+                answer: answer('gemini-4-argon-high', 0.9, [
+                    ...AGY_MODEL_NAMES,
+                ]),
+            })
+        ).toEqual(neonPick('floor'))
+        expect(
+            pickOf({
+                models: argonFloor,
+                answer: null,
+            })
+        ).toEqual(neonPick('no_answer'))
+        expect(
+            pickOf({
+                models: argonFloor,
+                answer: answer('sonnet', 0.9, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+            })
+        ).toEqual(neonPick('unsure'))
+        expect(
+            pickOf({
+                models: argonFloor,
+                answer: answer('gemini-4-argon-high', 0.9, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+            })
+        ).toEqual({
+            model: 'gemini-4-argon-high',
+            model_reason: 'decision_model',
+            trial_group: null,
+        })
+        expect(
+            pickOf({
+                models: argonFloor,
+                answer: answer('gemini-4-argon-high', 0.2, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+                trial_key: KEY,
+            })
+        ).toEqual({
+            model: 'gemini-4-argon-high',
+            model_reason: 'trial',
+            trial_group: 'trial',
+        })
+    })
+
+    test('redonePick, asksModel, and launchPick reuse agy models and reject cross-provider models', () => {
+        const config = agyConfig({
+            floors: { 'test-writer': 'gemini-4-argon-high' },
+        })
+        const [runStarted, ...rest] = intakePassed({
+            tickets: [practiceTicket({ number: 11 })],
+        })
+        if (runStarted?.kind !== 'run_started') throw new Error('no start')
+        const records = stamp([
+            {
+                ...runStarted,
+                content: { ...runStarted.content, config },
+            },
+            ...rest,
+            {
+                kind: 'agent_started',
+                ticket: 11,
+                role: 'test-writer',
+                content: {
+                    role: 'test-writer',
+                    prompt: 'Write tests.',
+                    follow_up_of: null,
+                    model: 'gemini-4-argon-high',
+                    model_reason: 'decision_model',
+                    effort: 'medium',
+                    trial_group: null,
+                },
+            },
+        ])
+        const state = replayRun({ records })
+        const step = { first_seq: records.length, redo: true }
+
+        expect(
+            redonePick({
+                records,
+                first_seq: step.first_seq,
+                ticket: 11,
+                role: 'test-writer',
+                provider: 'agy',
+            })
+        ).toEqual({
+            model: 'gemini-4-argon-high',
+            model_reason: 'decision_model',
+            trial_group: null,
+        })
+        expect(
+            redonePick({
+                records,
+                first_seq: step.first_seq,
+                ticket: 11,
+                role: 'test-writer',
+                provider: 'claude',
+            })
+        ).toBeNull()
+        expect(
+            asksModel({
+                records,
+                state,
+                ticket: 11,
+                role: 'test-writer',
+                step,
+            })
+        ).toBe(false)
+        expect(
+            launchPick({
+                records,
+                state,
+                config,
+                run_id: 'run-1',
+                ticket: 11,
+                role: 'test-writer',
+                step,
+            })
+        ).toEqual({
+            model: 'gemini-4-argon-high',
+            model_reason: 'decision_model',
+            trial_group: null,
+        })
     })
 })

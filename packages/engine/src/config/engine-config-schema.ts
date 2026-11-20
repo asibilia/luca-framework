@@ -8,6 +8,14 @@ import { isAbsolute, normalize } from 'node:path'
 import { z } from 'zod'
 
 import {
+    DEFAULT_PROVIDER,
+    isProviderModel,
+    PROVIDERS,
+    ProviderIdSchema,
+    type ProviderId,
+    type ProviderModel,
+} from '../agents/provider'
+import {
     DEFAULT_DECISION_MODEL,
     DecisionModelIdSchema,
 } from '../jev/jev-schemas'
@@ -230,26 +238,37 @@ export const EffortLevelSchema = z.enum([
 
 export type EffortLevel = z.infer<typeof EffortLevelSchema>
 
-/** The roles with a model floor (#603); every other role always runs Opus. */
+/** The roles with a model floor (#603); every other role runs the strongest model. */
 export const ROUTED_ROLES = ['test-writer', 'implementer', 'learner'] as const
 
 /**
- * The cheapest model each routed role may run on; a role left out is
- * `opus`. A floor for any other role, a reviewer or a lens, is refused.
+ * The cheapest model each routed role may run on; a role left out defaults
+ * to the provider's strongest model. A floor for any other role is refused.
  */
 const ModelFloorsSchema = z.strictObject(
     {
-        'test-writer': ModelNameSchema.default(DEFAULT_MODEL),
-        implementer: ModelNameSchema.default(DEFAULT_MODEL),
-        learner: ModelNameSchema.default(DEFAULT_MODEL),
+        'test-writer': z.string().optional(),
+        implementer: z.string().optional(),
+        learner: z.string().optional(),
     },
     {
         error: (issue) =>
             issue.code === 'unrecognized_keys'
-                ? `${issue.keys.join(', ')} can't have a model floor: reviewers always run Opus. Only ${ROUTED_ROLES.join(', ')} have floors.`
+                ? `${issue.keys.join(', ')} can't have a model floor: reviewers always run the strongest model. Only ${ROUTED_ROLES.join(', ')} have floors.`
                 : undefined,
     }
 )
+
+const floorFor = ({
+    value,
+    provider,
+}: {
+    value: string | undefined
+    provider: ProviderId
+}): ProviderModel => {
+    const profile = PROVIDERS[provider]
+    return profile.tiers.find((tier) => tier === value) ?? profile.strongest
+}
 
 /**
  * The effort each writer runs at on tickets, and the learner's (#660); a
@@ -272,18 +291,51 @@ const RoleEffortsSchema = z.strictObject(
 )
 
 /**
- * The config's `models` block (#603): each routed role's model floor, each
- * writer's effort (#660), and how sure the decision model must be
- * (`confidence_bar`) before its model pick is used, and the share of its
- * unsure but cheaper picks that run anyway in a model trial (`trial_share`,
- * #698).
+ * The config's `models` block (#603, #777): the agent `provider` (default
+ * `'claude'`), each routed role's model floor, each writer's effort (#660),
+ * `confidence_bar`, and `trial_share` (#698).
  */
-export const ModelsConfigSchema = z.object({
-    floors: ModelFloorsSchema.prefault({}),
-    effort: RoleEffortsSchema.prefault({}),
-    confidence_bar: z.number().min(0).max(1).default(0.5),
-    trial_share: z.number().min(0).max(1).default(0),
-})
+export const ModelsConfigSchema = z
+    .object({
+        provider: ProviderIdSchema.default(DEFAULT_PROVIDER),
+        floors: ModelFloorsSchema.prefault({}),
+        effort: RoleEffortsSchema.prefault({}),
+        confidence_bar: z.number().min(0).max(1).default(0.5),
+        trial_share: z.number().min(0).max(1).default(0),
+    })
+    .superRefine((val, ctx) => {
+        const profile = PROVIDERS[val.provider]
+        for (const role of ROUTED_ROLES) {
+            const floor = val.floors[role]
+            if (
+                floor !== undefined &&
+                !isProviderModel({ provider: val.provider, model: floor })
+            ) {
+                ctx.addIssue({
+                    code: 'custom',
+                    path: ['floors', role],
+                    message: `models.floors.${role}: "${floor}" is not a valid model for provider "${val.provider}". Allowed: ${profile.tiers.join(', ')}.`,
+                })
+            }
+        }
+    })
+    .transform((val) => ({
+        ...val,
+        floors: {
+            'test-writer': floorFor({
+                value: val.floors['test-writer'],
+                provider: val.provider,
+            }),
+            implementer: floorFor({
+                value: val.floors.implementer,
+                provider: val.provider,
+            }),
+            learner: floorFor({
+                value: val.floors.learner,
+                provider: val.provider,
+            }),
+        },
+    }))
 
 export type ModelsConfig = z.infer<typeof ModelsConfigSchema>
 

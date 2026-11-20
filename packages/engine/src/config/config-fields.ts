@@ -13,6 +13,7 @@ import {
     type ModelsConfig,
 } from './engine-config-schema'
 
+import { mapFloorToProvider, type ProviderId } from '../agents/provider'
 import type { DecisionModelId } from '../jev/jev-schemas'
 import { DEFAULT_COMMAND_TIMEOUT_MS } from '../shell/run-command'
 
@@ -93,6 +94,49 @@ export const decisionModelOf = ({
  */
 export const modelsOf = ({ config }: { config: EngineConfig }): ModelsConfig =>
     config.models ?? ModelsConfigSchema.parse({})
+
+/**
+ * Overrides the config's agent provider (#777): if already `provider`, returns
+ * `config` unchanged; otherwise maps each routed floor by tier index onto
+ * `provider` while preserving `effort`, `confidence_bar`, and `trial_share`.
+ *
+ * @example
+ * overrideConfigProvider({ config, provider: 'agy' }).models?.provider // 'agy'
+ */
+export const overrideConfigProvider = ({
+    config,
+    provider,
+}: {
+    config: EngineConfig
+    provider: ProviderId
+}): EngineConfig => {
+    const current = modelsOf({ config })
+    if (current.provider === provider) return config
+    return {
+        ...config,
+        models: {
+            ...current,
+            provider,
+            floors: {
+                'test-writer': mapFloorToProvider({
+                    floor: current.floors['test-writer'],
+                    from: current.provider,
+                    to: provider,
+                }),
+                implementer: mapFloorToProvider({
+                    floor: current.floors.implementer,
+                    from: current.provider,
+                    to: provider,
+                }),
+                learner: mapFloorToProvider({
+                    floor: current.floors.learner,
+                    from: current.provider,
+                    to: provider,
+                }),
+            },
+        },
+    }
+}
 
 /**
  * Whether the engine retries a routine stuck item once by itself (#705):

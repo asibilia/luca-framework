@@ -10,6 +10,7 @@ import {
 } from './jev-schemas'
 import { offeredModels, type RoutedRole } from './model-pick'
 
+import { DEFAULT_PROVIDER, providerOf } from '../agents/provider'
 import { ROLE_EFFORT, roleEffort } from '../agents/role-effort'
 import type { Finding } from '../agents/role-results'
 import {
@@ -192,7 +193,9 @@ const agentModelAsk = ({
 }): JevAsk => {
     const models =
         state.config === null ? null : modelsOf({ config: state.config })
-    const floor = models?.floors[role] ?? JEV_FIXED_MODEL
+    const provider = models?.provider ?? DEFAULT_PROVIDER
+    const strongest = providerOf(provider).strongest
+    const floor = models?.floors[role] ?? strongest
     return {
         job: 'agent_model',
         ticket,
@@ -206,12 +209,12 @@ const agentModelAsk = ({
             questions: {
                 model: choice({
                     instructions: `Which model should the ${role} agent run on? Pick the cheapest that will get it right.`,
-                    options: offeredModels({ floor }),
+                    options: offeredModels({ floor, provider }),
                 }),
             },
         },
-        fixed: { model: JEV_FIXED_MODEL },
-        acted: floor !== JEV_FIXED_MODEL,
+        fixed: { model: strongest },
+        acted: floor !== strongest,
     }
 }
 

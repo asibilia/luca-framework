@@ -88,6 +88,7 @@ Tests:
 
 - `packages/engine/src/journal/journal.test.ts`
 - `packages/engine/src/journal/journal-replay.test.ts`
+- `packages/engine/src/journal/journal-replay-provider.test.ts`
 - `packages/engine/src/core/decide-crash-recovery.test.ts`
 - `packages/engine/src/core/run-crash-recovery.test.ts`
 - `packages/engine/src/core/run-crash-recovery.e2e.test.ts`
@@ -105,6 +106,7 @@ Reached by: `.luca/config.json` in a repo; a config reload happens on every resu
 Tests:
 
 - `packages/engine/src/config/engine-config.test.ts`
+- `packages/engine/src/config/engine-config-provider.test.ts`
 - `packages/engine/src/config/config-reload.test.ts`
 - `packages/engine/src/core/decide-config-reload.test.ts`
 - `packages/engine/src/cli/run-config-reload.e2e.test.ts`
