@@ -6,15 +6,18 @@ import { existsSync } from 'node:fs'
 
 import { errorText } from './run-end'
 
+import { modelsOf, type ProviderId } from '../config/engine-config'
 import { createJournal, runJournalPath } from '../journal/journal'
 import type { JournalRecord } from '../journal/journal-record'
 
-/** What a run's `run_started` says: its spec, base branch, repo, and time. */
+/** What a run's `run_started` says: its spec, base branch, repo, provider, and time. */
 export type RunStart = {
     spec_number: number
     base_branch: string
     /** `null` in journals from before the repo was kept. */
     repo: string | null
+    /** Agent provider from `run_started.content.config` (defaults to `'claude'`). */
+    provider: ProviderId
     /** When `run_started` was journaled. */
     started_at: string
 }
@@ -73,9 +76,15 @@ export const readRunStart = ({
             error: `Run ${run_id}'s journal does not start with run_started, so it is not a run.`,
         }
     }
-    const { spec_number, base_branch, repo } = first.content
+    const { spec_number, base_branch, repo, config } = first.content
     return {
         ok: true,
-        start: { spec_number, base_branch, repo, started_at: first.time },
+        start: {
+            spec_number,
+            base_branch,
+            repo,
+            provider: modelsOf({ config }).provider,
+            started_at: first.time,
+        },
     }
 }

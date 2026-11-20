@@ -92,6 +92,7 @@ Tests:
 - `packages/engine/src/cli/resume-live-engine.test.ts`
 - `packages/engine/src/cli/live-runs.test.ts`
 - `packages/engine/src/cli/run-modes.test.ts`
+- `packages/engine/src/cli/run-modes-provider.test.ts`
 - `packages/engine/src/cli/run-modes.e2e.test.ts`
 - `packages/engine/src/cli/run-modes-spec.e2e.test.ts`
 - `packages/engine/src/cli/run-modes-clef.e2e.test.ts`

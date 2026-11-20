@@ -2,7 +2,7 @@ import { $ } from 'bun'
 
 import { describe, expect, test } from 'bun:test'
 
-import { parseRunArgs } from './run-args'
+import { parseRunArgs, RUN_USAGE } from './run-args'
 
 import { runBranchName } from '../core/execute-build'
 import { runJournalPath } from '../journal/journal'
@@ -185,5 +185,54 @@ describe('luca-run arguments', () => {
             .quiet()
             .nothrow()
         expect(check.exitCode).toBe(0)
+    })
+
+    test('accepts --provider claude and --provider agy on --spec and documents it in RUN_USAGE', () => {
+        expect(RUN_USAGE).toContain('[--provider <claude|agy>]')
+        expect(
+            parseRunArgs({
+                argv: ['--spec', '10', '--provider', 'claude'],
+                cwd: '/code',
+                env: {},
+            })
+        ).toMatchObject({
+            ok: true,
+            args: { mode: 'spec', provider: 'claude' },
+        })
+        expect(
+            parseRunArgs({
+                argv: ['--spec', '10', '--provider', 'agy'],
+                cwd: '/code',
+                env: {},
+            })
+        ).toMatchObject({ ok: true, args: { mode: 'spec', provider: 'agy' } })
+    })
+
+    test.each([
+        {
+            why: 'an unknown provider value',
+            argv: ['--spec', '10', '--provider', 'openai'],
+            expected: 'Invalid --provider "openai": expected claude or agy.',
+        },
+        {
+            why: '--demo with --provider',
+            argv: ['--demo', '--provider', 'agy'],
+            expected: '--provider is for a run of a spec (--spec).',
+        },
+        {
+            why: '--resume with --provider',
+            argv: ['--resume', 'r1', '--provider', 'agy'],
+            expected: '--resume takes the provider from the journal.',
+        },
+        {
+            why: '--unfinished with --provider',
+            argv: ['--unfinished', '--provider', 'agy'],
+            expected: '--unfinished takes no other flags.',
+        },
+    ])('refuses $why with exact error', ({ argv, expected }) => {
+        const result = parseRunArgs({ argv, cwd: '/code', env: {} })
+
+        expect(result.ok).toBe(false)
+        if (!result.ok) expect(result.error).toContain(expected)
     })
 })

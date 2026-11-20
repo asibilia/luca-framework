@@ -128,6 +128,7 @@ Tests:
 - `packages/engine/src/limits/limit-wait.test.ts`
 - `packages/engine/src/limits/plan-usage.test.ts`
 - `packages/engine/src/core/decide-usage-line.test.ts`
+- `packages/engine/src/core/decide-usage-line-provider.test.ts`
 - `packages/engine/src/core/usage-line-engine.test.ts`
 - `packages/engine/src/core/usage-line-wait.test.ts`
 - `packages/engine/src/limits/usage-line.test.ts`
