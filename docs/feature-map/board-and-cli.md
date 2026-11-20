@@ -43,6 +43,7 @@ Tests:
 - `packages/board/client/wait-line-panel.test.ts`
 - `packages/board/client/status-bar-panel.test.ts`
 - `packages/board/client/slot-wait-panel.test.ts`
+- `packages/board/client/board-look.test.ts`
 
 ## The board: the live file
 
@@ -63,6 +64,7 @@ Tests:
 - `packages/board/client/live-feed-panel.test.ts`
 - `packages/board/client/engine-gone-panel.test.ts`
 - `packages/board/client/helper-lines-panel.test.ts`
+- `packages/board/client/live-line.test.ts`
 
 ## The board: starting a run from Paseo
 

@@ -16,6 +16,17 @@ const TOOL_WORDS: Record<string, { icon: string; verb: string }> = {
     Bash: { icon: '▸', verb: '' },
     Agent: { icon: '⇢', verb: 'helper' },
     Task: { icon: '⇢', verb: 'helper' },
+    view_file: { icon: '≡', verb: 'reading' },
+    list_dir: { icon: '≡', verb: 'listing' },
+    grep_search: { icon: '⌕', verb: 'searching' },
+    find_by_name: { icon: '⌕', verb: 'searching' },
+    write_to_file: { icon: '✎', verb: 'writing' },
+    replace_file_content: { icon: '✎', verb: 'editing' },
+    multi_replace_file_content: { icon: '✎', verb: 'editing' },
+    sed_file: { icon: '✎', verb: 'editing' },
+    notebook_edit: { icon: '✎', verb: 'editing' },
+    run_command: { icon: '▸', verb: '' },
+    finish: { icon: '✓', verb: 'finishing' },
 }
 
 /** A tool call in words, with its icon first: "✎ editing gate-runner.ts". */
