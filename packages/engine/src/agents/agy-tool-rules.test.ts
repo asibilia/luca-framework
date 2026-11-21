@@ -433,6 +433,28 @@ describe('AC2: finish, secret-path messages, state_dir_real, and worktree bounda
                 allow: false,
                 reason: 'Writing secret files is not allowed.',
             })
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: 'read_file',
+                    tool_input: { Path: target },
+                })
+            ).toEqual({
+                allow: false,
+                reason: 'Reading secret files is not allowed.',
+            })
+            for (const tool of ['write_file', 'edit_file'] as const) {
+                expect(
+                    checkAgyToolCall({
+                        state,
+                        tool_name: tool,
+                        tool_input: { Path: target },
+                    })
+                ).toEqual({
+                    allow: false,
+                    reason: 'Writing secret files is not allowed.',
+                })
+            }
         }
     })
 
@@ -480,6 +502,9 @@ describe('AC2: finish, secret-path messages, state_dir_real, and worktree bounda
                 { TargetFile: '/etc/hosts' },
                 '/etc/hosts',
             ],
+            [state, 'read_file', { Path: '/etc/hosts' }, '/etc/hosts'],
+            [state, 'write_file', { Path: '../escape.ts' }, '../escape.ts'],
+            [state, 'edit_file', { Path: '../escape.ts' }, '../escape.ts'],
         ]
         for (const [s, tool_name, tool_input, raw_path] of outside_cases) {
             expect(

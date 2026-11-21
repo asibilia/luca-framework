@@ -33,6 +33,9 @@ describe('live-line (#780)', () => {
         expect(callWords({ tool: 'view_file', target: 'board-look.ts' })).toBe(
             '≡ reading board-look.ts'
         )
+        expect(callWords({ tool: 'read_file', target: 'board-look.ts' })).toBe(
+            '≡ reading board-look.ts'
+        )
         expect(callWords({ tool: 'list_dir', target: 'packages/board' })).toBe(
             '≡ listing packages/board'
         )
@@ -45,9 +48,15 @@ describe('live-line (#780)', () => {
         expect(callWords({ tool: 'write_to_file', target: 'new.ts' })).toBe(
             '✎ writing new.ts'
         )
+        expect(callWords({ tool: 'write_file', target: 'new.ts' })).toBe(
+            '✎ writing new.ts'
+        )
         expect(
             callWords({ tool: 'replace_file_content', target: 'live-line.ts' })
         ).toBe('✎ editing live-line.ts')
+        expect(callWords({ tool: 'edit_file', target: 'live-line.ts' })).toBe(
+            '✎ editing live-line.ts'
+        )
         expect(
             callWords({
                 tool: 'multi_replace_file_content',

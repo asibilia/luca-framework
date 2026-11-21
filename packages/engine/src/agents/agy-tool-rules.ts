@@ -77,6 +77,11 @@ const PathFileSchema = z.object({
     Path: z.string().min(1),
 })
 
+const WriteFilePathSchema = z.object({
+    Path: z.string().nullish(),
+    TargetFile: z.string().nullish(),
+})
+
 const RunCommandInputSchema = z.object({
     CommandLine: z.string().min(1),
     IsDaemon: z.boolean().nullish(),
@@ -120,6 +125,8 @@ const WRITE_TOOL_KEY = {
     multi_replace_file_content: 'TargetFile',
     sed_file: 'Path',
     notebook_edit: 'Path',
+    write_file: 'Either',
+    edit_file: 'Either',
 } as const
 
 const nonEmpty = (value: string | null | undefined): string | null =>
@@ -339,10 +346,18 @@ const checkWriteTool = ({
                   const parsed = TargetFileSchema.safeParse(tool_input)
                   return parsed.success ? parsed.data.TargetFile : null
               })()
-            : (() => {
-                  const parsed = PathFileSchema.safeParse(tool_input)
-                  return parsed.success ? parsed.data.Path : null
-              })()
+            : key === 'Path'
+              ? (() => {
+                    const parsed = PathFileSchema.safeParse(tool_input)
+                    return parsed.success ? parsed.data.Path : null
+                })()
+              : (() => {
+                    const parsed = WriteFilePathSchema.safeParse(tool_input)
+                    return parsed.success
+                        ? (nonEmpty(parsed.data.Path) ??
+                              nonEmpty(parsed.data.TargetFile))
+                        : null
+                })()
     if (raw_path === null) {
         return deny(`${tool_name} needs a file path.`)
     }
@@ -373,12 +388,12 @@ export const checkAgyToolCall = ({
     tool_input: unknown
 }): ToolDecision => {
     if (tool_name === 'finish') return ALLOW
-    if (tool_name === 'view_file') {
+    if (tool_name === 'view_file' || tool_name === 'read_file') {
         const parsed = ViewFileInputSchema.safeParse(tool_input)
         const raw_path = parsed.success
             ? (nonEmpty(parsed.data.AbsolutePath) ?? nonEmpty(parsed.data.Path))
             : null
-        if (raw_path === null) return deny('view_file needs a path.')
+        if (raw_path === null) return deny(`${tool_name} needs a path.`)
         const access = checkPathAccess({ state, raw_path, mode: 'read' })
         if (!access.ok) return access.decision
         return delegateToolCall({
@@ -400,7 +415,9 @@ export const checkAgyToolCall = ({
         tool_name === 'replace_file_content' ||
         tool_name === 'multi_replace_file_content' ||
         tool_name === 'sed_file' ||
-        tool_name === 'notebook_edit'
+        tool_name === 'notebook_edit' ||
+        tool_name === 'write_file' ||
+        tool_name === 'edit_file'
     ) {
         return checkWriteTool({ state, tool_name, tool_input })
     }

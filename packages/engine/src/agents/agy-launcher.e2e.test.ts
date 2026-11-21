@@ -222,9 +222,7 @@ describe('F12: agy-launcher.ts & provider-launcher.ts — Tier 1 equivalence cla
             '-p',
             'Build #11.',
             '--model',
-            'gemini-4-neon-high',
-            '--effort',
-            'medium',
+            'gemini-4-neon-medium',
             '--output-format',
             'stream-json',
             '--json-schema',
@@ -261,21 +259,17 @@ describe('F12: agy-launcher.ts & provider-launcher.ts — Tier 1 equivalence cla
             instructions,
         })
 
-        const hook = [
+        const handler = [
             {
-                hooks: [
-                    {
-                        type: 'command',
-                        command: `${process.execPath} ${hookScript}`,
-                    },
-                ],
+                type: 'command',
+                command: `${process.execPath} ${hookScript}`,
             },
         ]
         expect(files.hooks).toEqual({
-            hooks: {
-                SessionStart: hook,
-                PreToolUse: [{ matcher: '*', ...hook[0] }],
-                PreInvocation: hook,
+            luca: {
+                SessionStart: handler,
+                PreToolUse: [{ matcher: '*', hooks: handler }],
+                PreInvocation: handler,
             },
         })
         expect(readdirSync(cwd)).toEqual(beforeCwd)
@@ -359,12 +353,13 @@ describe('F12: agy-launcher.ts & provider-launcher.ts — Tier 1 equivalence cla
         ])
         const a1 = calls[0]?.argv ?? []
         const a2 = calls[1]?.argv ?? []
+        expect(a1).not.toContain('--effort')
+        expect(a2).not.toContain('--effort')
         expect(
             [
                 '-p',
                 '--conversation',
                 '--model',
-                '--effort',
                 '--json-schema',
                 '--add-dir',
             ].map((flag) => flagValue({ argv: a2, flag }))
@@ -372,7 +367,6 @@ describe('F12: agy-launcher.ts & provider-launcher.ts — Tier 1 equivalence cla
             'Lint failed: fix it.',
             'conv-fu',
             'gemini-4-argon-high',
-            'high',
             flagValue({ argv: a1, flag: '--json-schema' }),
             flagValue({ argv: a1, flag: '--add-dir' }),
         ])

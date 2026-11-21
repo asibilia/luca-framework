@@ -4,7 +4,11 @@ import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
 
-import { checkAgyLaunchModel, createAgyLauncher } from './agy-launcher'
+import {
+    checkAgyLaunchModel,
+    createAgyLauncher,
+    resolveAgyCliModel,
+} from './agy-launcher'
 import {
     AGY_CONFIG,
     AGY_PATH,
@@ -269,23 +273,22 @@ describe('per-session temp dir, hooks, and zero cwd writes (AC3)', () => {
 
         const expected_cmd = `${process.execPath} /opt/luca/agy-hook.ts`
         expect(captured_hooks).toEqual({
-            hooks: {
-                SessionStart: [
-                    { hooks: [{ type: 'command', command: expected_cmd }] },
-                ],
+            luca: {
+                SessionStart: [{ type: 'command', command: expected_cmd }],
                 PreToolUse: [
                     {
                         matcher: '*',
                         hooks: [{ type: 'command', command: expected_cmd }],
                     },
                 ],
-                PreInvocation: [
-                    { hooks: [{ type: 'command', command: expected_cmd }] },
-                ],
+                PreInvocation: [{ type: 'command', command: expected_cmd }],
             },
         })
 
         const argv = fake.calls[0]?.argv ?? []
+        expect(argv).not.toContain('--effort')
+        const model_idx = argv.indexOf('--model')
+        expect(argv[model_idx + 1]).toBe('gemini-4-neon-medium')
         const add_dir_idx = argv.indexOf('--add-dir')
         expect(add_dir_idx).toBeGreaterThan(-1)
         expect(argv[add_dir_idx + 1]).toBe(join(state.state_dir_real, 'hooks'))
@@ -364,5 +367,78 @@ describe('per-session temp dir, hooks, and zero cwd writes (AC3)', () => {
         expect(state_dirs).toHaveLength(2)
         expect(new Set(state_dirs).size).toBe(2)
         expect(readdirSync(dirs.worktree)).toEqual([])
+    })
+})
+
+describe('resolveAgyCliModel effort suffix mapping', () => {
+    test('maps every Gemini tier and all five EffortLevel values with per-family clamping', () => {
+        const cases: [
+            string,
+            Record<'low' | 'medium' | 'high' | 'xhigh' | 'max', string>,
+        ][] = [
+            [
+                'gemini-4-neon-high',
+                {
+                    low: 'gemini-4-neon-low',
+                    medium: 'gemini-4-neon-medium',
+                    high: 'gemini-4-neon-high',
+                    xhigh: 'gemini-4-neon-xhigh',
+                    max: 'gemini-4-neon-xhigh',
+                },
+            ],
+            [
+                'gemini-4-hydrogen-high',
+                {
+                    low: 'gemini-4-hydrogen-low',
+                    medium: 'gemini-4-hydrogen-medium',
+                    high: 'gemini-4-hydrogen-high',
+                    xhigh: 'gemini-4-hydrogen-xhigh',
+                    max: 'gemini-4-hydrogen-xhigh',
+                },
+            ],
+            [
+                'gemini-4-argon-high',
+                {
+                    low: 'gemini-4-argon-low',
+                    medium: 'gemini-4-argon-medium',
+                    high: 'gemini-4-argon-high',
+                    xhigh: 'gemini-4-argon-high',
+                    max: 'gemini-4-argon-high',
+                },
+            ],
+            [
+                'gemini-3.8-flash-high',
+                {
+                    low: 'gemini-3.8-flash-low',
+                    medium: 'gemini-3.8-flash-medium',
+                    high: 'gemini-3.8-flash-high',
+                    xhigh: 'gemini-3.8-flash-high',
+                    max: 'gemini-3.8-flash-high',
+                },
+            ],
+            [
+                'gemini-4-other-xhigh',
+                {
+                    low: 'gemini-4-other-low',
+                    medium: 'gemini-4-other-medium',
+                    high: 'gemini-4-other-high',
+                    xhigh: 'gemini-4-other-high',
+                    max: 'gemini-4-other-high',
+                },
+            ],
+        ]
+        for (const [model, expected] of cases) {
+            for (const effort of [
+                'low',
+                'medium',
+                'high',
+                'xhigh',
+                'max',
+            ] as const) {
+                expect(resolveAgyCliModel({ model, effort })).toBe(
+                    expected[effort]
+                )
+            }
+        }
     })
 })

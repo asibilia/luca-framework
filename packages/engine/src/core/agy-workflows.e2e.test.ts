@@ -38,11 +38,21 @@ import {
 
 /** Tier 4 real-world E2E workflow scenarios for Spec #777 (Scenarios 1–2). */
 
+const HookHandlerSchema = z.object({
+    type: z.literal('command'),
+    command: z.string(),
+})
 const HookCmdSchema = z.object({
-    hooks: z.record(
-        z.string(),
-        z.array(z.object({ hooks: z.array(z.object({ command: z.string() })) }))
-    ),
+    luca: z.object({
+        SessionStart: z.array(HookHandlerSchema),
+        PreToolUse: z.array(
+            z.object({
+                matcher: z.string(),
+                hooks: z.array(HookHandlerSchema),
+            })
+        ),
+        PreInvocation: z.array(HookHandlerSchema),
+    }),
 })
 
 const roots: string[] = []
@@ -69,7 +79,10 @@ const hookCall = async ({
     const hooks = HookCmdSchema.parse(
         JSON.parse(readFileSync(join(addDir, '.agents/hooks.json'), 'utf8'))
     )
-    const command = hooks.hooks[event]?.[0]?.hooks[0]?.command ?? ''
+    const command =
+        event === 'PreToolUse'
+            ? (hooks.luca.PreToolUse[0]?.hooks[0]?.command ?? '')
+            : (hooks.luca[event][0]?.command ?? '')
     const proc = Bun.spawn(command.split(' '), {
         stdin: new TextEncoder().encode(JSON.stringify(payload)),
         stdout: 'pipe',

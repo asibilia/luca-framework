@@ -46,27 +46,29 @@ const makeState = (
 describe('AC3: normalization of read/search, write, and run_command tools onto checkToolCall', () => {
     test('normalizes view_file and optional-path search tools', () => {
         const state = makeState({ role: 'learner' })
-        expect(
-            checkAgyToolCall({
-                state,
-                tool_name: 'view_file',
-                tool_input: { AbsolutePath: 'src/app.ts' },
-            })
-        ).toEqual({ allow: true })
-        expect(
-            checkAgyToolCall({
-                state,
-                tool_name: 'view_file',
-                tool_input: { Path: 'src/app.ts' },
-            })
-        ).toEqual({ allow: true })
-        expect(
-            checkAgyToolCall({
-                state,
-                tool_name: 'view_file',
-                tool_input: { AbsolutePath: '' },
-            })
-        ).toEqual({ allow: false, reason: 'view_file needs a path.' })
+        for (const tool of ['view_file', 'read_file'] as const) {
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: tool,
+                    tool_input: { AbsolutePath: 'src/app.ts' },
+                })
+            ).toEqual({ allow: true })
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: tool,
+                    tool_input: { Path: 'src/app.ts' },
+                })
+            ).toEqual({ allow: true })
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: tool,
+                    tool_input: { AbsolutePath: '' },
+                })
+            ).toEqual({ allow: false, reason: `${tool} needs a path.` })
+        }
         expect(
             checkAgyToolCall({
                 state,
@@ -164,6 +166,60 @@ describe('AC3: normalization of read/search, write, and run_command tools onto c
                     state: impl,
                     tool_name: tool,
                     tool_input: { TargetFile: 'src/app.ts' },
+                })
+            ).toEqual({ allow: false, reason: `${tool} needs a file path.` })
+        }
+
+        for (const tool of ['write_file', 'edit_file'] as const) {
+            expect(
+                checkAgyToolCall({
+                    state: impl,
+                    tool_name: tool,
+                    tool_input: { Path: 'src/app.ts' },
+                })
+            ).toEqual({ allow: true })
+            expect(
+                checkAgyToolCall({
+                    state: impl,
+                    tool_name: tool,
+                    tool_input: { TargetFile: 'src/app.ts' },
+                })
+            ).toEqual({ allow: true })
+            expect(
+                checkAgyToolCall({
+                    state: impl,
+                    tool_name: tool,
+                    tool_input: { Path: 'src/app.test.ts' },
+                })
+            ).toEqual({
+                allow: false,
+                reason: 'A implementer may not write src/app.test.ts.',
+            })
+            expect(
+                checkAgyToolCall({
+                    state: tw,
+                    tool_name: tool,
+                    tool_input: { Path: 'src/app.ts' },
+                })
+            ).toEqual({
+                allow: false,
+                reason: 'A test-writer may not write src/app.ts.',
+            })
+            expect(
+                checkAgyToolCall({
+                    state: reviewer,
+                    tool_name: tool,
+                    tool_input: { Path: 'src/app.ts' },
+                })
+            ).toEqual({
+                allow: false,
+                reason: 'A reviewer may not write src/app.ts.',
+            })
+            expect(
+                checkAgyToolCall({
+                    state: impl,
+                    tool_name: tool,
+                    tool_input: { Path: '' },
                 })
             ).toEqual({ allow: false, reason: `${tool} needs a file path.` })
         }

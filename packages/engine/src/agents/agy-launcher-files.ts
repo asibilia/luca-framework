@@ -62,6 +62,32 @@ export const agyEnv = ({
     }
 }
 
+const AGY_EFFORT_SUFFIX_RE = /-(low|medium|high|xhigh)$/
+const AGY_XHIGH_FAMILIES = new Set(['gemini-4-neon', 'gemini-4-hydrogen'])
+
+/**
+ * Resolves a `(model, effort)` pair to `agy`'s effort-suffixed CLI model ID.
+ * `gemini-4-neon` and `gemini-4-hydrogen` support up to `xhigh`; all other
+ * Gemini families clamp `xhigh`/`max` to `high`.
+ */
+export const resolveAgyCliModel = ({
+    model,
+    effort,
+}: {
+    model: string
+    effort: EffortLevel
+}): string => {
+    const base = model.replace(AGY_EFFORT_SUFFIX_RE, '')
+    const clamped = AGY_XHIGH_FAMILIES.has(base)
+        ? effort === 'max'
+            ? 'xhigh'
+            : effort
+        : effort === 'xhigh' || effort === 'max'
+          ? 'high'
+          : effort
+    return `${base}-${clamped}`
+}
+
 /** Builds `.agents/hooks.json` loaded via `--add-dir` for one `agy` session. */
 export const buildAgyHooksJson = ({
     bun_path,
@@ -71,12 +97,16 @@ export const buildAgyHooksJson = ({
     hook_script_path: string
 }): Record<string, unknown> => {
     const command = `${bun_path} ${hook_script_path}`
-    const hook = [{ type: 'command', command }]
     return {
-        hooks: {
-            SessionStart: [{ hooks: hook }],
-            PreToolUse: [{ matcher: '*', hooks: hook }],
-            PreInvocation: [{ hooks: hook }],
+        luca: {
+            SessionStart: [{ type: 'command', command }],
+            PreToolUse: [
+                {
+                    matcher: '*',
+                    hooks: [{ type: 'command', command }],
+                },
+            ],
+            PreInvocation: [{ type: 'command', command }],
         },
     }
 }
@@ -199,9 +229,7 @@ export const buildAgyArgv = ({
     prompt,
     ...(session_id === undefined ? [] : ['--conversation', session_id]),
     '--model',
-    model,
-    '--effort',
-    effort,
+    resolveAgyCliModel({ model, effort }),
     '--output-format',
     'stream-json',
     '--json-schema',

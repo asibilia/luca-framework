@@ -299,6 +299,41 @@ describe('agy NDJSON stream & TurnProgress (#779 AC2)', () => {
         ).toBe('src/b.ts')
         expect(
             agyTargetOf({
+                tool_name: 'read_file',
+                parameters: { Path: `${worktree}/src/read.ts` },
+                worktree,
+            })
+        ).toBe('src/read.ts')
+        expect(
+            agyTargetOf({
+                tool_name: 'write_file',
+                parameters: {
+                    Path: `${worktree}/src/write.ts`,
+                    Content: 'export const x = 1\n',
+                },
+                worktree,
+            })
+        ).toBe('src/write.ts')
+        expect(
+            agyTargetOf({
+                tool_name: 'edit_file',
+                parameters: {
+                    Path: 'src/edit.ts',
+                    Target: 'old',
+                    Replacement: 'new',
+                },
+                worktree,
+            })
+        ).toBe('src/edit.ts')
+        expect(
+            agyTargetOf({
+                tool_name: 'read_file',
+                parameters: { Path: '/etc/passwd' },
+                worktree,
+            })
+        ).toBe('passwd')
+        expect(
+            agyTargetOf({
                 tool_name: 'view_file',
                 parameters: { AbsolutePath: '/etc/hosts' },
                 worktree,

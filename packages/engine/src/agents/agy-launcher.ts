@@ -33,6 +33,7 @@ import { MAX_TURNS } from './role-turns'
 
 import { guardRoleOf } from '../guards/role-rules'
 
+export { resolveAgyCliModel } from './agy-launcher-files'
 export { checkAgyModel } from './agy-stream'
 
 /** Minimal spawned-process contract consumed by `createAgyLauncher`. */
