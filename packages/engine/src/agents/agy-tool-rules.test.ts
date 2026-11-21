@@ -43,7 +43,7 @@ const makeState = (
         guard_role: overrides.guard_role ?? guardRoleOf({ role }),
         worktree_real: overrides.worktree_real ?? '/runs/run-1/tickets/11',
         state_dir_real: overrides.state_dir_real ?? '/runs/run-1/state',
-        home_real: overrides.home_real ?? '/Users/tester',
+        home_real: overrides.home_real ?? '/Users/me',
         may_edit_tests: overrides.may_edit_tests ?? role === 'test-writer',
         config: overrides.config ?? CONFIG,
     }

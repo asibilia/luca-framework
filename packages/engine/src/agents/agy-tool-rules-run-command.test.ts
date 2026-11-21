@@ -23,7 +23,7 @@ const STATE: AgyGuardState = {
     guard_role: guardRoleOf({ role: 'implementer' }),
     worktree_real: '/runs/run-1/tickets/11',
     state_dir_real: '/tmp/luca-agy-abc',
-    home_real: '/Users/tester',
+    home_real: '/Users/me',
     may_edit_tests: false,
     config: CONFIG,
 }
@@ -42,7 +42,7 @@ describe('run_command textual guard on secret and state paths', () => {
         for (const CommandLine of [
             'cat ~/.ssh/id_rsa',
             'cat ~/.gemini/oauth_creds.json',
-            'cat /Users/tester/.claude.json',
+            'cat /Users/me/.claude.json',
             'cat $HOME/.config/gh/hosts.yml',
             'cat ${HOME}/.paseo',
             'cat "$HOME"/.ssh/id_rsa',
@@ -94,9 +94,9 @@ describe('run_command Cwd', () => {
     })
 
     test('denies a Cwd outside the worktree, in the state dir, or under a secret', () => {
-        expect(run({ CommandLine: 'ls', Cwd: '/Users/tester' })).toEqual({
+        expect(run({ CommandLine: 'ls', Cwd: '/Users/me' })).toEqual({
             allow: false,
-            reason: '/Users/tester is outside your worktree.',
+            reason: '/Users/me is outside your worktree.',
         })
         expect(run({ CommandLine: 'ls', Cwd: '../12' })).toEqual({
             allow: false,
@@ -106,7 +106,7 @@ describe('run_command Cwd', () => {
             allow: false,
             reason: '/tmp/luca-agy-abc is outside your worktree.',
         })
-        expect(run({ CommandLine: 'ls', Cwd: '/Users/tester/.ssh' })).toEqual({
+        expect(run({ CommandLine: 'ls', Cwd: '/Users/me/.ssh' })).toEqual({
             allow: false,
             reason: 'Reading secret files is not allowed.',
         })

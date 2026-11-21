@@ -62,6 +62,7 @@ Tests:
 - `packages/engine/src/jev/jev-model-safety.e2e.test.ts`
 - `packages/engine/src/jev/decision-model-glossary.test.ts`
 - `packages/engine/src/models/model-score.test.ts`
+- `packages/engine/src/models/model-score-gemini.test.ts`
 - `packages/engine/src/models/model-score-verdicts.test.ts`
 - `packages/engine/src/models/model-score-effort.test.ts`
 - `packages/engine/src/models/model-score-effort-picks.test.ts`
@@ -98,6 +99,7 @@ Tests:
 - `packages/engine/src/guards/role-rules-permissions.test.ts`
 - `packages/engine/src/guards/sandbox-settings.test.ts`
 - `packages/engine/src/agents/agy-tool-rules.test.ts`
+- `packages/engine/src/agents/agy-tool-rules-run-command.test.ts`
 - `packages/engine/src/agents/agy-tool-rules-dispatch.test.ts`
 - `packages/engine/src/agents/launch-paths.test.ts`
 - `packages/engine/src/guards/worktree-state.test.ts`
@@ -129,6 +131,7 @@ Tests:
 - `packages/engine/src/agents/agy-stream-edges.test.ts`
 - `packages/engine/src/agents/agy-stream-quota.test.ts`
 - `packages/engine/src/agents/agy-hook.test.ts`
+- `packages/engine/src/agents/agy-hook-turns.test.ts`
 - `packages/engine/src/agents/provider-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher-options.test.ts`
