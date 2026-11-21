@@ -29,7 +29,9 @@ describe('run.start: the args', () => {
 
             expect(output.ok).toBe(false)
             expect(output.run_id).toBeNull()
-            expect(output.message).toContain('/luca-run <spec number> | demo')
+            expect(output.message).toContain(
+                '/luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>'
+            )
             expect(harness.spawns).toEqual([])
             expect(harness.rows).toEqual([])
             expect((await harness.read()).runs).toEqual([])
@@ -40,6 +42,9 @@ describe('run.start: the args', () => {
         ['123', ['--spec', '123']],
         ['#123', ['--spec', '123']],
         ['  #7 ', ['--spec', '7']],
+        ['#42 --provider agy', ['--spec', '42', '--provider', 'agy']],
+        ['42 --provider=AGY', ['--spec', '42', '--provider', 'agy']],
+        ['42 --provider=Claude', ['--spec', '42', '--provider', 'claude']],
         ['demo', ['--demo']],
         ['DEMO', ['--demo']],
     ])('"%s" becomes %j', async (args, target) => {
@@ -54,6 +59,58 @@ describe('run.start: the args', () => {
                 1 + target.length
             )
         ).toEqual(target)
+    })
+
+    test.each([
+        [
+            'demo --provider agy',
+            "--provider isn't used with demo. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'demo --provider=claude',
+            "--provider isn't used with demo. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'resume r1 --provider agy',
+            "--provider isn't used with resume (resumed runs keep their original provider). Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'resume r1 --provider=agy',
+            "--provider isn't used with resume (resumed runs keep their original provider). Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'resume --provider agy',
+            "--provider isn't used with resume (resumed runs keep their original provider). Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'demo extra --provider agy',
+            "--provider isn't used with demo. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'demo extra',
+            '"demo extra" isn\'t a spec number. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>',
+        ],
+        [
+            '42 --provider',
+            'Invalid --provider: expected claude or agy. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>',
+        ],
+        [
+            '42 --provider=',
+            'Invalid --provider: expected claude or agy. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>',
+        ],
+        [
+            '42 --provider openai',
+            'Invalid --provider: expected claude or agy. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>',
+        ],
+    ])('"%s" rejects with exact provider error', async (args, message) => {
+        harness = await createHarness()
+
+        const { output } = await harness.start({ args })
+
+        expect(output.ok).toBe(false)
+        expect(output.run_id).toBeNull()
+        expect(output.message).toBe(message)
+        expect(harness.spawns).toEqual([])
     })
 })
 

@@ -1,5 +1,6 @@
 import { LIMIT_WAIT_MARGIN_MS } from './decide-plan'
 
+import { modelsOf } from '../config/engine-config'
 import {
     UsageLineWindowSchema,
     type JournalRecord,
@@ -82,6 +83,12 @@ export const decideUsageLine = ({
     /** Raw readings other runs shared, each with its `arrived_at`. */
     shared_readings: unknown[]
 }): UsageLineAction | null => {
+    if (
+        state.config !== null &&
+        modelsOf({ config: state.config }).provider !== 'claude'
+    ) {
+        return null
+    }
     const { usage_wait, waited_until } = state.plan
     if (usage_wait !== null) {
         return { type: 'wait_for_usage_line', spec_number, ...usage_wait }

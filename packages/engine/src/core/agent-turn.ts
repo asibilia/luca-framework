@@ -11,13 +11,18 @@ import { doChores } from './engine-chores'
 import { closeSessions } from './session-close'
 
 import type { AgentTurn } from '../agents/agent-launcher'
+import {
+    DEFAULT_PROVIDER,
+    providerOf,
+    type ProviderId,
+} from '../agents/provider'
 import { roleEffort } from '../agents/role-effort'
 import {
     parseRoleResult,
     type AgentRole,
     type RoleResult,
 } from '../agents/role-results'
-import { DEFAULT_MODEL, type EffortLevel } from '../config/engine-config'
+import { modelsOf, type EffortLevel } from '../config/engine-config'
 import { describeViolations } from '../guards/after-turn-check'
 import { guardRoleOf } from '../guards/role-rules'
 import { enforceAfterTurn, snapshotWorktree } from '../guards/worktree-state'
@@ -315,18 +320,20 @@ export const sessionModel = ({
 }
 
 /**
- * A follow-up's model and effort: its session's, else Opus at an unknown
- * effort, as before #600.
+ * A follow-up's model and effort: its session's, else the provider's
+ * strongest model at an unknown effort, as before #600.
  */
 export const followUpModel = ({
     records,
     session_id,
+    provider = DEFAULT_PROVIDER,
 }: {
     records: JournalRecord[]
     session_id: string
+    provider?: ProviderId
 }): SessionModel =>
     sessionModel({ records, session_id }) ?? {
-        model: DEFAULT_MODEL,
+        model: providerOf(provider).strongest,
         model_reason: null,
         effort: null,
         trial_group: null,
@@ -408,6 +415,7 @@ export const followUpAgent = async ({
     const { model, model_reason, effort, trial_group } = followUpModel({
         records: context.journal.read(),
         session_id,
+        provider: modelsOf({ config: context.config }).provider,
     })
     context.journal.append({
         kind: 'agent_started',

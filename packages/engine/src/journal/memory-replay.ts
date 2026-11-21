@@ -6,6 +6,7 @@ import { ranCheaper } from './agent-turn-replay'
 import type { ReplayedAgentFailure } from './final-review-state'
 import type { JournalRecord } from './journal-record'
 
+import { DEFAULT_PROVIDER, type ProviderId } from '../agents/provider'
 import type { LearnerResult } from '../agents/role-results'
 import type {
     MemoryFeedback,
@@ -115,9 +116,11 @@ export const learnerRecordOf = ({
 export const learnerAfter = ({
     learner,
     record,
+    provider = DEFAULT_PROVIDER,
 }: {
     learner: LearnerState
     record: LearnerRecord
+    provider?: ProviderId
 }): LearnerState => {
     switch (record.kind) {
         case 'agent_started':
@@ -150,7 +153,7 @@ export const learnerAfter = ({
                       failed_tries: learner.failed_tries + 1,
                       failed_cheaper:
                           learner.failed_cheaper ||
-                          ranCheaper(learner.launched_on),
+                          ranCheaper(learner.launched_on, provider),
                   }
         }
     }

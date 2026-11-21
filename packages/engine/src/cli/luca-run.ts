@@ -43,7 +43,7 @@ import {
     type RunEnd,
 } from './run-modes'
 
-import { createClaudeLauncher } from '../agents/claude-launcher'
+import { createProviderLauncher } from '../agents/provider-launcher'
 import { createBoardSync, type BoardSync } from '../board/board-sync'
 import { createPaseoBoardLink } from '../board/paseo-board-link'
 import { loadDecisionModelCredentials } from '../jev/decision-model-credentials'
@@ -159,7 +159,7 @@ const run = async ({
                     log,
                     known_roots: knownRoots({ repo }),
                 }),
-            launcher: createClaudeLauncher({}),
+            launcher: createProviderLauncher,
             decision_model: await decisionModelSetup(),
             memory: await memoryOf(),
             usage: usageLine(),
@@ -180,7 +180,8 @@ const run = async ({
         base_branch: args.base_branch,
         runs_dir: defaultRunsDir(),
         tracker,
-        launcher: createClaudeLauncher({}),
+        launcher: createProviderLauncher,
+        provider: args.provider,
         decision_model: await decisionModelSetup(),
         memory: await memoryOf(),
         usage: usageLine(),

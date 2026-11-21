@@ -10,6 +10,11 @@ import uniq from 'lodash/uniq'
 import type { JournalRecord } from './journal-record'
 import type { DeclinedFinding, ReviewFix, WriterRole } from './ticket-progress'
 
+import {
+    DEFAULT_PROVIDER,
+    providerOf,
+    type ProviderId,
+} from '../agents/provider'
 import type {
     AgentRole,
     BadTest,
@@ -17,7 +22,6 @@ import type {
     ImplementerResult,
     TicketReviewResult,
 } from '../agents/role-results'
-import { DEFAULT_MODEL } from '../config/engine-config'
 
 export type FinishedContent = Extract<
     JournalRecord,
@@ -165,11 +169,16 @@ export const isDeclined = ({ response }: FindingResponse): boolean =>
     response === 'wont_fix' || response === 'other_role'
 
 /**
- * Whether an agent launched on a model cheaper than Opus (#604). Older
- * journals name no model, and ran Opus.
+ * Whether an agent launched on a model cheaper than its provider's strongest
+ * model (#604, #777). Older journals name no model, and ran the strongest.
  */
-export const ranCheaper = (model: string | null | undefined): boolean =>
-    model !== null && model !== undefined && model !== DEFAULT_MODEL
+export const ranCheaper = (
+    model: string | null | undefined,
+    provider: ProviderId = DEFAULT_PROVIDER
+): boolean =>
+    model !== null &&
+    model !== undefined &&
+    model !== providerOf(provider).strongest
 
 /**
  * The fixers' "won't fix" answers the new review let go: its ruling was

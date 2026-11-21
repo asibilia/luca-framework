@@ -5,12 +5,13 @@ import {
     type ScoredRole,
 } from './model-score-rules'
 
+import { strongestModelOf } from '../agents/provider'
 import type { FindingSeverity } from '../agents/role-results'
 import {
     EffortLevelSchema,
-    ModelNameSchema,
+    ProviderModelSchema,
     type EffortLevel,
-    type ModelName,
+    type ProviderModel,
 } from '../config/engine-config'
 import type { ModelReason, TrialGroup } from '../jev/model-pick'
 import type { JournalRecord } from '../journal/journal-record'
@@ -24,7 +25,7 @@ import { countedTokens } from '../limits/plan-usage'
 
 /** Clef's first model pick for a role on a ticket. */
 export type Pick = {
-    model: ModelName | null
+    model: ProviderModel | null
     confidence: number | null
     /** Asked in shadow mode: `acted: false`, or an older `ticket_model` ask. */
     shadow: boolean
@@ -39,7 +40,7 @@ export type ClefModelPick = { model: string; confidence: number | null }
 /** What one run's journal says about one ticket. */
 export type TicketFacts = {
     /** The model of each role's first agent. */
-    models: Partial<Record<ScoredRole, ModelName>>
+    models: Partial<Record<ScoredRole, ProviderModel>>
     /** The effort of each role's first agent, an older one's `high`. */
     efforts: Partial<Record<ScoredRole, EffortLevel>>
     /** The first ticket review's effort, `high` when none is journaled. */
@@ -73,7 +74,7 @@ export type TicketFacts = {
 }
 
 /** A fresh learner agent's model and effort. */
-export type LearnerRun = { model: ModelName; effort: EffortLevel }
+export type LearnerRun = { model: ProviderModel; effort: EffortLevel }
 
 /** What one run's journal says. */
 export type RunFacts = {
@@ -86,18 +87,25 @@ export type RunFacts = {
     lines: number | null
 }
 
+/** An `agy` model's effort suffix (`gemini-4-neon-medium`'s `-medium`). */
+const EFFORT_SUFFIX_RE = /-(?:low|medium|high|xhigh|max)$/
+
 /**
  * The model family a short name or full model id (as older `ticket_model`
- * asks named them) belongs to, or `null` for none.
+ * asks named them) belongs to, or `null` for none: a Claude family, or a
+ * Gemini tier whatever effort its id names (#777).
  *
  * @example
  * familyOf('sonnet') // 'sonnet'
+ * familyOf('gemini-4-argon-medium') // 'gemini-4-argon-high'
  */
-const familyOf = (name: unknown): ModelName | null => {
+const familyOf = (name: unknown): ProviderModel | null => {
     if (typeof name !== 'string') return null
     const lower = name.toLowerCase()
     return (
-        ModelNameSchema.options.find((model) => lower.includes(model)) ?? null
+        ProviderModelSchema.options.find((model) =>
+            lower.includes(model.replace(EFFORT_SUFFIX_RE, ''))
+        ) ?? null
     )
 }
 
@@ -228,7 +236,7 @@ export const factsOf = (records: JournalRecord[]): RunFacts => {
                     learner.push({ model: family, effort: level })
                 }
                 if (isScored(role) || role === 'learner') {
-                    routed ||= family !== 'opus'
+                    routed ||= family !== strongestModelOf(family)
                 }
                 if (record.ticket === null) break
                 if (isScored(role)) {

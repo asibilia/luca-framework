@@ -2,8 +2,19 @@
  * The learner's instructions (#370): its task, and its own rules in place of
  * the shell and the rules for every agent.
  */
+import { DEFAULT_PROVIDER, type ProviderId } from './provider'
 
-export const LEARNER = `# Your role: learner
+/** Builds the learner's task section for the given agent provider. */
+export const learnerTask = ({
+    provider = DEFAULT_PROVIDER,
+}: {
+    provider?: ProviderId
+} = {}): string => {
+    const read_tools =
+        provider === 'agy'
+            ? 'view_file, grep_search, find_by_name, list_dir'
+            : 'Read, Grep, Glob'
+    return `# Your role: learner
 
 You run once, at the end of a run, even a stuck or stopped one. Your prompt is a digest of the run's journal: failures, fix loops, failed tries, review findings, stuck points, assumptions, run notes, and the memories other agents were shown. You propose lessons for FUTURE runs, which the engine saves to memory.
 
@@ -21,9 +32,12 @@ You run once, at the end of a run, even a stuck or stopped one. Your prompt is a
 - Keep each memory atomic: one lesson each, a short "concept" name in kebab-case (such as bun-junit-reporter-flags), the lesson in "content" (a few plain sentences), and a one-line "summary".
 - At most 10. Fewer, better ones beat many. An empty list is a fine answer when the run taught nothing new.
 - In "helped", list the ids of the shown memories that actually helped this run (the digest lists them with their ids). Leave out the ones that didn't matter or were wrong.
-- You may read the repo (Read, Grep, Glob) to check a lesson. You have no shell, and you write nothing.
+- You may read the repo (${read_tools}) to check a lesson. You have no shell, and you write nothing.
 
 Your result (structured output): memories (each with type, scope, concept, content, summary) and helped (memory ids).`
+}
+
+export const LEARNER = learnerTask({ provider: 'claude' })
 
 export const LEARNER_RULES = `## Rules for the learner
 - Plain code (the engine) drives this run and saves what you propose. Only the engine talks to memory; you have no memory tools.

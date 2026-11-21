@@ -35,6 +35,7 @@ import { isStoryRecord, storyAfter } from './story-replay'
 import { applyTicketRecord, reusedBaselineAfter } from './ticket-replay'
 
 import { withConfigChanges } from '../config/config-reload'
+import { providerOfConfig } from '../config/engine-config'
 
 export type {
     OldTestFailure,
@@ -124,6 +125,7 @@ const applyKind = ({
             learner: learnerAfter({
                 learner: state.memory.learner,
                 record: learnerRecord,
+                provider: providerOfConfig({ config: state.config }),
             }),
         }
         // A session's readings still count for the plan.

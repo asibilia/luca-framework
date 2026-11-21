@@ -83,6 +83,35 @@ describe('the fields a resume reloads', () => {
         })
     })
 
+    test('models is frozen: a resume keeps provider agy and Gemini floors when repo config uses claude (#777)', () => {
+        const current = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: {
+                provider: 'agy',
+                floors: { 'test-writer': 'gemini-4-argon-high' },
+            },
+        })
+        const next = EngineConfigSchema.parse({
+            checks: { test: 'bun test' },
+            models: {
+                floors: { 'test-writer': 'sonnet' },
+            },
+        })
+
+        const changes = configChanges({ current, next })
+        expect(changes).toEqual([])
+        expect(
+            withConfigChanges({ config: current, changes }).models
+        ).toMatchObject({
+            provider: 'agy',
+            floors: {
+                'test-writer': 'gemini-4-argon-high',
+                implementer: 'gemini-4-neon-high',
+                learner: 'gemini-4-neon-high',
+            },
+        })
+    })
+
     test('auto_retry is reloaded, not frozen (#705)', () => {
         expect(RELOADED_FIELDS).toContain('auto_retry')
         expect(FROZEN_FIELDS).not.toContain('auto_retry')

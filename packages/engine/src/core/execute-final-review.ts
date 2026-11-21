@@ -16,9 +16,9 @@ import {
 import { closeSessions, openSessionsIn } from './session-close'
 
 import { roleEffort } from '../agents/role-effort'
-import { hasSlowTests } from '../config/engine-config'
+import { hasSlowTests, modelsOf } from '../config/engine-config'
 import type { EngineCommit } from '../git/git-adapter'
-import { LOCKED_PICK } from '../jev/model-pick'
+import { lockedPick } from '../jev/model-pick'
 import type { Journal } from '../journal/journal'
 import {
     replayRun,
@@ -138,6 +138,9 @@ export const executeFinalReviewAction = async ({
         case 'launch_lens': {
             const { lens, role, prompt, max_turns } = action
             const round = state.final_review.round
+            const locked = lockedPick({
+                provider: modelsOf({ config }).provider,
+            })
             const effort = roleEffort({ role, config })
             journal.append({
                 kind: 'lens_started',
@@ -153,7 +156,7 @@ export const executeFinalReviewAction = async ({
                     role,
                     prompt,
                     follow_up_of: null,
-                    ...LOCKED_PICK,
+                    ...locked,
                     effort,
                 },
             })
@@ -173,7 +176,7 @@ export const executeFinalReviewAction = async ({
                         config,
                         // Lenses are reviewers: no agent messages.
                         messaging: null,
-                        model: LOCKED_PICK.model,
+                        model: locked.model,
                         effort,
                         ...(max_turns === undefined ? {} : { max_turns }),
                     }),
@@ -211,8 +214,12 @@ export const executeFinalReviewAction = async ({
             return
         case 'launch_final_fixer': {
             const { role, prompt, may_edit_tests } = action
-            // The last fixes before the PR are never routed: always Opus,
-            // and at the reviewers' effort, so the last code is the cleanest.
+            // The last fixes before the PR are never routed: always the
+            // provider's strongest model, and at the reviewers' effort, so
+            // the last code is the cleanest.
+            const locked = lockedPick({
+                provider: modelsOf({ config }).provider,
+            })
             const effort = roleEffort({ role, config, final_fix: true })
             journal.append({
                 kind: 'agent_started',
@@ -222,7 +229,7 @@ export const executeFinalReviewAction = async ({
                     role,
                     prompt,
                     follow_up_of: null,
-                    ...LOCKED_PICK,
+                    ...locked,
                     effort,
                 },
             })
@@ -242,7 +249,7 @@ export const executeFinalReviewAction = async ({
                         config,
                         // Every ticket is over, so nobody is left to talk to.
                         messaging: null,
-                        model: LOCKED_PICK.model,
+                        model: locked.model,
                         effort,
                     }),
             })
@@ -253,6 +260,7 @@ export const executeFinalReviewAction = async ({
             const { model, model_reason, effort } = followUpModel({
                 records: journal.read(),
                 session_id,
+                provider: modelsOf({ config }).provider,
             })
             journal.append({
                 kind: 'agent_started',

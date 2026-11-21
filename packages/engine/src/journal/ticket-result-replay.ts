@@ -15,6 +15,7 @@ import {
 import type { AgentFailure, JournalRecord } from './journal-record'
 import type { TicketProgress } from './ticket-progress'
 
+import { DEFAULT_PROVIDER, type ProviderId } from '../agents/provider'
 import {
     isBlocking,
     type AgentRole,
@@ -24,18 +25,20 @@ import {
 
 /**
  * A failed try for `role` on its ticket: one more of its tries used up,
- * and, if its agent ran on a model cheaper than Opus, its later fresh
- * agents on the ticket step up to Opus (#604). Engine failures are no try.
- * How it failed is kept beside the count (#705).
+ * and, if its agent ran on a model cheaper than its provider's strongest,
+ * its later fresh agents on the ticket step up (#604, #777). Engine
+ * failures are no try. How it failed is kept beside the count (#705).
  */
 export const failedTryChange = ({
     progress,
     role,
     failure,
+    provider = DEFAULT_PROVIDER,
 }: {
     progress: TicketProgress
     role: AgentRole
     failure: AgentFailure
+    provider?: ProviderId
 }): Pick<
     TicketProgress,
     'failed_tries' | 'failed_kinds' | 'failed_cheaper'
@@ -49,7 +52,7 @@ export const failedTryChange = ({
         [role]: [...(progress.failed_kinds[role] ?? []), failure],
     },
     failed_cheaper:
-        ranCheaper(progress.launched_on[role]) &&
+        ranCheaper(progress.launched_on[role], provider) &&
         !progress.failed_cheaper.includes(role)
             ? [...progress.failed_cheaper, role]
             : progress.failed_cheaper,
@@ -388,9 +391,11 @@ type AlreadyDoneCheckedContent = Extract<
 export const alreadyDoneCheckedChange = ({
     progress,
     checked,
+    provider = DEFAULT_PROVIDER,
 }: {
     progress: TicketProgress
     checked: AlreadyDoneCheckedContent
+    provider?: ProviderId
 }): Partial<TicketProgress> => {
     const { ok, problems } = checked
     if (ok) return { already_done_check: { ok, problems } }
@@ -404,6 +409,6 @@ export const alreadyDoneCheckedChange = ({
             session_id: progress.sessions[role] ?? null,
         },
         engine_failures: 0,
-        ...failedTryChange({ progress, role, failure: 'evidence' }),
+        ...failedTryChange({ progress, role, failure: 'evidence', provider }),
     }
 }

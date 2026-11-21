@@ -11,17 +11,31 @@ import type { EngineSettings } from '../shared/engine-settings'
  */
 
 /** What a new run builds: one spec, or the engine's safe practice run. */
-export type RunTarget = { kind: 'spec'; spec: number } | { kind: 'demo' }
+export type RunTarget =
+    | { kind: 'spec'; spec: number; provider?: 'claude' | 'agy' }
+    | { kind: 'demo' }
 
 /** What `/luca-run` asks for: a new run, or to resume a run the board started. */
 export type RunRequest = RunTarget | { kind: 'resume'; run_id: string }
 
+const hasProviderFlag = (tokens: string[]): boolean =>
+    tokens.some(
+        (token) => token === '--provider' || token.startsWith('--provider=')
+    )
+
+const parseProviderValue = (raw: string): 'claude' | 'agy' | null => {
+    const lower = raw.toLowerCase()
+    return lower === 'claude' || lower === 'agy' ? lower : null
+}
+
 /**
- * Reads what followed `/luca-run`: `123`, `#123`, `demo`, or
+ * Reads what followed `/luca-run`: `123`, `#123` (with optional trailing
+ * `--provider <claude|agy>` or `--provider=<claude|agy>`), `demo`, or
  * `resume <run id>`.
  *
  * @example
  * parseRunArgs({ args: '#12' }) // { ok: true, target: { kind: 'spec', spec: 12 } }
+ * parseRunArgs({ args: '12 --provider agy' }) // { ok: true, target: { kind: 'spec', spec: 12, provider: 'agy' } }
  * parseRunArgs({ args: 'resume luca-20260928-124805-69hp' }) // { ok: true, target: { kind: 'resume', run_id: 'luca-20260928-124805-69hp' } }
  * parseRunArgs({ args: 'soon' }).ok // false
  */
@@ -31,14 +45,31 @@ export const parseRunArgs = ({
     args: string
 }): { ok: true; target: RunRequest } | { ok: false; message: string } => {
     const text = args.trim()
-    if (text.toLowerCase() === 'demo') {
-        return { ok: true, target: { kind: 'demo' } }
+    if (text === '') {
+        return { ok: false, message: `Which spec? Usage: ${RUN_USAGE}` }
     }
     const words = text.split(/\s+/)
-    if (words[0]?.toLowerCase() === 'resume') {
-        const run_id = words[1]
+    const first = words[0] ?? ''
+    const rest = words.slice(1)
+    if (first.toLowerCase() === 'demo') {
+        if (rest.length === 0) return { ok: true, target: { kind: 'demo' } }
+        if (hasProviderFlag(rest)) {
+            return {
+                ok: false,
+                message: `--provider isn't used with demo. Usage: ${RUN_USAGE}`,
+            }
+        }
+    }
+    if (first.toLowerCase() === 'resume') {
+        if (hasProviderFlag(rest)) {
+            return {
+                ok: false,
+                message: `--provider isn't used with resume (resumed runs keep their original provider). Usage: ${RUN_USAGE}`,
+            }
+        }
+        const run_id = rest[0]
         return run_id !== undefined &&
-            words.length === 2 &&
+            rest.length === 1 &&
             !run_id.startsWith('-')
             ? { ok: true, target: { kind: 'resume', run_id } }
             : {
@@ -46,17 +77,42 @@ export const parseRunArgs = ({
                   message: `Which run? Give its id, as the board shows it. Usage: ${RUN_USAGE}`,
               }
     }
-    const match = /^#?(\d+)$/.exec(text)
+    const match = /^#?(\d+)$/.exec(first)
     const spec = match?.[1] ? Number(match[1]) : 0
     if (spec > 0 && Number.isSafeInteger(spec)) {
-        return { ok: true, target: { kind: 'spec', spec } }
+        if (rest.length === 0)
+            return { ok: true, target: { kind: 'spec', spec } }
+        if (rest[0] === '--provider') {
+            if (rest.length === 1) {
+                return {
+                    ok: false,
+                    message: `Invalid --provider: expected claude or agy. Usage: ${RUN_USAGE}`,
+                }
+            }
+            if (rest.length === 2) {
+                const provider = parseProviderValue(rest[1] ?? '')
+                return provider !== null
+                    ? { ok: true, target: { kind: 'spec', spec, provider } }
+                    : {
+                          ok: false,
+                          message: `Invalid --provider: expected claude or agy. Usage: ${RUN_USAGE}`,
+                      }
+            }
+        } else if (rest[0]?.startsWith('--provider=') && rest.length === 1) {
+            const provider = parseProviderValue(
+                rest[0].slice('--provider='.length)
+            )
+            return provider !== null
+                ? { ok: true, target: { kind: 'spec', spec, provider } }
+                : {
+                      ok: false,
+                      message: `Invalid --provider: expected claude or agy. Usage: ${RUN_USAGE}`,
+                  }
+        }
     }
     return {
         ok: false,
-        message:
-            text === ''
-                ? `Which spec? Usage: ${RUN_USAGE}`
-                : `"${text}" isn't a spec number. Usage: ${RUN_USAGE}`,
+        message: `"${text}" isn't a spec number. Usage: ${RUN_USAGE}`,
     }
 }
 
@@ -201,6 +257,9 @@ export const engineArgs = ({
     run_id: string
 }): string[] => [
     ...(target.kind === 'demo' ? ['--demo'] : ['--spec', String(target.spec)]),
+    ...(target.kind === 'spec' && target.provider !== undefined
+        ? ['--provider', target.provider]
+        : []),
     '--repo',
     repo,
     '--run-id',

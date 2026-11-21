@@ -168,6 +168,18 @@ export const MODEL_COLORS: ReadonlyMap<string, string> = new Map([
     ['clef', '#3fb950'],
 ])
 
+/**
+ * Gemini model prefixes mapped to their tier hues (#780): Neon purple,
+ * Argon orange, Hydrogen teal, Flash blue. Matched case-insensitively after
+ * exact `MODEL_COLORS` lookups.
+ */
+export const MODEL_COLOR_PREFIXES: readonly [string, string][] = [
+    ['gemini-4-neon-', '#a371f7'],
+    ['gemini-4-argon-', '#e8833a'],
+    ['gemini-4-hydrogen-', '#2dd4bf'],
+    ['gemini-3.8-flash-', '#3b9fe8'],
+]
+
 /** Clef's confidence bar: green when sharp, orange when split. */
 export const CONFIDENCE_COLORS = { sharp: '#3fb950', split: '#e3a23b' }
 
@@ -178,8 +190,15 @@ export const modelColor = ({
 }: {
     model: string
     theme: PluginTheme
-}): string =>
-    MODEL_COLORS.get(model.toLowerCase()) ?? theme.colors.foregroundMuted
+}): string => {
+    const lower = model.toLowerCase()
+    const exact = MODEL_COLORS.get(lower)
+    if (exact !== undefined) return exact
+    const match = MODEL_COLOR_PREFIXES.find(([prefix]) =>
+        lower.startsWith(prefix)
+    )
+    return match !== undefined ? match[1] : theme.colors.foregroundMuted
+}
 
 /** A run status in words. */
 export const statusText = ({ status }: { status: RunStatus }): string => {

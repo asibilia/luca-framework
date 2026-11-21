@@ -280,7 +280,7 @@ describe('the models block (#603)', () => {
         }
     })
 
-    test('a floor for the ticket reviewer or a lens is an error naming the role and saying reviewers always run Opus', async () => {
+    test('a floor for the ticket reviewer or a lens is an error naming the role and saying reviewers always run the strongest model', async () => {
         for (const role of ['ticket-reviewer', 'security-lens', 'rules-lens']) {
             const result = await loadModels({
                 floors: { 'test-writer': 'sonnet', [role]: 'sonnet' },
@@ -289,7 +289,9 @@ describe('the models block (#603)', () => {
             expect(result.ok).toBe(false)
             if (!result.ok) {
                 expect(result.error).toContain(role)
-                expect(result.error).toContain('reviewers always run Opus')
+                expect(result.error).toContain(
+                    'reviewers always run the strongest model'
+                )
             }
         }
     })
