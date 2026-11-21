@@ -1,0 +1,5 @@
+---
+"@luca/engine": patch
+---
+
+Safer agents on Antigravity (`agy`). The guard hook's command now quotes Bun's and the hook script's paths, so a path with a space no longer turns every guard off. A `run_command` is refused when its command line names a secret file under your home folder (`~/.ssh`, `~/.gemini` and the rest, however home is spelled) or Luca's guard state for the session; this is a best-effort check on the command's text, not a sandbox. A `run_command` whose `Cwd` is outside the worktree is refused, and an `rm`'s paths resolve from that `Cwd`. The turn limit counts each `agy` process on its own, so a follow-up gets its full turns, and a missing `invocationNum` is counted instead of letting the agent run without a limit. A task that only mentions "quota" or "429" is no longer taken for a quota stop. The model score report (`luca models`) now scores Gemini tickets under their Gemini model, judged against the strongest Gemini model. An agent launched with messaging on `agy` gets a one-time warning that agent messages aren't delivered there yet.

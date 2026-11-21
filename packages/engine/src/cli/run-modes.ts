@@ -5,11 +5,17 @@ import {
     openDecisionModel,
     type DecisionModelSetup,
 } from './decision-model-setup'
-import { readRunStart } from './read-run'
+import { readRunStart, runStartOf } from './read-run'
 import { driveRun, errorText, type RunEnd, type RunLauncher } from './run-end'
 
 import type { BoardSync } from '../board/board-sync'
-import { loadEngineConfig } from '../config/engine-config'
+import {
+    DEFAULT_PROVIDER,
+    loadEngineConfig,
+    overrideConfigProvider,
+    providerOfConfig,
+    type ProviderId,
+} from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
 import {
     recordConfigReload,
@@ -37,6 +43,20 @@ export {
     UnfinishedOutputSchema,
     type RestartableRun,
 } from './unfinished-runs'
+
+/** Either a pre-built launcher or a factory keyed by the run's active provider. */
+export type RunLauncherSource =
+    | RunLauncher
+    | ((args: { provider: ProviderId }) => RunLauncher)
+
+const resolveLauncher = ({
+    launcher,
+    provider,
+}: {
+    launcher: RunLauncherSource
+    provider: ProviderId
+}): RunLauncher =>
+    typeof launcher === 'function' ? launcher({ provider }) : launcher
 
 /**
  * A real run of `spec_number` on `repo`: loads the repo's engine config,
@@ -69,6 +89,7 @@ export const runSpec = async ({
     runs_dir,
     tracker,
     launcher,
+    provider,
     decision_model,
     memory,
     usage,
@@ -85,7 +106,9 @@ export const runSpec = async ({
     base_branch: string | null
     runs_dir: string
     tracker: Tracker
-    launcher: RunLauncher
+    launcher: RunLauncherSource
+    /** Overrides `.luca/config.json`'s `models.provider` for a fresh run. */
+    provider?: ProviderId
     /** The decision model's setup (#534). Leave it out to run without one. */
     decision_model?: DecisionModelSetup
     /** MuninnDB (#370). Leave it out to run without memory. */
@@ -107,26 +130,33 @@ export const runSpec = async ({
     log(`[luca-run] spec #${spec_number} in ${repo}, run ${run_id}`)
     log(`[luca-run] journal: ${journal.file}`)
     const loaded = await loadEngineConfig({ repo_root: repo })
-    const fresh = isEmpty(journal.read())
+    const existing = journal.read()
+    const fresh = isEmpty(existing)
     // A new run needs a good config; a resume keeps its own (#516).
     if (fresh && !loaded.ok) {
         log(`[luca-run] stopped: ${loaded.error}`)
-        await launcher.closeAll?.()
+        if (typeof launcher !== 'function') await launcher.closeAll?.()
         await memory?.client.close().catch(() => undefined)
         const end = { ok: false, message: loaded.error }
         await board?.end({ records: journal.read(), ...end })
         return end
     }
+    let active_provider: ProviderId
     if (fresh && loaded.ok) {
+        const config =
+            provider === undefined
+                ? loaded.config
+                : overrideConfigProvider({ config: loaded.config, provider })
+        active_provider = providerOfConfig({ config })
         startRun({
             journal,
             spec_number,
-            config: loaded.config,
+            config,
             base_branch: base_branch ?? undefined,
             memory:
                 memory === undefined
                     ? undefined
-                    : { project_vault: loaded.config.muninn?.vault ?? null },
+                    : { project_vault: config.muninn?.vault ?? null },
             repo,
             alongside,
             luca_version,
@@ -136,12 +166,18 @@ export const runSpec = async ({
         recordResume({ journal, luca_version })
         const reload = recordConfigReload({ journal, loaded })
         if (reload !== null) log(`[luca-run] ${configReloadText({ reload })}`)
+        const start = runStartOf({ run_id, records: existing })
+        active_provider = start.ok ? start.start.provider : DEFAULT_PROVIDER
     }
+    const active_launcher = resolveLauncher({
+        launcher,
+        provider: active_provider,
+    })
     const jev = openDecisionModel({ setup: decision_model, journal, log })
     return driveRun({
         journal,
         run_id,
-        launcher,
+        launcher: active_launcher,
         memory,
         board,
         log,
@@ -150,10 +186,10 @@ export const runSpec = async ({
                 journal,
                 tracker,
                 git: createGitAdapter({ repo_root: repo }),
-                launcher,
+                launcher: active_launcher,
                 jev,
                 memory,
-                usage,
+                usage: active_provider === 'claude' ? usage : undefined,
                 going_runs,
                 board: board ?? undefined,
                 live_file: runLiveFilePath({ runs_dir, run_id }),
@@ -199,7 +235,7 @@ export const resumeRun = async ({
     /** `null` for the repo the run started in (or the current folder). */
     repo: string | null
     tracker: ({ repo }: { repo: string }) => Tracker | Promise<Tracker>
-    launcher: RunLauncher
+    launcher: RunLauncherSource
     /** The decision model's setup (#534). Leave it out to go on without one. */
     decision_model?: DecisionModelSetup
     /**
@@ -218,7 +254,7 @@ export const resumeRun = async ({
 }): Promise<RunEnd> => {
     const stop = async (message: string): Promise<RunEnd> => {
         log(`[luca-run] stopped: ${message}`)
-        await launcher.closeAll?.()
+        if (typeof launcher !== 'function') await launcher.closeAll?.()
         await memory?.client.close().catch(() => undefined)
         const end = { ok: false, message }
         await board?.end(end)

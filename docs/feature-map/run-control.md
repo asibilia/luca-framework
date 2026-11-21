@@ -89,6 +89,7 @@ Tests:
 
 - `packages/engine/src/journal/journal.test.ts`
 - `packages/engine/src/journal/journal-replay.test.ts`
+- `packages/engine/src/journal/journal-replay-provider.test.ts`
 - `packages/engine/src/core/decide-crash-recovery.test.ts`
 - `packages/engine/src/core/run-crash-recovery.test.ts`
 - `packages/engine/src/core/run-crash-recovery.e2e.test.ts`
@@ -96,6 +97,7 @@ Tests:
 - `packages/board/server/engine-restart.test.ts`
 - `packages/board/server/engine-restart-not-restarted.test.ts`
 - `packages/board/server/engine-restart-failures.test.ts`
+- `packages/engine/src/journal/agy-replay-provider.e2e.test.ts`
 
 ## The engine config and its reload
 
@@ -106,10 +108,12 @@ Reached by: `.luca/config.json` in a repo; a config reload happens on every resu
 Tests:
 
 - `packages/engine/src/config/engine-config.test.ts`
+- `packages/engine/src/config/engine-config-provider.test.ts`
 - `packages/engine/src/config/config-reload.test.ts`
 - `packages/engine/src/core/decide-config-reload.test.ts`
 - `packages/engine/src/cli/run-config-reload.e2e.test.ts`
 - `packages/board/server/config-reload-panel.test.ts`
+- `packages/engine/src/config/agy-config-override.e2e.test.ts`
 
 ## Plan limits, limit waits and the usage line
 
@@ -124,14 +128,20 @@ Tests:
 - `packages/engine/src/core/decide-plan-readings.test.ts`
 - `packages/engine/src/core/limit-wait.e2e.test.ts`
 - `packages/engine/src/core/run-limit-many-tickets.e2e.test.ts`
+- `packages/engine/src/limits/limit-wait.test.ts`
 - `packages/engine/src/limits/plan-usage.test.ts`
 - `packages/engine/src/core/decide-usage-line.test.ts`
+- `packages/engine/src/core/decide-usage-line-provider.test.ts`
 - `packages/engine/src/core/usage-line-engine.test.ts`
 - `packages/engine/src/core/usage-line-wait.test.ts`
 - `packages/engine/src/limits/usage-line.test.ts`
 - `packages/board/server/usage-line-panel.test.ts`
 - `packages/board/server/board-panel-state-usage.test.ts`
 - `packages/board/server/board-panel-state-waits-and-stops.test.ts`
+- `packages/engine/src/agents/agy-stream-quota.e2e.test.ts`
+- `packages/engine/src/agents/agy-stream-quota-boundaries.e2e.test.ts`
+- `packages/engine/src/core/agy-workflows.e2e.test.ts`
+- `packages/engine/src/core/agy-workflows-lenses-quota.e2e.test.ts`
 
 ## GitHub network errors and the network wait
 

@@ -1,13 +1,16 @@
 import { z } from 'zod'
 
+import {
+    DEFAULT_PROVIDER,
+    providerOf,
+    type ProviderId,
+    type ProviderModel,
+} from '../agents/provider'
 import type { AgentRole } from '../agents/role-results'
 import {
-    DEFAULT_MODEL,
-    ModelNameSchema,
     modelsOf,
     ROUTED_ROLES,
     type EngineConfig,
-    type ModelName,
     type ModelsConfig,
 } from '../config/engine-config'
 import type { JournalRecord } from '../journal/journal-record'
@@ -57,17 +60,27 @@ export type TrialGroup = z.infer<typeof TrialGroupSchema>
  * when the launch isn't eligible for a trial).
  */
 export type ModelPick = {
-    model: ModelName
+    model: ProviderModel
     model_reason: ModelReason
     trial_group: TrialGroup | null
 }
 
-/** Reviewers, lenses, and the final review's fixers: always Opus. */
-export const LOCKED_PICK: ModelPick = {
-    model: DEFAULT_MODEL,
+/**
+ * A locked launch pick for non-routed roles (reviewers, lenses, and the
+ * final review's fixers): always the provider's strongest model.
+ */
+export const lockedPick = ({
+    provider = DEFAULT_PROVIDER,
+}: {
+    provider?: ProviderId
+} = {}): ModelPick => ({
+    model: providerOf(provider).strongest,
     model_reason: 'locked',
     trial_group: null,
-}
+})
+
+/** Reviewers, lenses, and the final review's fixers: always Opus. */
+export const LOCKED_PICK: ModelPick = lockedPick({ provider: 'claude' })
 
 /**
  * A launch's model trial group (#698), the same for the same key every
@@ -119,16 +132,35 @@ export const isRoutedRole = (role: string): role is RoutedRole =>
     ROUTED_ROLES.some((routed) => routed === role)
 
 /**
+ * Narrows an unknown model string to `ProviderModel` if it belongs to
+ * `provider`'s ordered tiers, else `null`.
+ */
+const providerModelOf = ({
+    provider,
+    model,
+}: {
+    provider: ProviderId
+    model: unknown
+}): ProviderModel | null =>
+    providerOf(provider).tiers.find((tier) => tier === model) ?? null
+
+/**
  * The models an `agent_model` ask offers for a role with this floor: the
- * floor and every stronger one. A floor of `opus` offers all three, since
- * that ask is shadow only.
+ * floor and every stronger one. A floor of the provider's strongest model
+ * offers all three, since that ask is shadow only.
  *
  * @example
  * offeredModels({ floor: 'sonnet' }) // ['opus', 'sonnet']
  */
-export const offeredModels = ({ floor }: { floor: ModelName }): ModelName[] => {
-    const all = ModelNameSchema.options
-    return floor === 'opus' ? [...all] : all.slice(0, all.indexOf(floor) + 1)
+export const offeredModels = ({
+    floor,
+    provider = DEFAULT_PROVIDER,
+}: {
+    floor: ProviderModel
+    provider?: ProviderId
+}): ProviderModel[] => {
+    const all = providerOf(provider).tiers
+    return floor === all[0] ? [...all] : all.slice(0, all.indexOf(floor) + 1)
 }
 
 /** The decision model's answer to an `agent_model` ask, and what it offered. */
@@ -141,16 +173,16 @@ export type ModelAnswer = {
 /**
  * The model a fresh agent launches on. Pure; the first match wins: a
  * reviewer or lens is `locked`; a role that failed a try on its ticket on a
- * cheaper model is `after_failure`; a floor of `opus` is `floor`; no answer
- * is `no_answer`; an answer below the bar, with no confidence, or not
- * offered is `unsure`; else the decision model's pick. Every fallback is
- * Opus.
+ * cheaper model is `after_failure`; a floor of the provider's strongest
+ * model is `floor`; no answer is `no_answer`; an answer below the bar, with
+ * no confidence, or not offered is `unsure`; else the decision model's
+ * pick. Every fallback is the provider's strongest model.
  *
  * An `unsure` pick is in a model trial (#698) when `trial_share` is above
  * 0, the launch has a `trial_key`, its only fault is a confidence below
  * the bar, and it picked an offered model at or above the floor and
- * cheaper than Opus: its trial group runs the pick as `trial`, its control
- * group stays on Opus as `unsure`.
+ * cheaper than the strongest model: its trial group runs the pick as
+ * `trial`, its control group stays on the strongest model as `unsure`.
  *
  * @example
  * pickModel({ role: 'test-writer', models, failed_cheaper: false, answer: { offered: ['sonnet', 'opus'], pick: 'sonnet', confidence: 0.9 }, trial_key: null })
@@ -171,44 +203,48 @@ export const pickModel = ({
     /** The text hashed for the trial group; `null` if it can't be in one. */
     trial_key: string | null
 }): ModelPick => {
-    const opus = (model_reason: ModelReason): ModelPick => ({
-        model: 'opus',
+    const profile = providerOf(models.provider)
+    const strongest = (model_reason: ModelReason): ModelPick => ({
+        model: profile.strongest,
         model_reason,
         trial_group: null,
     })
-    if (!isRoutedRole(role)) return LOCKED_PICK
-    if (failed_cheaper) return opus('after_failure')
+    if (!isRoutedRole(role)) return lockedPick({ provider: models.provider })
+    if (failed_cheaper) return strongest('after_failure')
     const floor = models.floors[role]
-    if (floor === 'opus') return opus('floor')
-    if (answer === null) return opus('no_answer')
-    const pick = ModelNameSchema.safeParse(answer.pick)
+    if (floor === profile.strongest) return strongest('floor')
+    if (answer === null) return strongest('no_answer')
+    const picked = providerModelOf({
+        provider: models.provider,
+        model: answer.pick,
+    })
     if (
-        !pick.success ||
-        !answer.offered.includes(pick.data) ||
+        picked === null ||
+        !answer.offered.includes(picked) ||
         answer.confidence === null
     ) {
-        return opus('unsure')
+        return strongest('unsure')
     }
     if (answer.confidence >= models.confidence_bar) {
         return {
-            model: pick.data,
+            model: picked,
             model_reason: 'decision_model',
             trial_group: null,
         }
     }
-    const all = ModelNameSchema.options
+    const all = profile.tiers
     if (
         trial_key === null ||
         models.trial_share <= 0 ||
-        pick.data === 'opus' ||
-        all.indexOf(pick.data) > all.indexOf(floor)
+        picked === profile.strongest ||
+        all.indexOf(picked) > all.indexOf(floor)
     ) {
-        return opus('unsure')
+        return strongest('unsure')
     }
     return trialGroupOf({ key: trial_key, share: models.trial_share }) ===
         'trial'
-        ? { model: pick.data, model_reason: 'trial', trial_group: 'trial' }
-        : { ...opus('unsure'), trial_group: 'control' }
+        ? { model: picked, model_reason: 'trial', trial_group: 'trial' }
+        : { ...strongest('unsure'), trial_group: 'control' }
 }
 
 /**
@@ -289,11 +325,13 @@ export const redonePick = ({
     first_seq,
     ticket,
     role,
+    provider = DEFAULT_PROVIDER,
 }: {
     records: JournalRecord[]
     first_seq: number
     ticket: number | null
     role: string
+    provider?: ProviderId
 }): ModelPick | null => {
     const started = records.findLast(
         (record) =>
@@ -303,10 +341,13 @@ export const redonePick = ({
             record.content.role === role
     )
     if (started?.kind !== 'agent_started') return null
-    const model = ModelNameSchema.safeParse(started.content.model)
+    const model = providerModelOf({
+        provider,
+        model: started.content.model,
+    })
     const { model_reason, trial_group } = started.content
-    if (!model.success || model_reason === null) return null
-    return { model: model.data, model_reason, trial_group }
+    if (model === null || model_reason === null) return null
+    return { model, model_reason, trial_group }
 }
 
 /** Which try of its step a launch is: a redo names its first try's seq. */
@@ -329,13 +370,23 @@ export const asksModel = ({
     ticket: number | null
     role: string
     step: LaunchTry | undefined
-}): boolean =>
-    !(
+}): boolean => {
+    const provider =
+        state.config === null
+            ? DEFAULT_PROVIDER
+            : modelsOf({ config: state.config }).provider
+    return !(
         (step?.redo === true &&
-            redonePick({ records, first_seq: step.first_seq, ticket, role }) !==
-                null) ||
+            redonePick({
+                records,
+                first_seq: step.first_seq,
+                ticket,
+                role,
+                provider,
+            }) !== null) ||
         failedCheaper({ state, ticket, role })
     )
+}
 
 /**
  * The model a fresh agent launches on, from the run's config and the
@@ -360,14 +411,24 @@ export const launchPick = ({
     ticket: number | null
     role: AgentRole
     step: LaunchTry
-}): ModelPick =>
-    (step.redo
-        ? redonePick({ records, first_seq: step.first_seq, ticket, role })
-        : null) ??
-    pickModel({
-        role,
-        models: modelsOf({ config }),
-        failed_cheaper: failedCheaper({ state, ticket, role }),
-        answer: modelAnswerOf({ records, ticket, role }),
-        trial_key: trialKeyOf({ run_id, ticket, role }),
-    })
+}): ModelPick => {
+    const models = modelsOf({ config })
+    return (
+        (step.redo
+            ? redonePick({
+                  records,
+                  first_seq: step.first_seq,
+                  ticket,
+                  role,
+                  provider: models.provider,
+              })
+            : null) ??
+        pickModel({
+            role,
+            models,
+            failed_cheaper: failedCheaper({ state, ticket, role }),
+            answer: modelAnswerOf({ records, ticket, role }),
+            trial_key: trialKeyOf({ run_id, ticket, role }),
+        })
+    )
+}

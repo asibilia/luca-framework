@@ -16,9 +16,10 @@ import { storyPrompt } from './story-prompt'
 import { servesProblems } from './story-serves'
 
 import { roleEffort } from '../agents/role-effort'
+import { modelsOf } from '../config/engine-config'
 import type { GitAdapter } from '../git/git-adapter'
 import { diffFiles } from '../git/git-diff'
-import { LOCKED_PICK } from '../jev/model-pick'
+import { lockedPick } from '../jev/model-pick'
 import type { JournalRecord } from '../journal/journal-record'
 import type { StoryState } from '../journal/replay'
 import { readStory, STORY_SCHEMA_VERSION } from '../story/story-schema'
@@ -148,6 +149,7 @@ const launchStoryWriter = async ({
         const { model, model_reason, effort, trial_group } = followUpModel({
             records: journal.read(),
             session_id,
+            provider: modelsOf({ config }).provider,
         })
         journal.append({
             kind: 'agent_started',
@@ -203,7 +205,9 @@ const launchStoryWriter = async ({
         problems: action.problems,
     })
     // Never routed: always the locked pick, at the role's own effort.
-    const { model, model_reason } = LOCKED_PICK
+    const { model, model_reason } = lockedPick({
+        provider: modelsOf({ config }).provider,
+    })
     const effort = roleEffort({ role: ROLE, config })
     journal.append({
         kind: 'agent_started',

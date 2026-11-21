@@ -17,6 +17,12 @@ import {
 } from './engine-config-schema'
 
 export {
+    DEFAULT_PROVIDER,
+    ProviderIdSchema,
+    ProviderModelSchema,
+} from '../agents/provider'
+export type { ProviderId, ProviderModel } from '../agents/provider'
+export {
     autoRetryOf,
     buildCachePathsOf,
     DEFAULT_PREPARE_CONCURRENCY,
@@ -25,8 +31,10 @@ export {
     featureMapPath,
     isFeatureMapFolder,
     modelsOf,
+    overrideConfigProvider,
     prepareConcurrencyOf,
     prepareTimeoutOf,
+    providerOfConfig,
     prStoryOf,
     testTimeoutOf,
 } from './config-fields'

@@ -31,6 +31,7 @@ Tests:
 - `packages/engine/src/jev/decision-model-credentials.test.ts`
 - `packages/engine/src/jev/jev-schemas.test.ts`
 - `packages/engine/src/jev/jev-jobs.test.ts`
+- `packages/engine/src/jev/jev-jobs-provider.test.ts`
 - `packages/engine/src/jev/jev-jobs-limits.test.ts`
 - `packages/engine/src/jev/jev-jobs-effort.test.ts`
 - `packages/engine/src/jev/jev-shadow.test.ts`
@@ -50,6 +51,8 @@ Reached by: the `models` block (`floors`, `confidence_bar`, `trial_share`) in a 
 
 Tests:
 
+- `packages/engine/src/agents/provider.test.ts`
+- `packages/engine/src/core/agent-turn-provider.test.ts`
 - `packages/engine/src/jev/model-pick.test.ts`
 - `packages/engine/src/jev/jev-model-pick.e2e.test.ts`
 - `packages/engine/src/jev/jev-model-trial.e2e.test.ts`
@@ -59,15 +62,20 @@ Tests:
 - `packages/engine/src/jev/jev-model-safety.e2e.test.ts`
 - `packages/engine/src/jev/decision-model-glossary.test.ts`
 - `packages/engine/src/models/model-score.test.ts`
+- `packages/engine/src/models/model-score-gemini.test.ts`
 - `packages/engine/src/models/model-score-verdicts.test.ts`
 - `packages/engine/src/models/model-score-effort.test.ts`
 - `packages/engine/src/models/model-score-effort-picks.test.ts`
 - `packages/engine/src/models/calibration.test.ts`
 - `packages/engine/src/cli/luca-command.test.ts`
+- `packages/engine/src/agents/agy-provider-config.e2e.test.ts`
+- `packages/engine/src/core/agy-core-threading.e2e.test.ts`
+- `packages/engine/src/core/agy-cross-feature.e2e.test.ts`
+- `packages/engine/src/jev/agy-model-routing.e2e.test.ts`
 
 ## Agent messages and run notes
 
-Agents send each other one-way messages, even across tickets that build at the same time, and hand run notes on to later agents.
+Agents send each other one-way messages, even across tickets that build at the same time, and hand run notes on to later agents. Agents on the `agy` provider have no messaging yet: their launcher warns once and launches them without `send_message` or message delivery.
 
 Reached by: the `send_message` tool in an agent's session.
 
@@ -90,6 +98,9 @@ Tests:
 - `packages/engine/src/guards/role-rules-check-commands.test.ts`
 - `packages/engine/src/guards/role-rules-permissions.test.ts`
 - `packages/engine/src/guards/sandbox-settings.test.ts`
+- `packages/engine/src/agents/agy-tool-rules.test.ts`
+- `packages/engine/src/agents/agy-tool-rules-run-command.test.ts`
+- `packages/engine/src/agents/agy-tool-rules-dispatch.test.ts`
 - `packages/engine/src/agents/launch-paths.test.ts`
 - `packages/engine/src/guards/worktree-state.test.ts`
 - `packages/engine/src/guards/shared-git-filters.test.ts`
@@ -98,6 +109,9 @@ Tests:
 - `packages/engine/src/core/agent-guards-refs.e2e.test.ts`
 - `packages/engine/src/core/agent-guards-own-runs.e2e.test.ts`
 - `packages/board/server/shared-git-panel.test.ts`
+- `packages/engine/src/agents/agy-hook.e2e.test.ts`
+- `packages/engine/src/agents/agy-tool-rules.e2e.test.ts`
+- `packages/engine/src/agents/agy-tool-rules-boundaries.e2e.test.ts`
 
 ## Agents and their launcher
 
@@ -109,6 +123,16 @@ Reached by: every agent turn of a real run; the `models.effort` block in a repo'
 
 Tests:
 
+- `packages/engine/src/agents/agy-launcher.test.ts`
+- `packages/engine/src/agents/agy-launcher-lifecycle.test.ts`
+- `packages/engine/src/agents/agy-launcher-edges.test.ts`
+- `packages/engine/src/agents/agy-stream-progress.test.ts`
+- `packages/engine/src/agents/agy-stream-result.test.ts`
+- `packages/engine/src/agents/agy-stream-edges.test.ts`
+- `packages/engine/src/agents/agy-stream-quota.test.ts`
+- `packages/engine/src/agents/agy-hook.test.ts`
+- `packages/engine/src/agents/agy-hook-turns.test.ts`
+- `packages/engine/src/agents/provider-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher.test.ts`
 - `packages/engine/src/agents/claude-launcher-options.test.ts`
 - `packages/engine/src/agents/claude-launcher-searchers.test.ts`
@@ -118,6 +142,7 @@ Tests:
 - `packages/engine/src/agents/claude-launcher-result.test.ts`
 - `packages/engine/src/agents/claude-launcher-stops.test.ts`
 - `packages/engine/src/agents/role-instructions.test.ts`
+- `packages/engine/src/agents/role-instructions-provider.test.ts`
 - `packages/engine/src/agents/role-instructions-other-role.test.ts`
 - `packages/engine/src/agents/role-instructions-rules-and-sandbox.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
@@ -128,6 +153,10 @@ Tests:
 - `packages/engine/src/core/run-session-close-ticket-ends.e2e.test.ts`
 - `packages/engine/src/core/run-session-gone.e2e.test.ts`
 - `packages/engine/src/core/run-session-timeout.e2e.test.ts`
+- `packages/engine/src/agents/agy-launcher.e2e.test.ts`
+- `packages/engine/src/agents/agy-launcher-lifecycle.e2e.test.ts`
+- `packages/engine/src/agents/agy-role-instructions.e2e.test.ts`
+- `packages/engine/src/core/agy-cross-feature-runtime.e2e.test.ts`
 
 ## The GitHub tracker
 

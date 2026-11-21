@@ -1,3 +1,5 @@
+import uniq from 'lodash/uniq'
+
 import {
     calibrationOf,
     calibrationText,
@@ -29,11 +31,12 @@ import {
     type Verdict,
 } from './model-score-sides'
 
+import { strongestModelOf } from '../agents/provider'
 import {
     EffortLevelSchema,
-    ModelNameSchema,
+    ProviderModelSchema,
     type EffortLevel,
-    type ModelName,
+    type ProviderModel,
 } from '../config/engine-config'
 import type { JournalRecord } from '../journal/journal-record'
 
@@ -57,7 +60,7 @@ export { verdictOf, type ScoreSide, type Verdict } from './model-score-sides'
 /** One routed role on one model at one effort, its tickets reviewed at one effort. */
 export type ModelScore = ScoreSide & {
     role: ScoredRole
-    model: ModelName
+    model: ProviderModel
     /** The effort the role's first agent on each ticket ran at. */
     effort: EffortLevel
     /** The effort each ticket's first ticket review ran at. */
@@ -141,7 +144,7 @@ export type ModelReport = {
      */
     floor_only: ScoredRole[]
     /** Fresh learner agents per model and effort; the learner isn't scored. */
-    learner: { model: ModelName; effort: EffortLevel; agents: number }[]
+    learner: { model: ProviderModel; effort: EffortLevel; agents: number }[]
     /** Runs with any agent on a cheaper model, and runs without. */
     final_review: { routed: FinalReviewSide; not_routed: FinalReviewSide }
     /** Joined tickets with no `lines_changed`, left out of the rates. */
@@ -254,7 +257,7 @@ const scoreOf = ({
 }: {
     tickets: TicketFacts[]
     role: ScoredRole
-    model: ModelName
+    model: ProviderModel
     effort: EffortLevel
     review_effort: EffortLevel
 }): ModelScore => {
@@ -268,12 +271,13 @@ const scoreOf = ({
     const finished = group.flatMap(({ joined, tokens }) =>
         joined && tokens !== null ? [tokens] : []
     )
+    const strongest = strongestModelOf(model)
     const baseline =
-        model === 'opus'
+        model === strongest
             ? []
             : alike.filter(
                   ({ models, picks }) =>
-                      models[role] === 'opus' &&
+                      models[role] === strongest &&
                       picks[role]?.shadow === true &&
                       picks[role]?.model === model
               )
@@ -305,11 +309,11 @@ const scoreOf = ({
         ),
         other_role_cheaper: group.filter(({ models }) => {
             const ran = models[other]
-            return ran !== undefined && ran !== 'opus'
+            return ran !== undefined && ran !== strongestModelOf(ran)
         }).length,
         baseline: baseline_side,
         verdict:
-            model === 'opus'
+            model === strongest
                 ? null
                 : verdictOf({ side, baseline: baseline_side }),
         trial_tickets: trial.length,
@@ -361,7 +365,7 @@ export const scoreModels = ({
         .filter(({ models }) => Object.keys(models).length > 0)
     const levels = EffortLevelSchema.options
     const scores = SCORED_ROLES.flatMap((role) =>
-        ModelNameSchema.options.flatMap((model) =>
+        ProviderModelSchema.options.flatMap((model) =>
             levels.flatMap((effort) =>
                 levels.map((review_effort) =>
                     scoreOf({ tickets, role, model, effort, review_effort })
@@ -382,7 +386,7 @@ export const scoreModels = ({
         floor_only: SCORED_ROLES.filter((role) =>
             isFloorOnly({ tickets, role })
         ),
-        learner: ModelNameSchema.options
+        learner: ProviderModelSchema.options
             .flatMap((model) =>
                 levels.map((effort) => ({
                     model,
@@ -423,13 +427,13 @@ const scoreText = (score: ModelScore): string[] => {
         ...(score.verdict === null
             ? []
             : [
-                  `    baseline (Clef picked ${score.model} in shadow mode, ran opus at ${score.effort}): ${sideText(score.baseline)}`,
+                  `    baseline (Clef picked ${score.model} in shadow mode, ran ${strongestModelOf(score.model)} at ${score.effort}): ${sideText(score.baseline)}`,
                   `    verdict: ${score.verdict}`,
               ]),
         ...(score.trial_verdict === null
             ? []
             : [
-                  `    control (Clef picked ${score.model}, left out of the trial, ran opus at ${score.effort}): ${sideText(score.control)}`,
+                  `    control (Clef picked ${score.model}, left out of the trial, ran ${strongestModelOf(score.model)} at ${score.effort}): ${sideText(score.control)}`,
                   `    trial verdict: ${score.trial_verdict}`,
               ]),
     ]
@@ -447,19 +451,24 @@ const effortPicksText = (picks: EffortPicks): string[] => [
     ),
 ]
 
-const FLOOR_LINE =
-    "  no cheaper model was ever tried: this role's floor is opus in every run. Set models.floors in .luca/config.json to let it."
+/** The floor-only line, naming the strongest models its lines ran. */
+const floorLine = (strongest: ProviderModel[]): string =>
+    `  no cheaper model was ever tried: this role's floor is ${strongest.length === 0 ? 'opus' : strongest.join(' or ')} in every run. Set models.floors in .luca/config.json to let it.`
 
 /**
- * A role's model lines: for a floor-only role, its Opus lines and the floor
- * line in place of the rest.
+ * A role's model lines: for a floor-only role, its strongest-model lines
+ * (Opus, or the top Gemini tier on `agy`) and the floor line in place of
+ * the rest.
  */
 const scoresText = (scores: ModelScore[], floor_only: boolean): string[] => {
     if (scores.length === 0) return ['  no tickets yet']
     if (!floor_only) return scores.flatMap(scoreText)
+    const strongest = scores.filter(
+        ({ model }) => model === strongestModelOf(model)
+    )
     return [
-        ...scores.filter(({ model }) => model === 'opus').flatMap(scoreText),
-        FLOOR_LINE,
+        ...strongest.flatMap(scoreText),
+        floorLine(uniq(strongest.map(({ model }) => model))),
     ]
 }
 

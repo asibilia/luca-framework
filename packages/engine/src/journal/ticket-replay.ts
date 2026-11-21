@@ -22,6 +22,9 @@ import {
 } from './ticket-result-replay'
 import { retriedChange } from './ticket-retry-replay'
 
+import { DEFAULT_PROVIDER, type ProviderId } from '../agents/provider'
+import { providerOfConfig } from '../config/engine-config'
+
 type TicketRecord = Exclude<
     JournalRecord,
     {
@@ -99,9 +102,11 @@ type TicketRecord = Exclude<
 const progressChange = ({
     progress,
     record,
+    provider = DEFAULT_PROVIDER,
 }: {
     progress: TicketProgress
     record: TicketRecord
+    provider?: ProviderId
 }): Partial<TicketProgress> => {
     switch (record.kind) {
         case 'ticket_worktree_created':
@@ -164,7 +169,7 @@ const progressChange = ({
                 agent_failure,
                 out_of_turns,
                 engine_failures: 0,
-                ...failedTryChange({ progress, role, failure }),
+                ...failedTryChange({ progress, role, failure, provider }),
             }
         }
         case 'red_check': {
@@ -199,6 +204,7 @@ const progressChange = ({
             return alreadyDoneCheckedChange({
                 progress,
                 checked: record.content,
+                provider,
             })
         case 'worktree_reset':
             // A fresh test-writer and implementer start over on a clean
@@ -405,13 +411,14 @@ export const applyTicketRecord = ({
 }): RunState => {
     if (record.ticket === null) return state
     const progress = state.tickets[record.ticket] ?? EMPTY_TICKET_PROGRESS
+    const provider = providerOfConfig({ config: state.config })
     return {
         ...state,
         tickets: {
             ...state.tickets,
             [record.ticket]: {
                 ...progress,
-                ...progressChange({ progress, record }),
+                ...progressChange({ progress, record, provider }),
             },
         },
     }

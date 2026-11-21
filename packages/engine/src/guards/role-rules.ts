@@ -70,12 +70,18 @@ export const checkToolCall = ({
     tool_name,
     tool_input,
     worktree,
+    cwd,
     config,
 }: GuardArgs & {
     tool_name: string
     tool_input: unknown
     /** The agent's worktree, as an absolute path. */
     worktree: string
+    /**
+     * Where a shell command runs, inside `worktree` (#777: `agy`'s
+     * `run_command` takes a `Cwd`). Defaults to `worktree`.
+     */
+    cwd?: string
     config: EngineConfig
 }): ToolDecision => {
     if (tool_name === SEND_MESSAGE_TOOL && !isWriter(role)) {
@@ -125,6 +131,7 @@ export const checkToolCall = ({
             may_edit_tests,
             command: input.data.command,
             worktree,
+            cwd,
             config,
         })
     }

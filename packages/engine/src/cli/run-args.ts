@@ -3,6 +3,7 @@ import { parseArgs } from 'node:util'
 
 import { z } from 'zod'
 
+import { ProviderIdSchema, type ProviderId } from '../agents/provider'
 import { makeRunId } from '../journal/journal'
 
 /** The env var the board plugin passes the per-run token in. */
@@ -10,7 +11,7 @@ export const BOARD_TOKEN_ENV = 'LUCA_BOARD_TOKEN'
 
 /** How to call `luca-run`, shown with every argument error. */
 export const RUN_USAGE = `Usage:
-  luca-run --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--alongside] [--board-plugin <id>]
+  luca-run --spec <n> [--repo <path>] [--run-id <id>] [--base <branch>] [--provider <claude|agy>] [--alongside] [--board-plugin <id>]
   luca-run --demo [--run-id <id>] [--board-plugin <id>]
   luca-run --resume <run-id> [--repo <path>] [--board-plugin <id>]
   luca-run --unfinished
@@ -26,6 +27,7 @@ export const RUN_USAGE = `Usage:
                         (for --resume, to the repo the run started in).
   --run-id <id>         The run's id and folder name. Defaults to a new one.
   --base <branch>       The branch the run starts from. Defaults to main.
+  --provider <id>       Agent provider for this run: claude or agy. Overrides .luca/config.json's models.provider.
   --alongside           Start now, even while an earlier run on the repo is
                         going. Without it, the run waits for that run first.
   --board-plugin <id>   Send the journal to this Paseo board plugin; the
@@ -52,6 +54,18 @@ const boardOf = ({
 
 const BOARD_TOKEN_MESSAGE = `--board-plugin needs the run's token in $${BOARD_TOKEN_ENV}.`
 
+const ProviderFlagSchema = z.string().transform((value, ctx) => {
+    const parsed = ProviderIdSchema.safeParse(value)
+    if (!parsed.success) {
+        ctx.addIssue({
+            code: 'custom',
+            message: `Invalid --provider "${value}": expected claude or agy.`,
+        })
+        return z.NEVER
+    }
+    return parsed.data
+})
+
 const resumeArgsSchema = ({ cwd }: { cwd: string }) =>
     z
         .object({
@@ -69,6 +83,9 @@ const resumeArgsSchema = ({ cwd }: { cwd: string }) =>
             demo: z.undefined('Give only one of --resume or --demo.'),
             run_id: z.undefined('--resume <run-id> is the run id.'),
             base: z.undefined('--resume takes the base from the journal.'),
+            provider: z.undefined(
+                '--resume takes the provider from the journal.'
+            ),
             alongside: z.undefined('--alongside is for a new run (--spec).'),
         })
         .refine(({ board_plugin, token }) => board_plugin === null || token, {
@@ -94,6 +111,7 @@ const unfinishedArgsSchema = z
         repo: z.undefined(UNFINISHED_ALONE),
         run_id: z.undefined(UNFINISHED_ALONE),
         base: z.undefined(UNFINISHED_ALONE),
+        provider: z.undefined(UNFINISHED_ALONE),
         alongside: z.undefined(UNFINISHED_ALONE),
         board_plugin: z.undefined(UNFINISHED_ALONE),
     })
@@ -111,12 +129,16 @@ const runArgsSchema = ({ cwd }: { cwd: string }) =>
                 .transform((path) => resolve(cwd, path)),
             run_id: RunIdSchema.default(() => makeRunId()),
             base: z.string().min(1).nullable().default(null),
+            provider: ProviderFlagSchema.optional(),
             alongside: z.boolean().default(false),
             board_plugin: z.string().min(1).nullable().default(null),
             token: z.string().nullable().default(null),
         })
         .refine(({ spec, demo }) => (spec === undefined) === demo, {
             message: 'Give exactly one of --spec <n> or --demo.',
+        })
+        .refine(({ demo, provider }) => !(demo && provider !== undefined), {
+            message: '--provider is for a run of a spec (--spec).',
         })
         .refine(({ demo, alongside }) => !(demo && alongside), {
             message: '--alongside is for a run of a spec (--spec).',
@@ -130,6 +152,7 @@ const runArgsSchema = ({ cwd }: { cwd: string }) =>
                 repo,
                 run_id,
                 base,
+                provider,
                 alongside,
                 board_plugin,
                 token,
@@ -145,6 +168,7 @@ const runArgsSchema = ({ cwd }: { cwd: string }) =>
                     mode: 'spec',
                     spec_number: spec,
                     ...common,
+                    ...(provider === undefined ? {} : { provider }),
                     ...(alongside ? { alongside: true } : {}),
                 }
             }
@@ -165,6 +189,8 @@ export type RunArgs =
     | (RunArgsCommon & {
           mode: 'spec'
           spec_number: number
+          /** Agent provider override (`--provider`); left out, `.luca/config.json` decides. */
+          provider?: ProviderId
           /** Skip the repo wait (`--alongside`); left out, the run waits. */
           alongside?: true
       })
@@ -214,6 +240,7 @@ export const parseRunArgs = ({
                 repo: { type: 'string' },
                 'run-id': { type: 'string' },
                 base: { type: 'string' },
+                provider: { type: 'string' },
                 alongside: { type: 'boolean' },
                 'board-plugin': { type: 'string' },
             },
@@ -236,6 +263,7 @@ export const parseRunArgs = ({
         repo: values.repo,
         run_id: values['run-id'],
         base: values.base,
+        provider: values.provider,
         alongside: values.alongside,
         board_plugin: values['board-plugin'],
         token: env[BOARD_TOKEN_ENV],

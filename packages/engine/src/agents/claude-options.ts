@@ -73,7 +73,7 @@ export const checkModel = ({ model }: { model: string }): string | null => {
 }
 
 /** The only variables an agent's process inherits from the engine's. */
-const ENV_ALLOW_LIST = [
+export const ENV_ALLOW_LIST = [
     'PATH',
     'HOME',
     'USER',

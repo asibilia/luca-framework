@@ -17,6 +17,7 @@ import {
 } from './testing/journal-fixtures'
 
 import { stoppedText } from '../shared/board-state'
+import { windowWords } from '../shared/board-state-usage'
 
 /**
  * The board's panel state for limit waits and stopped runs. The helpers are
@@ -83,8 +84,10 @@ describe('limit waits', () => {
         ['seven_day', 'weekly'],
         ['seven_day_opus', 'weekly Opus'],
         ['seven_day_sonnet', 'weekly Sonnet'],
+        ['agy_quota', 'Antigravity quota'],
         ['overage', 'overage'],
     ])('a %s limit reads as the %s window', async (type, words) => {
+        expect(windowWords({ window: type })).toBe(words)
         await runWith({
             entries: [
                 limitWaitStarted({

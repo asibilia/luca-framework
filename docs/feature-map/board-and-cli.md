@@ -43,6 +43,8 @@ Tests:
 - `packages/board/client/wait-line-panel.test.ts`
 - `packages/board/client/status-bar-panel.test.ts`
 - `packages/board/client/slot-wait-panel.test.ts`
+- `packages/board/client/board-look.test.ts`
+- `packages/board/client/agy-board-ui.e2e.test.ts`
 
 ## The board: the live file
 
@@ -63,6 +65,7 @@ Tests:
 - `packages/board/client/live-feed-panel.test.ts`
 - `packages/board/client/engine-gone-panel.test.ts`
 - `packages/board/client/helper-lines-panel.test.ts`
+- `packages/board/client/live-line.test.ts`
 
 ## The board: starting a run from Paseo
 
@@ -77,6 +80,7 @@ Tests:
 - `packages/board/server/spawn-detached.test.ts`
 - `packages/board/server/engine-launch-isolation.test.ts`
 - `packages/engine/src/cli/engine-bunfig.test.ts`
+- `packages/board/server/agy-board-run.e2e.test.ts`
 
 ## Running from the command line, and Luca's version
 
@@ -90,6 +94,7 @@ Tests:
 - `packages/engine/src/cli/resume-live-engine.test.ts`
 - `packages/engine/src/cli/live-runs.test.ts`
 - `packages/engine/src/cli/run-modes.test.ts`
+- `packages/engine/src/cli/run-modes-provider.test.ts`
 - `packages/engine/src/cli/run-modes.e2e.test.ts`
 - `packages/engine/src/cli/run-modes-spec.e2e.test.ts`
 - `packages/engine/src/cli/run-modes-clef.e2e.test.ts`
@@ -99,6 +104,10 @@ Tests:
 - `packages/engine/src/agents/client-tag.test.ts`
 - `packages/board/server/luca-version-panel.test.ts`
 - `packages/board/server/board-version.test.ts`
+- `packages/engine/src/cli/agy-cli-run.e2e.test.ts`
+- `packages/engine/src/cli/agy-cli-run-modes.e2e.test.ts`
+- `packages/engine/src/core/agy-cross-feature-cli.e2e.test.ts`
+- `packages/engine/src/core/agy-workflows-board.e2e.test.ts`
 
 ## The luca command: setup, init, doctor and upgrade
 

@@ -14,7 +14,7 @@ import {
     RUN_FILES_PLACEHOLDER,
     type OwnSlowCommand,
 } from '../config/engine-config'
-import { runShell } from '../shell/run-command'
+import { runShell, shellWord } from '../shell/run-command'
 
 /** One slow command's `run_files` and the ticket's files it owns. */
 export type OwnSlowRun = { run_files: string; files: string[] }
@@ -43,9 +43,6 @@ export const ownSlowRuns = ({
         return files.length === 0 ? [] : [{ run_files, files }]
     })
 
-/** A path in single quotes for the shell, with any quote in it escaped. */
-const quoted = (file: string): string => `'${file.replaceAll("'", "'\\''")}'`
-
 /**
  * A `run_files` command with every `{files}` replaced by the files: each in
  * single quotes, separated by one space.
@@ -55,7 +52,7 @@ const quoted = (file: string): string => `'${file.replaceAll("'", "'\\''")}'`
  * // "bun run ui-files 'ui/a.test.ts' 'ui/b.test.ts'"
  */
 export const filledRunFiles = ({ run_files, files }: OwnSlowRun): string =>
-    run_files.replaceAll(RUN_FILES_PLACEHOLDER, files.map(quoted).join(' '))
+    run_files.replaceAll(RUN_FILES_PLACEHOLDER, files.map(shellWord).join(' '))
 
 /**
  * The red check's own slow runs (#683): each run, in order, with only its
