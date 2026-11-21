@@ -79,6 +79,18 @@ describe('run.start: the args', () => {
             "--provider isn't used with resume (resumed runs keep their original provider). Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
         ],
         [
+            'resume --provider agy',
+            "--provider isn't used with resume (resumed runs keep their original provider). Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'demo extra --provider agy',
+            "--provider isn't used with demo. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>",
+        ],
+        [
+            'demo extra',
+            '"demo extra" isn\'t a spec number. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>',
+        ],
+        [
             '42 --provider',
             'Invalid --provider: expected claude or agy. Usage: /luca-run <spec number> [--provider <claude|agy>] | demo | resume <run id>',
         ],

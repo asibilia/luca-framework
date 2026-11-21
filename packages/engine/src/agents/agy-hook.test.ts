@@ -418,4 +418,137 @@ describe('AC6: valid state SessionStart, PreToolUse, and PreInvocation behavior'
             },
         })
     })
+
+    test('records malformed PreToolUse denials, allows finish with args: null, handles PreInvocation edge cases, and rejects whitespace state_dir / negative bounds', async () => {
+        const root = makeTempDir()
+        const state = makeHookState({
+            root,
+            overrides: { max_turns: 0 },
+        })
+        writeFileSync(
+            join(state.state_dir_real, 'state.json'),
+            JSON.stringify(state)
+        )
+
+        for (const toolCall of [{}, { name: '' }]) {
+            const bad = await runAgyHook({
+                stdin_text: JSON.stringify({
+                    hookEventName: 'PreToolUse',
+                    toolCall,
+                }),
+                state_dir: state.state_dir_real,
+            })
+            expect(bad).toEqual({
+                exit_code: 0,
+                output: {
+                    decision: 'deny',
+                    reason: 'Luca hook received malformed PreToolUse payload.',
+                },
+            })
+        }
+        const denials = parseDenialsJsonl({
+            text: readFileSync(
+                join(state.state_dir_real, 'denials.jsonl'),
+                'utf8'
+            ),
+        })
+        expect(denials).toEqual([
+            {
+                tool_name: 'unknown',
+                reason: 'Luca hook received malformed PreToolUse payload.',
+            },
+            {
+                tool_name: 'unknown',
+                reason: 'Luca hook received malformed PreToolUse payload.',
+            },
+        ])
+
+        const finish_null = await runAgyHook({
+            stdin_text: JSON.stringify({
+                hookEventName: 'PreToolUse',
+                toolCall: { name: 'finish', args: null },
+            }),
+            state_dir: state.state_dir_real,
+        })
+        expect(finish_null).toEqual({
+            exit_code: 0,
+            output: { decision: 'allow' },
+        })
+
+        for (const payload of [
+            { hookEventName: 'PreInvocation' },
+            { hookEventName: 'PreInvocation', invocationNum: null },
+            { hookEventName: 'PreInvocation', invocationNum: '5' },
+        ]) {
+            expect(
+                await runAgyHook({
+                    stdin_text: JSON.stringify(payload),
+                    state_dir: state.state_dir_real,
+                })
+            ).toEqual({ exit_code: 0, output: {} })
+        }
+
+        const zero_limit = await runAgyHook({
+            stdin_text: JSON.stringify({
+                hookEventName: 'PreInvocation',
+                invocationNum: 0,
+            }),
+            state_dir: state.state_dir_real,
+        })
+        expect(zero_limit).toEqual({
+            exit_code: 0,
+            output: {
+                terminationBehavior: 'terminate',
+                injectSteps: [
+                    { errorMessage: { userMessage: 'Turn limit reached.' } },
+                ],
+            },
+        })
+        expect(
+            readFileSync(
+                join(state.state_dir_real, 'out-of-turns.flag'),
+                'utf8'
+            ).trim()
+        ).toBe('1')
+
+        const ws_dir = await runAgyHook({
+            stdin_text: JSON.stringify({
+                hookEventName: 'PreToolUse',
+                toolCall: { name: 'finish', args: {} },
+            }),
+            state_dir: '   ',
+        })
+        expect(ws_dir).toEqual({
+            exit_code: 0,
+            output: {
+                decision: 'deny',
+                reason: 'Luca hook could not read guard state.',
+            },
+        })
+
+        for (const bad_bound of [
+            { ...state, turn_index: -1 },
+            { ...state, max_turns: -1 },
+        ]) {
+            writeFileSync(
+                join(state.state_dir_real, 'state.json'),
+                JSON.stringify(bad_bound)
+            )
+            expect(
+                await runAgyHook({
+                    stdin_text: JSON.stringify({
+                        hookEventName: 'PreToolUse',
+                        toolCall: { name: 'finish', args: {} },
+                    }),
+                    state_dir: state.state_dir_real,
+                })
+            ).toEqual({
+                exit_code: 0,
+                output: {
+                    decision: 'deny',
+                    reason: 'Luca hook could not read guard state.',
+                },
+            })
+        }
+    })
 })

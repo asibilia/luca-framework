@@ -269,4 +269,184 @@ describe('runSpec and resumeRun provider launcher & usage isolation', () => {
         expect(factory.closed()).toBe(1)
         expect(usageSpy.calls).toEqual([])
     })
+
+    test('runSpec overrides agy config to claude and passes usage; resumeRun on claude passes usage (#12)', async () => {
+        const repo = join(root, 'repo-claude')
+        const runs_dir = join(root, 'runs-claude')
+        await Bun.write(
+            join(repo, '.luca', 'config.json'),
+            JSON.stringify({
+                ...PRACTICE_ENGINE_CONFIG,
+                models: {
+                    provider: 'agy',
+                    floors: {
+                        'test-writer': 'gemini-4-argon-high',
+                        implementer: 'gemini-3.8-flash-high',
+                        learner: 'gemini-4-neon-high',
+                    },
+                },
+            })
+        )
+        const factory = makeFactory()
+        const usageSpy = makeUsageSpy()
+
+        const end = await runSpec({
+            spec_number: 10,
+            repo,
+            run_id: 'claude-override',
+            base_branch: null,
+            runs_dir,
+            tracker: emptySpecTracker(),
+            launcher: factory.factory,
+            provider: 'claude',
+            usage: usageSpy.usage,
+            board: null,
+            log,
+        })
+
+        expect(end.ok).toBe(true)
+        expect(factory.requested).toEqual(['claude'])
+        expect(factory.closed()).toBe(1)
+        expect(usageSpy.calls.length).toBeGreaterThan(0)
+        expect(usageSpy.calls).toContain('read_lines')
+        const started = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'claude-override' }),
+        }).read()[0]
+        expect(started?.kind).toBe('run_started')
+        if (started?.kind === 'run_started') {
+            expect(started.content.config.models?.provider).toBe('claude')
+            expect(started.content.config.models?.floors).toEqual({
+                'test-writer': 'sonnet',
+                implementer: 'haiku',
+                learner: 'opus',
+            })
+        }
+
+        const resumeFactory = makeFactory()
+        const resumeUsage = makeUsageSpy()
+        const resumed = await resumeRun({
+            run_id: 'claude-override',
+            runs_dir,
+            repo: null,
+            tracker: emptySpecTracker,
+            launcher: resumeFactory.factory,
+            usage: resumeUsage.usage,
+            board: null,
+            log,
+        })
+        expect(resumed.ok).toBe(true)
+        expect(resumeFactory.requested).toEqual(['claude'])
+        expect(resumeUsage.calls).toContain('read_lines')
+    })
+
+    test('resumeRun on agy journal keeps agy provider and omits usage when .luca/config.json is missing or invalid (#13)', async () => {
+        const repoMissing = join(root, 'repo-missing-cfg')
+        const runs_dir = join(root, 'runs-bad-cfg')
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'agy-bad-cfg' }),
+        })
+        startRun({
+            journal,
+            spec_number: 10,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                models: {
+                    provider: 'agy',
+                    floors: {
+                        'test-writer': 'gemini-4-neon-high',
+                        implementer: 'gemini-4-argon-high',
+                        learner: 'gemini-3.8-flash-high',
+                    },
+                    effort: {
+                        'test-writer': 'medium',
+                        implementer: 'medium',
+                        learner: 'medium',
+                    },
+                    confidence_bar: 0.5,
+                    trial_share: 0,
+                },
+            },
+            repo: repoMissing,
+        })
+        const missingFactory = makeFactory()
+        const missingUsage = makeUsageSpy()
+        const missingEnd = await resumeRun({
+            run_id: 'agy-bad-cfg',
+            runs_dir,
+            repo: null,
+            tracker: emptySpecTracker,
+            launcher: missingFactory.factory,
+            usage: missingUsage.usage,
+            board: null,
+            log,
+        })
+        expect(missingEnd.ok).toBe(true)
+        expect(missingFactory.requested).toEqual(['agy'])
+        expect(missingUsage.calls).toEqual([])
+
+        await Bun.write(join(repoMissing, '.luca', 'config.json'), '{invalid')
+
+        const factory = makeFactory()
+        const usageSpy = makeUsageSpy()
+        const end = await resumeRun({
+            run_id: 'agy-bad-cfg',
+            runs_dir,
+            repo: null,
+            tracker: emptySpecTracker,
+            launcher: factory.factory,
+            usage: usageSpy.usage,
+            board: null,
+            log,
+        })
+
+        expect(end.ok).toBe(true)
+        expect(factory.requested).toEqual(['agy'])
+        expect(usageSpy.calls).toEqual([])
+    })
+
+    test('resumeRun when tracker() throws narrows factory out of closeAll (#14)', async () => {
+        const runs_dir = join(root, 'runs-tracker-throw')
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'agy-tracker-throw' }),
+        })
+        startRun({
+            journal,
+            spec_number: 10,
+            config: {
+                ...PRACTICE_ENGINE_CONFIG,
+                models: {
+                    provider: 'agy',
+                    floors: {
+                        'test-writer': 'gemini-4-neon-high',
+                        implementer: 'gemini-4-neon-high',
+                        learner: 'gemini-4-neon-high',
+                    },
+                    effort: {
+                        'test-writer': 'medium',
+                        implementer: 'medium',
+                        learner: 'medium',
+                    },
+                    confidence_bar: 0.5,
+                    trial_share: 0,
+                },
+            },
+            repo: root,
+        })
+        const factory = makeFactory()
+        const end = await resumeRun({
+            run_id: 'agy-tracker-throw',
+            runs_dir,
+            repo: null,
+            tracker: async () => {
+                throw new Error('gh auth missing')
+            },
+            launcher: factory.factory,
+            board: null,
+            log,
+        })
+
+        expect(end).toEqual({ ok: false, message: 'gh auth missing' })
+        expect(factory.requested).toEqual([])
+        expect(factory.closed()).toBe(0)
+    })
 })

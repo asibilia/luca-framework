@@ -279,15 +279,19 @@ export const processStreamLine = ({
             }
         }
         if (is_tool || u.step_type === 'agent_response' || u.usage != null) {
-            on_progress?.({
-                tokens: [...state.step_tokens.values()].reduce(
-                    (s, n) => s + n,
-                    0
-                ),
-                action: state.action,
-                open_call: [...state.open_calls.values()].at(-1) ?? null,
-                rate_limit_events: [...state.rate_limit_events],
-            })
+            try {
+                on_progress?.({
+                    tokens: [...state.step_tokens.values()].reduce(
+                        (s, n) => s + n,
+                        0
+                    ),
+                    action: state.action,
+                    open_call: [...state.open_calls.values()].at(-1) ?? null,
+                    rate_limit_events: [...state.rate_limit_events],
+                })
+            } catch {
+                // Live progress is best-effort; listener errors must not abort the stream.
+            }
         }
         return null
     }

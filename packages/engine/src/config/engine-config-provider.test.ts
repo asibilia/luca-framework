@@ -144,6 +144,29 @@ describe('ModelsConfigSchema provider and floors (#778 AC3)', () => {
         }
     })
 
+    test('reports one superRefine issue per invalid floor role and rejects uppercase Gemini floor', () => {
+        const multi = ModelsConfigSchema.safeParse({
+            provider: 'agy',
+            floors: {
+                'test-writer': 'opus',
+                implementer: 'GEMINI-4-NEON-HIGH',
+                learner: 'sonnet',
+            },
+        })
+        expect(multi.success).toBe(false)
+        if (!multi.success) {
+            expect(multi.error.issues).toHaveLength(3)
+            expect(multi.error.issues.map((i) => i.path)).toEqual([
+                ['floors', 'test-writer'],
+                ['floors', 'implementer'],
+                ['floors', 'learner'],
+            ])
+            expect(multi.error.issues[1]?.message).toContain(
+                'models.floors.implementer: "GEMINI-4-NEON-HIGH" is not a valid model for provider "agy".'
+            )
+        }
+    })
+
     test('rejects unrecognized floor roles under agy with strongest-model message', async () => {
         for (const role of ['ticket-reviewer', 'security-lens']) {
             const loaded = await writeModels({

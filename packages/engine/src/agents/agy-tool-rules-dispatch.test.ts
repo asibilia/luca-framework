@@ -1,4 +1,14 @@
-import { describe, expect, test } from 'bun:test'
+import {
+    mkdirSync,
+    mkdtempSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, describe, expect, test } from 'bun:test'
 
 import { checkAgyToolCall, type AgyGuardState } from './agy-tool-rules'
 import type { AgentRole } from './role-results'
@@ -313,5 +323,217 @@ describe('AC4: run_command flags, learner/story-writer shell denial, and disallo
                 reason: `Tool ${tool_name} is not allowed for role story-writer.`,
             })
         }
+    })
+})
+
+describe('Tier-5 boundary guards: symlinks, NUL bytes, dir writes, folder feature_map, and input shapes (M4-1, M4-2)', () => {
+    let temp_dirs: string[] = []
+    afterEach(() => {
+        for (const dir of temp_dirs) {
+            rmSync(dir, { recursive: true, force: true })
+        }
+        temp_dirs = []
+    })
+
+    test('allows 32 symlink hops, denies 33 hops, NUL bytes, "." / ".git" dir writes, and checks folder feature_map', () => {
+        const root = mkdtempSync(join(tmpdir(), 'agy-tool-edges-'))
+        temp_dirs.push(root)
+        const wt = join(root, 'wt')
+        const state_dir = join(root, 'state')
+        const home = join(root, 'home')
+        mkdirSync(join(wt, 'src'), { recursive: true })
+        mkdirSync(join(wt, '.git'), { recursive: true })
+        mkdirSync(join(wt, 'docs', 'feature-map'), { recursive: true })
+        mkdirSync(state_dir, { recursive: true })
+        mkdirSync(home, { recursive: true })
+        writeFileSync(join(wt, 'src', 'app.ts'), 'export {}\n')
+
+        let prev = 'src/app.ts'
+        for (let i = 1; i <= 33; i += 1) {
+            const name = `hop_${i}`
+            symlinkSync(prev, join(wt, name))
+            prev = name
+        }
+
+        const state = makeState({
+            role: 'implementer',
+            worktree_real: wt,
+            state_dir_real: state_dir,
+            home_real: home,
+        })
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'view_file',
+                tool_input: { AbsolutePath: 'hop_32' },
+            })
+        ).toEqual({ allow: true })
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'view_file',
+                tool_input: { AbsolutePath: 'hop_33' },
+            })
+        ).toEqual({
+            allow: false,
+            reason: 'hop_33 is outside your worktree.',
+        })
+
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'view_file',
+                tool_input: { AbsolutePath: 'src/app\0.ts' },
+            })
+        ).toEqual({
+            allow: false,
+            reason: 'src/app\0.ts is outside your worktree.',
+        })
+
+        for (const dir_target of ['.', '.git']) {
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: 'write_to_file',
+                    tool_input: { TargetFile: dir_target },
+                }).allow
+            ).toBe(false)
+        }
+
+        const folder_tw = makeState({
+            role: 'test-writer',
+            may_edit_tests: true,
+            worktree_real: wt,
+            state_dir_real: state_dir,
+            home_real: home,
+            config: EngineConfigSchema.parse({
+                ...CONFIG,
+                feature_map: 'docs/feature-map',
+            }),
+        })
+        expect(
+            checkAgyToolCall({
+                state: folder_tw,
+                tool_name: 'write_to_file',
+                tool_input: { TargetFile: 'docs/feature-map/agents.md' },
+            })
+        ).toEqual({ allow: true })
+        expect(
+            checkAgyToolCall({
+                state: folder_tw,
+                tool_name: 'write_to_file',
+                tool_input: { TargetFile: 'docs/feature-map/notes.txt' },
+            }).allow
+        ).toBe(false)
+    })
+
+    test('fails closed on null/non-object/numeric tool inputs, empty AbsolutePath fallback, and run_command whitespace/null flags', () => {
+        const state = makeState({ role: 'implementer' })
+        for (const tool_name of [
+            'grep_search',
+            'find_by_name',
+            'list_dir',
+        ] as const) {
+            for (const bad_input of [null, 'bad']) {
+                expect(
+                    checkAgyToolCall({
+                        state,
+                        tool_name,
+                        tool_input: bad_input,
+                    })
+                ).toEqual({
+                    allow: false,
+                    reason: `${tool_name} got an input of the wrong shape.`,
+                })
+            }
+        }
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'grep_search',
+                tool_input: { SearchPath: 123 },
+            })
+        ).toEqual({
+            allow: false,
+            reason: 'grep_search got an input of the wrong shape.',
+        })
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'find_by_name',
+                tool_input: { SearchDirectory: 123 },
+            })
+        ).toEqual({
+            allow: false,
+            reason: 'find_by_name got an input of the wrong shape.',
+        })
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'list_dir',
+                tool_input: { DirectoryPath: 123 },
+            })
+        ).toEqual({
+            allow: false,
+            reason: 'list_dir got an input of the wrong shape.',
+        })
+        for (const bad_write of [null, 'bad', { TargetFile: 123 }]) {
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: 'write_to_file',
+                    tool_input: bad_write,
+                })
+            ).toEqual({
+                allow: false,
+                reason: 'write_to_file needs a file path.',
+            })
+        }
+        for (const bad_cmd of [null, 'bad', { CommandLine: 123 }]) {
+            expect(
+                checkAgyToolCall({
+                    state,
+                    tool_name: 'run_command',
+                    tool_input: bad_cmd,
+                })
+            ).toEqual({
+                allow: false,
+                reason: 'run_command needs a CommandLine.',
+            })
+        }
+
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'view_file',
+                tool_input: { AbsolutePath: '', Path: 'src/app.ts' },
+            })
+        ).toEqual({ allow: true })
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'view_file',
+                tool_input: { AbsolutePath: 123, Path: 'src/app.ts' },
+            })
+        ).toEqual({ allow: false, reason: 'view_file needs a path.' })
+
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'run_command',
+                tool_input: { CommandLine: '   ' },
+            })
+        ).toEqual({ allow: false, reason: 'An empty command.' })
+        expect(
+            checkAgyToolCall({
+                state,
+                tool_name: 'run_command',
+                tool_input: {
+                    CommandLine: 'bun test',
+                    IsDaemon: null,
+                    BypassSandbox: null,
+                },
+            })
+        ).toEqual({ allow: true })
     })
 })

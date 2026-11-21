@@ -98,6 +98,9 @@ type ByteReader = {
     releaseLock: () => void
 }
 
+const errorText = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error)
+
 const readChunks = async ({
     reader,
     state,
@@ -109,7 +112,11 @@ const readChunks = async ({
         chunk: string
         final: boolean
     }) => { bad_model: string } | null
-}): Promise<{ kind: 'eof' } | { kind: 'bad_model'; model: string }> => {
+}): Promise<
+    | { kind: 'eof' }
+    | { kind: 'bad_model'; model: string }
+    | { kind: 'error'; error: string }
+> => {
     const dec = new TextDecoder()
     try {
         while (!state.aborted) {
@@ -125,8 +132,10 @@ const readChunks = async ({
         return out !== null
             ? { kind: 'bad_model', model: out.bad_model }
             : { kind: 'eof' }
-    } catch {
-        return { kind: 'eof' }
+    } catch (error) {
+        return state.aborted
+            ? { kind: 'eof' }
+            : { kind: 'error', error: errorText(error) }
     } finally {
         reader.releaseLock()
     }
@@ -201,6 +210,7 @@ export const runAgyStream = async ({
         processStreamLine({ line, state, worktree, now, on_progress })
     const work_promise = (async (): Promise<
         | { kind: 'bad_model'; model: string }
+        | { kind: 'stream_error'; error: string }
         | { kind: 'done'; exit_code: number }
     > => {
         const out = await readChunks({
@@ -221,7 +231,16 @@ export const runAgyStream = async ({
             },
         })
         if (out.kind === 'bad_model') return out
-        const [, exit_code] = await Promise.all([stderr_promise, exited])
+        if (out.kind === 'error') {
+            return { kind: 'stream_error', error: out.error }
+        }
+        const [stderr_out, exit_code] = await Promise.all([
+            stderr_promise,
+            exited,
+        ])
+        if (stderr_out.kind === 'error') {
+            return { kind: 'stream_error', error: stderr_out.error }
+        }
         return { kind: 'done', exit_code }
     })()
 
@@ -244,20 +263,35 @@ export const runAgyStream = async ({
             guard_denials: (await read_denials?.()) ?? [],
         })
 
-    if (race.kind === 'timeout' || race.kind === 'bad_model') {
+    if (
+        race.kind === 'timeout' ||
+        race.kind === 'bad_model' ||
+        race.kind === 'stream_error'
+    ) {
         state.aborted = true
         void stdout_reader.cancel().catch(() => {})
         void stderr_reader.cancel().catch(() => {})
         await terminateProcess({ kill, exited, grace_ms: kill_grace_ms })
         const { session, session_id } = await summarize()
         await cleanup?.()
+        const stderr_tail = state.stderr_buf.trim()
         const msg =
             race.kind === 'timeout'
                 ? `The ${role} timed out after ${Math.round(turn_timeout_ms / 1000)}s.`
-                : `Only Gemini models run agy agents: ${race.model}`
+                : race.kind === 'bad_model'
+                  ? `Only Gemini models run agy agents: ${race.model}`
+                  : stderr_tail === ''
+                    ? `The agent session failed: ${race.error}`
+                    : `The agent session failed: ${race.error}\n${stderr_tail}`
+        const failure: LauncherFailure =
+            race.kind === 'timeout'
+                ? 'agent'
+                : race.kind === 'bad_model'
+                  ? 'stop'
+                  : 'engine'
         return {
             ok: false,
-            failure: race.kind === 'timeout' ? 'agent' : 'stop',
+            failure,
             error: msg,
             ...(session_id !== null ? { session_id } : {}),
             session,

@@ -37,7 +37,12 @@ export const callWords = ({
     tool: string
     target: string
 }) => {
-    const { icon, verb } = TOOL_WORDS[tool] ?? { icon: '•', verb: tool }
+    const { icon, verb } = (Object.hasOwn(TOOL_WORDS, tool)
+        ? TOOL_WORDS[tool]
+        : undefined) ?? {
+        icon: '•',
+        verb: tool,
+    }
     return [icon, verb, target].filter((part) => part !== '').join(' ')
 }
 

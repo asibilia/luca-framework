@@ -174,7 +174,12 @@ export const createAgyLauncher = ({
         let cleaned = false
         let registered_id: string | null = null
         const cleanup = () => {
-            if (registered_id !== null) sessions.delete(registered_id)
+            if (
+                registered_id !== null &&
+                sessions.get(registered_id)?.cleanup === cleanup
+            ) {
+                sessions.delete(registered_id)
+            }
             if (cleaned) return
             cleaned = true
             removeAgySessionDir({ temp_dir: files.temp_dir })
@@ -251,6 +256,8 @@ export const createAgyLauncher = ({
         })
 
         if (shouldKeepOpen(turn) && turn.session_id !== undefined) {
+            const prev = sessions.get(turn.session_id)
+            if (prev !== undefined) prev.cleanup()
             registered_id = turn.session_id
             sessions.set(turn.session_id, {
                 role,

@@ -303,6 +303,48 @@ describe('provider-aware model routing (#778 AC5–AC6)', () => {
             model_reason: 'trial',
             trial_group: 'trial',
         })
+        expect(
+            pickOf({
+                models: {
+                    provider: 'agy',
+                    floors: { 'test-writer': 'gemini-4-argon-high' },
+                    confidence_bar: 0.5,
+                    trial_share: 1,
+                },
+                answer: answer('gemini-4-argon-high', 0.5, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+            })
+        ).toEqual({
+            model: 'gemini-4-argon-high',
+            model_reason: 'decision_model',
+            trial_group: null,
+        })
+        expect(
+            pickOf({
+                models: argonFloor,
+                answer: answer('gemini-3.8-flash-high', 0.9, [
+                    'gemini-4-neon-high',
+                    'gemini-4-argon-high',
+                ]),
+            })
+        ).toEqual(neonPick('unsure'))
+        expect(
+            pickOf({
+                models: {
+                    provider: 'agy',
+                    floors: { 'test-writer': 'gemini-3.8-flash-high' },
+                },
+                answer: answer('gemini-3.8-flash-high', 0.8, [
+                    ...AGY_MODEL_NAMES,
+                ]),
+            })
+        ).toEqual({
+            model: 'gemini-3.8-flash-high',
+            model_reason: 'decision_model',
+            trial_group: null,
+        })
     })
 
     test('redonePick, asksModel, and launchPick reuse agy models and reject cross-provider models', () => {
@@ -381,6 +423,146 @@ describe('provider-aware model routing (#778 AC5–AC6)', () => {
         ).toEqual({
             model: 'gemini-4-argon-high',
             model_reason: 'decision_model',
+            trial_group: null,
+        })
+    })
+
+    test('launchPick with redo: false reads modelAnswerOf and learner failed_cheaper escalates to gemini-4-neon-high', () => {
+        const config = agyConfig({
+            floors: {
+                'test-writer': 'gemini-4-argon-high',
+                learner: 'gemini-3.8-flash-high',
+            },
+        })
+        const [runStarted, ...rest] = intakePassed({
+            tickets: [practiceTicket({ number: 11 })],
+        })
+        if (runStarted?.kind !== 'run_started') throw new Error('no start')
+
+        const baseEntries: JournalEntry[] = [
+            {
+                ...runStarted,
+                content: { ...runStarted.content, config },
+            },
+            ...rest,
+            {
+                kind: 'jev_asked',
+                ticket: 11,
+                role: 'test-writer',
+                content: {
+                    job: 'agent_model',
+                    model: '@cf/cloudflare/clef',
+                    request: {
+                        state: {},
+                        questions: {
+                            model: {
+                                type: 'choice',
+                                instructions: 'Which model?',
+                                criteria: {
+                                    'gemini-4-neon-high': null,
+                                    'gemini-4-argon-high': null,
+                                },
+                            },
+                        },
+                    },
+                    fixed: { model: 'gemini-4-neon-high' },
+                },
+            },
+        ]
+        const askedSeq = baseEntries.length
+        const nonRedoRecords = stamp([
+            ...baseEntries,
+            {
+                kind: 'jev_answered',
+                ticket: 11,
+                role: 'test-writer',
+                content: {
+                    job: 'agent_model',
+                    asked_seq: askedSeq,
+                    model: '@cf/cloudflare/clef',
+                    ms: 10,
+                    answers: {
+                        model: {
+                            value: 'gemini-4-argon-high',
+                            confidence: 0.9,
+                            raw: {},
+                        },
+                    },
+                },
+            },
+        ])
+        const nonRedoState = replayRun({ records: nonRedoRecords })
+        expect(
+            launchPick({
+                records: nonRedoRecords,
+                state: nonRedoState,
+                config,
+                run_id: 'run-1',
+                ticket: 11,
+                role: 'test-writer',
+                step: { first_seq: nonRedoRecords.length + 1, redo: false },
+            })
+        ).toEqual({
+            model: 'gemini-4-argon-high',
+            model_reason: 'decision_model',
+            trial_group: null,
+        })
+
+        const learnerFailedRecords = stamp([
+            ...baseEntries.slice(0, 1 + rest.length),
+            {
+                kind: 'agent_started',
+                ticket: null,
+                role: 'learner',
+                content: {
+                    role: 'learner',
+                    prompt: 'Learn.',
+                    follow_up_of: null,
+                    model: 'gemini-3.8-flash-high',
+                    model_reason: 'decision_model',
+                    effort: 'medium',
+                    trial_group: null,
+                },
+            },
+            {
+                kind: 'agent_failed',
+                ticket: null,
+                role: 'learner',
+                content: {
+                    role: 'learner',
+                    failure: 'agent',
+                    error: 'Learner failed.',
+                    session_id: 'learn-1',
+                },
+            },
+        ])
+        const learnerFailedState = replayRun({ records: learnerFailedRecords })
+        expect(learnerFailedState.memory.learner.failed_cheaper).toBe(true)
+        expect(
+            asksModel({
+                records: learnerFailedRecords,
+                state: learnerFailedState,
+                ticket: null,
+                role: 'learner',
+                step: undefined,
+            })
+        ).toBe(false)
+        expect(
+            launchPick({
+                records: learnerFailedRecords,
+                state: learnerFailedState,
+                config,
+                run_id: 'run-1',
+                ticket: null,
+                role: 'learner',
+                step: {
+                    first_seq: learnerFailedRecords.length + 1,
+                    redo: false,
+                },
+            })
+        ).toEqual({
+            model: 'gemini-4-neon-high',
+            model_reason: 'after_failure',
             trial_group: null,
         })
     })

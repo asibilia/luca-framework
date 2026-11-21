@@ -23,9 +23,13 @@ import {
     epochSeconds,
     intakePassed,
     practiceTicket,
+    pullRequestOpened,
+    RUN_BRANCH_PATH,
     runBranchCreated,
+    storyOff,
     ticketBuilt,
     withInstalls,
+    worktreesRemoved,
 } from '../testing/build-fixtures'
 import { recordsFrom } from '../testing/intake-fixtures'
 
@@ -320,6 +324,116 @@ describe('F13: luca-run CLI, readRunStart & decideUsageLine — Tier 1 equivalen
         })
         expect(missingConfig.exit_code).toBe(1)
         expect(missingConfig.stdout).toContain('No engine config found')
+    }, 30_000)
+
+    test('luca-run --resume <agy-run-id> subprocess resumes agy journal cleanly (#16)', async () => {
+        const dir = makeTempDir()
+        const home_dir = join(dir, 'home')
+        const bin_dir = join(dir, 'bin')
+        const repo_dir = join(dir, 'repo')
+        const runs_dir = join(home_dir, 'runs')
+        mkdirSync(home_dir, { recursive: true })
+        mkdirSync(bin_dir, { recursive: true })
+        mkdirSync(join(repo_dir, '.luca'), { recursive: true })
+
+        await $`git init -q -b main ${repo_dir}`.quiet()
+        await $`git -C ${repo_dir} remote add origin https://github.com/acme/app.git`.quiet()
+        await $`git -C ${repo_dir} config user.email luca@example.com`.quiet()
+        await $`git -C ${repo_dir} config user.name Luca`.quiet()
+        writeFileSync(
+            join(repo_dir, '.luca', 'config.json'),
+            JSON.stringify(makeAgyConfig({ provider: 'agy' }))
+        )
+        await $`git -C ${repo_dir} add -A`.quiet()
+        await $`git -C ${repo_dir} commit -q -m init`.quiet()
+
+        const journal = createJournal({
+            file: runJournalPath({ runs_dir, run_id: 'agy-resume-smoke' }),
+        })
+        startRun({
+            journal,
+            spec_number: 10,
+            config: makeAgyConfig({ provider: 'agy' }),
+            repo: repo_dir,
+        })
+        for (const entry of [
+            ...intakePassed({
+                tickets: [practiceTicket({ number: 11 })],
+            }).slice(1),
+            ...withInstalls({
+                entries: [
+                    runBranchCreated(),
+                    pullRequestOpened(),
+                    storyOff(),
+                    worktreesRemoved({ paths: [RUN_BRANCH_PATH] }),
+                ],
+            }),
+        ]) {
+            journal.append(entry)
+        }
+
+        const fakeGh = join(bin_dir, 'gh')
+        writeFileSync(
+            fakeGh,
+            `#!/usr/bin/env bun
+const args = process.argv.slice(2)
+const joined = args.join(' ')
+if (args[0] === 'repo' && args[1] === 'view') console.log('acme/app')
+else if (args[0] === 'api' && joined.includes('/dependencies/blocked_by')) console.log('[]')
+else if (args[0] === 'api' && joined.includes('/comments')) console.log('[]')
+else if (args[0] === 'api' && args[1] === 'user') console.log('octocat')
+else if (args[0] === 'pr' && args[1] === 'list') console.log('[]')
+`
+        )
+        chmodSync(fakeGh, 0o755)
+
+        const resumed = Bun.spawn(
+            [
+                process.execPath,
+                LUCA_RUN,
+                '--resume',
+                'agy-resume-smoke',
+                '--repo',
+                repo_dir,
+            ],
+            {
+                cwd: dir,
+                env: {
+                    ...process.env,
+                    PATH: `${bin_dir}:${process.env.PATH ?? ''}`,
+                    HOME: home_dir,
+                    XDG_STATE_HOME: join(home_dir, 'xdg-state'),
+                    XDG_CONFIG_HOME: join(home_dir, 'xdg-config'),
+                    XDG_DATA_HOME: join(home_dir, 'xdg-data'),
+                    GH_TOKEN: '',
+                    GITHUB_TOKEN: '',
+                    LUCA_RUNS_DIR: runs_dir,
+                    LUCA_STORIES_DIR: join(home_dir, 'stories'),
+                    LUCA_BOARD_STATE_DIR: '',
+                    LUCA_BOARD_TOKEN: '',
+                    CLOUDFLARE_ACCOUNT_ID: '',
+                    CLOUDFLARE_API_TOKEN: '',
+                    LUCA_MUNINN_URL: '',
+                    LUCA_MUNINN_TOKEN: '',
+                },
+                stdout: 'pipe',
+                stderr: 'pipe',
+            }
+        )
+        const [exit_code, stdout, stderr] = await Promise.all([
+            resumed.exited,
+            new Response(resumed.stdout).text(),
+            new Response(resumed.stderr).text(),
+        ])
+
+        expect(stderr).toBe('')
+        expect(stdout).toContain('[luca-run] resuming the run from its journal')
+        expect(exit_code).toBe(0)
+        const after = journal.read()
+        expect(after.some((record) => record.kind === 'engine_resumed')).toBe(
+            true
+        )
+        expect(after.some((record) => record.kind === 'run_ended')).toBe(true)
     }, 30_000)
 })
 

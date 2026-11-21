@@ -107,6 +107,18 @@ describe('live-line (#780)', () => {
         expect(callWords({ tool: 'custom_tool', target: '' })).toBe(
             '• custom_tool'
         )
+        expect(callWords({ tool: 'toString', target: 'x' })).toBe(
+            '• toString x'
+        )
+        expect(callWords({ tool: 'constructor', target: '' })).toBe(
+            '• constructor'
+        )
+        expect(callWords({ tool: 'valueOf', target: 'arg' })).toBe(
+            '• valueOf arg'
+        )
+        expect(callWords({ tool: '__proto__', target: 'x' })).toBe(
+            '• __proto__ x'
+        )
     })
 
     test('liveText formats run_command open calls and finish actions', () => {

@@ -123,8 +123,10 @@ Tests:
 
 - `packages/engine/src/agents/agy-launcher.test.ts`
 - `packages/engine/src/agents/agy-launcher-lifecycle.test.ts`
+- `packages/engine/src/agents/agy-launcher-edges.test.ts`
 - `packages/engine/src/agents/agy-stream-progress.test.ts`
 - `packages/engine/src/agents/agy-stream-result.test.ts`
+- `packages/engine/src/agents/agy-stream-edges.test.ts`
 - `packages/engine/src/agents/agy-stream-quota.test.ts`
 - `packages/engine/src/agents/agy-hook.test.ts`
 - `packages/engine/src/agents/provider-launcher.test.ts`

@@ -25,6 +25,7 @@ describe('parseAgyQuotaReset (#779 AC4)', () => {
         ['Resets in 20s', 20],
         ['Resets in 1h5s', 3605],
         ['resets in 1H 2M 3S', 3723],
+        ['Resets in 0s', 0],
     ])('parses %p into epoch seconds relative to now_ms', (text, delta) => {
         expect(parseAgyQuotaReset({ text, now_ms })).toBe(base_sec + delta)
     })
@@ -35,6 +36,7 @@ describe('parseAgyQuotaReset (#779 AC4)', () => {
             'Try again later',
             'Resets in ',
             'Resets in unknown time. Retry in 5m',
+            'Resets in 5 days',
         ]) {
             expect(parseAgyQuotaReset({ text, now_ms })).toBeNull()
         }

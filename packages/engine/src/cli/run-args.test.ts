@@ -206,6 +206,48 @@ describe('luca-run arguments', () => {
                 env: {},
             })
         ).toMatchObject({ ok: true, args: { mode: 'spec', provider: 'agy' } })
+        expect(
+            parseRunArgs({
+                argv: ['--spec', '10', '--provider=agy'],
+                cwd: '/code',
+                env: {},
+            })
+        ).toMatchObject({ ok: true, args: { mode: 'spec', provider: 'agy' } })
+        expect(
+            parseRunArgs({
+                argv: ['--spec', '10', '--provider=claude'],
+                cwd: '/code',
+                env: {},
+            })
+        ).toMatchObject({
+            ok: true,
+            args: { mode: 'spec', provider: 'claude' },
+        })
+        expect(
+            parseRunArgs({
+                argv: [
+                    '--spec',
+                    '10',
+                    '--provider',
+                    'claude',
+                    '--provider',
+                    'agy',
+                ],
+                cwd: '/code',
+                env: {},
+            })
+        ).toMatchObject({ ok: true, args: { mode: 'spec', provider: 'agy' } })
+        const eq_bad = parseRunArgs({
+            argv: ['--spec', '10', '--provider=invalid'],
+            cwd: '/code',
+            env: {},
+        })
+        expect(eq_bad.ok).toBe(false)
+        if (!eq_bad.ok) {
+            expect(eq_bad.error).toContain(
+                'Invalid --provider "invalid": expected claude or agy.'
+            )
+        }
     })
 
     test.each([

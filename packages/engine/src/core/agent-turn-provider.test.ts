@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { followUpAgent, followUpModel } from './agent-turn'
+import { followUpAgent, followUpModel, launchAgent } from './agent-turn'
 import type { BuildContext } from './build-context'
 
 import {
@@ -261,5 +261,129 @@ describe('followUpAgent under agy (#778 AC7)', () => {
             expect(lastStarted.content.follow_up_of).toBe(launched.session_id)
             expect(lastStarted.content.model).toBe('gemini-4-neon-high')
         }
+    })
+
+    test('launchAgent under agy journals routed model and passes model and effort to launcher.launch', async () => {
+        const journal = createJournal({
+            file: join(root, 'journal-launch.jsonl'),
+        })
+        const config = EngineConfigSchema.parse({
+            ...PRACTICE_ENGINE_CONFIG,
+            models: {
+                provider: 'agy',
+                floors: { 'test-writer': 'gemini-4-argon-high' },
+                effort: { 'test-writer': 'high' },
+            },
+        })
+        for (const entry of intakePassed({
+            tickets: [practiceTicket({ number: 11 })],
+        })) {
+            journal.append(entry)
+        }
+        journal.append({
+            kind: 'ticket_worktree_created',
+            ticket: 11,
+            role: null,
+            content: {
+                branch: 'luca/ticket-11',
+                path: repo,
+                base_sha: (await git(repo, 'rev-parse', 'HEAD')).trim(),
+            },
+        })
+        const asked = journal.append({
+            kind: 'jev_asked',
+            ticket: 11,
+            role: 'test-writer',
+            content: {
+                job: 'agent_model',
+                model: '@cf/cloudflare/clef',
+                request: {
+                    state: {},
+                    questions: {
+                        model: {
+                            type: 'choice',
+                            instructions: 'Which model?',
+                            criteria: {
+                                'gemini-4-neon-high': null,
+                                'gemini-4-argon-high': null,
+                            },
+                        },
+                    },
+                },
+                fixed: { model: 'gemini-4-neon-high' },
+            },
+        })
+        journal.append({
+            kind: 'jev_answered',
+            ticket: 11,
+            role: 'test-writer',
+            content: {
+                job: 'agent_model',
+                asked_seq: asked.seq,
+                model: '@cf/cloudflare/clef',
+                ms: 10,
+                answers: {
+                    model: {
+                        value: 'gemini-4-argon-high',
+                        confidence: 0.9,
+                        raw: {},
+                    },
+                },
+            },
+        })
+        const launcher = createScriptedLauncher({
+            turns: [
+                {
+                    role: 'test-writer',
+                    ticket: 11,
+                    result: {
+                        outcome: 'done',
+                        bad_test: null,
+                        tests: ['src/index.test.ts'],
+                        criteria: [{ criterion: 'one', tests: ['test_one'] }],
+                    },
+                } satisfies ScriptedTurn,
+            ],
+        })
+        const state = replayRun({ records: journal.read() })
+        const context: BuildContext = {
+            git: createGitAdapter({ repo_root: repo }),
+            launcher,
+            journal,
+            tracker: createInMemoryTracker({ issues: [], sub_tickets: {} }),
+            state,
+            config,
+            run_dir: join(root, 'run-1'),
+            step: { run_id: 'run-1', first_seq: 1, redo: false },
+        }
+
+        await launchAgent({
+            context,
+            action: {
+                type: 'launch_agent',
+                ticket: 11,
+                role: 'test-writer',
+                prompt: 'Write tests.',
+                may_edit_tests: true,
+            },
+        })
+
+        const started = journal
+            .read()
+            .findLast((record) => record.kind === 'agent_started')
+        expect(started?.kind).toBe('agent_started')
+        if (started?.kind === 'agent_started') {
+            expect(started.content.model).toBe('gemini-4-argon-high')
+            expect(started.content.model_reason).toBe('decision_model')
+            expect(started.content.effort).toBe('high')
+        }
+        expect(launcher.launches()).toEqual([
+            expect.objectContaining({
+                kind: 'launch',
+                role: 'test-writer',
+                model: 'gemini-4-argon-high',
+                effort: 'high',
+            }),
+        ])
     })
 })
