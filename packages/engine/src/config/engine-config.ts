@@ -34,6 +34,7 @@ export {
     overrideConfigProvider,
     prepareConcurrencyOf,
     prepareTimeoutOf,
+    providerOfConfig,
     prStoryOf,
     testTimeoutOf,
 } from './config-fields'

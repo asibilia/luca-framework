@@ -262,7 +262,7 @@ describe('F12: agy-launcher.ts & provider-launcher.ts — Tier 1 equivalence cla
         const handler = [
             {
                 type: 'command',
-                command: `${process.execPath} ${hookScript}`,
+                command: `'${process.execPath}' '${hookScript}'`,
             },
         ]
         expect(files.hooks).toEqual({

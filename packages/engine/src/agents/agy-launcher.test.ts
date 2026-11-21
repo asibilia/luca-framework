@@ -1,14 +1,30 @@
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
+import {
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    realpathSync,
+    writeFileSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 
+import type { AgentMessaging } from './agent-launcher'
 import {
+    AGY_NO_MESSAGING_WARNING,
     checkAgyLaunchModel,
     createAgyLauncher,
     resolveAgyCliModel,
 } from './agy-launcher'
+import { buildAgyHooksJson } from './agy-launcher-files'
+import { AgyHookStateSchema } from './agy-tool-rules'
+import { DEFAULT_TURN_TIMEOUT_MS } from './claude-launcher'
+import { AGY_MODEL_NAMES } from './provider'
+
+import { guardRoleOf } from '../guards/role-rules'
 import {
     AGY_CONFIG,
     AGY_PATH,
@@ -16,12 +32,7 @@ import {
     agyResult,
     fakeAgySpawner,
     useAgyTestDirs,
-} from './agy-launcher-helpers'
-import { AgyHookStateSchema } from './agy-tool-rules'
-import { DEFAULT_TURN_TIMEOUT_MS } from './claude-launcher'
-import { AGY_MODEL_NAMES } from './provider'
-
-import { guardRoleOf } from '../guards/role-rules'
+} from '../testing/agy-launcher-fixtures'
 
 const dirs = useAgyTestDirs()
 
@@ -271,7 +282,7 @@ describe('per-session temp dir, hooks, and zero cwd writes (AC3)', () => {
         expect(captured_schema).toMatchObject({ type: 'object' })
         expect(captured_schema).not.toHaveProperty('$schema')
 
-        const expected_cmd = `${process.execPath} /opt/luca/agy-hook.ts`
+        const expected_cmd = `'${process.execPath}' '/opt/luca/agy-hook.ts'`
         expect(captured_hooks).toEqual({
             luca: {
                 SessionStart: [{ type: 'command', command: expected_cmd }],
@@ -440,5 +451,106 @@ describe('resolveAgyCliModel effort suffix mapping', () => {
                 )
             }
         }
+    })
+})
+
+describe('hook command quoting (#777)', () => {
+    test('a hook command still runs when its paths hold spaces and quotes', async () => {
+        const dir = join(dirs.temp_root, "luca's hooks dir")
+        mkdirSync(dir, { recursive: true })
+        const script = join(dir, 'agy hook.ts')
+        writeFileSync(script, "console.log('hook ran')\n")
+        const hooks = buildAgyHooksJson({
+            bun_path: process.execPath,
+            hook_script_path: script,
+        })
+        const command = z
+            .object({
+                luca: z.object({
+                    SessionStart: z.array(z.object({ command: z.string() })),
+                }),
+            })
+            .parse(hooks).luca.SessionStart[0]?.command
+        expect(command).toBe(
+            `'${process.execPath}' '${script.replace("'", `'\\''`)}'`
+        )
+        const proc = Bun.spawn(['sh', '-c', command ?? ''], {
+            stdout: 'pipe',
+            stderr: 'pipe',
+        })
+        const [exit_code, stdout] = await Promise.all([
+            proc.exited,
+            new Response(proc.stdout).text(),
+        ])
+        expect(exit_code).toBe(0)
+        expect(stdout.trim()).toBe('hook ran')
+    })
+})
+
+describe('agent messaging on agy (#777)', () => {
+    const messaging: AgentMessaging = {
+        address: 'implementer#11',
+        send: () => ({ ok: true, detail: 'queued' }),
+        deliver: () => null,
+    }
+
+    test('warns once when an agent with messaging launches, and launches it without messaging', async () => {
+        const fake = fakeAgySpawner({
+            turns: [
+                { events: [agyInit({}), agyResult({})] },
+                {
+                    events: [
+                        agyInit({ conversation_id: 'conv-2' }),
+                        agyResult({ conversation_id: 'conv-2' }),
+                    ],
+                },
+                {
+                    events: [
+                        agyInit({ conversation_id: 'conv-3' }),
+                        agyResult({ conversation_id: 'conv-3' }),
+                    ],
+                },
+            ],
+        })
+        const warnings: string[] = []
+        const instructions: string[] = []
+        const launcher = createAgyLauncher({
+            agy_path: AGY_PATH,
+            spawn: (args) => {
+                const state_dir = args.env.LUCA_AGY_STATE_DIR ?? ''
+                instructions.push(
+                    AgyHookStateSchema.parse(
+                        JSON.parse(
+                            readFileSync(join(state_dir, 'state.json'), 'utf8')
+                        )
+                    ).instructions
+                )
+                return fake.spawn(args)
+            },
+            temp_root: dirs.temp_root,
+            warn: (message) => warnings.push(message),
+        })
+        const launch = (with_messaging: AgentMessaging | null) =>
+            launcher.launch({
+                role: 'implementer',
+                ticket: 11,
+                prompt: 'Do work.',
+                cwd: dirs.worktree,
+                may_edit_tests: false,
+                config: AGY_CONFIG,
+                messaging: with_messaging,
+                model: 'gemini-4-neon-high',
+                effort: 'medium',
+            })
+
+        expect((await launch(null)).ok).toBe(true)
+        expect(warnings).toEqual([])
+        expect((await launch(messaging)).ok).toBe(true)
+        expect((await launch(messaging)).ok).toBe(true)
+        expect(warnings).toEqual([AGY_NO_MESSAGING_WARNING])
+        for (const text of instructions) {
+            expect(text).not.toContain('send_message')
+        }
+        await launcher.closeAll()
     })
 })

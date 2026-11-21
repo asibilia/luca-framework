@@ -475,6 +475,8 @@ describe('AC6: valid state SessionStart, PreToolUse, and PreInvocation behavior'
             output: { decision: 'allow' },
         })
 
+        // A missing or malformed invocationNum falls back to the hook's own
+        // count of calls, so a limit of 0 still terminates (#777).
         for (const payload of [
             { hookEventName: 'PreInvocation' },
             { hookEventName: 'PreInvocation', invocationNum: null },
@@ -485,7 +487,19 @@ describe('AC6: valid state SessionStart, PreToolUse, and PreInvocation behavior'
                     stdin_text: JSON.stringify(payload),
                     state_dir: state.state_dir_real,
                 })
-            ).toEqual({ exit_code: 0, output: {} })
+            ).toEqual({
+                exit_code: 0,
+                output: {
+                    terminationBehavior: 'terminate',
+                    injectSteps: [
+                        {
+                            errorMessage: {
+                                userMessage: 'Turn limit reached.',
+                            },
+                        },
+                    ],
+                },
+            })
         }
 
         const zero_limit = await runAgyHook({

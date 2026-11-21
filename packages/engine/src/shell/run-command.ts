@@ -289,6 +289,19 @@ export const runCommand = async ({
         : { ...result, survivors: await survivorsOf(descendants) }
 }
 
+/**
+ * A word single-quoted for `sh`, whatever it holds: spaces, `$`, globs and
+ * quotes come through literally (each `'` becomes `'\''`).
+ *
+ * @param word - The raw word, such as a file path.
+ * @returns The word, safe to splice into an `sh -c` command line.
+ *
+ * @example
+ * shellWord("/tmp/it's here") // '/tmp/it'\''s here'
+ */
+export const shellWord = (word: string): string =>
+    `'${word.replaceAll("'", `'\\''`)}'`
+
 /** Runs a command line from the engine config through `sh -c`. */
 export const runShell = ({
     command,

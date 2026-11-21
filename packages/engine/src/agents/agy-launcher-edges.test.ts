@@ -12,6 +12,8 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'bun:test'
 
 import { createAgyLauncher } from './agy-launcher'
+import { AgyHookStateSchema } from './agy-tool-rules'
+
 import {
     AGY_CONFIG,
     AGY_PATH,
@@ -19,8 +21,7 @@ import {
     agyResult,
     fakeAgySpawner,
     useAgyTestDirs,
-} from './agy-launcher-helpers'
-import { AgyHookStateSchema } from './agy-tool-rules'
+} from '../testing/agy-launcher-fixtures'
 
 const dirs = useAgyTestDirs()
 let extra_dirs: string[] = []

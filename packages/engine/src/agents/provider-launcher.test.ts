@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { AGY_CONFIG } from './agy-launcher-helpers'
 import { createProviderLauncher } from './provider-launcher'
+
+import { AGY_CONFIG } from '../testing/agy-launcher-fixtures'
 
 describe('createProviderLauncher (AC8)', () => {
     test('returns Claude launcher for claude and Antigravity launcher for agy', async () => {

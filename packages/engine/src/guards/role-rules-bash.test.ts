@@ -192,3 +192,25 @@ describe('checkToolCall: Bash', () => {
         expect(run('bun build src/index.ts > src/sum.test.ts')).toBe(false)
     })
 })
+
+describe('checkToolCall: Bash run from a cwd inside the worktree (#777)', () => {
+    test("resolves an rm's relative paths from the cwd", () => {
+        const rm = (command: string, cwd?: string) =>
+            checkToolCall({
+                role: 'implementer',
+                may_edit_tests: false,
+                tool_name: 'Bash',
+                tool_input: { command },
+                worktree: WORKTREE,
+                cwd,
+                config: CONFIG,
+            })
+        expect(rm('rm sum.test.ts', `${WORKTREE}/src`)).toEqual({
+            allow: false,
+            reason: 'A implementer may not delete src/sum.test.ts.',
+        })
+        expect(rm('rm sum.ts', `${WORKTREE}/src`)).toEqual({ allow: true })
+        expect(rm('rm ../../x.ts', `${WORKTREE}/src`).allow).toBe(false)
+        expect(rm('rm src/sum.ts')).toEqual({ allow: true })
+    })
+})

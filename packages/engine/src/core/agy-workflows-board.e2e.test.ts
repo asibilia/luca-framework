@@ -17,6 +17,7 @@ import {
 } from '../../../board/server/testing/journal-fixtures'
 import { windowWords } from '../../../board/shared/board-state-usage'
 import type { AgentLauncher } from '../agents/agent-launcher'
+import { AGY_NO_MESSAGING_WARNING } from '../agents/agy-launcher'
 import { createScriptedLauncher } from '../agents/scripted-launcher'
 import { readRunStart } from '../cli/read-run'
 import { parseRunArgs } from '../cli/run-args'
@@ -411,7 +412,8 @@ describe('Tier 4 — realistic multi-feature agy workflows (Scenarios 5–7)', (
             new Response(proc.stderr).text(),
         ])
 
-        expect(stderr).toBe('')
+        // The only stderr is the agy launcher's one messaging warning (#777).
+        expect(stderr).toBe(`${AGY_NO_MESSAGING_WARNING}\n`)
         expect(exit_code).toBe(0)
         expect(stdout).toContain('PR opened')
 

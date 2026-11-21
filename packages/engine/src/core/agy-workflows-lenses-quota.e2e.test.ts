@@ -96,7 +96,7 @@ const hookCall = async ({
         event === 'PreToolUse'
             ? (hooks.luca.PreToolUse[0]?.hooks[0]?.command ?? '')
             : (hooks.luca[event][0]?.command ?? '')
-    const proc = Bun.spawn(command.split(' '), {
+    const proc = Bun.spawn(['sh', '-c', command], {
         stdin: new TextEncoder().encode(JSON.stringify(payload)),
         stdout: 'pipe',
         stderr: 'pipe',

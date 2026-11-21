@@ -40,6 +40,77 @@ const PreInvocationStdinSchema = z.looseObject({
 const STATE_READ_ERROR = 'Luca hook could not read guard state.'
 
 /**
+ * The file in the state directory where `PreInvocation` keeps this `agy`
+ * process's turn count. The launcher removes it before each spawn
+ * (`resetAgyTurnFiles`), so each process counts from zero.
+ */
+export const AGY_TURNS_FILE = 'turns.json'
+
+/**
+ * This process's turn count: the first `invocationNum` it saw (`baseline`)
+ * and how many `PreInvocation` calls came before (`calls`).
+ */
+export const AgyTurnCountSchema = z.object({
+    baseline: z.number().nullable().default(null),
+    calls: z.number().int().min(0).default(0),
+})
+
+export type AgyTurnCount = z.infer<typeof AgyTurnCountSchema>
+
+const readTurnCount = async ({
+    state_dir,
+}: {
+    state_dir: string
+}): Promise<AgyTurnCount> => {
+    try {
+        const text = await readFile(join(state_dir, AGY_TURNS_FILE), 'utf8')
+        const parsed = AgyTurnCountSchema.safeParse(JSON.parse(text))
+        if (parsed.success) return parsed.data
+    } catch {
+        // No count yet: this is the process's first invocation.
+    }
+    return AgyTurnCountSchema.parse({})
+}
+
+/**
+ * How many turns this `agy` process has used before the current
+ * invocation, and the count to keep for the next one.
+ *
+ * `agy` numbers invocations across a whole `--conversation`, so a follow-up
+ * process (`turn_index > 0`) counts from the first `invocationNum` it sees
+ * and gets its own `max_turns`, as a Claude follow-up does. A fresh
+ * conversation (`turn_index === 0`) numbers from 0. A missing or malformed
+ * `invocationNum` falls back to the hook's own count of calls, so the limit
+ * never goes away.
+ *
+ * @example
+ * turnsUsed({ invocation_num: 42, turn_index: 1, count: { baseline: 40, calls: 2 } })
+ * // { used: 2, next: { baseline: 40, calls: 3 } }
+ */
+export const turnsUsed = ({
+    invocation_num,
+    turn_index,
+    count,
+}: {
+    invocation_num: unknown
+    turn_index: number
+    count: AgyTurnCount
+}): { used: number; next: AgyTurnCount } => {
+    const calls = count.calls + 1
+    if (
+        typeof invocation_num !== 'number' ||
+        !Number.isFinite(invocation_num)
+    ) {
+        return { used: count.calls, next: { ...count, calls } }
+    }
+    if (turn_index === 0) {
+        return { used: invocation_num, next: { ...count, calls } }
+    }
+    const baseline = count.baseline ?? invocation_num
+    return { used: invocation_num - baseline, next: { baseline, calls } }
+}
+
+/**
  * Returns the fail-closed response for `hook_event_name` when stdin or guard
  * state cannot be read or validated.
  */
@@ -179,14 +250,22 @@ export const runAgyHook = async ({
 
     if (hook_event_name === 'PreInvocation') {
         const parsed = PreInvocationStdinSchema.safeParse(raw)
-        const invocation_num = parsed.success
-            ? parsed.data.invocationNum
-            : undefined
-        if (
-            typeof invocation_num === 'number' &&
-            Number.isFinite(invocation_num) &&
-            invocation_num >= state.max_turns
-        ) {
+        const { used, next } = turnsUsed({
+            invocation_num: parsed.success
+                ? parsed.data.invocationNum
+                : undefined,
+            turn_index: state.turn_index,
+            count: await readTurnCount({ state_dir }),
+        })
+        try {
+            await writeFile(
+                join(state_dir, AGY_TURNS_FILE),
+                JSON.stringify(next)
+            )
+        } catch {
+            // An unwritten count only ever under-counts by this one call.
+        }
+        if (used >= state.max_turns) {
             try {
                 await writeFile(join(state_dir, 'out-of-turns.flag'), '1\n')
             } catch {

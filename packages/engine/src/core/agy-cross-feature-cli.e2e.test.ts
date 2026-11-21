@@ -106,7 +106,7 @@ const callFromAddDir = async ({
         event === 'PreToolUse'
             ? (hooks.luca.PreToolUse[0]?.hooks[0]?.command ?? '')
             : (hooks.luca[event][0]?.command ?? '')
-    const proc = Bun.spawn(command.split(' '), {
+    const proc = Bun.spawn(['sh', '-c', command], {
         stdin: new TextEncoder().encode(JSON.stringify(payload)),
         stdout: 'pipe',
         stderr: 'pipe',
@@ -217,15 +217,19 @@ describe('Tier 3 — pairwise launcher, instructions, CLI, and Paseo board integ
                                 payload: { hookEventName: 'SessionStart', cwd },
                             })
                         ).json
-                        await callFromAddDir({
-                            argv,
-                            env,
-                            event: 'PreInvocation',
-                            payload: {
-                                hookEventName: 'PreInvocation',
-                                invocationNum: 3,
-                            },
-                        })
+                        // agy numbers invocations across the conversation;
+                        // the follow-up counts from its first one (#777).
+                        for (const invocationNum of [3, 6]) {
+                            await callFromAddDir({
+                                argv,
+                                env,
+                                event: 'PreInvocation',
+                                payload: {
+                                    hookEventName: 'PreInvocation',
+                                    invocationNum,
+                                },
+                            })
+                        }
                     },
                     lines: okLines({ id: 'conv-p12' }),
                 },

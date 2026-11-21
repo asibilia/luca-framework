@@ -4,8 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach } from 'bun:test'
 
-import type { AgySpawnedProcess, AgySpawner } from './agy-launcher'
-
+import type { AgySpawnedProcess, AgySpawner } from '../agents/agy-launcher'
 import type { EngineConfig } from '../config/engine-config'
 
 /**

@@ -15,10 +15,13 @@ import { join } from 'node:path'
 
 import type { EffortLevel } from '@anthropic-ai/claude-agent-sdk'
 
+import { AGY_TURNS_FILE } from './agy-hook'
 import { parseDenialsJsonl, type AgyDenial } from './agy-stream'
 import type { AgyHookState } from './agy-tool-rules'
 import { BANNED_ENV, ENV_ALLOW_LIST, resultJsonSchema } from './claude-options'
 import type { AgentRole } from './role-results'
+
+import { shellWord } from '../shell/run-command'
 
 /** API keys and proxy variables never passed to `agy` child processes. */
 export const AGY_BANNED_ENV: readonly string[] = [
@@ -35,6 +38,8 @@ export type AgySessionFiles = {
     state_path: string
     denials_path: string
     out_of_turns_path: string
+    /** `PreInvocation`'s turn count for the running process (`AGY_TURNS_FILE`). */
+    turns_path: string
 }
 
 /**
@@ -88,7 +93,16 @@ export const resolveAgyCliModel = ({
     return `${base}-${clamped}`
 }
 
-/** Builds `.agents/hooks.json` loaded via `--add-dir` for one `agy` session. */
+/**
+ * Builds `.agents/hooks.json` loaded via `--add-dir` for one `agy` session.
+ * `agy` runs each hook `command` through a shell, so both paths are
+ * single-quoted (`shellWord`): a space or quote in either must not break
+ * every guard hook.
+ *
+ * @example
+ * buildAgyHooksJson({ bun_path: '/opt/my bun/bun', hook_script_path: '/x/agy-hook.ts' })
+ * // luca.SessionStart[0].command === "'/opt/my bun/bun' '/x/agy-hook.ts'"
+ */
 export const buildAgyHooksJson = ({
     bun_path,
     hook_script_path,
@@ -96,7 +110,7 @@ export const buildAgyHooksJson = ({
     bun_path: string
     hook_script_path: string
 }): Record<string, unknown> => {
-    const command = `${bun_path} ${hook_script_path}`
+    const command = `${shellWord(bun_path)} ${shellWord(hook_script_path)}`
     return {
         luca: {
             SessionStart: [{ type: 'command', command }],
@@ -153,6 +167,7 @@ export const createAgySessionFiles = ({
         state_path: join(temp_dir, 'state.json'),
         denials_path: join(temp_dir, 'denials.jsonl'),
         out_of_turns_path: join(temp_dir, 'out-of-turns.flag'),
+        turns_path: join(temp_dir, AGY_TURNS_FILE),
     }
 }
 
@@ -167,14 +182,22 @@ export const writeAgyHookState = ({
     writeFileSync(state_path, JSON.stringify(state))
 }
 
-/** Resets per-turn `denials.jsonl` and `out-of-turns.flag` before spawning. */
+/**
+ * Resets per-turn `denials.jsonl`, `out-of-turns.flag` and the hook's turn
+ * count (`turns_path`) before spawning, so each `agy` process
+ * gets its own `max_turns`.
+ */
 export const resetAgyTurnFiles = ({
     files,
 }: {
-    files: Pick<AgySessionFiles, 'denials_path' | 'out_of_turns_path'>
+    files: Pick<
+        AgySessionFiles,
+        'denials_path' | 'out_of_turns_path' | 'turns_path'
+    >
 }): void => {
     writeFileSync(files.denials_path, '')
     rmSync(files.out_of_turns_path, { force: true })
+    rmSync(files.turns_path, { force: true })
 }
 
 /** Reads recorded guard denials from `denials.jsonl` at turn end. */

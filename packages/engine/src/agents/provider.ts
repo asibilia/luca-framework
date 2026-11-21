@@ -97,3 +97,28 @@ export const mapFloorToProvider = ({
     if (index === -1) return PROVIDERS[to].strongest
     return PROVIDERS[to].tiers[index] ?? PROVIDERS[to].strongest
 }
+
+/**
+ * The provider whose tiers hold `model`; `DEFAULT_PROVIDER` for a model on
+ * no provider's tiers.
+ *
+ * @example
+ * providerOfModel('gemini-4-argon-high') // 'agy'
+ * providerOfModel('sonnet') // 'claude'
+ */
+export const providerOfModel = (model: ProviderModel): ProviderId =>
+    ProviderIdSchema.options.find((provider) =>
+        isProviderModel({ provider, model })
+    ) ?? DEFAULT_PROVIDER
+
+/**
+ * The strongest model of `model`'s provider: the baseline a cheaper model
+ * on that provider is judged against (Opus for Claude, the top Gemini tier
+ * for `agy`).
+ *
+ * @example
+ * strongestModelOf('haiku') // 'opus'
+ * strongestModelOf('gemini-3.8-flash-high') // 'gemini-4-neon-high'
+ */
+export const strongestModelOf = (model: ProviderModel): ProviderModel =>
+    PROVIDERS[providerOfModel(model)].strongest

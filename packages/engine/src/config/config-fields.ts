@@ -13,7 +13,11 @@ import {
     type ModelsConfig,
 } from './engine-config-schema'
 
-import { mapFloorToProvider, type ProviderId } from '../agents/provider'
+import {
+    DEFAULT_PROVIDER,
+    mapFloorToProvider,
+    type ProviderId,
+} from '../agents/provider'
 import type { DecisionModelId } from '../jev/jev-schemas'
 import { DEFAULT_COMMAND_TIMEOUT_MS } from '../shell/run-command'
 
@@ -94,6 +98,23 @@ export const decisionModelOf = ({
  */
 export const modelsOf = ({ config }: { config: EngineConfig }): ModelsConfig =>
     config.models ?? ModelsConfigSchema.parse({})
+
+/**
+ * The run's agent provider: the config's `models.provider`, else
+ * `DEFAULT_PROVIDER` (what `modelsOf` gives for a config with no `models`
+ * block), and `DEFAULT_PROVIDER` with no config at all. Unlike
+ * `modelsOf(...).provider` it never parses the schema's defaults, so the
+ * journal replay can ask it once per record (#777).
+ *
+ * @example
+ * providerOfConfig({ config: null }) // 'claude'
+ * providerOfConfig({ config: { ...config, models: { ...models, provider: 'agy' } } }) // 'agy'
+ */
+export const providerOfConfig = ({
+    config,
+}: {
+    config: EngineConfig | null
+}): ProviderId => config?.models?.provider ?? DEFAULT_PROVIDER
 
 /**
  * Overrides the config's agent provider (#777): if already `provider`, returns

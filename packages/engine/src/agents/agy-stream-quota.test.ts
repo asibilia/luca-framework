@@ -160,3 +160,53 @@ describe('agy quota failure & sessionSignal (#779 AC5)', () => {
         })
     })
 })
+
+describe('quota classification needs an API-shaped quota signal (#777)', () => {
+    const errorTurn = ({ error, stderr }: { error: string; stderr: string }) =>
+        runAgyStream({
+            stdout: streamOf({
+                text: JSON.stringify({
+                    event: 'result',
+                    result: {
+                        conversation_id: 'conv-fp',
+                        status: 'ERROR',
+                        error,
+                    },
+                }),
+            }),
+            stderr: streamOf({ text: stderr }),
+            exited: Promise.resolve(1),
+            kill: () => {},
+            role: 'implementer',
+            worktree: '/repo',
+            is_follow_up: false,
+            turn_timeout_ms: 500,
+            now: () => 1_700_000_000_000,
+        })
+
+    test.each([
+        ['tests for quota handler failed', ''],
+        ['expected 429 but got 200', ''],
+        ['The task failed.', 'src/quota.ts: 429 lines checked'],
+    ])(
+        'an agent error that only mentions %p is an agent failure, not a plan limit',
+        async (error, stderr) => {
+            const turn = await errorTurn({ error, stderr })
+            expect(turn).toMatchObject({ ok: false, failure: 'agent' })
+            expect(turn.session?.rate_limit_events).toEqual([])
+        }
+    )
+
+    test.each([
+        ['{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}', ''],
+        [
+            'Request failed.',
+            'Error: Rate limit exceeded for model gemini-4-neon',
+        ],
+        ['Request failed.', 'HTTP 429 Too Many Requests'],
+    ])('%p with stderr %p is a plan limit', async (error, stderr) => {
+        const turn = await errorTurn({ error, stderr })
+        expect(turn).toMatchObject({ ok: false, failure: 'plan' })
+        expect(turn.session?.rate_limit_events).toHaveLength(1)
+    })
+})

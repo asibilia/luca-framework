@@ -5,15 +5,15 @@ import {
     openDecisionModel,
     type DecisionModelSetup,
 } from './decision-model-setup'
-import { readRunStart } from './read-run'
+import { readRunStart, runStartOf } from './read-run'
 import { driveRun, errorText, type RunEnd, type RunLauncher } from './run-end'
 
 import type { BoardSync } from '../board/board-sync'
 import {
     DEFAULT_PROVIDER,
     loadEngineConfig,
-    modelsOf,
     overrideConfigProvider,
+    providerOfConfig,
     type ProviderId,
 } from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
@@ -147,7 +147,7 @@ export const runSpec = async ({
             provider === undefined
                 ? loaded.config
                 : overrideConfigProvider({ config: loaded.config, provider })
-        active_provider = modelsOf({ config }).provider
+        active_provider = providerOfConfig({ config })
         startRun({
             journal,
             spec_number,
@@ -166,11 +166,8 @@ export const runSpec = async ({
         recordResume({ journal, luca_version })
         const reload = recordConfigReload({ journal, loaded })
         if (reload !== null) log(`[luca-run] ${configReloadText({ reload })}`)
-        const started = existing.find((record) => record.kind === 'run_started')
-        active_provider =
-            started?.kind === 'run_started'
-                ? modelsOf({ config: started.content.config }).provider
-                : DEFAULT_PROVIDER
+        const start = runStartOf({ run_id, records: existing })
+        active_provider = start.ok ? start.start.provider : DEFAULT_PROVIDER
     }
     const active_launcher = resolveLauncher({
         launcher,

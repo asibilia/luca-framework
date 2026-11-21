@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { runStartOf } from './read-run'
 import { readRunStart, resumeRun, runSpec, type RunLauncher } from './run-modes'
 
 import type { ProviderId } from '../agents/provider'
@@ -123,6 +124,16 @@ describe('readRunStart provider', () => {
             ok: true,
             start: { provider: 'claude' },
         })
+        // The resume's own read of the records (#777) gives the same start.
+        expect(
+            runStartOf({ run_id: 'agy-run', records: agyJournal.read() })
+        ).toEqual(readRunStart({ runs_dir, run_id: 'agy-run' }))
+        expect(
+            runStartOf({
+                run_id: 'agy-run',
+                records: agyJournal.read().slice(1),
+            })
+        ).toMatchObject({ ok: false })
     })
 })
 

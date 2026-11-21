@@ -74,7 +74,7 @@ Tests:
 
 ## Agent messages and run notes
 
-Agents send each other one-way messages, even across tickets that build at the same time, and hand run notes on to later agents.
+Agents send each other one-way messages, even across tickets that build at the same time, and hand run notes on to later agents. Agents on the `agy` provider have no messaging yet: their launcher warns once and launches them without `send_message` or message delivery.
 
 Reached by: the `send_message` tool in an agent's session.
 

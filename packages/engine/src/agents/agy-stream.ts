@@ -48,7 +48,17 @@ export {
 const DEFAULT_KILL_GRACE_MS = 2000
 const MAX_STDERR_TAIL = 8192
 
-const QUOTA_ERROR_RE = /RESOURCE_EXHAUSTED|\b429\b|quota/i
+/**
+ * A quota or rate-limit failure as the Gemini API and the `agy` CLI phrase
+ * it: the `RESOURCE_EXHAUSTED` status, a quota that is exceeded, exhausted
+ * or reached, a rate limit exceeded, or HTTP status 429 in an API-error
+ * shape (`HTTP 429`, `status 429`, `code: 429`, `429 Too Many Requests`).
+ * A bare "quota" or "429" (a task about a quota handler, a test expecting
+ * 429) is not one (#777).
+ */
+export const QUOTA_ERROR_RE =
+    /\bRESOURCE_EXHAUSTED\b|quota\b[^\n]{0,40}?\b(?:exceeded|exhausted|reached)\b|\brate[ _-]?limit(?:ed)?\b[^\n]{0,20}?\bexceeded\b|\b(?:HTTP(?:\/[\d.]+)?|status(?:[ _]code)?|code)["']?\s*[:=]?\s*429\b|\b429\s+Too Many Requests\b/i
+
 const SESSION_GONE_RE =
     /conversation.*not found|unknown conversation|no such conversation/i
 

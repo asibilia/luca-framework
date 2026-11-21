@@ -34,9 +34,8 @@ import { crashesAfter } from './step-records'
 import { isStoryRecord, storyAfter } from './story-replay'
 import { applyTicketRecord, reusedBaselineAfter } from './ticket-replay'
 
-import { DEFAULT_PROVIDER } from '../agents/provider'
 import { withConfigChanges } from '../config/config-reload'
-import { modelsOf } from '../config/engine-config'
+import { providerOfConfig } from '../config/engine-config'
 
 export type {
     OldTestFailure,
@@ -126,10 +125,7 @@ const applyKind = ({
             learner: learnerAfter({
                 learner: state.memory.learner,
                 record: learnerRecord,
-                provider:
-                    state.config === null
-                        ? DEFAULT_PROVIDER
-                        : modelsOf({ config: state.config }).provider,
+                provider: providerOfConfig({ config: state.config }),
             }),
         }
         // A session's readings still count for the plan.

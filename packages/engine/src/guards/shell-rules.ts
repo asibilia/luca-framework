@@ -2,6 +2,8 @@
  * Pure: which shell commands each role may run, checked one plain command at
  * a time.
  */
+import { resolve } from 'node:path'
+
 import {
     ALLOW,
     deny,
@@ -234,10 +236,12 @@ const checkRm = ({
     may_edit_tests,
     words,
     worktree,
+    cwd,
     config,
 }: GuardArgs & {
     words: Word[]
     worktree: string
+    cwd?: string
     config: EngineConfig
 }): ToolDecision => {
     if (!isWriter(role)) return deny(`A ${role} may not delete files.`)
@@ -260,7 +264,10 @@ const checkRm = ({
     }
     if (paths.length === 0) return deny('rm needs at least one path.')
     for (const word of paths) {
-        const inner = insideWorktree({ worktree, path: word.text })
+        const inner = insideWorktree({
+            worktree,
+            path: cwd === undefined ? word.text : resolve(cwd, word.text),
+        })
         if (word.expands || inner === null) {
             return deny(
                 `rm ${word.text}: name each file inside your worktree, with no wildcards or ~.`
@@ -299,10 +306,16 @@ export const checkBash = ({
     may_edit_tests,
     command,
     worktree,
+    cwd,
     config,
 }: GuardArgs & {
     command: string
     worktree: string
+    /**
+     * Where the command runs, as an absolute path inside `worktree`; relative
+     * paths in it (an `rm`'s files) resolve from here. Defaults to `worktree`.
+     */
+    cwd?: string
     config: EngineConfig
 }): ToolDecision => {
     if (role === 'learner') return deny('The learner has no shell.')
@@ -334,6 +347,7 @@ export const checkBash = ({
             may_edit_tests,
             words: split.words,
             worktree,
+            cwd,
             config,
         })
     }

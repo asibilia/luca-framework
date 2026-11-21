@@ -83,7 +83,7 @@ const hookCall = async ({
         event === 'PreToolUse'
             ? (hooks.luca.PreToolUse[0]?.hooks[0]?.command ?? '')
             : (hooks.luca[event][0]?.command ?? '')
-    const proc = Bun.spawn(command.split(' '), {
+    const proc = Bun.spawn(['sh', '-c', command], {
         stdin: new TextEncoder().encode(JSON.stringify(payload)),
         stdout: 'pipe',
         stderr: 'pipe',
@@ -371,6 +371,8 @@ describe('Tier 4 — realistic multi-feature agy workflows (Scenarios 1–2)', (
                                 payload: { hookEventName: 'SessionStart', cwd },
                             })
                         ).json
+                        // agy numbers invocations across the conversation;
+                        // the follow-up counts from its first one (#777).
                         expect(
                             (
                                 await hookCall({
@@ -380,6 +382,19 @@ describe('Tier 4 — realistic multi-feature agy workflows (Scenarios 1–2)', (
                                     payload: {
                                         hookEventName: 'PreInvocation',
                                         invocationNum: 2,
+                                    },
+                                })
+                            ).json
+                        ).toEqual({})
+                        expect(
+                            (
+                                await hookCall({
+                                    argv,
+                                    env,
+                                    event: 'PreInvocation',
+                                    payload: {
+                                        hookEventName: 'PreInvocation',
+                                        invocationNum: 4,
                                     },
                                 })
                             ).json

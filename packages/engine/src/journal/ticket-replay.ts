@@ -23,7 +23,7 @@ import {
 import { retriedChange } from './ticket-retry-replay'
 
 import { DEFAULT_PROVIDER, type ProviderId } from '../agents/provider'
-import { modelsOf } from '../config/engine-config'
+import { providerOfConfig } from '../config/engine-config'
 
 type TicketRecord = Exclude<
     JournalRecord,
@@ -411,10 +411,7 @@ export const applyTicketRecord = ({
 }): RunState => {
     if (record.ticket === null) return state
     const progress = state.tickets[record.ticket] ?? EMPTY_TICKET_PROGRESS
-    const provider =
-        state.config === null
-            ? DEFAULT_PROVIDER
-            : modelsOf({ config: state.config }).provider
+    const provider = providerOfConfig({ config: state.config })
     return {
         ...state,
         tickets: {

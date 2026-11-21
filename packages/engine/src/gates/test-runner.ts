@@ -3,7 +3,12 @@ import { existsSync } from 'node:fs'
 import type { TestCase, TestRun } from './gate-schemas'
 import { inTestSlot } from './test-slots'
 
-import { clipOutput, runShell, timedOutLine } from '../shell/run-command'
+import {
+    clipOutput,
+    runShell,
+    shellWord,
+    timedOutLine,
+} from '../shell/run-command'
 
 const decode = (text: string): string =>
     text
@@ -237,9 +242,6 @@ export const runTestsInHeldSlot = async ({
         output: `${shell.timed_out ? timedOutLine({ timeout_ms, hint: TEST_TIMEOUT_HINT, survivors: shell.survivors }) : ''}${clipOutput({ text: output })}`,
     }
 }
-
-/** A word quoted for `sh`, whatever it holds. */
-const shellWord = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`
 
 /**
  * A bun test command that runs just these test files: the config's command

@@ -61,7 +61,21 @@ export type AgyLauncherOptions = {
     hook_script_path?: string
     temp_root?: string
     now?: () => number
+    /**
+     * Where the launcher's one-time warnings go (agent messaging is off on
+     * `agy`). Defaults to `console.error`.
+     */
+    warn?: (message: string) => void
 }
+
+/**
+ * The warning, given once per launcher, when an agent with messaging is
+ * launched on `agy`. Agent messages need the engine's in-process `luca` MCP
+ * server (`send_message`) and a delivery hook, and `agy` runs neither, so
+ * v1 launches every `agy` agent without messaging (#781) and says so.
+ */
+export const AGY_NO_MESSAGING_WARNING =
+    '[luca] agy agents run without agent messaging: send_message and message delivery need the Claude launcher. Messages to and from this agent are not delivered.'
 
 type OpenAgySession = {
     role: AgentRole
@@ -117,6 +131,7 @@ export const createAgyLauncher = ({
     hook_script_path,
     temp_root,
     now,
+    warn,
 }: AgyLauncherOptions = {}): AgentLauncher & {
     closeAll: () => Promise<void>
 } => {
@@ -125,6 +140,8 @@ export const createAgyLauncher = ({
     const hook_script = hook_script_path ?? join(import.meta.dir, 'agy-hook.ts')
     const root_dir = temp_root ?? tmpdir()
     const sessions = new Map<string, OpenAgySession>()
+    const warnLine = warn ?? ((message: string) => console.error(message))
+    let warned_messaging = false
 
     const launch: AgentLauncher['launch'] = async ({
         role,
@@ -133,6 +150,7 @@ export const createAgyLauncher = ({
         cwd,
         may_edit_tests,
         config,
+        messaging,
         model,
         effort,
         max_turns,
@@ -186,6 +204,11 @@ export const createAgyLauncher = ({
             removeAgySessionDir({ temp_dir: files.temp_dir })
         }
 
+        if (messaging !== null && !warned_messaging) {
+            warned_messaging = true
+            warnLine(AGY_NO_MESSAGING_WARNING)
+        }
+
         const state: AgyHookState = {
             role,
             guard_role: guardRoleOf({ role }),
@@ -200,6 +223,7 @@ export const createAgyLauncher = ({
                 role,
                 may_edit_tests,
                 config,
+                // No messaging on agy (see AGY_NO_MESSAGING_WARNING).
                 messaging: false,
                 provider: 'agy',
             }),

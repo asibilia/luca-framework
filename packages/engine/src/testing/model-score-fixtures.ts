@@ -12,6 +12,7 @@ import {
 import { recordsFrom } from './intake-fixtures'
 
 import type { AgentRole } from '../agents/role-results'
+import type { ProviderModel } from '../config/engine-config'
 import type { ModelReason } from '../jev/model-pick'
 import type { JournalEntry, JournalRecord } from '../journal/journal-record'
 import type { ModelScore } from '../models/model-score'
@@ -22,7 +23,8 @@ import type { ModelScore } from '../models/model-score'
  * lookups into the report's scores.
  */
 
-export type Model = 'opus' | 'sonnet' | 'haiku'
+/** Any launchable model: a Claude family or an `agy` Gemini tier (#777). */
+export type Model = ProviderModel
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 export type Severity = 'blocker' | 'should_fix' | 'nit'
 export type Built = 'test-writer' | 'implementer'

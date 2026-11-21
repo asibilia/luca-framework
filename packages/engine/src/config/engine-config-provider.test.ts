@@ -10,6 +10,7 @@ import {
     loadEngineConfig,
     ModelsConfigSchema,
     overrideConfigProvider,
+    providerOfConfig,
     ProviderIdSchema,
     ProviderModelSchema,
 } from './engine-config'
@@ -284,5 +285,24 @@ describe('overrideConfigProvider and engine-config re-exports (#778 AC4)', () =>
                 learner: 'gemini-4-neon-high',
             },
         })
+    })
+})
+
+describe('providerOfConfig (#777)', () => {
+    test('gives what modelsOf gives, without parsing defaults', () => {
+        const bare = EngineConfigSchema.parse({ checks: { test: 'bun test' } })
+        expect(bare.models).toBeUndefined()
+        expect(providerOfConfig({ config: bare })).toBe(
+            ModelsConfigSchema.parse({}).provider
+        )
+        expect(providerOfConfig({ config: null })).toBe(DEFAULT_PROVIDER)
+        expect(
+            providerOfConfig({
+                config: overrideConfigProvider({
+                    config: bare,
+                    provider: 'agy',
+                }),
+            })
+        ).toBe('agy')
     })
 })
