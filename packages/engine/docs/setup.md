@@ -152,27 +152,30 @@ GitHub workflow can stay one small merge gate. Two files:
 
 ```sh
 #!/bin/sh
-# Luca's runs already ran these checks as gates.
-[ "$LUCA_SKIP_HOOKS" = 1 ] && exit 0
+# Luca's runs already ran these checks as gates, and CI has its own gate
+# (and may not have luca installed, such as a Version PR job's push).
+{ [ "$LUCA_SKIP_HOOKS" = 1 ] || [ -n "$CI" ]; } && exit 0
 # git exports GIT_DIR and friends to hooks: drop them, so a test that
 # makes a scratch repo can't write to this one (#791).
 unset $(git rev-parse --local-env-vars)
 exec luca check --skip-slow
 ```
 
-`luca check` drops them itself too: every check runs without git's
-repo-local variables (the `git rev-parse --local-env-vars` list, and the
-`GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs), passed as an explicit
-`env`, since a Bun spawn with no `env` ignores keys deleted from
-`process.env` (`src/git/git-local-env.ts`). Other `GIT_*` variables, such
-as `GIT_SSH_COMMAND` or `GIT_AUTHOR_NAME`, are your own settings and stay.
-
 and a `prepare` script in `package.json`, which `bun install` runs, to
-turn the folder on:
+turn the folder on, except in CI (`$CI` is set there), so a CI job that
+pushes, such as changesets/action opening the Version PR, never runs the
+hook:
 
 ```json
-"prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+"prepare": "[ -n \"$CI\" ] || git config core.hooksPath .githooks 2>/dev/null || true"
 ```
+
+`luca check` drops git's variables itself too: every check runs without
+git's repo-local variables (the `git rev-parse --local-env-vars` list, and
+the `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs), passed as an
+explicit `env`, since a Bun spawn with no `env` ignores keys deleted from
+`process.env` (`src/git/git-local-env.ts`). Other `GIT_*` variables, such
+as `GIT_SSH_COMMAND` or `GIT_AUTHOR_NAME`, are your own settings and stay.
 
 A quicker `pre-commit` can run `luca check --only lint,types` the same way.
 
@@ -182,8 +185,10 @@ A quicker `pre-commit` can run `luca check --only lint,types` the same way.
 has it: its gates, its git calls, and its agents (it's on the agents'
 environment allow-list). A run's worktrees already run the same checks as
 gates, so running them again in a hook only costs time. The engine's own
-commits and pushes pass `--no-verify` too. Anywhere else (your own
-terminal, `/luca-pr-address`), the variable isn't set and the hook runs.
+commits and pushes pass `--no-verify` too. **In CI, hooks skip too**:
+the hook exits when `$CI` is set (GitHub Actions sets it), and `prepare`
+doesn't turn the hooks folder on there. Anywhere else (your own terminal,
+`/luca-pr-address`), neither variable is set and the hook runs.
 
 ## Checking a setup: `luca doctor`
 

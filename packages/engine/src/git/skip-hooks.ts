@@ -6,11 +6,12 @@
  * the same checks as gates, so a hook running them again only costs time.
  * The engine's own commits and pushes pass `--no-verify` as well.
  *
- * A hook skips when it is `1`:
+ * A hook skips when it is `1`, and in CI (`$CI` set):
  *
  * @example
  * // .githooks/pre-push
- * // [ "$LUCA_SKIP_HOOKS" = 1 ] && exit 0
+ * // { [ "$LUCA_SKIP_HOOKS" = 1 ] || [ -n "$CI" ]; } && exit 0
+ * // unset $(git rev-parse --local-env-vars)
  * // exec luca check --skip-slow
  */
 export const SKIP_HOOKS_ENV = 'LUCA_SKIP_HOOKS'
