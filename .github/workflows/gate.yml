@@ -1,4 +1,6 @@
-# The required check on every pull request that isn't a draft (#788).
+# The merge gate: the checks on every pull request that isn't a draft
+# (#788). Named by the workflow naming standard: gate.yml, `Gate`, job
+# `gate` (it was pr-check.yml, `PR check`, job `check`).
 # Luca opens its run PRs as drafts and marks them ready after the final
 # review, so a run's PR is checked once, when it's marked ready. A draft
 # isn't checked: mark it ready to run the check.
@@ -19,7 +21,7 @@
 #      title and body are checked by pr-text-check.yml, which also runs
 #      when they are edited.
 
-name: PR check
+name: Gate
 
 on:
   pull_request:
@@ -33,8 +35,8 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Check
+  gate:
+    name: Gate
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30

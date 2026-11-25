@@ -139,8 +139,8 @@ folder of the current folder. Every check runs, even after one fails;
 the end says how many failed, and which. It exits 0 when all passed, 1
 when one failed or the config couldn't be read, and 2 on bad flags.
 
-It's the same code as this repo's PR check (`scripts/run-checks.ts`):
-both call `runRepoChecks` in `src/config/repo-checks.ts`. The command is
+It's the same code as this repo's gate (`.github/workflows/gate.yml`,
+which runs `scripts/run-checks.ts`): both call `runRepoChecks` in `src/config/repo-checks.ts`. The command is
 in `src/cli/check-command.ts`.
 
 ### Wiring it into a repo's git hooks
