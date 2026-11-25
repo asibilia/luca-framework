@@ -1,6 +1,6 @@
 /**
  * `luca check`: runs the checks in the current repo's `.luca/config.json`
- * (#788), the same way the PR check and Luca's gates do:
+ * (#788), the same way this repo's gate (`gate.yml`) and Luca's gates do:
  *
  *   luca check [--only <names>] [--skip-slow]
  *
