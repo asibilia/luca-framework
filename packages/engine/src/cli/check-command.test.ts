@@ -103,3 +103,61 @@ describe('luca check in a repo', () => {
         expect(text).toContain('Usage: luca check')
     })
 })
+
+describe('luca check from a git hook (#791)', () => {
+    let root = ''
+    beforeAll(async () => {
+        root = await mkdtemp(join(tmpdir(), 'luca-check-git-env-'))
+    })
+    afterAll(async () => {
+        await rm(root, { recursive: true, force: true })
+    })
+
+    test("a check that makes a scratch repo leaves the hook's repo, named by GIT_DIR, as it was", async () => {
+        // The repo a pre-push hook runs in: git exports its GIT_DIR.
+        const pushed = join(root, 'pushed')
+        await Bun.write(join(pushed, 'a.txt'), 'a\n')
+        await $`git init -q -b main`.cwd(pushed).quiet()
+        await $`git add -A`.cwd(pushed).quiet()
+        await $`git -c user.name=o -c user.email=o@o commit -q -m one`
+            .cwd(pushed)
+            .quiet()
+        const state = async () => ({
+            config: await Bun.file(join(pushed, '.git/config')).text(),
+            refs: await $`git for-each-ref`.cwd(pushed).text(),
+            head: await $`git rev-parse HEAD`.cwd(pushed).text(),
+        })
+        const before = await state()
+
+        // The checked repo: a test that makes a scratch repo in a temp folder.
+        const checked = join(root, 'checked')
+        const scratch = join(root, 'scratch')
+        await Bun.write(
+            join(checked, '.luca/config.json'),
+            JSON.stringify({
+                checks: {
+                    test: `mkdir -p ${scratch} && cd ${scratch} && git init -q && git config user.name t && git config user.email t@t && git config commit.gpgsign false && git commit -q --allow-empty -m junk && git tag v9.9.9 && git config core.bare true`,
+                },
+                test_file_patterns: [],
+                test_setup_files: [],
+                rule_files: [],
+            })
+        )
+        await $`git init -q`.cwd(checked).quiet()
+
+        const out = Bun.spawnSync(['bun', LUCA, 'check'], {
+            cwd: checked,
+            env: {
+                ...process.env,
+                GIT_DIR: join(pushed, '.git'),
+                GIT_INDEX_FILE: join(pushed, '.git/index'),
+            },
+        })
+
+        expect(out.stdout.toString()).toContain('All 1 checks passed.')
+        expect(out.exitCode).toBe(0)
+        expect(await state()).toEqual(before)
+        // The junk went where the test meant it to.
+        expect(await $`git tag`.cwd(scratch).text()).toBe('v9.9.9\n')
+    })
+})

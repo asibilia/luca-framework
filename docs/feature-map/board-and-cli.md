@@ -138,6 +138,7 @@ Tests:
 
 - `packages/engine/src/cli/check-command.test.ts`
 - `packages/engine/src/config/repo-checks.test.ts`
+- `packages/engine/src/git/git-local-env.test.ts`
 
 ## The publish package
 

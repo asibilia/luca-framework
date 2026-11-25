@@ -9,6 +9,8 @@ import { z } from 'zod'
 import { loadEngineConfig, type EngineConfig } from './engine-config'
 import { fastBunCommand, slowTestCommands, testCommands } from './test-commands'
 
+import { cleanGitEnv } from '../git/git-local-env'
+
 /** The checks a config can list, in the order they run. */
 export const CheckNameSchema = z.enum(['test', 'slow_test', 'types', 'lint'])
 
@@ -68,17 +70,21 @@ export const repoChecks = ({
 
 /**
  * Runs one check in a shell (a check may chain commands with `&&`), its
- * output straight to this process's; `true` when it exited 0.
+ * output straight to this process's, with exactly `env`; `true` when it
+ * exited 0.
  */
 export const runShellCheck = async ({
     command,
     cwd,
+    env,
 }: {
     command: string
     cwd: string
+    env: Record<string, string>
 }): Promise<boolean> => {
     const child = Bun.spawn(['sh', '-c', command], {
         cwd,
+        env,
         stdout: 'inherit',
         stderr: 'inherit',
     })
@@ -91,7 +97,9 @@ export const runShellCheck = async ({
  * at the end. Every check runs, even after one fails. Returns the exit
  * code: 0 when all passed, 1 when one failed, the config couldn't be read,
  * or nothing was left to run. `run` runs one check: `runShellCheck`, or a
- * fake in tests.
+ * fake in tests. Every check gets this process's environment without git's
+ * repo-local variables (`cleanGitEnv`, #791): run from a git hook, a test
+ * that makes a scratch repo would otherwise write to the real one.
  *
  * @example
  * process.exit(await runRepoChecks({ repo_root: '/Users/me/repo', pick: { only: null, skip_slow: false }, run: runShellCheck }))
@@ -103,7 +111,11 @@ export const runRepoChecks = async ({
 }: {
     repo_root: string
     pick: CheckPick
-    run: (args: { command: string; cwd: string }) => Promise<boolean>
+    run: (args: {
+        command: string
+        cwd: string
+        env: Record<string, string>
+    }) => Promise<boolean>
 }): Promise<number> => {
     const { log, error } = console
     const loaded = await loadEngineConfig({ repo_root })
@@ -120,10 +132,11 @@ export const runRepoChecks = async ({
         )
         return 1
     }
+    const env = cleanGitEnv()
     const failed: RepoCheck[] = []
     for (const check of checks) {
         log(`\n$ ${check.command}`)
-        if (!(await run({ command: check.command, cwd: repo_root }))) {
+        if (!(await run({ command: check.command, cwd: repo_root, env }))) {
             failed.push(check)
         }
     }
