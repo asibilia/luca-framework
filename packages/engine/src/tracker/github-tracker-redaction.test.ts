@@ -91,6 +91,7 @@ describe('the GitHub tracker sends no paths from this computer', () => {
         })
 
         await tracker.openPullRequest({
+            draft: true,
             head: 'luca/spec-24',
             base: 'main',
             title: 'Fix /Users/me/Github/app/a.ts',

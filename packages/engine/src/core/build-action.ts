@@ -178,13 +178,18 @@ export type BuildAction =
           summary: string
           message: string
       }
-    /** Open the run's one pull request from the run branch. */
+    /**
+     * Open the run's one pull request from the run branch, as a draft
+     * (#788), then mark it ready for review when `ready`: the final review
+     * passed. A shipped final review's PR stays a draft for the owner.
+     */
     | {
           type: 'open_pull_request'
           head: string
           base: string
           title: string
           body: string
+          ready: boolean
       }
     /** Every ticket joined (or was skipped) and the PR is open. */
     | {

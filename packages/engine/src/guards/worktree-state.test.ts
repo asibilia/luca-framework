@@ -49,7 +49,10 @@ beforeAll(async () => {
     await Bun.write(join(repo, '.gitignore'), 'node_modules\n.env\ndist\n')
     await Bun.write(join(repo, 'src/index.ts'), 'export {}\n')
     await $`git init -q -b main`.cwd(repo).quiet()
-    await $`bun install`.cwd(repo).quiet()
+    // A copy, not a hard link to Bun's cache (Linux's default backend):
+    // an agent's in-place write would change the cache too, and the
+    // engine's reinstall would bring it back (#788).
+    await $`bun install --backend=copyfile`.cwd(repo).quiet()
     await $`git add -A`.cwd(repo).quiet()
     await $`git -c user.name=t -c user.email=t@t commit -q -m init`
         .cwd(repo)

@@ -169,6 +169,13 @@ export const createInMemoryTracker = ({
             pulls.push(pull)
             return { number, url: pull.url }
         },
+        markPullRequestReady: async ({ number }) => {
+            const pull = pulls.find((each) => each.number === number)
+            if (pull === undefined) {
+                throw new Error(`No pull request #${number}`)
+            }
+            pull.draft = false
+        },
         findOpenPullRequest: async ({ head }) => {
             const pull = pulls.find((each) => each.head === head)
             return pull === undefined

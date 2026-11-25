@@ -117,6 +117,8 @@ describe('the final review (#367)', () => {
         const body = step?.type === 'open_pull_request' ? step.body : ''
         expect(body.startsWith('## Open findings')).toBe(true)
         expect(body).toContain('security-S1 Sum trusts its input')
+        // Shipped with open findings: the PR stays a draft (#788).
+        expect(step).toMatchObject({ ready: false })
     })
 
     test('`ship` from anyone else is ignored', () => {

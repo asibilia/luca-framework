@@ -46,6 +46,7 @@ import {
 import { createProviderLauncher } from '../agents/provider-launcher'
 import { createBoardSync, type BoardSync } from '../board/board-sync'
 import { createPaseoBoardLink } from '../board/paseo-board-link'
+import { SKIP_HOOKS_ENV } from '../git/skip-hooks'
 import { loadDecisionModelCredentials } from '../jev/decision-model-credentials'
 import { defaultRunsDir } from '../journal/journal'
 import {
@@ -193,6 +194,8 @@ const run = async ({
 }
 
 const main = async (): Promise<number> => {
+    // Every process the run starts skips the repo's git hooks (#788).
+    process.env[SKIP_HOOKS_ENV] = '1'
     const parsed = parseRunArgs({
         argv: Bun.argv.slice(2),
         cwd: process.cwd(),
