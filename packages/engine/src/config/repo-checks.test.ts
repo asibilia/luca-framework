@@ -107,12 +107,14 @@ describe('running the checks', () => {
 
     test('every check runs in the repo even after one fails, and the exit is 1', async () => {
         const ran: { command: string; cwd: string }[] = []
+        let seen_env: Record<string, string> = {}
         const { code, said } = await quietly(() =>
             runRepoChecks({
                 repo_root: repo,
                 pick: ALL,
                 run: async (args) => {
-                    ran.push(args)
+                    ran.push({ command: args.command, cwd: args.cwd })
+                    seen_env = args.env
                     return args.command !== 'types-cmd'
                 },
             })
@@ -121,6 +123,9 @@ describe('running the checks', () => {
             { command: 'types-cmd', cwd: repo },
             { command: 'lint-cmd', cwd: repo },
         ])
+        // Each check gets an explicit env, git's repo-local variables left out (#791).
+        expect(seen_env.PATH).toBe(process.env.PATH ?? '')
+        expect(Object.keys(seen_env)).not.toContain('GIT_DIR')
         expect(code).toBe(1)
         expect(said).toContain('1 of 2 check(s) failed')
         expect(said).toContain('types: types-cmd')

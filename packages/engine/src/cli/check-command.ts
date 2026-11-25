@@ -11,6 +11,10 @@
  * `docs/setup.md`, "Wiring it into a repo's git hooks"), skipping it when
  * `LUCA_SKIP_HOOKS` is `1`, as Luca sets it in its runs (`SKIP_HOOKS_ENV`).
  *
+ * Every check runs without git's repo-local variables (`GIT_DIR` and the
+ * rest, #791), which a git hook exports: a test that makes a scratch repo
+ * would otherwise write to the real one.
+ *
  * Exits 0 when every check passed, 1 when one failed or the config
  * couldn't be read, 2 on bad flags.
  */
@@ -22,7 +26,7 @@ import {
     runShellCheck,
     type CheckPick,
 } from '../config/repo-checks'
-import { runCommand } from '../shell/run-command'
+import { cleanGitEnv } from '../git/git-local-env'
 
 /** `luca check`'s usage line. */
 export const CHECK_USAGE = `Usage: luca check [--only <${CheckNameSchema.options.join(',')}>] [--skip-slow]`
@@ -74,14 +78,17 @@ export const parseCheckArgs = ({
     return { only, skip_slow }
 }
 
-/** The git top folder of `cwd`, or `cwd` outside git. */
-const repoRootOf = async ({ cwd }: { cwd: string }): Promise<string> => {
-    const top = await runCommand({
-        cmd: ['git', 'rev-parse', '--show-toplevel'],
+/**
+ * The git top folder of `cwd`, or `cwd` outside git. Asked without git's
+ * repo-local variables (#791), so it's the repo of `cwd`, as for the checks.
+ */
+const repoRootOf = ({ cwd }: { cwd: string }): string => {
+    const top = Bun.spawnSync(['git', 'rev-parse', '--show-toplevel'], {
         cwd,
+        env: cleanGitEnv(),
     })
-    const said = top.stdout.trim()
-    return top.exit_code === 0 && said !== '' ? said : cwd
+    const said = top.stdout.toString().trim()
+    return top.exitCode === 0 && said !== '' ? said : cwd
 }
 
 /** Runs `luca check` with the flags after `check`; returns the exit code. */
@@ -96,7 +103,7 @@ export const checkCommand = async ({
         return 2
     }
     return runRepoChecks({
-        repo_root: await repoRootOf({ cwd: process.cwd() }),
+        repo_root: repoRootOf({ cwd: process.cwd() }),
         pick,
         run: runShellCheck,
     })
