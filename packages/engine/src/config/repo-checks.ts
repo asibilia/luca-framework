@@ -1,6 +1,6 @@
 /**
  * A repo's checks, as `.luca/config.json` lists them, run one after another
- * (#788). `luca check` and `scripts/run-checks.ts` (the PR check) both run
+ * (#788). `luca check` and `scripts/run-checks.ts` (the repo's gate, `gate.yml`) both run
  * them through `runRepoChecks`, so a repo's git hooks, its CI and Luca's
  * own gates can't drift apart.
  */

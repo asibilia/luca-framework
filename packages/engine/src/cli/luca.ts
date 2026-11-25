@@ -13,7 +13,7 @@
  *                                  this repo's runs
  *   luca check [--only <names>] [--skip-slow]
  *                                  runs this repo's .luca/config.json
- *                                  checks, as the PR check does
+ *                                  checks, as this repo's gate does
  *   luca hook <anything>           does nothing, quietly
  *
  * `luca hook` is for old Luca (v13), whose global Claude Code hook runs

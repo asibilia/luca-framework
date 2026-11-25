@@ -91,7 +91,7 @@ jobs:
     name: Publish
     needs: version
     if: needs.version.outputs.publish == 'true'
-    # Linux, like the PR check, with Bun's copyfile install backend (#788).
+    # Linux, like the gate (gate.yml), with Bun's copyfile install backend (#788).
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # npm's trusted publisher requires the OIDC token's `environment` claim

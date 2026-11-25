@@ -2,7 +2,7 @@
 # folder, with the same matcher as `bun run lint` (scripts/check-private-paths.ts).
 # A squash merge makes the body a commit message on main.
 #
-# It is its own small job, apart from pr-check.yml, so that editing the
+# It is its own small job, apart from gate.yml, so that editing the
 # title or body re-runs it (the `edited` event) without re-running the
 # full checks. The title and body come from the event payload through env,
 # never into `run:`. The matcher has no dependencies, so no install step.
