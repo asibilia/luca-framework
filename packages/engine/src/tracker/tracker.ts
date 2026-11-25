@@ -36,6 +36,11 @@ export const PullRequestRequestSchema = z.object({
     base: z.string().min(1),
     title: z.string().min(1),
     body: z.string(),
+    /**
+     * Opened as a draft (#788): a repo's PR check skips drafts, so the run's
+     * PR is checked once, when `markPullRequestReady` marks it ready.
+     */
+    draft: z.boolean(),
 })
 
 export type PullRequestRequest = z.infer<typeof PullRequestRequestSchema>
@@ -101,6 +106,12 @@ export type Tracker = {
     findOpenPullRequest: (args: {
         head: string
     }) => Promise<OpenedPullRequest | null>
+    /**
+     * Marks a draft pull request ready for review (#788). Marking a PR that
+     * is already ready does nothing. Throws a `TrackerError` when the
+     * tracker couldn't.
+     */
+    markPullRequestReady: (args: { number: number }) => Promise<void>
     /** The names of the repo's labels. */
     listLabels: () => Promise<string[]>
     /** Creates a label the repo doesn't have yet. */

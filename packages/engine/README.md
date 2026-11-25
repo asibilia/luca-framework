@@ -62,7 +62,7 @@ Each topic has its own page under `docs/`:
 | [Addressing a review](docs/pr-address.md) | The `/luca-pr-address` skill: the three channels of findings, its helper, the owner rule, and how it hands a PR back. |
 | [Stuck work](docs/stuck-work.md) | The stuck comment and the owner's replies, opening the PR, `/luca-unstick`, and `/luca-retro`. |
 | [The board and the command line](docs/board-and-command-line.md) | How the journal reaches the board, and `luca-run`'s flags, real runs, and the demo. |
-| [Publishing and setting up](docs/setup.md) | Publishing Luca, `luca upgrade`, `luca setup`, and `luca doctor`. |
+| [Publishing and setting up](docs/setup.md) | Publishing Luca, `luca upgrade`, `luca setup`, `luca check` and a repo's git hooks, and `luca doctor`. |
 | [Choices made](docs/choices-made.md) | The config, the runs folder, intake, the run branch, test commands, installs, guards' details, sessions, and stops. |
 | [Agent messages and guards](docs/agent-messages-and-guards.md) | One-way messages between agents, and the three layers that keep each role to its rules. |
 | [Plan limits, billing, and the usage line](docs/plan-limits.md) | Limit waits, billing stops, usage, the run budget, and the usage line. |

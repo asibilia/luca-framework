@@ -16,6 +16,7 @@ describe('in-memory tracker: finding an open PR', () => {
         expect(await tracker.findOpenPullRequest({ head: 'luca/a' })).toBeNull()
 
         const opened = await tracker.openPullRequest({
+            draft: true,
             head: 'luca/a',
             base: 'main',
             title: 'A',

@@ -124,6 +124,57 @@ MuninnDB. Its config side (guessing checks, the config report) is in
 warning for each `build_cache_paths` path git doesn't ignore in the
 checkout) in `src/cli/setup-build-cache-check.ts`.
 
+## Checking a repo before you push: `luca check`
+
+```bash
+luca check [--only <names>] [--skip-slow]
+```
+
+It runs the checks in the current repo's `.luca/config.json` (#788): the
+test commands (a fast `bun` one with `test_case_timeout_ms` as
+`--timeout`, as in the gates), the slow test commands, `types`, then
+`lint`. `--only` takes a comma list of `test`, `slow_test`, `types` and
+`lint`; `--skip-slow` leaves out `slow_test`. The repo is the git top
+folder of the current folder. Every check runs, even after one fails;
+the end says how many failed, and which. It exits 0 when all passed, 1
+when one failed or the config couldn't be read, and 2 on bad flags.
+
+It's the same code as this repo's PR check (`scripts/run-checks.ts`):
+both call `runRepoChecks` in `src/config/repo-checks.ts`. The command is
+in `src/cli/check-command.ts`.
+
+### Wiring it into a repo's git hooks
+
+A repo runs its checks on the owner's computer before a push, so its
+GitHub workflow can stay one small merge gate. Two files:
+
+`.githooks/pre-push`, executable (`chmod +x`):
+
+```sh
+#!/bin/sh
+# Luca's runs already ran these checks as gates.
+[ "$LUCA_SKIP_HOOKS" = 1 ] && exit 0
+exec luca check --skip-slow
+```
+
+and a `prepare` script in `package.json`, which `bun install` runs, to
+turn the folder on:
+
+```json
+"prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+```
+
+A quicker `pre-commit` can run `luca check --only lint,types` the same way.
+
+**Inside a Luca run, hooks skip their checks.** The engine sets
+`LUCA_SKIP_HOOKS=1` in its own environment when `luca-run` starts
+(`SKIP_HOOKS_ENV` in `src/git/skip-hooks.ts`), so every process it starts
+has it: its gates, its git calls, and its agents (it's on the agents'
+environment allow-list). A run's worktrees already run the same checks as
+gates, so running them again in a hook only costs time. The engine's own
+commits and pushes pass `--no-verify` too. Anywhere else (your own
+terminal, `/luca-pr-address`), the variable isn't set and the hook runs.
+
 ## Checking a setup: `luca doctor`
 
 ```bash

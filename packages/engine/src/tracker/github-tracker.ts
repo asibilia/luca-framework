@@ -390,7 +390,7 @@ export const createGitHubTracker = ({
         },
         // Retried only once no open PR from `head` shows the first try
         // landed; one that does is adopted.
-        openPullRequest: ({ head, base, title, body }) =>
+        openPullRequest: ({ head, base, title, body, draft }) =>
             calls.read({
                 args: [
                     'pr',
@@ -405,6 +405,7 @@ export const createGitHubTracker = ({
                     title,
                     '--body',
                     body,
+                    ...(draft ? ['--draft'] : []),
                 ],
                 parse: (created) => {
                     const url = created.trim()
@@ -418,6 +419,10 @@ export const createGitHubTracker = ({
                 landed: () => findOpenPullRequest({ head }),
             }),
         findOpenPullRequest,
+        // `gh pr ready` on a PR that's already ready says so and exits 0.
+        markPullRequestReady: async ({ number }) => {
+            await ghOk(['pr', 'ready', String(number), '--repo', repo])
+        },
         listLabels,
         createLabel,
         // Checked on the repo's newest issue; a repo with no issues yet

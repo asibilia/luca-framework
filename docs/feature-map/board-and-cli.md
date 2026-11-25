@@ -128,6 +128,17 @@ Tests:
 - `packages/engine/src/cli/upgrade-command.test.ts`
 - `packages/engine/src/cli/live-runs.test.ts`
 
+## The luca command: check
+
+`luca check` runs the current repo's `.luca/config.json` checks, the same code as this repo's PR check, for a repo's git hooks.
+
+Reached by: `luca check [--only <names>] [--skip-slow]`, a repo's `.githooks/pre-push`, and `bun scripts/run-checks.ts`.
+
+Tests:
+
+- `packages/engine/src/cli/check-command.test.ts`
+- `packages/engine/src/config/repo-checks.test.ts`
+
 ## The publish package
 
 `@alecsibilia/luca` holds no source of its own: at pack time it copies in the engine's source and the board's folder, and its manifest points at them.

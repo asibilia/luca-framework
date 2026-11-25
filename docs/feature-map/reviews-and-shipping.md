@@ -48,6 +48,7 @@ Tests:
 - `packages/engine/src/core/evidence-text.test.ts`
 - `packages/engine/src/core/run-pull-request.test.ts`
 - `packages/engine/src/core/run-pull-request.e2e.test.ts`
+- `packages/engine/src/tracker/github-tracker-draft.test.ts`
 - `packages/engine/src/core/decide-changesets.test.ts`
 - `packages/engine/src/core/run-changeset.e2e.test.ts`
 - `packages/engine/src/core/decide-release-labels.test.ts`

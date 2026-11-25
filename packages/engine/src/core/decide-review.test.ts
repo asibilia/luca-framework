@@ -477,7 +477,8 @@ describe('decision step: nits and declined findings in the PR', () => {
             ...finalReviewClean(),
         ])
 
-        expect(action).toMatchObject({ type: 'open_pull_request' })
+        // A clean final review: the PR is marked ready once opened (#788).
+        expect(action).toMatchObject({ type: 'open_pull_request', ready: true })
         if (action.type !== 'open_pull_request') throw new Error(action.type)
         expect(action.body).toContain('## Nits')
         expect(action.body).toContain('#11 R1-3')
