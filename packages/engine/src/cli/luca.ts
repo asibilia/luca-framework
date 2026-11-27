@@ -11,6 +11,9 @@
  *                                  fixes what's safe
  *   luca models                    scores each routed role's model from
  *                                  this repo's runs
+ *   luca check [--only <names>] [--skip-slow]
+ *                                  runs this repo's .luca/config.json
+ *                                  checks, as this repo's gate does
  *   luca hook <anything>           does nothing, quietly
  *
  * `luca hook` is for old Luca (v13), whose global Claude Code hook runs
@@ -29,7 +32,9 @@ Commands:
   setup [--base <branch>]   Get the repo in this folder ready for Luca
   upgrade [--to <version>]  Move to the newest Luca on your channel, or to <version>
   doctor [--fix]            Check this computer and repo; --fix fixes what's safe
-  models                    Score each routed role's model from this repo's runs`
+  models                    Score each routed role's model from this repo's runs
+  check [--only <names>] [--skip-slow]
+                            Run this repo's .luca/config.json checks (test, slow_test, types, lint)`
 
 const main = async (): Promise<number> => {
     const [command, ...rest] = Bun.argv.slice(2)
@@ -55,6 +60,10 @@ const main = async (): Promise<number> => {
         case 'models': {
             const { modelsCommand } = await import('./models-command')
             return modelsCommand({ argv: rest })
+        }
+        case 'check': {
+            const { checkCommand } = await import('./check-command')
+            return checkCommand({ argv: rest })
         }
         case '--help':
         case '-h':

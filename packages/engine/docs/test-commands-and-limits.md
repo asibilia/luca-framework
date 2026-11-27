@@ -185,7 +185,7 @@ milliseconds) in `.luca/config.json`; this repo's is 2000:
   gates (`caseTestCommands` and the gates' fast test call). The one exception
   is the already-done check when `checks.slow_test` is set: it runs the named
   files with plain `bun test` (so a named slow test really runs), which gets no
-  `--timeout`. `scripts/run-checks.ts` does the same, so the PR check and the
+  `--timeout`. `scripts/run-checks.ts` does the same, so the gate (`gate.yml`) and the
   gates agree. Agents' own `bun test` runs stay as they wrote them.
 - It applies to every fast test with no timeout of its own, old ones too, in
   the baseline, red check, join, and final runs. A test that was always

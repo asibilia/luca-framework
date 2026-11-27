@@ -128,6 +128,18 @@ Tests:
 - `packages/engine/src/cli/upgrade-command.test.ts`
 - `packages/engine/src/cli/live-runs.test.ts`
 
+## The luca command: check
+
+`luca check` runs the current repo's `.luca/config.json` checks, the same code as this repo's gate (`gate.yml`), for a repo's git hooks.
+
+Reached by: `luca check [--only <names>] [--skip-slow]`, a repo's `.githooks/pre-push`, and `bun scripts/run-checks.ts`.
+
+Tests:
+
+- `packages/engine/src/cli/check-command.test.ts`
+- `packages/engine/src/config/repo-checks.test.ts`
+- `packages/engine/src/git/git-local-env.test.ts`
+
 ## The publish package
 
 `@alecsibilia/luca` holds no source of its own: at pack time it copies in the engine's source and the board's folder, and its manifest points at them.
@@ -152,7 +164,7 @@ Tests:
 
 The repo's own scripts, outside the packages. The file size limit fails any file of more than 5,000 tokens (bytes / 4), in the pre-commit hook and in `bun run lint`. The private path check fails any file, a PR's commit message, or its title and body, that holds a private path: a real account's home folder in any form, `$HOME/`, a folder under `~` where people keep their own files, or a computer's name. It shares its matcher with the engine's redaction.
 
-Reached by: `bun scripts/check-file-size.ts [--staged]`, `bun scripts/check-private-paths.ts [--commits <range>]`, the `.githooks/pre-commit` hook (the size limit only), `bun run lint`, and the PR check (commit messages, title and body).
+Reached by: `bun scripts/check-file-size.ts [--staged]`, `bun scripts/check-private-paths.ts [--commits <range>]`, the `.githooks/pre-commit` hook (the size limit only), `bun run lint`, the gate (`gate.yml`, commit messages), and `pr-text-check.yml` (title and body).
 
 Tests:
 

@@ -1,5 +1,17 @@
 # @luca/engine
 
+## 14.0.0-alpha.41
+
+### Patch Changes
+
+- e049d36: `luca check` now runs every check without git's repo-local environment variables (`GIT_DIR`, `GIT_INDEX_FILE`, `GIT_WORK_TREE`, `GIT_OBJECT_DIRECTORY`, `GIT_COMMON_DIR`, `GIT_CONFIG_PARAMETERS` and the rest of `git rev-parse --local-env-vars`, plus `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>`). Run from a git hook, they made tests that build scratch repos write to the real repo: its config, branch and tags. Other `GIT_*` settings, such as `GIT_SSH_COMMAND`, are kept. The recommended `pre-push` hook now also runs `unset $(git rev-parse --local-env-vars)` before `exec luca check --skip-slow`. It also exits 0 when `$CI` is set, and the documented `prepare` script doesn't turn the hooks folder on in CI, so a CI job's push (such as changesets/action's Version PR) never runs the hook.
+
+## 14.0.0-alpha.40
+
+### Patch Changes
+
+- 6d2ea25: New `luca check` command: it runs the checks in the current repo's `.luca/config.json` (test, slow_test, types, lint), the same code as Luca's PR check, with `--only <names>` (for example `--only lint,types`) and `--skip-slow`. It exits 1 if any check failed and prints a short summary. Use it from a repo's `.githooks/pre-push`. Inside a Luca run, `LUCA_SKIP_HOOKS=1` is set for every process the run starts, so hooks that check it skip the checks the run's gates already ran, and the engine's pushes pass `--no-verify` like its commits. Luca now opens a run's pull request as a draft and marks it ready for review once the final review passed, so a repo's PR check that skips drafts runs once per run. A shipped final review's PR stays a draft for you to mark ready.
+
 ## 14.0.0-alpha.39
 
 ### Patch Changes

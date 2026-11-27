@@ -25,6 +25,7 @@ import {
     type EngineConfig,
 } from '../config/engine-config'
 import { lucaVersion } from '../config/luca-version'
+import { SKIP_HOOKS_ENV } from '../git/skip-hooks'
 import { HELPER_TYPE, SEARCHER } from '../guards/helper-rules'
 import { guardRoleOf, permissionRules } from '../guards/role-rules'
 import { sandboxSettings } from '../guards/sandbox-settings'
@@ -84,6 +85,8 @@ export const ENV_ALLOW_LIST = [
     'LC_ALL',
     'LC_CTYPE',
     'TERM',
+    // A repo's git hooks skip their checks in a run (#788).
+    SKIP_HOOKS_ENV,
 ]
 
 /** Variables that would bill an API key or reroute the model, never passed on. */

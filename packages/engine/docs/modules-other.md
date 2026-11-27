@@ -12,6 +12,7 @@ with a page of its own is listed in the [README](../README.md).
 | `src/config/config-fields.ts` | Reads of single config fields with their defaults: the prepare and test time limits, prepare concurrency, the decision model, the models block, and the feature map's path. |
 | `src/config/test-commands.ts` | The config's test commands (`testCommands`, `slowTestCommands`) and the commands with per-test results, `bun` ones with the fast test speed limit added (`caseTestCommands`, #668). |
 | `src/config/config-reload.ts` | Pure: the config fields a resume takes again (`RELOADED_FIELDS`) and the ones it keeps (`FROZEN_FIELDS`), what changed (`configChanges`), and a config with the changes (`withConfigChanges`). |
+| `src/config/repo-checks.ts` | `luca check`'s checks (#788). |
 | `src/config/luca-version.ts` | Luca's own version: the installed `@alecsibilia/luca` package's, or a dev value from the repo's source. |
 
 ## `src/intake/`

@@ -156,6 +156,14 @@ tickets and notes a run has.
   name alone, so a fork's PR from a branch of the same name
   (`isCrossRepository`) is never taken for the run's. Its PR comments are
   posted once, even on a redo after a crash.
+- **A draft first (#788).** The PR opens as a draft (`gh pr create
+  --draft`). Once its PR comments are posted, the engine marks it ready for
+  review (`gh pr ready`, the tracker's `markPullRequestReady`) when the
+  final review passed. A repo's PR check that skips drafts then runs once,
+  on the whole PR. A shipped final review's PR has open findings, so it
+  stays a draft: the owner marks it ready. A failed `gh pr ready` is stuck
+  like a failed `gh pr create`, and `retry` reuses the PR and marks it
+  ready again (marking a ready PR does nothing).
 
 ### A repo busy for a day (#615)
 

@@ -124,6 +124,9 @@ export const finishSteps = ({
                 type: 'open_pull_request',
                 head: run_branch.branch,
                 base: base_branch,
+                // A shipped final review has open findings: the owner
+                // marks its PR ready (#788).
+                ready: state.final_review.passed && !state.final_review.shipped,
                 ...pullRequestText({
                     snapshot,
                     tickets: state.tickets,

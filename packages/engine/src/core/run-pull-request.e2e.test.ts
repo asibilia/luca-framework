@@ -132,6 +132,46 @@ describe('the PR body in the run folder', () => {
     }, 60_000)
 })
 
+describe('the run PR opens as a draft (#788)', () => {
+    const folder = eachRoot()
+
+    test('it opens as a draft and is marked ready once, after it opens, when the final review passed', async () => {
+        const practice = await createPracticeRepo({ root: folder.root })
+        const tracker = practiceTracker()
+        const calls: string[] = []
+        const watching: InMemoryTracker = {
+            ...tracker,
+            openPullRequest: async (request) => {
+                calls.push(`open draft=${request.draft}`)
+                return tracker.openPullRequest(request)
+            },
+            comment: async (args) => {
+                calls.push('comment')
+                return tracker.comment(args)
+            },
+            markPullRequestReady: async (args) => {
+                calls.push('ready')
+                return tracker.markPullRequestReady(args)
+            },
+        }
+
+        const run = await practice.run({
+            tracker: watching,
+            turns: HAPPY_TURNS,
+        })
+
+        expect(run.action).toMatchObject({ type: 'done', outcome: 'pr_opened' })
+        expect(calls.filter((call) => call.startsWith('open'))).toEqual([
+            'open draft=true',
+        ])
+        expect(calls.filter((call) => call === 'ready')).toHaveLength(1)
+        expect(calls.indexOf('ready')).toBeGreaterThan(
+            calls.indexOf('open draft=true')
+        )
+        expect(tracker.pullRequests()).toMatchObject([{ draft: false }])
+    }, 60_000)
+})
+
 describe('a PR body over the limit, on one run', () => {
     // One run whose test-writer's notes run over 65,536 characters, built
     // once (#566).
@@ -394,6 +434,7 @@ describe('an open PR from the run branch', () => {
         failing = false
         // The owner opens the PR by hand, then replies retry.
         const byHand = await tracker.openPullRequest({
+            draft: false,
             head: runBranchOf(stuck.records),
             base: 'main',
             title: 'Practice spec (#10)',

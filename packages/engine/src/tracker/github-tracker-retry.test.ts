@@ -302,6 +302,7 @@ describe('GitHub tracker retries: writes', () => {
         })
 
         const opened = await tracker.openPullRequest({
+            draft: true,
             head: 'luca/spec-24',
             base: 'main',
             title: 'Spec #24',

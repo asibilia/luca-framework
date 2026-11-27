@@ -1,7 +1,13 @@
-# The required check on every pull request.
+# The merge gate: the checks on every pull request that isn't a draft
+# (#788). Named by the workflow naming standard: gate.yml, `Gate`, job
+# `gate` (it was pr-check.yml, `PR check`, job `check`).
+# Luca opens its run PRs as drafts and marks them ready after the final
+# review, so a run's PR is checked once, when it's marked ready. A draft
+# isn't checked: mark it ready to run the check.
 #
-# It runs on macOS, like Luca: on Linux, Bun hard-links packages from its
-# cache, and two tests fail there.
+# It runs on Linux. Bun installs with --backend=copyfile, so no file in
+# node_modules is a hard link to Bun's cache (Linux's default backend);
+# the after-turn check tests make their own copies too.
 #
 #   1. Every check in .luca/config.json, read from that file by
 #      scripts/run-checks.ts, so CI and Luca's own gates can't drift apart.
@@ -15,10 +21,11 @@
 #      title and body are checked by pr-text-check.yml, which also runs
 #      when they are edited.
 
-name: PR check
+name: Gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,9 +35,11 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Check
-    runs-on: macos-latest
+  gate:
+    name: Gate
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -44,7 +53,7 @@ jobs:
           bun-version-file: .bun-version
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --backend=copyfile
 
       - name: Run the checks in .luca/config.json
         run: bun scripts/run-checks.ts

@@ -26,6 +26,7 @@ another folder is on its folder's page; the [README](../README.md) lists them.
 | `src/cli/computer-checks.ts` | Doctor's computer checks: Bun, the `luca` copies on the PATH, Claude Code, `gh`, Paseo, the board, MuninnDB and its Claude Code entry, the planning skills, and Luca's own skills. |
 | `src/cli/luca-skills.ts` | Luca's own Claude Code skills (#504): which there are (`lucaSkills`, every folder in `skills/` with a `SKILL.md`), the files each ships, how the copy in `~/.claude/skills` differs (`skillDrift`), and copying them there (`installLucaSkills`). |
 | `src/cli/doctor-command.ts` | `luca doctor`'s flags, wired to the real adapters. |
+| `src/cli/check-command.ts` | `luca check` (#788): its flags (`parseCheckArgs`), and the repo's checks run from its git top folder through `runRepoChecks`. |
 | `src/cli/models-command.ts` | `luca models`: reads this repo's run journals and prints the model score report. Writes nothing. |
 
 ## run-modes modules
