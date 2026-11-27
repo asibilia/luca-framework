@@ -25,6 +25,7 @@ const REFACTOR_TASK =
     'This is a refactor ticket: change how the code is shaped, not what it does. Add no new behavior. ' +
     'Make every gate pass. You may follow renames and moves into test files, but you must not change what a test checks. ' +
     "Rename a test itself only when the ticket's renamed-tests table declares it. " +
+    'A test the ticket\'s ported-tests table declares may fail until your code lands, and must pass at the gates; that is no reason for "bad_test". ' +
     'If a test is wrong, answer "bad_test" with your reason.'
 
 /**

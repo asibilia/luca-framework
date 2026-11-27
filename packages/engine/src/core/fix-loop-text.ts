@@ -27,7 +27,7 @@ export const redFixMessage = ({
     red_check: ReplayedRedCheck
 }): string =>
     [
-        "The red check failed. Every criterion needs a test, every new test must fail before any code is written, and every old test must still pass. Rename or remove an old test only as the ticket's renamed-tests table declares.",
+        "The red check failed. Every criterion needs a test, every new test must fail before any code is written, and every old test must still pass. Rename or remove an old test only as the ticket's renamed-tests table declares. An old test may fail here only when the ticket's ported-tests table declares it: keep those ports, and their names.",
         'Fix the tests, then answer again with the full criterion mapping.',
         `## Problems\n\n${red_check.problems.map((problem) => `- ${problem}`).join('\n')}`,
         `## Test output\n\n${clipOutput({ text: red_check.output })}`,

@@ -1,13 +1,15 @@
 /**
  * The red check's old tests: every test that passed at the baseline still
  * passes, in its file, moved to another file (#609), or under the new name
- * the ticket's renamed-tests table gives it.
+ * the ticket's renamed-tests table gives it. One its ported-tests table
+ * names may fail until the ticket's code exists.
  */
 import type { TestCase, TestRun } from './gate-schemas'
 import { testNamesIn } from './new-tests'
 import { findCase, loose, namesTest, notBuilt } from './red-check-names'
 
 import type { CriterionTests } from '../agents/role-results'
+import { portLabel, portsTest, type TestPort } from '../intake/test-ports'
 import type { TestRename } from '../intake/test-renames'
 
 /** Whether a declared rename renames the test `full_name` in `file`. */
@@ -55,6 +57,36 @@ export const renamedName = ({
         ? undefined
         : `${block.new_name} > ${name.slice(block.old_name.length + 3)}`
 }
+
+/**
+ * Whether the ticket's ported-tests table names the old test `full_name`
+ * in `file`, by that name or by the new name a declared rename gives it.
+ *
+ * @example
+ * isDeclaredPort({ ports, renames, file: 'src/app.test.tsx', full_name: 'app > opens' })
+ */
+export const isDeclaredPort = ({
+    ports,
+    renames,
+    file,
+    full_name,
+}: {
+    ports: TestPort[]
+    renames: TestRename[]
+    file: string
+    full_name: string
+}): boolean => {
+    const renamed = renamedName({ renames, file, full_name })
+    return (
+        portsTest({ ports, file, full_name }) ||
+        (renamed !== undefined &&
+            portsTest({ ports, file, full_name: renamed }))
+    )
+}
+
+/** Said of a declared port that fails in the red check. */
+const PORT_FAILS =
+    "fails, as a declared port may until the ticket's code exists; the gates must see it pass"
 
 /**
  * The new full names the declared renames give the tests that passed in
@@ -154,12 +186,15 @@ const textHasTest = ({
 const checkRenamed = ({
     old,
     new_name,
+    ported,
     current,
     mapping,
     texts,
 }: {
     old: TestCase
     new_name: string
+    /** The ported-tests table names it too: it may fail. */
+    ported: boolean
     current: TestRun
     mapping: CriterionTests[]
     texts: Record<string, string | null>
@@ -196,6 +231,11 @@ const checkRenamed = ({
             }
         }
         if (mapped) return mapped_note
+        if (ported) {
+            return {
+                note: `${label}: ${declared}; declared ported; not run (${why}); the gates must see it pass`,
+            }
+        }
         // Unmapped, it must still pass. Like any old test, one whose Swift
         // tests don't build yet is left to the gates (#668); one whose file
         // doesn't load does not pass.
@@ -208,10 +248,46 @@ const checkRenamed = ({
               }
     }
     if (mapped) return mapped_note
-    return now.status === 'passed'
-        ? { note: `${label}: ${declared}; still passes` }
+    if (now.status === 'passed') {
+        return { note: `${label}: ${declared}; still passes` }
+    }
+    return ported
+        ? { note: `${label}: ${declared}; ${PORT_FAILS}` }
         : {
               problem: `${label}, renamed to "${new_name}" as the ticket declares, no longer passes`,
+          }
+}
+
+/** Said after an old test that fails: the only way one may. */
+const FAILS_HINT =
+    " (an old test may fail here only when the ticket's ported-tests table names it)"
+
+/**
+ * A declared port neither there under its name nor moved nor renamed: in a
+ * file with no results, its name must still be in the file's text; else a
+ * port keeps its name, so it is gone.
+ */
+const checkPortGone = ({
+    old,
+    current,
+    texts,
+}: {
+    old: TestCase
+    current: TestRun
+    texts: Record<string, string | null>
+}): { problem: string } | { note: string } => {
+    const label = `old test "${old.full_name}" in ${old.file}`
+    const why = noResultsWhy({ current, file: old.file })
+    const text = texts[old.file]
+    return why !== null &&
+        text !== null &&
+        text !== undefined &&
+        textHasTest({ text, file: old.file, name: old.full_name })
+        ? {
+              note: `${label}: declared ported; not run (${why}); the gates must see it pass`,
+          }
+        : {
+              problem: `${label} is declared ported, but no test of that name is in the file`,
           }
 }
 
@@ -234,6 +310,14 @@ const MISSING_HINT =
  * table may rename a test. A declared rename of a test that didn't pass at
  * the baseline is a note.
  *
+ * One the ticket's ported-tests table names (`ports`, by its old or its
+ * new name) keeps its file and name but may fail: failing is a note, not a
+ * problem, and the gates must see it pass. Gone from a file that ran, it is
+ * a problem; in a file with no results, its name must be in the file's
+ * text. A port row that names no test that passed at the baseline is a
+ * note. Any other old test that fails no longer passes, with a hint that
+ * only the table lets one fail.
+ *
  * One in a `.swift` file whose tests don't build yet (#668), with no results
  * for that file, is not run: noted, not missing, while its name is still in
  * the file's text (`texts`).
@@ -244,12 +328,14 @@ export const checkOldTests = ({
     texts,
     mapping,
     renames,
+    ports,
 }: {
     baseline: TestRun
     current: TestRun
     texts: Record<string, string | null>
     mapping: CriterionTests[]
     renames: TestRename[]
+    ports: TestPort[]
 }): { problems: string[]; notes: string[] } => {
     const problems: string[] = []
     const notes: string[] = []
@@ -262,10 +348,19 @@ export const checkOldTests = ({
     const passed = baseline.cases.filter(({ status }) => status === 'passed')
     for (const old of passed) {
         const label = `old test "${old.full_name}" in ${old.file}`
+        const ported = isDeclaredPort({
+            ports,
+            renames,
+            file: old.file,
+            full_name: old.full_name,
+        })
         const now = current.cases.find((found) => same(found, old))
         if (now !== undefined) {
-            if (now.status !== 'passed')
-                problems.push(`${label} no longer passes`)
+            if (now.status === 'passed') {
+                if (ported)
+                    notes.push(`${label}: declared ported; still passes`)
+            } else if (ported) notes.push(`${label}: ${PORT_FAILS}`)
+            else problems.push(`${label} no longer passes${FAILS_HINT}`)
             continue
         }
         const moved = movable.find(
@@ -281,10 +376,15 @@ export const checkOldTests = ({
                 const outcome = checkRenamed({
                     old,
                     new_name,
+                    ported,
                     current,
                     mapping,
                     texts,
                 })
+                if ('problem' in outcome) problems.push(outcome.problem)
+                else notes.push(outcome.note)
+            } else if (ported) {
+                const outcome = checkPortGone({ old, current, texts })
                 if ('problem' in outcome) problems.push(outcome.problem)
                 else notes.push(outcome.note)
             } else if (notRun({ old, current, texts })) {
@@ -311,6 +411,17 @@ export const checkOldTests = ({
                 : rename.old_name
             notes.push(
                 `the ticket declares "${old}" in ${rename.file} renamed, but no such test passed at the baseline`
+            )
+        }
+    }
+    for (const port of ports) {
+        if (
+            !passed.some(({ file, full_name }) =>
+                isDeclaredPort({ ports: [port], renames, file, full_name })
+            )
+        ) {
+            notes.push(
+                `the ticket declares "${portLabel({ port })}" in ${port.file} ported, but no such test passed at the baseline`
             )
         }
     }

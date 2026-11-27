@@ -99,3 +99,44 @@ describe('decision step: intake checks the renamed-tests table', () => {
         ])
     })
 })
+
+describe('decision step: intake checks the ported-tests table', () => {
+    const withPorts = (rows: string[]): TrackerIssue =>
+        ticketIssue({
+            number: 11,
+            what_to_build: [
+                'Move the app to the new mount.',
+                '',
+                '## Ported tests',
+                '',
+                '| File | Tests |',
+                '| --- | --- |',
+                ...rows,
+            ].join('\n'),
+        })
+
+    test('a good table passes, and a malformed row refuses the run with the row and the fix', () => {
+        expect(
+            problemsFor({
+                tickets: [
+                    withPorts([
+                        '| `src/app.test.tsx` | `*` |',
+                        "| `src/boundary.test.tsx` | `describe('the error boundary')` |",
+                    ]),
+                ],
+            })
+        ).toEqual([])
+        expect(
+            problemsFor({
+                tickets: [withPorts(['| `src/app.test.tsx` | every test |'])],
+            })
+        ).toEqual([
+            {
+                ticket: 11,
+                missing: [
+                    "The ported-tests table's row 1 has no tests in backticks: give a full test name, describe('...'), or *.",
+                ],
+            },
+        ])
+    })
+})

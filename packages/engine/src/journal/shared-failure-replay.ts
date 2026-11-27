@@ -8,6 +8,9 @@ import type { OldTestFailure, RunState } from './run-state'
 import type { TicketProgress } from './ticket-progress'
 
 import type { TestCaseRef } from '../gates/gate-schemas'
+import { isDeclaredPort } from '../gates/red-check-old-tests'
+import { parseTestPorts } from '../intake/test-ports'
+import { parseTestRenames } from '../intake/test-renames'
 
 /** How close in time two tickets' failures of one old test must be. */
 export const SHARED_FAILURE_WINDOW_MS = 10 * 60_000
@@ -24,6 +27,29 @@ const failedCasesOf = (record: CheckRecord): TestCaseRef[] =>
 
 const sameTest = (a: TestCaseRef, b: TestCaseRef): boolean =>
     a.file === b.file && a.full_name === b.full_name
+
+/**
+ * Whether a red check's failed case is one the ticket's ported-tests table
+ * names: it may fail there until the ticket's code exists, so it is no old
+ * test failure. Read from the ticket's snapshot body, as the red check
+ * reads it.
+ */
+const portedIn = ({
+    state,
+    record,
+    ticket,
+}: {
+    state: RunState
+    record: CheckRecord
+    ticket: number
+}): ((test: TestCaseRef) => boolean) => {
+    if (record.kind !== 'red_check') return () => false
+    const body = state.snapshot?.tickets[ticket]?.body ?? ''
+    const { ports } = parseTestPorts({ body })
+    const { renames } = parseTestRenames({ body })
+    return ({ file, full_name }) =>
+        isDeclaredPort({ ports, renames, file, full_name })
+}
 
 /**
  * Whether every one of `old` (non-empty) failed in another ticket, as
@@ -86,7 +112,8 @@ const markedShared = ({
  * in another ticket within 10 minutes, by record time. Only failures
  * journaled earlier count, so of two tickets failing at once the later one
  * gets the lone rerun. A check that failed no old test (only new ones) is
- * never shared.
+ * never shared. A red check's failed declared port (the ticket's
+ * ported-tests table names it) is no old test failure: it may fail there.
  */
 export const sharedFailuresAfter = ({
     state,
@@ -102,10 +129,13 @@ export const sharedFailuresAfter = ({
     if (progress === undefined || baseline === undefined || baseline === null) {
         return state
     }
-    const old = failedCasesOf(record).filter((test) =>
-        baseline.cases.some(
-            (base) => base.status === 'passed' && sameTest(base, test)
-        )
+    const ported = portedIn({ state, record, ticket })
+    const old = failedCasesOf(record).filter(
+        (test) =>
+            !ported(test) &&
+            baseline.cases.some(
+                (base) => base.status === 'passed' && sameTest(base, test)
+            )
     )
     if (old.length === 0) return state
     const shared = sharedWithOthers({

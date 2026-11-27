@@ -84,6 +84,7 @@ You write the failing tests for ONE ticket, before any code exists.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
 ${featureMapLines({ config })}- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.
 - Rename or remove an existing test only when the ticket's renamed-tests table (a table with the columns File, Old name, New name) declares it; a describe rename renames every test under it. Any other old test keeps its name and must still pass. A declared rename that checks a criterion is mapped like a new test, under its new name, and must fail first.
+- You may port the old tests the ticket's ported-tests table (columns File, Tests) declares: rewrite their bodies and imports in the same file, keeping every name. A ported test may fail until the ticket's code exists, so don't undo a port because it fails now; the gates must see it pass. Any other old test must still pass.
 - Map every test you add. The red check refuses a new test your criterion mapping doesn't name.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 ${swiftTestLine({ config })}
@@ -153,6 +154,7 @@ You write the code that makes ONE ticket's failing tests pass. Another agent wro
     .join(', ')}.${slowLine({ config })}
 ${limitLine({ config })}${testFileRule({ config, may_edit_tests })}
 - If a test is wrong (it contradicts the ticket or spec, or no correct code can pass it), don't work around it: answer outcome "bad_test" with the test and your reason.
+- An old test the ticket's ported-tests table declares may fail until your code lands, and must pass at the gates. Never send one back as "bad_test" just because it failed before your code existed.
 - If the gates can't pass without a change to a test setup file${setupFiles({ config })}, don't work around it: answer outcome "needs_setup_change", with the file and why in "setup_change". The user makes the change.
 ${environmentLine({ check: 'a gate' })}
 - Follow the spec's Implementation Decisions. Keep the change small: no extra features, and no new dependencies unless the spec says so.

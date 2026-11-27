@@ -92,6 +92,10 @@ _Avoid_: fail-first check
 An old test a ticket's owner lets the test-writer rename, written in the ticket's renamed-tests table (columns File, Old name, New name). The red check judges it under its new name: mapped to a criterion, as a new test that must fail first; unmapped, as an old test that must still pass. Any other old test gone from its file is missing.
 _Avoid_: approved rename, test rename
 
+**Declared port**:
+An old test a ticket's owner lets the test-writer port to code the ticket adds, keeping its file and name, written in the ticket's ported-tests table (columns File, Tests). It may fail in the red check, before that code exists, and must pass at the gates. Any other old test must still pass in the red check.
+_Avoid_: ported test exemption, allowed failure
+
 **Fix loop**:
 The capped rounds in which an agent fixes what a gate or a reviewer reported. Reaching the cap makes the run stuck.
 _Avoid_: retry loop

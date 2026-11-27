@@ -55,6 +55,7 @@ Each topic has its own page under `docs/`:
 | [Test limits and slow tests](docs/test-commands-and-limits.md) | The test time limit, slow tests, a ticket's own slow tests, and the fast test speed limit. |
 | [Leftovers, commits, and changesets](docs/leftovers-and-commits.md) | Files prepare makes, links that point outside the checkout, nothing to commit, the leftover scan's allowlists, and changesets. |
 | [A ticket's steps, fix loops, and bad tests](docs/ticket-steps.md) | Cleaning up, already-done tickets, tickets for a person, fix loops, bad and unmapped tests, and tests that check nothing. |
+| [Declared renames and ports](docs/declared-tests.md) | The renamed-tests and ported-tests tables a ticket's owner writes, what intake refuses, and how the red check judges them. |
 | [The feature map](docs/ticket-feature-map.md) | A repo's feature map, a folder map, and what the red check and the test-writer do with it. |
 | [Failed tries and the ticket review](docs/ticket-review.md) | A failed agent turn's tries, the ticket review, and its fix rounds. |
 | [Crash recovery](docs/crash-recovery.md) | Step records, redoing a cut-off step, `--resume`, the config a resume re-reads, Luca's version, and restarts from Paseo. |

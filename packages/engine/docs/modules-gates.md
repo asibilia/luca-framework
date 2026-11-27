@@ -11,7 +11,7 @@ folder is on its folder's page; the [README](../README.md) lists them.
 | `src/gates/swift-test-index.ts` | Ties a SwiftPM JUnit case to the `.swift` file that declares it, and counts its assertions (`swiftTestIndex`, #668). |
 | `src/gates/case-test-runner.ts` | Runs the test commands with per-test results, `bun` and `junit` (#668), in order and joined into one run (`runCaseTests`): for the baseline, the red check and the already-done check. |
 | `src/gates/red-check.ts` | The **red check**. Pure. At most `MAX_TESTS_PER_CRITERION` tests per criterion, every new test mapped (#581), a moved test counted as old (#609), every new test file in the feature map (#583), and a `.swift` file whose tests don't build yet read from its text (#668). |
-| `src/gates/red-check-old-tests.ts` | Pure: the red check's old tests, in their file, moved (#609), or declared renamed by the ticket's renamed-tests table. |
+| `src/gates/red-check-old-tests.ts` | Pure: the red check's old tests, in their file, moved (#609), or declared renamed by the ticket's renamed-tests table; a declared port may fail (`isDeclaredPort`). |
 | `src/gates/red-check-names.ts` | Pure: how the red check matches a test name to a test case (`findCase`, `namesTest`). |
 | `src/gates/new-tests.ts` | Pure: the test names in a test file's text (`testNamesIn`), and the ones a change added (`addedTestNames`, #581). |
 | `src/gates/swift-test-names.ts` | Pure: the test names in a `.swift` file's text (`swiftTestNamesIn`, #668), as SwiftPM prints them. |
