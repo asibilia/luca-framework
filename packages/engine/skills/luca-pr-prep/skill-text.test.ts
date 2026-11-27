@@ -85,6 +85,7 @@ describe('the luca-pr-prep skill', () => {
         const not_fields = new Set([
             'snake_case',
             'loose_ends',
+            'sample_data',
             'pr_head_sha',
             'story_head_sha',
             'other_copy',
@@ -169,5 +170,21 @@ describe('the luca-pr-prep skill', () => {
             expect(step).toContain(`\`${field}\``)
         }
         expect(step).toContain('write a new story from step 4')
+    })
+
+    test('the field guide documents sample_data and the new optional fields', () => {
+        for (const token of [
+            '`sample_data`',
+            '`groups`',
+            '`group_id`',
+            '`noise`',
+            '`stop_id`',
+        ]) {
+            expect(format).toContain(token)
+        }
+    })
+
+    test('the field guide states the optional-field rule', () => {
+        expect(format).toContain('A field marked *optional* may be left out.')
     })
 })
