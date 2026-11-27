@@ -216,7 +216,7 @@ describe('the red check: moved tests are old tests (#609)', () => {
         })
         expect(result.ok).toBe(false)
         expect(result.problems).toContain(
-            `old test "greet > says hey" in ${GREET} is missing`
+            `old test "greet > says hey" in ${GREET} is missing (rename a test only when the ticket's renamed-tests table names it)`
         )
         expect(
             result.problems.filter(

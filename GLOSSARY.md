@@ -37,7 +37,7 @@ The branch a run's finished tickets join one at a time, and that its one pull re
 _Avoid_: integration branch, feature branch
 
 **Intake**:
-The check, before a run starts, that a spec and all its open tickets are ready to build. It also checks that acceptance criteria hold no placeholders or untestable asks, and none describe behaviour that doesn't change. If anything fails, the run does not start. Tickets for a person are left out, not checked.
+The check, before a run starts, that a spec and all its open tickets are ready to build. It also checks that acceptance criteria hold no placeholders or untestable asks, and none describe behaviour that doesn't change, and that a ticket's renamed-tests table has no malformed row. If anything fails, the run does not start. Tickets for a person are left out, not checked.
 _Avoid_: preflight, validation
 
 **Engine**:
@@ -85,8 +85,12 @@ A markdown file (or a folder of markdown pages, one per area) a repo names in `f
 _Avoid_: test index, test registry
 
 **Red check**:
-The gate that proves a ticket's new tests fail, and every old test still passes, before any code is written. It also refuses more than three tests for one criterion, and any new test the test-writer's criterion mapping doesn't name.
+The gate that proves a ticket's new tests fail, and every old test still passes, before any code is written. It also refuses more than three tests for one criterion, and any new test the test-writer's criterion mapping doesn't name. A test moved to another file, or a declared rename, is still an old test.
 _Avoid_: fail-first check
+
+**Declared rename**:
+An old test a ticket's owner lets the test-writer rename, written in the ticket's renamed-tests table (columns File, Old name, New name). The red check judges it under its new name: mapped to a criterion, as a new test that must fail first; unmapped, as an old test that must still pass. Any other old test gone from its file is missing.
+_Avoid_: approved rename, test rename
 
 **Fix loop**:
 The capped rounds in which an agent fixes what a gate or a reviewer reported. Reaching the cap makes the run stuck.

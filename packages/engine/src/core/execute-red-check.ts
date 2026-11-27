@@ -39,6 +39,7 @@ import {
     withOwnRun,
 } from '../gates/test-runner'
 import { pathText } from '../git/path-text'
+import { parseTestRenames } from '../intake/test-renames'
 
 /**
  * The red check's problem when the test-writer changed no file (what
@@ -207,6 +208,11 @@ export const runRedCheck = async ({
             current: await pathText({ path: join(path, file) }),
         })
     }
+    // The renames the ticket's table declares, read from its snapshot's
+    // body, so a run whose snapshot came before the table was read gets them.
+    const { renames } = parseTestRenames({
+        body: context.state.snapshot?.tickets[action.ticket]?.body ?? '',
+    })
     const checked = checkRed({
         criteria_ids: action.criteria_ids,
         mapping: action.mapping,
@@ -224,6 +230,7 @@ export const runRedCheck = async ({
             test_concurrency: context.config.test_concurrency,
             exclusive,
         }),
+        renames,
     })
     // A failed prepare after the test-writer's turn is one more problem,
     // for the test-writer's fix loop; so is a turn that changed no file,

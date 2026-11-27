@@ -159,5 +159,5 @@ bun packages/engine/scripts/write-story-example.ts   # when the test fixture sto
 
 ## Related
 
-- [Modules: other](modules-other.md) lists the files.
+- [Modules: the PR story](modules-story.md) lists the files.
 - `packages/engine/skills/luca-pr-prep/SKILL.md` is the skill itself.

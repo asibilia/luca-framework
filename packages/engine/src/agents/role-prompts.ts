@@ -24,6 +24,7 @@ export {
 const REFACTOR_TASK =
     'This is a refactor ticket: change how the code is shaped, not what it does. Add no new behavior. ' +
     'Make every gate pass. You may follow renames and moves into test files, but you must not change what a test checks. ' +
+    "Rename a test itself only when the ticket's renamed-tests table declares it. " +
     'If a test is wrong, answer "bad_test" with your reason.'
 
 /**

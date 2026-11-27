@@ -187,7 +187,7 @@ final class RankingXCTests: XCTestCase {
         )
         expect(gone.ok).toBe(false)
         expect(gone.problems).toContain(
-            `old test "RankingTests > sortsByScore()" in ${FILE} is missing`
+            `old test "RankingTests > sortsByScore()" in ${FILE} is missing (rename a test only when the ticket's renamed-tests table names it)`
         )
     })
 

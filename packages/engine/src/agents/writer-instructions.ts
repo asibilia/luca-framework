@@ -83,6 +83,7 @@ You write the failing tests for ONE ticket, before any code exists.
 - Your new tests must FAIL right now, because the code does not exist yet. That is expected. Do not create or stub the module under test.
 - Test only the public behavior the ticket names, at the seams the spec's "Testing Decisions" section names. No mocks unless the spec asks. No tautological asserts.
 ${featureMapLines({ config })}- Every acceptance criterion needs at least one test, and at most ${MAX_TESTS_PER_CRITERION}: write the fewest tests that prove it. Old tests must keep passing.
+- Rename or remove an existing test only when the ticket's renamed-tests table (a table with the columns File, Old name, New name) declares it; a describe rename renames every test under it. Any other old test keeps its name and must still pass. A declared rename that checks a criterion is mapped like a new test, under its new name, and must fail first.
 - Map every test you add. The red check refuses a new test your criterion mapping doesn't name.
 - Give every test a plain string-literal name (no test.each, no template names), so the engine can find each one before the module exists.
 ${swiftTestLine({ config })}
@@ -110,7 +111,7 @@ const testFileRule = ({
     may_edit_tests: boolean
 }): string =>
     may_edit_tests
-        ? `- You may follow renames and moves into test files (${config.test_file_patterns.join(', ')}), but never change what a test checks. Never touch a test setup file${setupFiles({ config })}.`
+        ? `- You may follow renames and moves into test files (${config.test_file_patterns.join(', ')}), but never change what a test checks, and rename a test only when the ticket's renamed-tests table declares it. Never touch a test setup file${setupFiles({ config })}.`
         : `- Never create, edit, or delete a test file (${config.test_file_patterns.join(', ')}) or a test setup file${setupFiles({ config })}.`
 
 /** The implementer's line about the slow tests (#563), or nothing without them. */

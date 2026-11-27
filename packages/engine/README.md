@@ -48,7 +48,8 @@ Each topic has its own page under `docs/`:
 | [Modules in `src/guards/`](docs/modules-guards.md) | The guard, with the modules split out of `role-rules.ts`. |
 | [Modules in `src/gates/`](docs/modules-gates.md) | The red check, the gates, installs, and the leftover scan. |
 | [Modules in `src/cli/`](docs/modules-cli.md) | The `luca-run` and `luca` command lines, and their adapters. |
-| [Modules in the other folders](docs/modules-other.md) | `src/config/`, `intake/`, `limits/`, `messages/`, `git/`, `shell/`, `tracker/`, `testing/`, `jev/`, `models/`, `memory/`, `board/`, and `skills/`. |
+| [Modules in the other folders](docs/modules-other.md) | `src/config/`, `intake/`, `limits/`, `messages/`, `git/`, `shell/`, `tracker/`, `testing/`, `jev/`, `models/`, `memory/`, `board/`, `skills/`, and `scripts/`. |
+| [Modules: the PR story](docs/modules-story.md) | `src/story/`, and the scripts that build its helper. |
 | [How a run moves](docs/how-a-run-moves.md) | Each step of a run, many tickets at once, a shared baseline, plan limits with many tickets, a clash on the run branch, a test the run branch made wrong, and installs after a rebase. |
 | [The prepare command](docs/prepare-and-tests.md) | The prepare command, its time limit, one prepare at a time, and a timeout that stops everything. |
 | [Test limits and slow tests](docs/test-commands-and-limits.md) | The test time limit, slow tests, a ticket's own slow tests, and the fast test speed limit. |
