@@ -32,6 +32,14 @@
   leaving it out is the safe side, since no agent does a person's work, and
   the PR and board still name it. A left-out agent ticket is still checked,
   so a later run can build it.
+- **Renamed tests are declared in the ticket, not guessed.** An old test gone
+  from its file is missing unless the ticket's renamed-tests table names its
+  new name (see [ticket steps](ticket-steps.md)). The engine doesn't guess a
+  rename from similar names, so only the owner can let a test go. Intake
+  refuses a malformed row, and checks only the table: whether its old tests
+  exist is for the red check, which has the baseline. The red check reads the
+  table from the snapshot's body, so a run started before this read it still
+  benefits.
 - **Blockers** are native "blocked by" links plus `#N` refs in a ticket's
   "Blocked by" section. A closed blocker is fine anywhere; an open one must be
   an open ticket of the same spec, and those must not form a loop.

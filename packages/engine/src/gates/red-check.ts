@@ -1,8 +1,19 @@
-import type { RedCheckResult, TestCase, TestRun } from './gate-schemas'
+import type { RedCheckResult, TestRun } from './gate-schemas'
 import { addedTestNames, testNamesIn } from './new-tests'
+import {
+    findCase,
+    lastPart,
+    loose,
+    namesTest,
+    notBuilt,
+} from './red-check-names'
+import { checkOldTests, renameTargets } from './red-check-old-tests'
 
 import type { CriterionTests, TestRef } from '../agents/role-results'
 import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
+import type { TestRename } from '../intake/test-renames'
+
+export { findCase }
 
 /**
  * A test file the ticket changed, as it was at the ticket's base and as it
@@ -25,12 +36,6 @@ export type SlowRedRun = {
     ended: 'failed' | 'passed' | 'timed_out'
 }
 
-const lastPart = (name: string): string =>
-    (name.split(' > ').at(-1) ?? name).trim()
-
-/** Quote-insensitive text, so a test name found in source matches its printed name. */
-const loose = (text: string): string => text.replace(/[\\'"`]/g, '')
-
 /**
  * Said after a new unmapped test found in the text of a test file that does
  * not load yet: with no results to check against, a `test(` inside a string
@@ -42,61 +47,6 @@ const NOT_LOADED_HINT =
 /** `NOT_LOADED_HINT` for a `.swift` file whose tests don't build yet (#668). */
 const NOT_BUILT_HINT =
     '. The tests do not build yet, so every @Test func and XCTest test func in its text counts, even one inside a comment'
-
-/**
- * Whether `file` is a `.swift` test file in a run whose `junit` command
- * wrote no JUnit file (#668): its tests don't build yet, so its test names
- * are read from its text (see `swiftTestNamesIn`).
- */
-const notBuilt = ({ run, file }: { run: TestRun; file: string }): boolean =>
-    run.junit_missing === true && file.endsWith('.swift')
-
-/**
- * Whether a test name written in a file's text (`own`) is the test bun prints
- * as `full_name`: equal to it, at its end after " > " (not split on the last
- * " > ": a test name may hold one itself), or the same last part. One rule
- * for a mapped name and for a name found in the text.
- */
-const namesTest = ({
-    full_name,
-    own,
-}: {
-    full_name: string
-    own: string
-}): boolean => {
-    const full = full_name.trim()
-    return (
-        full === own ||
-        full.endsWith(` > ${own}`) ||
-        lastPart(full) === lastPart(own)
-    )
-}
-
-/**
- * The test case a named test is, in its file: the one whose full name
- * matches, else the only one whose last part does. `undefined` if none (or
- * more than one) does.
- *
- * @example
- * findCase({ cases: run.cases, test: { file: 'src/sum.test.ts', name: 'sum > adds' } })
- */
-export const findCase = ({
-    cases,
-    test,
-}: {
-    cases: TestCase[]
-    test: TestRef
-}): TestCase | undefined => {
-    const inFile = cases.filter(({ file }) => file === test.file)
-    const exact = inFile.find(
-        ({ full_name }) => full_name.trim() === test.name.trim()
-    )
-    if (exact) return exact
-    const byLast = inFile.filter(
-        ({ full_name }) => lastPart(full_name) === lastPart(test.name)
-    )
-    return byLast.length === 1 ? byLast[0] : undefined
-}
 
 const checkNewTest = ({
     test,
@@ -168,97 +118,15 @@ const checkNewTest = ({
 }
 
 /**
- * Whether an old test is in a `.swift` file whose tests don't build yet
- * (#668), that the run has no results for, and whose text still names it.
- */
-const notRun = ({
-    old,
-    current,
-    texts,
-}: {
-    old: TestCase
-    current: TestRun
-    texts: Record<string, string | null>
-}): boolean => {
-    const text = texts[old.file]
-    if (
-        !notBuilt({ run: current, file: old.file }) ||
-        current.cases.some(({ file }) => file === old.file) ||
-        text === null ||
-        text === undefined
-    ) {
-        return false
-    }
-    return testNamesIn({ source: text, file: old.file }).some((own) =>
-        namesTest({ full_name: old.full_name, own })
-    )
-}
-
-/**
- * Every old test (passed at the baseline) still passes, in its file or
- * moved (#609): one missing from its file but now in another test file
- * under the same full name, a case the baseline didn't have there. Each
- * such case stands for one old test only, so a name several old tests had
- * counts as moved once.
- *
- * One in a `.swift` file whose tests don't build yet (#668), with no results
- * for that file, is not run: noted, not missing, while its name is still in
- * the file's text (`texts`).
- */
-const checkOldTests = ({
-    baseline,
-    current,
-    texts,
-}: {
-    baseline: TestRun
-    current: TestRun
-    texts: Record<string, string | null>
-}): { problems: string[]; notes: string[] } => {
-    const problems: string[] = []
-    const notes: string[] = []
-    const same = (a: TestCase, b: TestCase) =>
-        a.file === b.file && a.full_name === b.full_name
-    const movable = current.cases.filter(
-        (now) => !baseline.cases.some((old) => same(old, now))
-    )
-    const claimed = new Set<TestCase>()
-    for (const old of baseline.cases.filter(
-        ({ status }) => status === 'passed'
-    )) {
-        const label = `old test "${old.full_name}" in ${old.file}`
-        const now = current.cases.find((found) => same(found, old))
-        if (now !== undefined) {
-            if (now.status !== 'passed')
-                problems.push(`${label} no longer passes`)
-            continue
-        }
-        const moved = movable.find(
-            (found) => !claimed.has(found) && found.full_name === old.full_name
-        )
-        if (moved === undefined) {
-            if (notRun({ old, current, texts })) {
-                notes.push(
-                    `${label}: not run (the tests do not build yet); the gates run it`
-                )
-            } else problems.push(`${label} is missing`)
-            continue
-        }
-        claimed.add(moved)
-        const where = `old test "${old.full_name}" in ${moved.file} (moved from ${old.file})`
-        if (moved.status === 'passed')
-            notes.push(`${where}: still passes, as it should`)
-        else problems.push(`${where} no longer passes`)
-    }
-    return { problems, notes }
-}
-
-/**
  * The red check. Pure: proves every criterion has a test, and at most
  * `MAX_TESTS_PER_CRITERION`, every test the ticket added is mapped, every
  * test file it created is in the feature map (when the repo has one), every
  * new test fails, and every old test that passed before still passes. A
  * test the ticket only moved to another test file, under the same full
- * name, is an old test (#609): noted, not missing and not new.
+ * name, is an old test (#609): noted, not missing and not new. So is one
+ * the ticket's renamed-tests table declares renamed in its file, unless its
+ * new name is mapped to a criterion: then it is a new test that must fail
+ * first. Any other old test gone from its file is missing.
  *
  * @param baseline - The test run before the test-writer started.
  * @param current - The test run after the test-writer finished.
@@ -280,6 +148,9 @@ const checkOldTests = ({
  * @param slow_runs - The ticket's own slow files run through `run_files`
  *   (#683): a mapped test in one is judged by its run's exit code, and a run
  *   that passed or timed out is one problem naming its files.
+ * @param renames - The renames the ticket's renamed-tests table declares
+ *   (`parseTestRenames`), none by default. A declared rename's new name is
+ *   not an unmapped new test; see `checkOldTests` for how it is judged.
  *
  * @example
  * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources, changed_test_sources })
@@ -295,6 +166,7 @@ export const checkRed = ({
     changed_test_sources,
     feature_map,
     slow_runs = [],
+    renames = [],
 }: {
     criteria_ids: string[]
     mapping: CriterionTests[]
@@ -305,6 +177,7 @@ export const checkRed = ({
     changed_test_sources: ChangedTestSource[]
     feature_map?: { path: string; files: string[] | null } | null
     slow_runs?: SlowRedRun[]
+    renames?: TestRename[]
 }): RedCheckResult => {
     const problems: string[] = []
     const notes: string[] = []
@@ -347,9 +220,14 @@ export const checkRed = ({
         const hint = notBuilt({ run: current, file })
             ? NOT_BUILT_HINT
             : NOT_LOADED_HINT
+        // A declared rename's new name is an old test under a new name.
+        const renamed = renameTargets({ renames, baseline, file })
         for (const name of addedTestNames({ base, current: text, file })) {
             if (old_names.has(name)) continue
             const own = name.trim()
+            if (renamed.some((full_name) => namesTest({ full_name, own }))) {
+                continue
+            }
             if (
                 loaded &&
                 !ran.some(({ full_name }) => namesTest({ full_name, own }))
@@ -418,6 +296,8 @@ export const checkRed = ({
             ),
             ...sources,
         },
+        mapping,
+        renames,
     })
     problems.push(...old.problems)
     notes.push(...old.notes)

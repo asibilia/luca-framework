@@ -10,6 +10,7 @@ import type {
     LeftOutTicket,
     TicketSnapshot,
 } from './intake-schemas'
+import { parseTestRenames } from './test-renames'
 
 import {
     ENGINE_CONFIG_FILE,
@@ -282,7 +283,9 @@ export const configProblems = ({
  *
  * Each open agent ticket's acceptance criteria must hold no placeholders, no
  * untestable asks (#541), and nothing about behaviour that doesn't change
- * (#653), per `criteriaProblems`; the spec's text isn't checked.
+ * (#653), per `criteriaProblems`; the spec's text isn't checked. Its
+ * renamed-tests table, if it has one, must have no malformed row, per
+ * `parseTestRenames`.
  */
 export const checkIntake = ({
     config,
@@ -358,6 +361,10 @@ export const checkIntake = ({
             ticket: ticket.number,
             criteria,
         })) {
+            onTicket(message)
+        }
+        for (const message of parseTestRenames({ body: ticket.body })
+            .problems) {
             onTicket(message)
         }
         if (!ticket.labels.includes(READY_LABEL)) {

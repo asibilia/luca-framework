@@ -18,7 +18,7 @@ with a page of its own is listed in the [README](../README.md).
 
 | Module | What it does |
 | --- | --- |
-| `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot, with the tickets left out for a person (#499). |
+| `src/intake/intake-checks.ts` | Intake's pure checks: refused, nothing to do, or a snapshot, with the tickets left out for a person (#499). `test-renames.ts` reads a renamed-tests table. |
 
 ## `src/limits/`
 
