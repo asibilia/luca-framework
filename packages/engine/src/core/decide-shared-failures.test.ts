@@ -159,9 +159,9 @@ const bothFailed = ({
 ]
 
 /** #12's next step, on a run with #11 and #12 and these entries. */
-const stepOf12 = (entries: JournalEntry[]) => {
+const stepOf12 = (entries: JournalEntry[], product = PRODUCT) => {
     const all = [
-        ...intakePassed({ tickets: [SUM, PRODUCT] }),
+        ...intakePassed({ tickets: [SUM, product] }),
         ...withInstalls({ entries }),
     ]
     const records = recordsFrom({ entries: all }).map((record, index) => {
@@ -235,6 +235,50 @@ describe('shared failures: a lone rerun (#544)', () => {
                 at(5, failedRed),
             ])
         ).toMatchObject({ type: 'run_red_check', ticket: 12, exclusive: true })
+    })
+
+    test("a red check failing on an old test the ticket's ported-tests table names is not a shared failure (no lone rerun)", () => {
+        const failedRed: JournalEntry = {
+            kind: 'red_check',
+            ticket: 12,
+            role: null,
+            content: {
+                ok: false,
+                problems: [`"${NEW.full_name}" in ${NEW.file}: is skipped`],
+                notes: [],
+                tests: {
+                    ...emptyTestRun(),
+                    ok: false,
+                    exit_code: 1,
+                    no_test_files: false,
+                    cases: [
+                        { ...OLD, status: 'failed' },
+                        { ...NEW, status: 'skipped' },
+                    ],
+                    output: '1 fail',
+                },
+            },
+        }
+        const ported = {
+            ...PRODUCT,
+            body: `## Ported tests\n\n| File | Tests |\n| --- | --- |\n| \`${OLD.file}\` | \`*\` |`,
+        }
+
+        expect(
+            stepOf12(
+                [
+                    runBranchCreated(),
+                    ...upToGates({ ticket: 11 }),
+                    gates({ ticket: 11, failed: [OLD] }),
+                    ...fixRound({ ticket: 11 }),
+                    ticketWorktreeCreated({ ticket: 12 }),
+                    baseline({ ticket: 12, passed: [OLD] }),
+                    testsWritten({ ticket: 12 }),
+                    at(5, failedRed),
+                ],
+                ported
+            )
+        ).toMatchObject({ type: 'follow_up_agent', role: 'test-writer' })
     })
 
     test('failures more than 10 minutes apart get the usual fix round, where ones 5 minutes apart get a lone rerun', () => {

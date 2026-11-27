@@ -11,6 +11,7 @@ import { checkOldTests, renameTargets } from './red-check-old-tests'
 
 import type { CriterionTests, TestRef } from '../agents/role-results'
 import { MAX_TESTS_PER_CRITERION } from '../core/loop-caps'
+import type { TestPort } from '../intake/test-ports'
 import type { TestRename } from '../intake/test-renames'
 
 export { findCase }
@@ -126,7 +127,8 @@ const checkNewTest = ({
  * name, is an old test (#609): noted, not missing and not new. So is one
  * the ticket's renamed-tests table declares renamed in its file, unless its
  * new name is mapped to a criterion: then it is a new test that must fail
- * first. Any other old test gone from its file is missing.
+ * first. Any other old test gone from its file is missing. An old test the
+ * ticket's ported-tests table names may fail; any other must still pass.
  *
  * @param baseline - The test run before the test-writer started.
  * @param current - The test run after the test-writer finished.
@@ -151,6 +153,9 @@ const checkNewTest = ({
  * @param renames - The renames the ticket's renamed-tests table declares
  *   (`parseTestRenames`), none by default. A declared rename's new name is
  *   not an unmapped new test; see `checkOldTests` for how it is judged.
+ * @param ports - The ports the ticket's ported-tests table declares
+ *   (`parseTestPorts`), none by default: old tests that may fail here, until
+ *   the ticket's code exists (see `checkOldTests`).
  *
  * @example
  * const result = checkRed({ criteria_ids: ['AC1'], mapping, baseline, current, test_files, sources, changed_test_sources })
@@ -167,6 +172,7 @@ export const checkRed = ({
     feature_map,
     slow_runs = [],
     renames = [],
+    ports = [],
 }: {
     criteria_ids: string[]
     mapping: CriterionTests[]
@@ -178,6 +184,7 @@ export const checkRed = ({
     feature_map?: { path: string; files: string[] | null } | null
     slow_runs?: SlowRedRun[]
     renames?: TestRename[]
+    ports?: TestPort[]
 }): RedCheckResult => {
     const problems: string[] = []
     const notes: string[] = []
@@ -298,6 +305,7 @@ export const checkRed = ({
         },
         mapping,
         renames,
+        ports,
     })
     problems.push(...old.problems)
     notes.push(...old.notes)

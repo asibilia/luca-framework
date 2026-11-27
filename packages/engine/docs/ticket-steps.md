@@ -193,57 +193,9 @@ there, and the red check's notes list it ("moved from …"). Each case there
 stands for one old test only, so a name several old tests had counts as
 moved once; the rest are missing.
 
-**Renamed tests.** A test-writer may rename an old test, or remove its old
-name, only when the ticket's renamed-tests table declares it. The owner writes
-the table anywhere in the ticket's body; `## Renamed tests` is the heading to
-use, but the engine finds the table by its header, `File`, `Old name`, `New
-name` (in any case, in that order), outside fenced code blocks:
-
-```markdown
-## Renamed tests
-
-| File | Old name | New name |
-| --- | --- | --- |
-| `src/greet.test.ts` | `greet > says hi` | `greet > says hello` |
-| `src/greet.test.ts` | `describe('bye')` (its tests keep their titles) | `describe('farewell')` |
-```
-
-Each cell's value is its first code span; text after it is a note. A name is
-a full test name, describe and test joined by " > ", as bun prints it. A
-`describe('…')` name (in any quote) on both sides renames a describe: every
-test in the file whose full name starts with `bye > ` is renamed to start
-with `farewell > `. Only the start of the name counts, not a describe nested
-inside another. `parseTestRenames` (`intake/test-renames.ts`) reads the
-table. Intake refuses the run for a row with a cell that has no code span,
-the same old and new name, an old name or a new name an earlier row gives in
-the same file, or a describe name on one side and a full test name on the
-other. The message names the row and the fix, such as "The renamed-tests
-table's row 2 has no new name in backticks."
-
-The red check reads the table again from the ticket's snapshot body, so it
-needs no new snapshot field. An old test neither in its file nor moved, that
-the table renames, is judged under its new name in the same file:
-
-- Mapped to a criterion, it is a new test: it must fail first, like any
-  mapped test, and the old name is only noted (`…: renamed to "…", as the
-  ticket declares; mapped to a criterion, so it must fail first`).
-- Not mapped, it is an old test: it must still pass (`…, renamed to "…" as
-  the ticket declares, no longer passes` otherwise). Its new name is not an
-  unmapped new test.
-- No test of the new name in the file is a problem: `old test "…" in … was
-  declared renamed to "…", but no test of that name is in the file`. A file
-  with no results (it doesn't load yet, or its Swift tests don't build) is
-  read from its text. A new name found there that is mapped is noted. One
-  that is not mapped must still pass, so a file that doesn't load is a
-  problem (`… no longer passes (its file does not load yet)`), while Swift
-  tests that don't build yet are noted and left to the gates (#668).
-- An old test the table doesn't rename is missing, as before: `old test "…"
-  in … is missing (rename a test only when the ticket's renamed-tests table
-  names it)`.
-
-A row whose old name no test passed under at the baseline is a note, not a
-problem: `the ticket declares "…" in … renamed, but no such test passed at
-the baseline`.
+**Renamed and ported tests.** A test-writer may rename an old test, or let
+one fail until the ticket's code exists, only as the ticket's renamed-tests
+or ported-tests table declares: see [Declared renames and ports](declared-tests.md).
 
 **Timings (#518).** The journal records how long things took. A gate check
 has `duration_ms`, how long its command ran, and the `prepare` check also

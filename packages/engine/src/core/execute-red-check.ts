@@ -39,6 +39,7 @@ import {
     withOwnRun,
 } from '../gates/test-runner'
 import { pathText } from '../git/path-text'
+import { parseTestPorts } from '../intake/test-ports'
 import { parseTestRenames } from '../intake/test-renames'
 
 /**
@@ -208,11 +209,12 @@ export const runRedCheck = async ({
             current: await pathText({ path: join(path, file) }),
         })
     }
-    // The renames the ticket's table declares, read from its snapshot's
-    // body, so a run whose snapshot came before the table was read gets them.
-    const { renames } = parseTestRenames({
-        body: context.state.snapshot?.tickets[action.ticket]?.body ?? '',
-    })
+    // The renames and ports the ticket's tables declare, read from its
+    // snapshot's body, so a run whose snapshot came before a table was read
+    // gets them.
+    const body = context.state.snapshot?.tickets[action.ticket]?.body ?? ''
+    const { renames } = parseTestRenames({ body })
+    const { ports } = parseTestPorts({ body })
     const checked = checkRed({
         criteria_ids: action.criteria_ids,
         mapping: action.mapping,
@@ -231,6 +233,7 @@ export const runRedCheck = async ({
             exclusive,
         }),
         renames,
+        ports,
     })
     // A failed prepare after the test-writer's turn is one more problem,
     // for the test-writer's fix loop; so is a turn that changed no file,

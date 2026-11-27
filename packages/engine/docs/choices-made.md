@@ -34,12 +34,17 @@
   so a later run can build it.
 - **Renamed tests are declared in the ticket, not guessed.** An old test gone
   from its file is missing unless the ticket's renamed-tests table names its
-  new name (see [ticket steps](ticket-steps.md)). The engine doesn't guess a
+  new name (see [declared renames and ports](declared-tests.md)). The engine doesn't guess a
   rename from similar names, so only the owner can let a test go. Intake
   refuses a malformed row, and checks only the table: whether its old tests
   exist is for the red check, which has the baseline. The red check reads the
   table from the snapshot's body, so a run started before this read it still
   benefits.
+- **Ported tests may fail only in the red check.** An old test the ticket's
+  ported-tests table names may fail before the ticket's code exists, so a
+  test-writer can port it to that code in the same commit as the new tests.
+  The table, not the engine, says which: an old test it doesn't name must
+  still pass. The gates are unchanged, so a port must pass there.
 - **Blockers** are native "blocked by" links plus `#N` refs in a ticket's
   "Blocked by" section. A closed blocker is fine anywhere; an open one must be
   an open ticket of the same spec, and those must not form a loop.
