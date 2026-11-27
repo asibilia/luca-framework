@@ -1,5 +1,11 @@
 # @luca/engine
 
+## 14.0.0-alpha.43
+
+### Patch Changes
+
+- f3e9e5c: The red check now lets a ticket's owner declare ported tests: old tests the test-writer ports to code the ticket adds, keeping their file and names, so they can only pass once that code exists. A ticket names them in a markdown table with the columns File, Tests (under `## Ported tests`), one row per file and a full test name, a `describe('...')`, or `*` for every test in the file. Before, a ported test failed the red check as `no longer passes` (or `is missing` when its file didn't load), the test-writer undid the port, and the ticket went stuck. Now a declared port may fail in the red check, with a note, and must still be in its file under its name; the gates must see it pass, as before. Any other old test that fails is still a problem, and the problem now says only the table lets one fail. A failing declared port no longer counts as a shared old-test failure, so it doesn't start a lone rerun. Intake refuses a malformed row, naming the row and the fix. The test-writer and implementer instructions, and the red check's fix-loop message, say the same.
+
 ## 14.0.0-alpha.42
 
 ### Patch Changes
