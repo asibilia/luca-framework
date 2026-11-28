@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
+import { WALK_COMMANDS } from './walk-app'
+
 /**
  * The `@luca/walk` package (#753): its VS Code manifest, the one seam
  * that keeps `vscode` out of the app, and its glossary entry.
@@ -41,6 +43,7 @@ const COMMANDS: [string, string][] = [
     ['lucaWalk.commentOnFile', 'Comment on this file'],
     ['lucaWalk.commentOnPullRequest', 'Comment on the pull request'],
     ['lucaWalk.toggleLooksGood', 'This file looks good'],
+    ['lucaWalk.markStopLooksGood', 'This stop looks good'],
     ['lucaWalk.sendReview', 'Send the review'],
     ['lucaWalk.writeStory', 'Write the story'],
     ['lucaWalk.reloadStory', 'Reload the story'],
@@ -111,10 +114,49 @@ describe('the @luca/walk package (#753)', () => {
                 .map(({ command }) => command)
         )
         const commands = declared.filter(({ command }) => !hidden.has(command))
+        const original = commands.filter(
+            ({ command }) => command !== 'lucaWalk.markStopLooksGood'
+        )
+        const original_expected = COMMANDS.filter(
+            ([command]) => command !== 'lucaWalk.markStopLooksGood'
+        )
+
+        expect(
+            original.map(({ command, title }) => [command, title]).toSorted()
+        ).toEqual(original_expected.toSorted())
+        expect(commands.every(({ category }) => category === 'Luca Walk')).toBe(
+            true
+        )
+        const declaredIds = new Set(declared.map(({ command }) => command))
+        const referenced = Object.values(manifest.contributes.menus)
+            .flat()
+            .map(({ command }) => command)
+        expect(referenced.filter((id) => !declaredIds.has(id))).toEqual([])
+        expect(
+            viewsUnder(manifest, 'activitybar').map(({ id }) => id)
+        ).toContain('lucaWalk.stops')
+        expect(viewsUnder(manifest, 'secondarySidebar')).toContainEqual(
+            expect.objectContaining({ id: 'lucaWalk.context', type: 'webview' })
+        )
+        expect(manifest.activationEvents).toContain('onStartupFinished')
+    })
+
+    test('the manifest contributes the 18 commands, the Stops and Context views, and onStartupFinished', async () => {
+        const manifest = await readManifest()
+        const declared = manifest.contributes.commands
+        const hidden = new Set(
+            (manifest.contributes.menus.commandPalette ?? [])
+                .filter(({ when }) => when === 'false')
+                .map(({ command }) => command)
+        )
+        const commands = declared.filter(({ command }) => !hidden.has(command))
 
         expect(
             commands.map(({ command, title }) => [command, title]).toSorted()
         ).toEqual(COMMANDS.toSorted())
+        expect(WALK_COMMANDS.toSorted()).toEqual(
+            COMMANDS.map(([command]) => command).toSorted()
+        )
         expect(commands.every(({ category }) => category === 'Luca Walk')).toBe(
             true
         )
