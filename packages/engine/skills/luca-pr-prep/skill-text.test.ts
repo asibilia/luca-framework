@@ -187,4 +187,10 @@ describe('the luca-pr-prep skill', () => {
     test('the field guide states the optional-field rule', () => {
         expect(format).toContain('A field marked *optional* may be left out.')
     })
+
+    test('the field guide gives writers guidance on groups and noise', () => {
+        expect(format).toContain('4 or more walk stops')
+        expect(format).toContain('2 to 6 groups')
+        expect(format).toContain('Code is never noise')
+    })
 })

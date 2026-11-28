@@ -145,6 +145,7 @@ Tests:
 - `packages/engine/src/agents/role-instructions-provider.test.ts`
 - `packages/engine/src/agents/role-instructions-other-role.test.ts`
 - `packages/engine/src/agents/role-instructions-rules-and-sandbox.test.ts`
+- `packages/engine/src/agents/story-writer-instructions.test.ts`
 - `packages/engine/src/agents/role-results.test.ts`
 - `packages/engine/src/agents/scripted-launcher.test.ts`
 - `packages/engine/src/core/run-effort.e2e.test.ts`
