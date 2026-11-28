@@ -37,12 +37,15 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
     ref,
     stops,
     last_review,
+    onPlaceChanged = async () => undefined,
 }: {
     host: WalkHost
     walk_dir: string
     ref: PullRequestRef
     stops: Stop[]
     last_review: string | null
+    /** Runs after every `enter` and every `along` that moves nothing. */
+    onPlaceChanged?: () => Promise<void>
 }) => {
     const stopOf = (id: string | null) =>
         stops.find((stop) => stop.id === id) ?? null
@@ -130,6 +133,7 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
                 done_stop_ids: done,
                 last_change_id: change_id,
             })
+            await onPlaceChanged()
         },
 
         /** Keeps `change_id` as the change the owner was last on. */
@@ -142,20 +146,36 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
 
         /**
          * The stop to walk `step` along from the current one (1 is Next,
-         * -1 is Back), or the first one before the walk starts. Null at an
-         * end, after saying it was the last stop on Next.
+         * -1 is Back), or the first one before the walk starts. On Next
+         * with no later stop to walk, marks the current stop done before
+         * saying it was the last stop.
          */
         along: async ({ step }: { step: 1 | -1 }): Promise<Stop | null> => {
             const at = stops.findIndex(({ id }) => id === place.current_stop_id)
-            if (at === -1) return first()
+            if (at === -1) {
+                const found = await first()
+                if (found === null) await onPlaceChanged()
+                return found
+            }
             const to =
                 step === 1
                     ? stops.slice(at + 1).find(({ to_walk }) => to_walk)
                     : stops.slice(0, at).findLast(({ to_walk }) => to_walk)
             if (to !== undefined) return to
             if (step === 1) {
+                const current = place.current_stop_id
+                if (
+                    current !== null &&
+                    !place.done_stop_ids.includes(current)
+                ) {
+                    await keep({
+                        ...place,
+                        done_stop_ids: [...place.done_stop_ids, current],
+                    })
+                }
                 await host.showMessage({ kind: 'info', text: LAST_STOP })
             }
+            await onPlaceChanged()
             return null
         },
     }

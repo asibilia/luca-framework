@@ -337,6 +337,33 @@ export const createFeedback = async ({
             }))
             await onApprovedChanged()
         },
+
+        /**
+         * Marks every file in `paths` as looking good, never clearing
+         * existing marks. Saves and calls `onApprovedChanged` once only
+         * when at least one path was not already marked.
+         */
+        markLooksGood: async ({
+            paths,
+        }: {
+            paths: string[]
+        }): Promise<{ changed: boolean }> => {
+            const missing = [...new Set(paths)].filter(
+                (path) => !drafts.approved_files.includes(path)
+            )
+            if (missing.length === 0) return { changed: false }
+            await update((now) => ({
+                ...now,
+                approved_files: [
+                    ...now.approved_files,
+                    ...missing.filter(
+                        (path) => !now.approved_files.includes(path)
+                    ),
+                ],
+            }))
+            await onApprovedChanged()
+            return { changed: true }
+        },
     }
 }
 

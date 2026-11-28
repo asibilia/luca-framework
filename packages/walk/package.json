@@ -38,6 +38,7 @@
             { "command": "lucaWalk.commentOnFile", "title": "Comment on this file", "category": "Luca Walk" },
             { "command": "lucaWalk.commentOnPullRequest", "title": "Comment on the pull request", "category": "Luca Walk" },
             { "command": "lucaWalk.toggleLooksGood", "title": "This file looks good", "category": "Luca Walk" },
+            { "command": "lucaWalk.markStopLooksGood", "title": "This stop looks good", "category": "Luca Walk" },
             { "command": "lucaWalk.sendReview", "title": "Send the review", "category": "Luca Walk" },
             { "command": "lucaWalk.writeStory", "title": "Write the story", "category": "Luca Walk" },
             { "command": "lucaWalk.reloadStory", "title": "Reload the story", "category": "Luca Walk" },

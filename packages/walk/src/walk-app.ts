@@ -22,6 +22,11 @@ import {
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
 import { filesToWalk, lastReviewOf, visitNote } from './second-visit'
 import { sendReview } from './send-review'
+import {
+    handleStopAction,
+    markStopLooksGood,
+    StopActionMessageSchema,
+} from './stop-actions'
 import { summaryHtml } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
 import type { WalkSession } from './walk-session'
@@ -51,6 +56,7 @@ export const WALK_COMMANDS = [
     'lucaWalk.commentOnFile',
     'lucaWalk.commentOnPullRequest',
     'lucaWalk.toggleLooksGood',
+    'lucaWalk.markStopLooksGood',
     'lucaWalk.sendReview',
     'lucaWalk.writeStory',
     'lucaWalk.reloadStory',
@@ -63,6 +69,7 @@ const PanelMessageSchema = z.discriminatedUnion('type', [
         url: z.url({ protocol: /^https?$/ }),
     }),
     z.object({ type: z.literal('open_file'), path: z.string() }),
+    StopActionMessageSchema,
 ])
 
 /** The feedback commands, by what they ask of the feedback. */
@@ -377,7 +384,13 @@ export const createWalkApp = ({
 
     return {
         /** Runs one of `WALK_COMMANDS`. */
-        run: async ({ command }: { command: string; args: unknown[] }) => {
+        run: async ({
+            command,
+            args,
+        }: {
+            command: string
+            args: unknown[]
+        }) => {
             if (command === 'lucaWalk.openPullRequest') {
                 const ref = await askForPullRequest()
                 if (ref !== null) await openPullRequest(ref)
@@ -394,6 +407,9 @@ export const createWalkApp = ({
             if (command === 'lucaWalk.writeStory') return writeStory(now)
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
             if (command === 'lucaWalk.sendReview') return send(now)
+            if (command === 'lucaWalk.markStopLooksGood') {
+                return markStopLooksGood({ host, now, args })
+            }
             const step = WALK_STEPS[command]
             if (step !== undefined) return walkStep({ now, step })
             const feedbackStep = FEEDBACK_STEPS[command]
@@ -452,6 +468,14 @@ export const createWalkApp = ({
                 return walkStep({
                     now,
                     step: (walk) => walk.goToFile({ path }),
+                })
+            }
+            if (parsed.data.type === 'stop_action') {
+                return handleStopAction({
+                    host,
+                    now,
+                    action: parsed.data.action,
+                    stop_id: parsed.data.stop_id,
                 })
             }
             const { id } = parsed.data

@@ -30,6 +30,7 @@ export const createWalkSession = async ({
     looksGood,
     files_to_walk = null,
     last_review = null,
+    onPlaceChanged,
 }: {
     host: WalkHost
     walk_dir: string
@@ -45,6 +46,8 @@ export const createWalkSession = async ({
     files_to_walk?: string[] | null
     /** The last review's commit; null when there was none. */
     last_review?: string | null
+    /** Runs after every move: entering a stop, Next, Back, and Next on the last stop. */
+    onPlaceChanged?: () => Promise<void>
 }) => {
     const { stops } = story
     const place = await createWalkPlace({
@@ -52,6 +55,7 @@ export const createWalkSession = async ({
         walk_dir,
         ref,
         last_review,
+        onPlaceChanged,
         stops: stops.map((stop) => ({
             id: stop.id,
             change_ids: stop.changes.map(({ id }) => id),
@@ -251,6 +255,16 @@ export const createWalkSession = async ({
 
         /** The story this walk goes through. */
         story,
+
+        /** The current stop's id, or null before the walk starts. */
+        currentStopId: (): string | null => currentStop()?.id ?? null,
+
+        /** The files of stop `stop_id`, or null when the id is unknown. */
+        filesOf: ({ stop_id }: { stop_id: string }): string[] | null => {
+            const stop = stops.find(({ id }) => id === stop_id)
+            if (stop === undefined) return null
+            return [...new Set(stop.changes.map(({ path }) => path))]
+        },
 
         /** Goes to the first stop with a change in the file at `path`. */
         goToFile: async ({ path }: { path: string }) => {
