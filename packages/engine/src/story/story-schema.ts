@@ -275,7 +275,7 @@ export const StorySchema = StoryShapeSchema.superRefine((story, ctx) => {
             .flatMap((stop) => stop.changes.map(({ path }) => path))
     )
     story.map.files.forEach((file, at) => {
-        if (file.noise == null) return
+        if ((file.noise ?? null) === null) return
         if (
             file.in_walk ||
             file.path === story.map.entry_path ||

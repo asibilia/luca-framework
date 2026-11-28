@@ -185,6 +185,20 @@ describe('groups, noise files, and pinned ask', () => {
         expect(expected.summary.feedback_wanted.stop_id).toBe('s6')
     })
 
+    test('a story written before groups, noise and stop_id still reads back', () => {
+        const value = bent((s) => {
+            delete s.summary.feedback_wanted.stop_id
+            delete s.map.groups
+            for (const file of s.map.files) delete file.noise
+            for (const stop of s.stops) delete stop.group_id
+        })
+        expect(JSON.stringify(value)).not.toMatch(
+            /"(noise|stop_id|group_id|groups)"/
+        )
+        expect(StorySchema.safeParse(value).success).toBe(true)
+        expect(readStory({ value }).status).toBe('ok')
+    })
+
     test('refuses a group_id on the loose-ends stop', () => {
         const value = bentGrouped((s) => {
             stopAt(s, 23).group_id = 'g4'

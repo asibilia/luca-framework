@@ -36,7 +36,7 @@ A field marked *nullable* takes `null`, never a missing key. A field marked *opt
 | --- | --- |
 | `entry_path` | The file the walk starts in. It must be the first stop's file |
 | `groups` | *optional* (at least 1 entry when present). A list of `{ id, title, note }` (`note` *nullable*) grouping the walk stops |
-| `files` | One per changed file: `path`, `status` (`added`, `modified`, `deleted`, `renamed`), `previous_path` (*nullable*; the old path of a rename), `role` (what the file is for, one line), `in_walk` (false when it is read in the loose ends), `noise` (*optional*, *nullable*: `lockfile`, `generated`, `sample_data`, or `fixture`) |
+| `files` | One per changed file: `path`, `status` (`added`, `modified`, `deleted`, `renamed`), `previous_path` (*nullable*; the old path of a rename), `role` (what the file is for, one line), `in_walk` (false when it is read in the loose ends), `noise` (*optional*, *nullable*: `lockfile`, `generated`, `sample_data`, or `fixture`; write `null` when the file isn't noise) |
 | `links` | How files link: `from_path`, `to_path`, `kind` (`calls`, `imports`, `reads`, `tests`, `configures`), `note` (*nullable*). Either end may be a file the PR doesn't change |
 | `architecture_note` | New modules, moved boundaries, things removed. Say "No change to the architecture." when that is so |
 

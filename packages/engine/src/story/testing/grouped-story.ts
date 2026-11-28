@@ -1,6 +1,11 @@
 import { story, storyChange } from './story-fixtures'
 
-import type { StoryChange, StoryFlag, StoryStop } from '../story-parts'
+import type {
+    StoryChange,
+    StoryFlag,
+    StoryNoiseKind,
+    StoryStop,
+} from '../story-parts'
 import type { Story } from '../story-schema'
 
 /**
@@ -12,10 +17,7 @@ import type { Story } from '../story-schema'
 const WALK_STOP_COUNT = 23
 const LOOSE_CODE_COUNT = 20
 
-const NOISE_FILES: readonly {
-    path: string
-    noise: 'lockfile' | 'generated' | 'sample_data' | 'fixture'
-}[] = [
+const NOISE_FILES: readonly { path: string; noise: StoryNoiseKind }[] = [
     { path: 'bun.lock', noise: 'lockfile' },
     { path: 'src/generated/schema.gen.ts', noise: 'generated' },
     { path: 'data/sample-players.json', noise: 'sample_data' },
