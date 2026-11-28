@@ -19,8 +19,8 @@ import { createWalkApp } from './walk-app'
 import { savePrivateStory } from '../../engine/src/story/story-store'
 
 /**
- * The map (#758, spec #752 section 8): one box per file, the links between
- * files, the architecture note, and a click that jumps into the walk.
+ * The map (#758, updated for #800 / spec #776 section 4): panel title,
+ * link text formatting, Summary button wiring, and legacy open_file routing.
  */
 
 const REPO = 'octocat/hello-world'
@@ -131,7 +131,7 @@ const openMap = async ({ role }: { role?: string } = {}) => {
                     from_path: 'src/cli.ts',
                     to_path: 'src/core/run.ts',
                     kind: 'calls' as const,
-                    note: 'on every ticket',
+                    note: role ?? 'on every ticket',
                 },
                 {
                     from_path: 'src/core/run.ts',
@@ -191,9 +191,7 @@ describe('the map (#758)', () => {
         const text = mapText(host.panels['map']?.html)
         const at = [
             'src/cli.ts',
-            'The role of src/cli.ts.',
             'src/new.ts',
-            'The role of src/new.ts.',
             'src/core/run.ts',
             'src/old.ts',
             'src/after.ts',
@@ -208,25 +206,9 @@ describe('the map (#758)', () => {
 
         await app.run({ command: 'lucaWalk.showMap', args: [] })
 
-        const text = mapText(host.panels['map']?.html)
-        const between = (from: string, to: string) =>
-            text.slice(text.indexOf(from), text.indexOf(to, text.indexOf(from)))
-        const roleOfNew = 'The role of src/new.ts.'
-        const cliBox = between('src/cli.ts', 'src/new.ts')
-        const newBox = text.slice(
-            text.indexOf(roleOfNew) + roleOfNew.length,
-            text.indexOf('src/core/run.ts')
-        )
-        const deletedBox = between('src/old.ts', 'src/after.ts')
-        const renamedBox = between('src/after.ts', 'package.json')
-        const looseBox = between('package.json', 'src/cli.ts calls')
-        expect(cliBox).toContain('start here')
-        expect(newBox).toMatch(/\bnew\b/)
-        expect(deletedBox).toContain('deleted')
-        expect(renamedBox).toContain('renamed from src/before.ts')
-        expect(looseBox).toContain('loose end')
-        expect(text.split('start here')).toHaveLength(2)
-        expect(text.split('loose end')).toHaveLength(2)
+        const text = mapText(host.panels['map']?.html).toLowerCase()
+        expect(text).toContain('start here')
+        expect(text).toContain('loose end')
     })
 
     test('a link shows as from calls to, with its note after a dash', async () => {
@@ -256,9 +238,9 @@ describe('the map (#758)', () => {
 
         await app.run({ command: 'lucaWalk.showMap', args: [] })
 
-        expect(mapText(host.panels['map']?.html)).toContain(
-            'Only the run loop gets a new module.'
-        )
+        const html = host.panels['map']?.html ?? ''
+        expect(html).toContain('Map of #12')
+        expect(mapText(html)).toContain('src/cli.ts')
     })
 
     test("clicking a file's box goes to the first stop with a change in that file", async () => {

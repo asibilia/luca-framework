@@ -416,7 +416,18 @@ describe('loading a pull request in its checkout (#753)', () => {
     test('the Map, the Context view, the browse page and a failed Summary have the same Content-Security-Policy', () => {
         const kept = walkStory()
         const pages = [
-            mapHtml({ story: kept }),
+            mapHtml({
+                story: kept,
+                line_counts: null,
+                state: {
+                    current_stop_id: null,
+                    done_stop_ids: [],
+                    to_walk_stop_ids: kept.stops.map(({ id }) => id),
+                },
+                approved_files: [],
+                drafts: [],
+                github_threads: [],
+            }),
             contextHtml({
                 story: kept,
                 cursor: {
