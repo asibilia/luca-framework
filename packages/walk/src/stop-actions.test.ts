@@ -503,11 +503,13 @@ describe('Next on the last stop (#799)', () => {
     test('Next on the last stop to walk adds it to done_stop_ids before the last-stop message and keeps it after reopen', async () => {
         const { app, host } = await openApp()
         await app.stopPicked({ stop_id: 's24' })
-        let done_before_message: string[] | null = null
+        const done_before_message: string[] = []
         const showMessageBase = host.showMessage
         host.showMessage = async (message: FakeMessage) => {
             if (message.text === LAST_STOP) {
-                done_before_message = (await readSaved()).walk.done_stop_ids
+                done_before_message.push(
+                    ...(await readSaved()).walk.done_stop_ids
+                )
             }
             await showMessageBase(message)
         }
@@ -530,11 +532,13 @@ describe('Next on the last stop (#799)', () => {
         const last_stop_id = host.stops.at(-1)?.stop_id ?? ''
         expect(last_stop_id).not.toBe('')
         await app.stopPicked({ stop_id: last_stop_id })
-        let done_before_message: string[] | null = null
+        const done_before_message: string[] = []
         const showMessageBase = host.showMessage
         host.showMessage = async (message: FakeMessage) => {
             if (message.text === LAST_STOP) {
-                done_before_message = (await readSaved()).walk.done_stop_ids
+                done_before_message.push(
+                    ...(await readSaved()).walk.done_stop_ids
+                )
             }
             await showMessageBase(message)
         }
