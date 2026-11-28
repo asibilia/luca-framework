@@ -6,6 +6,7 @@ import { createFeedback, type Feedback } from './feedback'
 import {
     agentReplies,
     readGitHubThreads,
+    type GitHubThread,
     type Reply,
 } from './github-conversation'
 import { findOwnStory, type PullComment } from './own-story'
@@ -121,6 +122,63 @@ const diffBaseOf = async ({
         : { ok: false, error: merged.stderr.trim() || 'git failed' }
 }
 
+/** Lines added and removed for one file, from `git diff --numstat -M -z`. */
+export type LineCount = { added: number; removed: number }
+
+/** Line counts by new file path. */
+export type LineCounts = Record<string, LineCount>
+
+/**
+ * Parses `git diff --numstat -M -z` output into line counts by new path.
+ * Binary files (`-\t-\t<path>`) count as `{ added: 0, removed: 0 }`.
+ */
+export const parseNumstat = ({ output }: { output: string }): LineCounts => {
+    const parts = output.split('\0')
+    const counts: LineCounts = {}
+    let at = 0
+    while (at < parts.length) {
+        const record = parts[at] ?? ''
+        at += 1
+        if (record === '') continue
+        const tabs = record.split('\t')
+        if (tabs.length < 3) continue
+        const added = tabs[0] === '-' ? 0 : Number(tabs[0])
+        const removed = tabs[1] === '-' ? 0 : Number(tabs[1])
+        const raw_path = tabs.slice(2).join('\t')
+        let path = raw_path
+        if (raw_path === '') {
+            // With `-z`, a rename/copy emits `added\tremoved\t\0old\0new\0`.
+            path = parts[at + 1] ?? ''
+            at += 2
+        }
+        if (path !== '') {
+            counts[path] = {
+                added: Number.isFinite(added) ? added : 0,
+                removed: Number.isFinite(removed) ? removed : 0,
+            }
+        }
+    }
+    return counts
+}
+
+const readLineCounts = async ({
+    git,
+    checkout,
+    head,
+}: {
+    git: WalkGit
+    checkout: string
+    head: PullHead | null
+}): Promise<LineCounts | null> => {
+    if (head === null || !head.base.ok) return null
+    const diff = await git({
+        args: ['diff', '--numstat', '-M', '-z', head.base.sha, head.sha],
+        cwd: checkout,
+    })
+    if (!diff.ok) return null
+    return parseNumstat({ output: diff.stdout })
+}
+
 /** The pull request on screen. */
 export type Shown = {
     ref: PullRequestRef
@@ -139,6 +197,10 @@ export type Shown = {
      * be brought to its head.
      */
     head: PullHead | null
+    /** Per-file added/removed line counts between base and head, or null. */
+    line_counts: LineCounts | null
+    /** Review threads already on GitHub. */
+    github_threads: GitHubThread[]
     story_requested: boolean
     /** Why a story on the pull request is not used (#766); null when none is left out. */
     story_note: string | null
@@ -161,6 +223,7 @@ export const loadPullRequest = async ({
     stories_dir,
     remote_url,
     ref,
+    onMapChanged = async () => undefined,
 }: {
     host: WalkHost
     gh: Gh
@@ -169,6 +232,8 @@ export const loadPullRequest = async ({
     stories_dir: string
     remote_url: (where: { repo: string }) => string
     ref: PullRequestRef
+    /** Runs when the walk place, approved files, or drafts change. */
+    onMapChanged?: () => Promise<void>
 }): Promise<Shown> => {
     const { repo } = ref
     const checkout = checkoutPath({ walk_dir, ref })
@@ -236,6 +301,7 @@ export const loadPullRequest = async ({
         pull === null || base === null
             ? null
             : { sha: pull.headRefOid, author: pull.author.login, base }
+    const line_counts = await readLineCounts({ git, checkout, head })
     let shown: Shown | null = null
     const feedback = await createFeedback({
         host,
@@ -248,7 +314,9 @@ export const loadPullRequest = async ({
         github_threads,
         onApprovedChanged: async () => {
             await shown?.walk?.showStops()
+            await onMapChanged()
         },
+        onDraftsChanged: onMapChanged,
     })
     await feedback.setApproved(
         await marksOnVisit({
@@ -272,6 +340,7 @@ export const loadPullRequest = async ({
                   looksGood: feedback.looksGood,
                   files_to_walk: filesToWalk({ visit }),
                   last_review: lastReviewOf({ visit }),
+                  onPlaceChanged: onMapChanged,
               })
     shown = {
         ref,
@@ -281,6 +350,8 @@ export const loadPullRequest = async ({
         author: pull?.author.login ?? null,
         loaded,
         head,
+        line_counts,
+        github_threads,
         story_requested: false,
         story_note,
         replies,

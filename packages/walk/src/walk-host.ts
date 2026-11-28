@@ -30,6 +30,14 @@ export type WalkTerminal = { name: string; cwd: string; command: string }
 /** A small always-visible label (#766), with the words shown on hover. */
 export type WalkBadge = { text: string; tooltip: string }
 
+/** One status bar quick action (#776, section 5). */
+export type WalkStatusAction = {
+    id: string
+    text: string
+    tooltip: string
+    command: string
+}
+
 export type WalkThread = {
     uri: string
     start_line: number
@@ -58,6 +66,8 @@ export type WalkHost = {
         title: string
         html: string
     }) => Promise<void>
+    /** Updates an already-open webview panel without revealing it; no-op when closed. */
+    refreshPanel: (panel: { id: string; html: string }) => Promise<void>
     showContext: (view: { html: string }) => Promise<void>
     showStops: (view: { items: WalkStopItem[] }) => Promise<void>
     openDiff: (diff: WalkDiff) => Promise<void>
@@ -74,6 +84,8 @@ export type WalkHost = {
     confirm: (ask: { text: string; confirm_label: string }) => Promise<boolean>
     /** Shows `badge` in the status bar, or hides it when null (#766). */
     showBadge: (badge: WalkBadge | null) => Promise<void>
+    /** Shows status bar quick actions in order; hides all when empty (#776). */
+    showStatusActions: (actions: { items: WalkStatusAction[] }) => Promise<void>
     /** Puts `text` on the clipboard (#766). */
     copyText: (copy: { text: string }) => Promise<void>
 }

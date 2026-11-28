@@ -1,6 +1,11 @@
 import * as vscode from 'vscode'
 
-import type { WalkHost, WalkStopItem, WalkThread } from './walk-host'
+import type {
+    WalkHost,
+    WalkStatusAction,
+    WalkStopItem,
+    WalkThread,
+} from './walk-host'
 
 /**
  * The real `WalkHost` (#752, section 2): wiring only. It shows what the
@@ -25,6 +30,7 @@ const stopsView = () => {
             const tree = new vscode.TreeItem(item.label)
             tree.description = item.description
             tree.id = item.stop_id
+            tree.contextValue = 'stop'
             tree.command = {
                 command: PICK_STOP_COMMAND,
                 title: item.label,
@@ -208,9 +214,54 @@ export const createVscodeHost = ({
     const badge = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Left
     )
+    const statusActions = new Map<
+        string,
+        { item: vscode.StatusBarItem; priority: number }
+    >()
+    const showStatusActions = (items: WalkStatusAction[]) => {
+        const keep = new Set(items.map(({ id }) => id))
+        for (const [id, entry] of statusActions) {
+            if (keep.has(id)) continue
+            entry.item.hide()
+            entry.item.dispose()
+            statusActions.delete(id)
+        }
+        const base_priority = 100
+        items.forEach((action, index) => {
+            const priority = base_priority - index
+            const existing = statusActions.get(action.id)
+            let item: vscode.StatusBarItem
+            if (existing !== undefined && existing.priority === priority) {
+                item = existing.item
+            } else {
+                if (existing !== undefined) {
+                    existing.item.hide()
+                    existing.item.dispose()
+                }
+                item = vscode.window.createStatusBarItem(
+                    vscode.StatusBarAlignment.Left,
+                    priority
+                )
+                statusActions.set(action.id, { item, priority })
+            }
+            item.text = action.text
+            item.tooltip = action.tooltip
+            item.command = action.command
+            item.show()
+        })
+    }
     context.subscriptions.push(
         stopsTree,
         badge,
+        {
+            dispose: () => {
+                for (const entry of statusActions.values()) {
+                    entry.item.hide()
+                    entry.item.dispose()
+                }
+                statusActions.clear()
+            },
+        },
         vscode.commands.registerCommand(PICK_STOP_COMMAND, (stop_id: string) =>
             onStopPicked({ stop_id })
         ),
@@ -258,6 +309,10 @@ export const createVscodeHost = ({
             )
             made.onDidDispose(() => panels.delete(id))
             panels.set(id, made)
+        },
+        refreshPanel: async ({ id, html }) => {
+            const open = panels.get(id)
+            if (open !== undefined) open.webview.html = html
         },
         showContext: async ({ html }) => contextBox.show(html),
         showStops: async ({ items }) => stops.show(items),
@@ -325,6 +380,9 @@ export const createVscodeHost = ({
             badge.text = shown.text
             badge.tooltip = shown.tooltip
             badge.show()
+        },
+        showStatusActions: async ({ items }) => {
+            showStatusActions(items)
         },
         copyText: async ({ text }) => {
             await vscode.env.clipboard.writeText(text)

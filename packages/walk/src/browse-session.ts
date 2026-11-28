@@ -74,6 +74,7 @@ export const createBrowseSession = async ({
     looksGood,
     files_to_walk = null,
     last_review = null,
+    onPlaceChanged,
 }: {
     host: WalkHost
     git: WalkGit
@@ -92,6 +93,8 @@ export const createBrowseSession = async ({
     files_to_walk?: string[] | null
     /** The last review's commit; null when there was none. */
     last_review?: string | null
+    /** Runs after every move: entering a stop, Next, Back, and Next on the last stop. */
+    onPlaceChanged?: () => Promise<void>
 }): Promise<WalkSession | null> => {
     const listed = await git({
         args: ['diff', '--name-status', '-M', '-z', base_sha, head_sha],
@@ -110,6 +113,7 @@ export const createBrowseSession = async ({
         walk_dir,
         ref,
         last_review,
+        onPlaceChanged,
         stops: files.map((file) => ({
             id: file.path,
             change_ids: [],
@@ -210,6 +214,9 @@ export const createBrowseSession = async ({
             goToFile(fileOf({ path: stop_id })),
         /** The plain diff has no story, so no map. */
         story: null,
+        state: place.state,
+        filesOf: ({ stop_id }: { stop_id: string }): string[] | null =>
+            fileOf({ path: stop_id }) === null ? null : [stop_id],
         goToFile: async ({ path }: { path: string }) =>
             goToFile(fileOf({ path })),
         cursorMoved: async () => undefined,

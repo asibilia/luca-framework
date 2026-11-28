@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 
+import { WALK_COMMANDS } from './walk-app'
+
 /**
  * The `@luca/walk` package (#753): its VS Code manifest, the one seam
  * that keeps `vscode` out of the app, and its glossary entry.
@@ -41,6 +43,7 @@ const COMMANDS: [string, string][] = [
     ['lucaWalk.commentOnFile', 'Comment on this file'],
     ['lucaWalk.commentOnPullRequest', 'Comment on the pull request'],
     ['lucaWalk.toggleLooksGood', 'This file looks good'],
+    ['lucaWalk.markStopLooksGood', 'This stop looks good'],
     ['lucaWalk.sendReview', 'Send the review'],
     ['lucaWalk.writeStory', 'Write the story'],
     ['lucaWalk.reloadStory', 'Reload the story'],
@@ -52,11 +55,13 @@ const ContainerSchema = z.object({ id: z.string() })
 const ManifestSchema = z.object({
     activationEvents: z.array(z.string()),
     contributes: z.object({
+        configurationDefaults: z.record(z.string(), z.unknown()).optional(),
         commands: z.array(
             z.object({
                 command: z.string(),
                 title: z.string(),
                 category: z.string().optional(),
+                icon: z.string().optional(),
             })
         ),
         viewsContainers: z.record(z.string(), z.array(ContainerSchema)),
@@ -64,7 +69,11 @@ const ManifestSchema = z.object({
         menus: z.record(
             z.string(),
             z.array(
-                z.object({ command: z.string(), when: z.string().optional() })
+                z.object({
+                    command: z.string(),
+                    group: z.string().optional(),
+                    when: z.string().optional(),
+                })
             )
         ),
     }),
@@ -102,7 +111,7 @@ describe('the @luca/walk package (#753)', () => {
         expect(importing.toSorted()).toEqual(WIRING.toSorted())
     })
 
-    test('the manifest contributes the 17 commands, the Stops and Context views, and onStartupFinished', async () => {
+    test('the manifest contributes the 18 commands, the Stops and Context views, and onStartupFinished', async () => {
         const manifest = await readManifest()
         const declared = manifest.contributes.commands
         const hidden = new Set(
@@ -115,6 +124,9 @@ describe('the @luca/walk package (#753)', () => {
         expect(
             commands.map(({ command, title }) => [command, title]).toSorted()
         ).toEqual(COMMANDS.toSorted())
+        expect(WALK_COMMANDS.toSorted()).toEqual(
+            COMMANDS.map(([command]) => command).toSorted()
+        )
         expect(commands.every(({ category }) => category === 'Luca Walk')).toBe(
             true
         )
@@ -126,10 +138,59 @@ describe('the @luca/walk package (#753)', () => {
         expect(
             viewsUnder(manifest, 'activitybar').map(({ id }) => id)
         ).toContain('lucaWalk.stops')
-        expect(viewsUnder(manifest, 'secondarySidebar')).toContainEqual(
+        expect(viewsUnder(manifest, 'activitybar')).toContainEqual(
             expect.objectContaining({ id: 'lucaWalk.context', type: 'webview' })
         )
         expect(manifest.activationEvents).toContain('onStartupFinished')
+    })
+
+    test('the manifest sets configurationDefaults for single-file full-file inline diffs', async () => {
+        const manifest = await readManifest()
+
+        expect(manifest.contributes.configurationDefaults).toEqual({
+            'diffEditor.renderSideBySide': false,
+            'diffEditor.hideUnchangedRegions.enabled': false,
+        })
+    })
+
+    test('the manifest places Context under Stops in the left lucaWalk sidebar and removes secondarySidebar', async () => {
+        const manifest = await readManifest()
+
+        expect(manifest.contributes.viewsContainers.activitybar).toContainEqual(
+            expect.objectContaining({ id: 'lucaWalk' })
+        )
+        expect(manifest.contributes.views.lucaWalk).toEqual([
+            expect.objectContaining({ id: 'lucaWalk.stops' }),
+            expect.objectContaining({
+                id: 'lucaWalk.context',
+                type: 'webview',
+            }),
+        ])
+        expect(
+            manifest.contributes.viewsContainers.secondarySidebar
+        ).toBeUndefined()
+        expect(manifest.contributes.views.lucaWalkContext).toBeUndefined()
+    })
+
+    test('the manifest contributes an inline This stop looks good button on Stops items and vscode-host sets stop contextValue', async () => {
+        const manifest = await readManifest()
+        const vscode_host = await readFile(
+            join(PACKAGE, 'src/vscode-host.ts'),
+            'utf8'
+        )
+
+        expect(manifest.contributes.commands).toContainEqual(
+            expect.objectContaining({
+                command: 'lucaWalk.markStopLooksGood',
+                icon: '$(check)',
+            })
+        )
+        expect(manifest.contributes.menus['view/item/context']).toContainEqual({
+            command: 'lucaWalk.markStopLooksGood',
+            group: 'inline',
+            when: 'view == lucaWalk.stops && viewItem == stop',
+        })
+        expect(vscode_host).toMatch(/\.contextValue\s*=\s*['"]stop['"]/)
     })
 
     test('the glossary has a Luca Walk entry', async () => {

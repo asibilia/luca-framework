@@ -25,6 +25,14 @@ const NO_PLACE: WalkPlace = {
 /** A stop as the place sees it: its id, its changes' ids, and whether it is to walk. */
 export type PlaceStop = { id: string; change_ids: string[]; to_walk: boolean }
 
+/** Snapshot of the walk's progress for the Map panel and status bar. */
+export type WalkState = {
+    current_stop_id: string | null
+    done_stop_ids: string[]
+    to_walk_stop_ids: string[]
+    stop_ids: string[]
+}
+
 /**
  * The place in a walk of `stops`, in walk order, back where the drafts
  * file left it when it was made under the same last review.
@@ -37,12 +45,15 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
     ref,
     stops,
     last_review,
+    onPlaceChanged = async () => undefined,
 }: {
     host: WalkHost
     walk_dir: string
     ref: PullRequestRef
     stops: Stop[]
     last_review: string | null
+    /** Runs after every `enter` and every `along` that moves nothing. */
+    onPlaceChanged?: () => Promise<void>
 }) => {
     const stopOf = (id: string | null) =>
         stops.find((stop) => stop.id === id) ?? null
@@ -81,6 +92,16 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
 
         /** The change the owner was last on in the current stop. */
         lastChangeId: (): string | null => place.last_change_id,
+
+        /** Snapshot of the current stop, done stops, stops to walk, and all stop ids. */
+        state: (): WalkState => ({
+            current_stop_id: place.current_stop_id,
+            done_stop_ids: [...place.done_stop_ids],
+            to_walk_stop_ids: stops
+                .filter(({ to_walk }) => to_walk)
+                .map(({ id }) => id),
+            stop_ids: stops.map(({ id }) => id),
+        }),
 
         /**
          * The Stops view's description of stop `id`: `current`, `done` or
@@ -130,6 +151,7 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
                 done_stop_ids: done,
                 last_change_id: change_id,
             })
+            await onPlaceChanged()
         },
 
         /** Keeps `change_id` as the change the owner was last on. */
@@ -142,20 +164,36 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
 
         /**
          * The stop to walk `step` along from the current one (1 is Next,
-         * -1 is Back), or the first one before the walk starts. Null at an
-         * end, after saying it was the last stop on Next.
+         * -1 is Back), or the first one before the walk starts. On Next
+         * with no later stop to walk, marks the current stop done before
+         * saying it was the last stop.
          */
         along: async ({ step }: { step: 1 | -1 }): Promise<Stop | null> => {
             const at = stops.findIndex(({ id }) => id === place.current_stop_id)
-            if (at === -1) return first()
+            if (at === -1) {
+                const found = await first()
+                if (found === null) await onPlaceChanged()
+                return found
+            }
             const to =
                 step === 1
                     ? stops.slice(at + 1).find(({ to_walk }) => to_walk)
                     : stops.slice(0, at).findLast(({ to_walk }) => to_walk)
             if (to !== undefined) return to
             if (step === 1) {
+                const current = place.current_stop_id
+                if (
+                    current !== null &&
+                    !place.done_stop_ids.includes(current)
+                ) {
+                    await keep({
+                        ...place,
+                        done_stop_ids: [...place.done_stop_ids, current],
+                    })
+                }
                 await host.showMessage({ kind: 'info', text: LAST_STOP })
             }
+            await onPlaceChanged()
             return null
         },
     }

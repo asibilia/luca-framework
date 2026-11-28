@@ -181,6 +181,112 @@ export const StorySchema = StoryShapeSchema.superRefine((story, ctx) => {
             )
         }
     }
+
+    const groups = story.map.groups
+    const group_ids = new Set(groups?.map(({ id }) => id) ?? [])
+    const first_stop_by_group = new Map<string, number>()
+
+    story.stops.forEach((stop, at) => {
+        const group_id = stop.group_id ?? null
+        if (stop.kind === 'loose_ends') {
+            if (group_id !== null) {
+                problem("the loose ends stop can't have a group_id", [
+                    'stops',
+                    at,
+                    'group_id',
+                ])
+            }
+            return
+        }
+        if (groups === undefined) {
+            if (group_id !== null) {
+                problem(
+                    `stop ${stop.id} has a group_id but map.groups is missing`,
+                    ['stops', at, 'group_id']
+                )
+            }
+            return
+        }
+        if (group_id === null) {
+            problem(`stop ${stop.id} has no group_id`, [
+                'stops',
+                at,
+                'group_id',
+            ])
+            return
+        }
+        if (!group_ids.has(group_id)) {
+            problem(
+                `stop ${stop.id} names group "${group_id}", which is not in map.groups`,
+                ['stops', at, 'group_id']
+            )
+            return
+        }
+        if (!first_stop_by_group.has(group_id)) {
+            first_stop_by_group.set(group_id, at)
+        }
+    })
+
+    if (groups !== undefined) {
+        for (const id of repeated({ values: groups.map(({ id }) => id) })) {
+            problem(`group id "${id}" is used twice`, ['map', 'groups'])
+        }
+        const seen_groups = new Set<string>()
+        const group_first_stops: number[] = []
+        groups.forEach((group, at) => {
+            if (seen_groups.has(group.id)) return
+            seen_groups.add(group.id)
+            const first_stop = first_stop_by_group.get(group.id)
+            if (first_stop === undefined) {
+                problem(`group "${group.id}" has no stops`, [
+                    'map',
+                    'groups',
+                    at,
+                ])
+                return
+            }
+            group_first_stops.push(first_stop)
+        })
+        const out_of_order = group_first_stops.some(
+            (stop_at, index) =>
+                index > 0 && stop_at < (group_first_stops[index - 1] ?? -1)
+        )
+        if (out_of_order) {
+            problem(
+                'map.groups must be in the order their first stops are walked',
+                ['map', 'groups']
+            )
+        }
+    }
+
+    const stop_ids = new Set(story.stops.map(({ id }) => id))
+    const ask_stop_id = story.summary.feedback_wanted.stop_id ?? null
+    if (ask_stop_id !== null && !stop_ids.has(ask_stop_id)) {
+        problem(`feedback_wanted.stop_id "${ask_stop_id}" is not a stop`, [
+            'summary',
+            'feedback_wanted',
+            'stop_id',
+        ])
+    }
+
+    const walk_change_paths = new Set(
+        story.stops
+            .filter((stop) => stop.kind === 'walk')
+            .flatMap((stop) => stop.changes.map(({ path }) => path))
+    )
+    story.map.files.forEach((file, at) => {
+        if ((file.noise ?? null) === null) return
+        if (
+            file.in_walk ||
+            file.path === story.map.entry_path ||
+            walk_change_paths.has(file.path)
+        ) {
+            problem(
+                `noise file ${file.path} must only be read in the loose ends`,
+                ['map', 'files', at, 'noise']
+            )
+        }
+    })
 })
 export type Story = z.infer<typeof StorySchema>
 

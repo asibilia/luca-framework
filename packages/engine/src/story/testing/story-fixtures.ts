@@ -84,7 +84,11 @@ export const story = (): Story => ({
         what_changed: 'A stuck ticket is retried before the owner is asked.',
         before: 'Every stuck ticket waited for the owner.',
         after: 'Only the third failure waits for the owner.',
-        feedback_wanted: { text: 'The retry budget.', source: 'guessed' },
+        feedback_wanted: {
+            text: 'The retry budget.',
+            source: 'guessed',
+            stop_id: null,
+        },
         counts: {
             files_added: 0,
             files_changed: 2,
@@ -113,6 +117,7 @@ export const story = (): Story => ({
                 previous_path: null,
                 role: 'Builds one ticket.',
                 in_walk: true,
+                noise: null,
             },
             {
                 path: 'src/config/schema.ts',
@@ -120,6 +125,7 @@ export const story = (): Story => ({
                 previous_path: null,
                 role: 'The config shape.',
                 in_walk: false,
+                noise: null,
             },
         ],
         links: [

@@ -11,7 +11,7 @@ import {
     type PullView,
     type Shown,
 } from './load-pull-request'
-import { mapHtml } from './map-html'
+import { refreshMapPanel, showMapPanel } from './map-panel'
 import { notYourRepoBadge, storyCommand, storyPlace } from './not-your-repo'
 import {
     checkoutRefOf,
@@ -22,6 +22,12 @@ import {
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
 import { filesToWalk, lastReviewOf, visitNote } from './second-visit'
 import { sendReview } from './send-review'
+import { showStatusBar } from './status-bar'
+import {
+    handleStopAction,
+    markStopLooksGood,
+    StopActionMessageSchema,
+} from './stop-actions'
 import { summaryHtml } from './summary-html'
 import type { WalkGit, WalkHost } from './walk-host'
 import type { WalkSession } from './walk-session'
@@ -51,6 +57,7 @@ export const WALK_COMMANDS = [
     'lucaWalk.commentOnFile',
     'lucaWalk.commentOnPullRequest',
     'lucaWalk.toggleLooksGood',
+    'lucaWalk.markStopLooksGood',
     'lucaWalk.sendReview',
     'lucaWalk.writeStory',
     'lucaWalk.reloadStory',
@@ -63,6 +70,7 @@ const PanelMessageSchema = z.discriminatedUnion('type', [
         url: z.url({ protocol: /^https?$/ }),
     }),
     z.object({ type: z.literal('open_file'), path: z.string() }),
+    StopActionMessageSchema,
 ])
 
 /** The feedback commands, by what they ask of the feedback. */
@@ -149,6 +157,12 @@ export const createWalkApp = ({
         })
     }
 
+    const onMapChanged = async () => {
+        if (shown === null) return
+        await refreshMapPanel({ host, now: shown })
+        await showStatusBar({ host, walk: shown.walk })
+    }
+
     const load = async (ref: PullRequestRef) => {
         const now = await loadPullRequest({
             host,
@@ -158,6 +172,7 @@ export const createWalkApp = ({
             stories_dir,
             remote_url,
             ref,
+            onMapChanged,
         })
         shown = now
         await host.showBadge(
@@ -168,6 +183,7 @@ export const createWalkApp = ({
         await showSummary(now)
         await now.feedback.showThreads()
         if (now.walk !== null) await now.walk.showStops()
+        await onMapChanged()
     }
 
     const walkStep = async ({
@@ -333,30 +349,16 @@ export const createWalkApp = ({
             looksGood: now.feedback.looksGood,
             files_to_walk: filesToWalk({ visit: now.visit }),
             last_review: lastReviewOf({ visit: now.visit }),
+            onPlaceChanged: onMapChanged,
         })
         if (browse === null) return
         now.walk = browse
         await browse.showStops()
         await browse.backToWalk()
+        await showStatusBar({ host, walk: now.walk })
     }
 
-    const showMap = (now: Shown) =>
-        walkStep({
-            now,
-            step: async (walk) => {
-                if (walk.story === null) {
-                    await error(
-                        `#${now.ref.number} has no story, so it has no map. Use "Write the story" for a guided walk.`
-                    )
-                    return
-                }
-                await host.showPanel({
-                    id: 'map',
-                    title: `Map of #${now.ref.number}`,
-                    html: mapHtml({ story: walk.story }),
-                })
-            },
-        })
+    const showMap = (now: Shown) => showMapPanel({ host, now })
 
     const send = async (now: Shown) => {
         const head = await headOf({ now })
@@ -377,7 +379,13 @@ export const createWalkApp = ({
 
     return {
         /** Runs one of `WALK_COMMANDS`. */
-        run: async ({ command }: { command: string; args: unknown[] }) => {
+        run: async ({
+            command,
+            args,
+        }: {
+            command: string
+            args: unknown[]
+        }) => {
             if (command === 'lucaWalk.openPullRequest') {
                 const ref = await askForPullRequest()
                 if (ref !== null) await openPullRequest(ref)
@@ -394,6 +402,9 @@ export const createWalkApp = ({
             if (command === 'lucaWalk.writeStory') return writeStory(now)
             if (command === 'lucaWalk.reloadStory') return load(now.ref)
             if (command === 'lucaWalk.sendReview') return send(now)
+            if (command === 'lucaWalk.markStopLooksGood') {
+                return markStopLooksGood({ host, now, args })
+            }
             const step = WALK_STEPS[command]
             if (step !== undefined) return walkStep({ now, step })
             const feedbackStep = FEEDBACK_STEPS[command]
@@ -452,6 +463,14 @@ export const createWalkApp = ({
                 return walkStep({
                     now,
                     step: (walk) => walk.goToFile({ path }),
+                })
+            }
+            if (parsed.data.type === 'stop_action') {
+                return handleStopAction({
+                    host,
+                    now,
+                    action: parsed.data.action,
+                    stop_id: parsed.data.stop_id,
                 })
             }
             const { id } = parsed.data

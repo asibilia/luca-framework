@@ -65,4 +65,11 @@ describe('building and installing Luca Walk (#754)', () => {
             'code --profile "Luca Walk" --install-extension packages/walk/luca-walk.vsix'
         )
     })
+
+    test('the README documents the inline full-file diff defaults under Install', async () => {
+        const readme = await readFile(join(PACKAGE, 'README.md'), 'utf8')
+
+        expect(readme).toContain('diffEditor.renderSideBySide')
+        expect(readme).toMatch(/inline/i)
+    })
 })

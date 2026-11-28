@@ -4,7 +4,7 @@ Luca Walk, the VS Code extension the owner reviews a pull request in (`packages/
 
 ## The package and its seam
 
-The `@luca/walk` package: its VS Code manifest (the commands, the Stops and Context views, the activation event), the rule that only the wiring imports `vscode`, and its glossary entry.
+The `@luca/walk` package: its VS Code manifest (the commands, `configurationDefaults` for single-file full-file inline diffs, the Stops and Context views stacked in the left `lucaWalk` sidebar, the inline `This stop looks good` button on Stops rows, and the activation event), the rule that only the wiring imports `vscode`, and its glossary entry.
 
 Reached by: installing `luca-walk.vsix` in the `Luca Walk` VS Code profile.
 
@@ -58,13 +58,14 @@ Tests:
 
 ## The walk
 
-`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file. A stop whose path leaves the checkout (a `..` part, an absolute path, or a symlink out) is refused, never opened.
+`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`, with an inline `This stop looks good` button); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file. While a walk or plain-diff browse is active, the status bar shows live progress (`Walk: M stops`, `Stop N of M`, `All M stops walked` where M counts the stops to walk, or `Nothing new to walk`) plus quick actions for `Next stop`, `This stop looks good`, and `Send the review`, and hides them when no session is active. A stop whose path leaves the checkout (a `..` part, an absolute path, or a symlink out) is refused, never opened.
 
-Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next stop`, `Previous stop`, `Next change in this file`, `Previous change in this file`, `Back to the walk`, and the Stops view.
+Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next stop`, `Previous stop`, `Next change in this file`, `Previous change in this file`, `Back to the walk`, the Stops view, and the status bar quick actions.
 
 Tests:
 
 - `packages/walk/src/walk-stops.test.ts`
+- `packages/walk/src/status-bar.test.ts`
 
 ## The context box
 
@@ -78,13 +79,16 @@ Tests:
 
 ## The map
 
-`Show the map` opens the Map panel: one box per file on the story's map (marked `start here`, `new`, `deleted`, `renamed from`, `loose end`), the links between files, and the architecture note. Clicking a box goes to the first stop with a change in that file.
+`Show the map` opens the Map panel as a flow: a "you are here" header (stops walked, stops and minutes left, progress counts, and the pinned "where to look" callout), lanes per story group (or `Changed files` when ungrouped) plus `Loose ends`, stop boxes with line counts from `git diff --numstat`, size bars, blast radius, untested/flag/draft/thread counts, folded noise files, a solid/dotted walk line, lit links with off-canvas links in a closed details list, and a per-stop side panel with `Reached from`, `Connections`, changes, and stop action buttons. While the map is open, it redraws in place via `refreshPanel` on walk moves, "looks good" changes, draft changes, and pull request loads. A redraw keeps the picked stop, the scroll position and the open folds (`vscode.setState`), and the lines are re-measured whenever the canvas changes size.
 
 Reached by: `Luca Walk: Show the map`, and the Summary panel's `Show the map` button.
 
 Tests:
 
 - `packages/walk/src/map.test.ts`
+- `packages/walk/src/map-flow.test.ts`
+- `packages/walk/src/map-redraw.test.ts`
+- `packages/walk/src/map-state.test.ts`
 
 ## Review threads and /luca-pr-address's replies
 
@@ -100,11 +104,12 @@ Tests:
 
 Comments on lines (either side of the diff), suggested changes, file comments, pull request comments and "this file looks good" marks are shown as `Draft` threads and kept at once in the pull request's drafts file, so a new window finds them again. A draft can be edited or deleted before it is sent. Each draft keeps the head it was written or last edited at. A drafts file that can't be read is moved aside as `pr-<number>.corrupt-<time>.json`, never written over, and the owner is told where.
 
-Reached by: the comment controller's comment box, `Luca Walk: Suggest a change`, `Comment on this file`, `Comment on the pull request` and `This file looks good`.
+Reached by: the comment controller's comment box, `Luca Walk: Suggest a change`, `Comment on this file`, `Comment on the pull request`, `This file looks good` and `This stop looks good`.
 
 Tests:
 
 - `packages/walk/src/draft-feedback.test.ts`
+- `packages/walk/src/stop-actions.test.ts`
 
 ## Sending one review
 

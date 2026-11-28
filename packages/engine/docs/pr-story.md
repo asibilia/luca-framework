@@ -40,7 +40,7 @@ if (read.status === 'invalid') {
 }
 ```
 
-`STORY_SCHEMA_VERSION` (now 1) goes up whenever a reader of the old shape could misread the new one. Beyond the shape, the schema checks what a reader relies on: ids are unique, the walk starts in the map's entry file, the loose ends are the last stop, no changed file is left out, "how we got here" points backwards, and every count matches its list. `skills/luca-pr-prep/references/story-format.md` lists every field in plain words.
+`STORY_SCHEMA_VERSION` (now 1) goes up whenever a reader of the old shape could misread the new one. Optional additions — `map.groups` with per-stop `group_id`, `map.files[].noise`, and `summary.feedback_wanted.stop_id` — stay on version 1 because an older reader drops them safely. Beyond the shape, the schema checks what a reader relies on: ids are unique, the walk starts in the map's entry file, the loose ends are the last stop, no changed file is left out, "how we got here" points backwards, every count matches its list, groups match the walk stops in first-stop order (never on the loose ends), `feedback_wanted.stop_id` names a stop, and noise files are only read in the loose ends. `skills/luca-pr-prep/references/story-format.md` lists every field in plain words.
 
 There are no grades in a story. Blast radius is a count with the list behind it. Conventions and cleanliness are **flags**: absent when fine, and when something is off they name the rule and the line.
 

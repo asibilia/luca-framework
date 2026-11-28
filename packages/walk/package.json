@@ -23,6 +23,10 @@
         "test": "bun test"
     },
     "contributes": {
+        "configurationDefaults": {
+            "diffEditor.renderSideBySide": false,
+            "diffEditor.hideUnchangedRegions.enabled": false
+        },
         "commands": [
             { "command": "lucaWalk.openPullRequest", "title": "Open pull request", "category": "Luca Walk" },
             { "command": "lucaWalk.openFromList", "title": "Open a review-ready pull request", "category": "Luca Walk" },
@@ -38,6 +42,7 @@
             { "command": "lucaWalk.commentOnFile", "title": "Comment on this file", "category": "Luca Walk" },
             { "command": "lucaWalk.commentOnPullRequest", "title": "Comment on the pull request", "category": "Luca Walk" },
             { "command": "lucaWalk.toggleLooksGood", "title": "This file looks good", "category": "Luca Walk" },
+            { "command": "lucaWalk.markStopLooksGood", "title": "This stop looks good", "category": "Luca Walk", "icon": "$(check)" },
             { "command": "lucaWalk.sendReview", "title": "Send the review", "category": "Luca Walk" },
             { "command": "lucaWalk.writeStory", "title": "Write the story", "category": "Luca Walk" },
             { "command": "lucaWalk.reloadStory", "title": "Reload the story", "category": "Luca Walk" },
@@ -49,20 +54,18 @@
         "viewsContainers": {
             "activitybar": [
                 { "id": "lucaWalk", "title": "Luca Walk", "icon": "media/walk.svg" }
-            ],
-            "secondarySidebar": [
-                { "id": "lucaWalkContext", "title": "Luca Walk", "icon": "media/walk.svg" }
             ]
         },
         "views": {
             "lucaWalk": [
-                { "id": "lucaWalk.stops", "name": "Stops" }
-            ],
-            "lucaWalkContext": [
+                { "id": "lucaWalk.stops", "name": "Stops" },
                 { "type": "webview", "id": "lucaWalk.context", "name": "Context" }
             ]
         },
         "menus": {
+            "view/item/context": [
+                { "command": "lucaWalk.markStopLooksGood", "group": "inline", "when": "view == lucaWalk.stops && viewItem == stop" }
+            ],
             "commandPalette": [
                 { "command": "lucaWalk.saveDraft", "when": "false" },
                 { "command": "lucaWalk.editDraft", "when": "false" },

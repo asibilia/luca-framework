@@ -43,6 +43,13 @@ export type FakeThread = {
 
 export type FakeBadge = { text: string; tooltip: string }
 
+export type FakeStatusAction = {
+    id: string
+    text: string
+    tooltip: string
+    command: string
+}
+
 export type FakeHost = {
     /** The window's workspace folder; the test sets it. */
     workspace_folder: string | null
@@ -56,6 +63,8 @@ export type FakeHost = {
     picks: { label: string; description: string }[][]
     /** The open webview panels by id (`summary`, `map`). */
     panels: Record<string, FakePanel>
+    /** Every `refreshPanel` call that hit an open panel, in order. */
+    refreshed: { id: string; html: string }[]
     /** The Context view's last HTML. */
     context_html: string
     /** Every HTML the app gave any webview, panel or view, in order. */
@@ -71,6 +80,8 @@ export type FakeHost = {
     confirms: string[]
     /** The status bar badge shown now, or null. */
     badge: FakeBadge | null
+    /** The status bar quick actions shown now. */
+    status_actions: FakeStatusAction[]
     /** What the app last put on the clipboard. */
     clipboard: string
 
@@ -88,6 +99,7 @@ export type FakeHost = {
         title: string
         html: string
     }) => Promise<void>
+    refreshPanel: (panel: { id: string; html: string }) => Promise<void>
     showContext: (view: { html: string }) => Promise<void>
     showStops: (view: { items: FakeStopItem[] }) => Promise<void>
     openDiff: (diff: FakeDiff) => Promise<void>
@@ -99,6 +111,7 @@ export type FakeHost = {
     /** A modal question: yes when the next answer is `confirm_label`. */
     confirm: (ask: { text: string; confirm_label: string }) => Promise<boolean>
     showBadge: (badge: FakeBadge | null) => Promise<void>
+    showStatusActions: (actions: { items: FakeStatusAction[] }) => Promise<void>
     copyText: (copy: { text: string }) => Promise<void>
 }
 
@@ -125,6 +138,7 @@ export const createFakeHost = ({
         prompts: [],
         picks: [],
         panels: {},
+        refreshed: [],
         context_html: '',
         all_html: [],
         stops: [],
@@ -136,6 +150,7 @@ export const createFakeHost = ({
         opened_urls: [],
         confirms: [],
         badge: null,
+        status_actions: [],
         clipboard: '',
 
         workspaceFolder: async () => host.workspace_folder,
@@ -157,6 +172,13 @@ export const createFakeHost = ({
         },
         showPanel: async ({ id, title, html }) => {
             host.panels[id] = { title, html }
+            host.all_html.push(html)
+        },
+        refreshPanel: async ({ id, html }) => {
+            const open = host.panels[id]
+            if (open === undefined) return
+            host.refreshed.push({ id, html })
+            open.html = html
             host.all_html.push(html)
         },
         showContext: async ({ html }) => {
@@ -190,6 +212,9 @@ export const createFakeHost = ({
         },
         showBadge: async (badge) => {
             host.badge = badge === null ? null : { ...badge }
+        },
+        showStatusActions: async ({ items }) => {
+            host.status_actions = items.map((item) => ({ ...item }))
         },
         copyText: async ({ text }) => {
             host.clipboard = text

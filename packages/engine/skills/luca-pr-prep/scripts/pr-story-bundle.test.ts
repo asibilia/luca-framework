@@ -1,3 +1,7 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, test } from 'bun:test'
 
 import {
@@ -6,6 +10,8 @@ import {
     sourceHash,
 } from '../../../scripts/build-pr-story'
 import { EXAMPLE_FILE, exampleText } from '../../../scripts/write-story-example'
+import { groupedStory } from '../../../src/story/testing/grouped-story'
+import { story } from '../../../src/story/testing/story-fixtures'
 
 /**
  * The files the `/luca-pr-prep` skill ships that are made from the
@@ -52,5 +58,36 @@ describe("the luca-pr-prep skill's shipped files", () => {
         const checked = await helper(['check', broken])
         expect(checked.code).toBe(1)
         expect(checked.text).toContain('is not a valid story')
+    })
+
+    test('the rebuilt helper checks the new story fields and the example carries noise and stop_id', async () => {
+        const example = JSON.parse(await Bun.file(EXAMPLE_FILE).text())
+        expect(example.summary.feedback_wanted.stop_id).toBeNull()
+        for (const file of example.map.files) {
+            expect(file.noise).toBeNull()
+        }
+
+        const dir = await mkdtemp(join(tmpdir(), 'pr-story-bundle-'))
+        try {
+            const grouped_file = join(dir, 'grouped.json')
+            await Bun.write(grouped_file, JSON.stringify(groupedStory()))
+            const ok = await helper(['check', grouped_file])
+            expect(ok.code).toBe(0)
+            expect(ok.text).toContain(
+                'Valid story: 24 stops, schema_version 1.'
+            )
+
+            const bad = story()
+            bad.summary.feedback_wanted.stop_id = 's9'
+            const bad_file = join(dir, 'bad-stop-id.json')
+            await Bun.write(bad_file, JSON.stringify(bad))
+            const refused = await helper(['check', bad_file])
+            expect(refused.code).toBe(1)
+            expect(refused.text).toContain(
+                'feedback_wanted.stop_id "s9" is not a stop'
+            )
+        } finally {
+            await rm(dir, { recursive: true, force: true })
+        }
     })
 })
