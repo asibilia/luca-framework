@@ -2,9 +2,9 @@ import type { DraftComment } from './drafts-file'
 import type { GitHubThread } from './github-conversation'
 import type { LineCounts } from './load-pull-request'
 import {
+    countText,
     formatNumber,
     linkLine,
-    plural,
     stopFilesOf,
     type MapModel,
 } from './map-model'
@@ -72,7 +72,7 @@ const renderBox = ({
     const metrics: string[] = []
     if (line_counts !== null && lines > 0) {
         metrics.push(
-            `<span class="metric">+${formatNumber({ value: lines })} ${plural({ count: lines, one: 'line', many: 'lines' })}</span>`
+            `<span class="metric">+${countText({ count: lines, one: 'line', many: 'lines' })}</span>`
         )
     }
     if (max_blast > 0) {
@@ -85,17 +85,17 @@ const renderBox = ({
     }
     if (flag_count > 0) {
         metrics.push(
-            `<span class="metric metric-flag">${formatNumber({ value: flag_count })} ${plural({ count: flag_count, one: 'flag', many: 'flags' })}</span>`
+            `<span class="metric metric-flag">${countText({ count: flag_count, one: 'flag', many: 'flags' })}</span>`
         )
     }
     if (draft_count > 0) {
         metrics.push(
-            `<span class="metric">${formatNumber({ value: draft_count })} ${plural({ count: draft_count, one: 'draft', many: 'drafts' })}</span>`
+            `<span class="metric">${countText({ count: draft_count, one: 'draft', many: 'drafts' })}</span>`
         )
     }
     if (thread_count > 0) {
         metrics.push(
-            `<span class="metric">${formatNumber({ value: thread_count })} ${plural({ count: thread_count, one: 'thread', many: 'threads' })}</span>`
+            `<span class="metric">${countText({ count: thread_count, one: 'thread', many: 'threads' })}</span>`
         )
     }
 
@@ -106,7 +106,7 @@ const renderBox = ({
 
     const subtitle =
         stop.kind === 'loose_ends'
-            ? `${formatNumber({ value: files.length })} ${plural({ count: files.length, one: 'file', many: 'files' })}`
+            ? countText({ count: files.length, one: 'file', many: 'files' })
             : (stop.path ?? '')
 
     let loose_html = ''
@@ -141,12 +141,17 @@ const renderBox = ({
                               (line_counts[path]?.removed ?? 0),
                           0
                       )
+            const files_text = countText({
+                count: noise_files.length,
+                one: 'file',
+                many: 'files',
+            })
             const summary_text =
                 line_counts === null
-                    ? `${formatNumber({ value: noise_files.length })} ${plural({ count: noise_files.length, one: 'file', many: 'files' })}`
-                    : `${formatNumber({ value: noise_files.length })} ${plural({ count: noise_files.length, one: 'file', many: 'files' })}, ${formatNumber({ value: noise_lines })} ${plural({ count: noise_lines, one: 'line', many: 'lines' })}`
+                    ? files_text
+                    : `${files_text}, ${countText({ count: noise_lines, one: 'line', many: 'lines' })}`
             noise_list = [
-                '<details class="noise-fold">',
+                `<details class="noise-fold" data-fold="noise-${escapeHtml({ text: stop.id })}">`,
                 `<summary>${escapeHtml({ text: summary_text })}</summary>`,
                 '<ul>',
                 ...noise_files.map(
@@ -303,8 +308,8 @@ export const mapOffCanvasHtml = ({ model }: { model: MapModel }): string => {
     const off = model.resolved_links.filter((resolved) => !resolved.on_canvas)
     if (off.length === 0) return ''
     return [
-        '<details class="off-canvas">',
-        `<summary>Off the canvas: ${formatNumber({ value: off.length })} ${plural({ count: off.length, one: 'link', many: 'links' })}</summary>`,
+        '<details class="off-canvas" data-fold="off-canvas">',
+        `<summary>Off the canvas: ${countText({ count: off.length, one: 'link', many: 'links' })}</summary>`,
         '<ul>',
         ...off.map((resolved) => {
             const extra = resolved.outside

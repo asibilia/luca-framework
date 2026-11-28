@@ -1,6 +1,6 @@
 import type { DraftComment } from './drafts-file'
 import type { GitHubThread } from './github-conversation'
-import { formatNumber, plural, type MapModel } from './map-model'
+import { countText, formatNumber, type MapModel } from './map-model'
 import { escapeHtml } from './webview-html'
 
 import type { Story } from '../../engine/src/story/story-schema'
@@ -70,13 +70,13 @@ export const mapHeaderHtml = ({
     if (to_walk_stops.length === 0) {
         status_line = 'Nothing new to walk'
     } else if (all_walked) {
-        status_line = `All ${formatNumber({ value: to_walk_stops.length })} ${plural({ count: to_walk_stops.length, one: 'stop', many: 'stops' })} walked`
+        status_line = `All ${countText({ count: to_walk_stops.length, one: 'stop', many: 'stops' })} walked`
     } else if (effective_current_id === null && done_to_walk === 0) {
         const mins = minutesFor({ stops: to_walk_stops })
-        status_line = `Not started: ${formatNumber({ value: to_walk_stops.length })} ${plural({ count: to_walk_stops.length, one: 'stop', many: 'stops' })}, about ${formatNumber({ value: mins })} ${plural({ count: mins, one: 'minute', many: 'minutes' })}`
+        status_line = `Not started: ${countText({ count: to_walk_stops.length, one: 'stop', many: 'stops' })}, about ${countText({ count: mins, one: 'minute', many: 'minutes' })}`
     } else {
         const mins = minutesFor({ stops: left_stops })
-        const left_text = `${formatNumber({ value: left_stops.length })} ${plural({ count: left_stops.length, one: 'stop', many: 'stops' })} and about ${formatNumber({ value: mins })} ${plural({ count: mins, one: 'minute', many: 'minutes' })} left`
+        const left_text = `${countText({ count: left_stops.length, one: 'stop', many: 'stops' })} and about ${countText({ count: mins, one: 'minute', many: 'minutes' })} left`
         status_line =
             current_index >= 0
                 ? `Stop ${formatNumber({ value: current_index + 1 })} of ${formatNumber({ value: story.stops.length })} · ${left_text}`
@@ -88,21 +88,29 @@ export const mapHeaderHtml = ({
         map_paths.has(path)
     ).length
     const progress_parts = [
-        `${formatNumber({ value: done_to_walk })} of ${formatNumber({ value: to_walk_stops.length })} ${plural({ count: to_walk_stops.length, one: 'stop', many: 'stops' })} done`,
+        `${formatNumber({ value: done_to_walk })} of ${countText({ count: to_walk_stops.length, one: 'stop', many: 'stops' })} done`,
     ]
     if (approved_count > 0) {
         progress_parts.push(
-            `${formatNumber({ value: approved_count })} ${plural({ count: approved_count, one: 'file looks good', many: 'files look good' })}`
+            countText({
+                count: approved_count,
+                one: 'file looks good',
+                many: 'files look good',
+            })
         )
     }
     if (drafts.length > 0) {
         progress_parts.push(
-            `${formatNumber({ value: drafts.length })} ${plural({ count: drafts.length, one: 'draft', many: 'drafts' })}`
+            countText({ count: drafts.length, one: 'draft', many: 'drafts' })
         )
     }
     if (github_threads.length > 0) {
         progress_parts.push(
-            `${formatNumber({ value: github_threads.length })} ${plural({ count: github_threads.length, one: 'thread', many: 'threads' })}`
+            countText({
+                count: github_threads.length,
+                one: 'thread',
+                many: 'threads',
+            })
         )
     }
 

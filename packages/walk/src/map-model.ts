@@ -71,6 +71,24 @@ export const plural = ({
 }): string => (count === 1 ? one : many)
 
 /**
+ * A count and its word, with en-US grouping and the singular for 1.
+ *
+ * @example
+ * countText({ count: 6153, one: 'line', many: 'lines' }) // '6,153 lines'
+ * countText({ count: 1, one: 'file looks good', many: 'files look good' }) // '1 file looks good'
+ */
+export const countText = ({
+    count,
+    one,
+    many,
+}: {
+    count: number
+    one: string
+    many: string
+}): string =>
+    `${formatNumber({ value: count })} ${plural({ count, one, many })}`
+
+/**
  * A link as one line.
  *
  * @example
@@ -129,24 +147,6 @@ const computeStopStates = ({
         }
     }
     return states
-}
-
-/** Computes each stop's visual state (`current`, `done`, `unchanged`, `left`). */
-export const stopStatesOf = ({
-    story,
-    state,
-}: {
-    story: Story
-    state: MapWalkState
-}): Map<string, MapStopState> => {
-    const to_walk = new Set(state.to_walk_stop_ids)
-    const has_to_walk = story.stops.some((stop) => to_walk.has(stop.id))
-    return computeStopStates({
-        story,
-        state,
-        to_walk,
-        no_current: isAllWalked({ state }) || !has_to_walk,
-    })
 }
 
 /** Precomputes walk progress, line counts, states, noise kinds, and link endpoints for `story`. */

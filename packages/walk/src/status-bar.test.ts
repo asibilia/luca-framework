@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
+import { statusBarActions } from './status-bar'
 import { createFakeHost } from './testing/fake-host'
 import { createPretendGitHub } from './testing/pretend-github'
 import { testGit } from './testing/test-git'
@@ -266,5 +267,19 @@ describe('status bar quick actions (#803)', () => {
             tooltip: 'Back to the walk',
             command: 'lucaWalk.backToWalk',
         })
+    })
+
+    test('on a second visit with 3 of 24 stops to walk, all done, progress counts the stops to walk', () => {
+        const stop_ids = groupedStory().stops.map(({ id }) => id)
+        const [progress] = statusBarActions({
+            state: {
+                current_stop_id: 's24',
+                done_stop_ids: ['s3', 's9', 's24'],
+                to_walk_stop_ids: ['s3', 's9', 's24'],
+                stop_ids,
+            },
+            has_story: true,
+        })
+        expect(progress?.text).toBe('All 3 stops walked')
     })
 })

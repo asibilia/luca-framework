@@ -1,3 +1,4 @@
+import { isAllWalked, plural } from './map-model'
 import type { WalkHost, WalkStatusAction } from './walk-host'
 import type { WalkState } from './walk-place'
 import type { WalkSession } from './walk-session'
@@ -8,22 +9,26 @@ import type { WalkSession } from './walk-session'
  * no session is active.
  */
 
-const pluralStop = ({ count }: { count: number }): string =>
-    count === 1 ? 'stop' : 'stops'
+const stopsText = ({ count }: { count: number }): string =>
+    `${count} ${plural({ count, one: 'stop', many: 'stops' })}`
 
+/**
+ * The progress item's text. `All M stops walked` counts the stops to
+ * walk, as the Map header does; `Stop N of M` and `Walk: M stops` count
+ * every stop.
+ */
 const progressText = ({ state }: { state: WalkState }): string => {
     const total = state.stop_ids.length
     if (state.to_walk_stop_ids.length === 0) return 'Nothing new to walk'
-    const done = new Set(state.done_stop_ids)
-    if (state.to_walk_stop_ids.every((id) => done.has(id))) {
-        return `All ${total} ${pluralStop({ count: total })} walked`
+    if (isAllWalked({ state })) {
+        return `All ${stopsText({ count: state.to_walk_stop_ids.length })} walked`
     }
     const at =
         state.current_stop_id === null
             ? -1
             : state.stop_ids.indexOf(state.current_stop_id)
     if (at !== -1) return `Stop ${at + 1} of ${total}`
-    return `Walk: ${total} ${pluralStop({ count: total })}`
+    return `Walk: ${stopsText({ count: total })}`
 }
 
 /** Builds the 4 status bar quick actions for an active walk or browse session. */
