@@ -2,6 +2,11 @@
  * Inline page script for the flow Map panel (#776, section 4). Runs under
  * the same nonce after `webview-html.ts`'s shared script and reuses its
  * `vscode` handle without calling `acquireVsCodeApi()` again.
+ *
+ * A redraw replaces the whole page, so the script keeps what the owner
+ * set in `vscode.setState`: the picked stop, the scroll position, and
+ * which `<details>` folds (by `data-fold`) are open. It re-measures the
+ * lines whenever the canvas changes size (a fold opening, a resize).
  */
 
 export const MAP_SCRIPT = `
@@ -9,6 +14,15 @@ export const MAP_SCRIPT = `
     const boxes = () => Array.from(document.querySelectorAll('[data-stop-id][data-state]'))
     const panels = () => Array.from(document.querySelectorAll('[data-panel-for]'))
     const edges = () => Array.from(document.querySelectorAll('.link-edge[data-stop-ids]'))
+
+    const readState = () => {
+        const saved = typeof vscode.getState === 'function' ? vscode.getState() : null
+        return saved && typeof saved === 'object' ? saved : {}
+    }
+    const saveState = (part) => {
+        if (typeof vscode.setState !== 'function') return
+        vscode.setState({ ...readState(), ...part })
+    }
 
     const selectStop = (stopId) => {
         if (!stopId) return
@@ -22,9 +36,7 @@ export const MAP_SCRIPT = `
             const ids = (edge.getAttribute('data-stop-ids') || '').split(' ').filter(Boolean)
             edge.classList.toggle('lit', ids.includes(stopId))
         }
-        if (typeof vscode.setState === 'function') {
-            vscode.setState({ selected_stop_id: stopId })
-        }
+        saveState({ selected_stop_id: stopId })
     }
 
     const layoutLines = () => {
@@ -97,11 +109,46 @@ export const MAP_SCRIPT = `
         }
     })
 
-    const saved = typeof vscode.getState === 'function' ? vscode.getState() : null
-    if (saved && typeof saved.selected_stop_id === 'string') {
+    document.addEventListener('toggle', (event) => {
+        const fold = event.target instanceof Element ? event.target.closest('details[data-fold]') : null
+        if (!fold) return
+        const open = Array.from(document.querySelectorAll('details[data-fold]'))
+            .filter((details) => details.open)
+            .map((details) => details.getAttribute('data-fold'))
+        saveState({ open_details: open })
+    }, true)
+
+    let scrollQueued = false
+    window.addEventListener('scroll', () => {
+        if (scrollQueued) return
+        scrollQueued = true
+        requestAnimationFrame(() => {
+            scrollQueued = false
+            saveState({ scroll_x: window.scrollX, scroll_y: window.scrollY })
+        })
+    })
+
+    const saved = readState()
+    if (Array.isArray(saved.open_details)) {
+        for (const details of document.querySelectorAll('details[data-fold]')) {
+            if (saved.open_details.includes(details.getAttribute('data-fold'))) {
+                details.open = true
+            }
+        }
+    }
+    if (typeof saved.selected_stop_id === 'string') {
         selectStop(saved.selected_stop_id)
     }
-    requestAnimationFrame(layoutLines)
+    requestAnimationFrame(() => {
+        layoutLines()
+        if (typeof saved.scroll_x === 'number' && typeof saved.scroll_y === 'number') {
+            window.scrollTo(saved.scroll_x, saved.scroll_y)
+        }
+    })
+    const stage = document.querySelector('.canvas-stage')
+    if (stage && typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => layoutLines()).observe(stage)
+    }
     window.addEventListener('resize', layoutLines)
 })()
 `

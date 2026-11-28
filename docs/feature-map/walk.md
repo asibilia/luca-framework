@@ -58,7 +58,7 @@ Tests:
 
 ## The walk
 
-`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`, with an inline `This stop looks good` button); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file. While a walk or plain-diff browse is active, the status bar shows live progress (`Walk: M stops`, `Stop N of M`, `All M stops walked`, or `Nothing new to walk`) plus quick actions for `Next stop`, `This stop looks good`, and `Send the review`, and hides them when no session is active. A stop whose path leaves the checkout (a `..` part, an absolute path, or a symlink out) is refused, never opened.
+`Start the walk` goes to the first stop and lists every stop in the Stops view (`current`, `done`, with an inline `This stop looks good` button); each stop opens the whole file in VS Code's diff editor (the base side from the `luca-walk-base` documents) at its first change. Next and Back move through stops and through a stop's changes, `Back to the walk` returns to the change the owner was last on, and the place in the walk is kept in the pull request's drafts file. While a walk or plain-diff browse is active, the status bar shows live progress (`Walk: M stops`, `Stop N of M`, `All M stops walked` where M counts the stops to walk, or `Nothing new to walk`) plus quick actions for `Next stop`, `This stop looks good`, and `Send the review`, and hides them when no session is active. A stop whose path leaves the checkout (a `..` part, an absolute path, or a symlink out) is refused, never opened.
 
 Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next stop`, `Previous stop`, `Next change in this file`, `Previous change in this file`, `Back to the walk`, the Stops view, and the status bar quick actions.
 
@@ -79,7 +79,7 @@ Tests:
 
 ## The map
 
-`Show the map` opens the Map panel as a flow: a "you are here" header (stops walked, stops and minutes left, progress counts, and the pinned "where to look" callout), lanes per story group (or `Changed files` when ungrouped) plus `Loose ends`, stop boxes with line counts from `git diff --numstat`, size bars, blast radius, untested/flag/draft/thread counts, folded noise files, a solid/dotted walk line, lit links with off-canvas links in a closed details list, and a per-stop side panel with `Reached from`, `Connections`, changes, and stop action buttons. While the map is open, it redraws in place via `refreshPanel` on walk moves, "looks good" changes, draft changes, and pull request loads.
+`Show the map` opens the Map panel as a flow: a "you are here" header (stops walked, stops and minutes left, progress counts, and the pinned "where to look" callout), lanes per story group (or `Changed files` when ungrouped) plus `Loose ends`, stop boxes with line counts from `git diff --numstat`, size bars, blast radius, untested/flag/draft/thread counts, folded noise files, a solid/dotted walk line, lit links with off-canvas links in a closed details list, and a per-stop side panel with `Reached from`, `Connections`, changes, and stop action buttons. While the map is open, it redraws in place via `refreshPanel` on walk moves, "looks good" changes, draft changes, and pull request loads. A redraw keeps the picked stop, the scroll position and the open folds (`vscode.setState`), and the lines are re-measured whenever the canvas changes size.
 
 Reached by: `Luca Walk: Show the map`, and the Summary panel's `Show the map` button.
 
@@ -88,6 +88,7 @@ Tests:
 - `packages/walk/src/map.test.ts`
 - `packages/walk/src/map-flow.test.ts`
 - `packages/walk/src/map-redraw.test.ts`
+- `packages/walk/src/map-state.test.ts`
 
 ## Review threads and /luca-pr-address's replies
 

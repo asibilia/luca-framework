@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { loadPullRequest } from './load-pull-request'
+import { loadPullRequest, parseNumstat } from './load-pull-request'
 import { createFakeHost } from './testing/fake-host'
 import { htmlText } from './testing/html-text'
 import { createPretendGitHub } from './testing/pretend-github'
@@ -292,5 +292,97 @@ describe('the flow map redraws and line counts (#800)', () => {
         })
 
         expect(shown_failed.line_counts).toBeNull()
+    })
+
+    test('parseNumstat keys a rename by its new path, and skips the old one', () => {
+        expect(
+            parseNumstat({
+                output: '1\t0\tkeep.ts\0' + '2\t1\t\0src/old.ts\0src/new.ts\0',
+            })
+        ).toEqual({
+            'keep.ts': { added: 1, removed: 0 },
+            'src/new.ts': { added: 2, removed: 1 },
+        })
+    })
+
+    test('a file renamed with git mv counts its lines under the new path', async () => {
+        const walk_dir = join(dir, 'walk')
+        const stories_dir = join(dir, 'stories')
+        const checkout = join(
+            walk_dir,
+            'checkouts',
+            'octocat',
+            'hello-world',
+            'pr-12'
+        )
+        const six = 'a\nb\nc\nd\ne\nf\n'
+        const { base_sha } = await makeCheckoutRepo({
+            folder: checkout,
+            base: { 'src/old.ts': six, 'src/keep.ts': 'keep\n' },
+            head: { 'src/keep.ts': 'keep\nmore\n' },
+        })
+        await testGit({
+            args: ['mv', 'src/old.ts', 'src/new.ts'],
+            cwd: checkout,
+        })
+        await writeFile(join(checkout, 'src/new.ts'), `${six}g\n`)
+        await testGit({ args: ['add', '-A'], cwd: checkout })
+        await testGit({
+            args: ['commit', '-q', '--amend', '--no-edit'],
+            cwd: checkout,
+        })
+        const head_sha = (
+            await testGit({ args: ['rev-parse', 'HEAD'], cwd: checkout })
+        ).stdout.trim()
+        await savePrivateStory({
+            stories_dir,
+            story: storyOf({
+                repo: REPO,
+                base_sha,
+                head_sha,
+                stops: [
+                    {
+                        id: 's1',
+                        title: 'Renamed',
+                        changes: [{ id: 'c1', path: 'src/new.ts', line: 7 }],
+                    },
+                    {
+                        id: 's2',
+                        title: 'Kept',
+                        changes: [{ id: 'c2', path: 'src/keep.ts', line: 2 }],
+                    },
+                ],
+            }),
+        })
+        const github = createPretendGitHub({
+            login: 'octocat',
+            pulls: [
+                {
+                    repo: REPO,
+                    number: 12,
+                    title: 'Rename',
+                    author: 'octocat',
+                    base_ref: 'main',
+                    head_sha,
+                    state: 'OPEN',
+                    labels: [],
+                    comments: [],
+                },
+            ],
+        })
+        const shown = await loadPullRequest({
+            host: createFakeHost({ workspace_folder: checkout }),
+            gh: github.gh,
+            git: testGit,
+            walk_dir,
+            stories_dir,
+            remote_url: () => join(dir, 'no-origin'),
+            ref: { repo: REPO, number: 12 },
+        })
+
+        expect(shown.line_counts).toEqual({
+            'src/keep.ts': { added: 1, removed: 0 },
+            'src/new.ts': { added: 1, removed: 0 },
+        })
     })
 })
