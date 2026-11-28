@@ -60,6 +60,7 @@ The field guide below was written for a writer with a shell. Where this part and
 - You can't open the example file or run the helper's \`check\` command the guide points at. Skip those lines. The engine checks your story, and sends every problem back to you.
 - \`summary.feedback_wanted.source\` is \`author\` when its text comes from your prompt's \`What the run was unsure about\` section, and \`guessed\` otherwise. This rule replaces the guide's.
 - A serves ref points only at your prompt's \`The run's asks\`. Its \`label\` is exactly one of two forms, lower case, with nothing before or after: \`spec #12\` for the run's spec, or \`ticket #14, AC2\` for one acceptance criterion of a ticket the run built (the numbers are the issue's and the criterion's). Its \`url\` is that issue's URL, exactly as your prompt gives it. For a ticket ref, \`quote\` is that criterion's exact text; for a spec ref, it is a sentence copied from the spec's body, or null. A change that serves nothing the spec or tickets asked for has \`found: false\`, no refs, and a note that says so.
+- Fill \`map.groups\`, each stop's \`group_id\`, each map file's \`noise\`, and \`summary.feedback_wanted.stop_id\` as \`story-format.md\` says.
 
 Your result (structured output): \`summary\` (without \`counts\`), \`map\` and \`stops\`, as the guide describes them.`
 }

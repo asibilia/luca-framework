@@ -87,6 +87,21 @@ Something that is off, named so it can be checked. Never a grade or a score.
 | `path`, `line` | Where it is broken. `line` is *nullable* |
 | `message` | What is off, in one sentence |
 
+## Groups, noise, and the pinned ask
+
+- **Groups:**
+  - Add them when the walk has 4 or more walk stops. Below that, leave `map.groups` out.
+  - Use 2 to 6 groups, named by what the code does, not by folder.
+  - The loose ends are never in a group.
+- **Noise:**
+  - `lockfile`: a package manager's lock file.
+  - `generated`: says it's generated (a header, or `linguist-generated` in `.gitattributes`), or a script in the PR wrote it.
+  - `fixture`: data that only tests read.
+  - `sample_data`: any other data file (JSON, CSV, …) that no code in the PR's walk reads.
+
+  Code is never noise.
+- **Pinned ask:** set `stop_id` when the ask is about one stop. Otherwise set `null`.
+
 ## What the check refuses
 
 - A missing key (a key written in camelCase counts as missing), an empty text, a short commit id.
