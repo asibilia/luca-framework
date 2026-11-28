@@ -145,6 +145,8 @@ export const StoryStopSchema = z.object({
     /** Unique in the story, such as `s1`. */
     id: z.string().min(1),
     kind: z.enum(['walk', 'loose_ends']),
+    /** The `map.groups` entry this stop belongs to; null or missing when ungrouped or loose ends. */
+    group_id: z.string().min(1).nullable().optional(),
     /** The file this stop visits; null for the loose ends. */
     path: RepoPathSchema.nullable(),
     title: WordsSchema,
@@ -153,6 +155,15 @@ export const StoryStopSchema = z.object({
     changes: z.array(StoryChangeSchema).min(1),
 })
 export type StoryStop = z.infer<typeof StoryStopSchema>
+
+/** One noise category for a file that should fold away on the map. */
+export const StoryNoiseKindSchema = z.enum([
+    'lockfile',
+    'generated',
+    'sample_data',
+    'fixture',
+])
+export type StoryNoiseKind = z.infer<typeof StoryNoiseKindSchema>
 
 /** One file the PR touches, on the map. */
 export const StoryMapFileSchema = z.object({
@@ -164,7 +175,17 @@ export const StoryMapFileSchema = z.object({
     role: WordsSchema,
     /** False for a file outside the call chain: it is read in the loose ends. */
     in_walk: z.boolean(),
+    /** Optional noise kind for files that fold away in the loose ends. */
+    noise: StoryNoiseKindSchema.nullable().optional(),
 })
+
+/** One group of walk stops on the map. */
+export const StoryMapGroupSchema = z.object({
+    id: z.string().min(1),
+    title: WordsSchema,
+    note: WordsSchema.nullable(),
+})
+export type StoryMapGroup = z.infer<typeof StoryMapGroupSchema>
 
 /** One link between two files on the map. Either end may be a file the PR does not change. */
 export const StoryMapLinkSchema = z.object({
@@ -178,6 +199,7 @@ export const StoryMapLinkSchema = z.object({
 export const StoryMapSchema = z.object({
     /** The file the walk starts in. */
     entry_path: RepoPathSchema,
+    groups: z.array(StoryMapGroupSchema).min(1).optional(),
     files: z.array(StoryMapFileSchema).min(1),
     links: z.array(StoryMapLinkSchema),
     /** New modules, moved boundaries, things removed. */
@@ -204,6 +226,8 @@ export const StorySummarySchema = z.object({
         text: WordsSchema,
         /** `author`: the PR says so. `guessed`: what the story's writer was least sure about. */
         source: z.enum(['author', 'guessed']),
+        /** Optional stop this ask is pinned to; null or missing when not tied to one stop. */
+        stop_id: z.string().min(1).nullable().optional(),
     }),
     counts: z.object({
         files_added: z.number().int().nonnegative(),

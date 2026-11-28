@@ -2,7 +2,7 @@
 
 A story is one JSON object. Every key is `snake_case`. `story-example.json`, next to this file, is a whole valid story. The schema itself is `packages/engine/src/story/` in `asibilia/luca-framework`; the helper's `check` command runs it. This is version 1 (`schema_version: 1`).
 
-A field marked *nullable* takes `null`, never a missing key. Every text field must hold real words: an empty string fails the check.
+A field marked *nullable* takes `null`, never a missing key. A field marked *optional* may be left out. Every text field must hold real words: an empty string fails the check.
 
 ## Top level
 
@@ -25,7 +25,7 @@ A field marked *nullable* takes `null`, never a missing key. Every text field mu
 | `kind` | `enhancement`, `fix`, `refactor`, `docs`, `test`, `chore`, or `mixed` |
 | `what_changed` | A few plain sentences |
 | `before`, `after` | How it behaved, and how it behaves now |
-| `feedback_wanted` | `{ text, source }`. `source` is `author` when the PR itself says what to look at, `guessed` when it is what you were least sure about |
+| `feedback_wanted` | `{ text, source, stop_id }`. `source` is `author` when the PR itself says what to look at, `guessed` when it is what you were least sure about. `stop_id` (*optional*, *nullable*) is the stop the ask is about |
 | `counts` | `files_added`, `files_changed`, `files_deleted`, `lines_added`, `lines_removed`, from `git diff --stat`. A renamed file counts as changed |
 | `review_minutes` | A rough whole number |
 | `flags` | The flags that matter most for the whole PR (a list of flags, below). Empty when nothing is off |
@@ -35,7 +35,8 @@ A field marked *nullable* takes `null`, never a missing key. Every text field mu
 | Field | What goes in it |
 | --- | --- |
 | `entry_path` | The file the walk starts in. It must be the first stop's file |
-| `files` | One per changed file: `path`, `status` (`added`, `modified`, `deleted`, `renamed`), `previous_path` (*nullable*; the old path of a rename), `role` (what the file is for, one line), `in_walk` (false when it is read in the loose ends) |
+| `groups` | *optional* (at least 1 entry when present). A list of `{ id, title, note }` (`note` *nullable*) grouping the walk stops |
+| `files` | One per changed file: `path`, `status` (`added`, `modified`, `deleted`, `renamed`), `previous_path` (*nullable*; the old path of a rename), `role` (what the file is for, one line), `in_walk` (false when it is read in the loose ends), `noise` (*optional*, *nullable*: `lockfile`, `generated`, `sample_data`, or `fixture`) |
 | `links` | How files link: `from_path`, `to_path`, `kind` (`calls`, `imports`, `reads`, `tests`, `configures`), `note` (*nullable*). Either end may be a file the PR doesn't change |
 | `architecture_note` | New modules, moved boundaries, things removed. Say "No change to the architecture." when that is so |
 
@@ -49,6 +50,7 @@ An ordered list. Each stop:
 | --- | --- |
 | `id` | Unique, such as `s1` |
 | `kind` | `walk`, or `loose_ends` for the one last stop of changes outside the call chain |
+| `group_id` | *optional*, *nullable*. The `map.groups` id this stop belongs to; `null` for the loose ends |
 | `path` | The file this stop visits. `null` for the loose ends |
 | `title` | A few words |
 | `why_here` | Why the walk comes here now |
@@ -96,3 +98,12 @@ Something that is off, named so it can be checked. Never a grade or a score.
 - `from_change_id` naming a change that comes later, or doesn't exist.
 - `end_line` before `start_line`.
 - Counts that don't match their lists, and `covered` / `found` that don't match theirs.
+- A loose-ends stop with a `group_id`.
+- A stop with a `group_id` when `map.groups` is missing.
+- A `walk` stop without a `group_id` when `map.groups` is present.
+- A stop whose `group_id` is not in `map.groups`.
+- Two groups in `map.groups` with the same `id`.
+- A group in `map.groups` that no stop names.
+- `map.groups` listed out of the order their first stops are walked.
+- `feedback_wanted.stop_id` naming a stop that doesn't exist.
+- A file marked with `noise` that is `in_walk`, is `map.entry_path`, or is changed by a `walk` stop.
