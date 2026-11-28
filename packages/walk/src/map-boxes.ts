@@ -6,8 +6,8 @@ import {
     plural,
     stopStatesOf,
     type MapStopState,
+    type MapWalkState,
 } from './map-header'
-import type { WalkState } from './walk-place'
 import { escapeHtml } from './webview-html'
 
 import type {
@@ -87,7 +87,7 @@ export const buildMapModel = ({
 }: {
     story: Story
     line_counts: LineCounts | null
-    state: WalkState
+    state: MapWalkState
 }): MapModel => {
     const stop_states = stopStatesOf({ story, state })
     const noise_by_path = new Map<string, StoryNoiseKind | null>()

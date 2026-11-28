@@ -25,11 +25,12 @@ const NO_PLACE: WalkPlace = {
 /** A stop as the place sees it: its id, its changes' ids, and whether it is to walk. */
 export type PlaceStop = { id: string; change_ids: string[]; to_walk: boolean }
 
-/** Snapshot of the walk's progress for the Map panel. */
+/** Snapshot of the walk's progress for the Map panel and status bar. */
 export type WalkState = {
     current_stop_id: string | null
     done_stop_ids: string[]
     to_walk_stop_ids: string[]
+    stop_ids: string[]
 }
 
 /**
@@ -92,13 +93,14 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
         /** The change the owner was last on in the current stop. */
         lastChangeId: (): string | null => place.last_change_id,
 
-        /** Snapshot of the current stop, done stops, and stops to walk. */
+        /** Snapshot of the current stop, done stops, stops to walk, and all stop ids. */
         state: (): WalkState => ({
             current_stop_id: place.current_stop_id,
             done_stop_ids: [...place.done_stop_ids],
             to_walk_stop_ids: stops
                 .filter(({ to_walk }) => to_walk)
                 .map(({ id }) => id),
+            stop_ids: stops.map(({ id }) => id),
         }),
 
         /**

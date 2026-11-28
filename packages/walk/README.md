@@ -14,6 +14,8 @@ The VS Code extension the owner reviews a pull request in (spec #752). It reads 
 
 4. Open it: `code --profile "Luca Walk"`.
 
+Luca Walk defaults to single-file, full-file inline diffs (`diffEditor.renderSideBySide: false` and `diffEditor.hideUnchangedRegions.enabled: false`). If your Default profile explicitly sets `diffEditor.renderSideBySide: true`, set both of those settings to `false` in the `Luca Walk` profile.
+
 Every command is under `Luca Walk:` in the command palette. There are no default key bindings: bind your own in the `Luca Walk` profile.
 
 ## Workspace Trust

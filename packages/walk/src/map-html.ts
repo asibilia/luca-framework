@@ -9,9 +9,8 @@ import {
     mapPanelsHtml,
     mapSvgHtml,
 } from './map-boxes'
-import { mapHeaderHtml } from './map-header'
+import { mapHeaderHtml, type MapWalkState } from './map-header'
 import { MAP_SCRIPT } from './map-script'
-import type { WalkState } from './walk-place'
 import { page } from './webview-html'
 
 import type { Story } from '../../engine/src/story/story-schema'
@@ -26,7 +25,7 @@ export { linkLine }
 export type MapHtmlInput = {
     story: Story
     line_counts: LineCounts | null
-    state: WalkState
+    state: MapWalkState
     approved_files: string[]
     drafts: DraftComment[]
     github_threads: GitHubThread[]

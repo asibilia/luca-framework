@@ -12,6 +12,7 @@ import type { Story } from '../../engine/src/story/story-schema'
  */
 
 export type MapStopState = 'done' | 'current' | 'left' | 'unchanged'
+export type MapWalkState = Omit<WalkState, 'stop_ids'>
 
 const NUMBER_FORMAT = new Intl.NumberFormat('en-US')
 
@@ -31,7 +32,7 @@ export const plural = ({
 }): string => (count === 1 ? one : many)
 
 /** True when at least one stop is to walk and every stop to walk is done. */
-export const isAllWalked = ({ state }: { state: WalkState }): boolean => {
+export const isAllWalked = ({ state }: { state: MapWalkState }): boolean => {
     if (state.to_walk_stop_ids.length === 0) return false
     const done = new Set(state.done_stop_ids)
     return state.to_walk_stop_ids.every((id) => done.has(id))
@@ -43,7 +44,7 @@ export const stopStatesOf = ({
     state,
 }: {
     story: Story
-    state: WalkState
+    state: MapWalkState
 }): Map<string, MapStopState> => {
     const to_walk = new Set(state.to_walk_stop_ids)
     const done = new Set(state.done_stop_ids)
@@ -76,7 +77,7 @@ export const mapHeaderHtml = ({
 }: {
     story: Story
     line_counts: LineCounts | null
-    state: WalkState
+    state: MapWalkState
     stop_lines: Map<string, number>
     approved_files: string[]
     drafts: DraftComment[]

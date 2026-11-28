@@ -22,6 +22,7 @@ import {
 import { reviewReadyItems, type ReviewReadyItem } from './review-ready-list'
 import { filesToWalk, lastReviewOf, visitNote } from './second-visit'
 import { sendReview } from './send-review'
+import { showStatusBar } from './status-bar'
 import {
     handleStopAction,
     markStopLooksGood,
@@ -157,7 +158,9 @@ export const createWalkApp = ({
     }
 
     const onMapChanged = async () => {
-        if (shown !== null) await refreshMapPanel({ host, now: shown })
+        if (shown === null) return
+        await refreshMapPanel({ host, now: shown })
+        await showStatusBar({ host, walk: shown.walk })
     }
 
     const load = async (ref: PullRequestRef) => {
@@ -352,6 +355,7 @@ export const createWalkApp = ({
         now.walk = browse
         await browse.showStops()
         await browse.backToWalk()
+        await showStatusBar({ host, walk: now.walk })
     }
 
     const showMap = (now: Shown) => showMapPanel({ host, now })
