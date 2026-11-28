@@ -1,5 +1,11 @@
 # luca-walk
 
+## 0.2.0-alpha.1
+
+### Minor Changes
+
+- e95b832: Stories gain optional map groups, noise files and a pinned ask, and the story writers fill them in; Luca Walk's Map panel becomes a flow with lanes, a "you are here" header, folded noise and per-stop side panels, and Walk adds "This stop looks good", inline diff and left-sidebar Context defaults, and status bar quick actions ([#776](https://github.com/asibilia/luca-framework/issues/776)).
+
 ## 0.2.0-alpha.0
 
 ### Minor Changes
