@@ -2,14 +2,13 @@ import type { DraftComment } from './drafts-file'
 import type { GitHubThread } from './github-conversation'
 import type { LineCounts } from './load-pull-request'
 import {
-    buildMapModel,
-    linkLine,
     mapLanesHtml,
     mapOffCanvasHtml,
     mapPanelsHtml,
     mapSvgHtml,
 } from './map-boxes'
-import { mapHeaderHtml, type MapWalkState } from './map-header'
+import { mapHeaderHtml } from './map-header'
+import { buildMapModel, linkLine, type MapWalkState } from './map-model'
 import { MAP_SCRIPT } from './map-script'
 import { page } from './webview-html'
 
@@ -20,7 +19,7 @@ import type { Story } from '../../engine/src/story/story-schema'
  * walk line, links, side panels) with mockup C's "you are here" header.
  */
 
-export { linkLine }
+export { linkLine, type MapWalkState }
 
 export type MapHtmlInput = {
     story: Story
@@ -87,9 +86,7 @@ export const mapHtml = ({
     const model = buildMapModel({ story, line_counts, state })
     const header = mapHeaderHtml({
         story,
-        line_counts,
-        state,
-        stop_lines: model.stop_lines,
+        model,
         approved_files,
         drafts,
         github_threads,

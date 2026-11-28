@@ -256,9 +256,6 @@ export const createWalkSession = async ({
         /** The story this walk goes through. */
         story,
 
-        /** The current stop's id, or null before the walk starts. */
-        currentStopId: (): string | null => currentStop()?.id ?? null,
-
         /** Snapshot of the walk's current, done, and to-walk stops. */
         state: place.state,
 

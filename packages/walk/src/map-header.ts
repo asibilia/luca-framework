@@ -1,7 +1,6 @@
 import type { DraftComment } from './drafts-file'
 import type { GitHubThread } from './github-conversation'
-import type { LineCounts } from './load-pull-request'
-import type { WalkState } from './walk-place'
+import { formatNumber, plural, type MapModel } from './map-model'
 import { escapeHtml } from './webview-html'
 
 import type { Story } from '../../engine/src/story/story-schema'
@@ -11,105 +10,42 @@ import type { Story } from '../../engine/src/story/story-schema'
  * panel (#776, section 4, from mockup C).
  */
 
-export type MapStopState = 'done' | 'current' | 'left' | 'unchanged'
-export type MapWalkState = Omit<WalkState, 'stop_ids'>
-
-const NUMBER_FORMAT = new Intl.NumberFormat('en-US')
-
-/** Formats an integer with en-US grouping (e.g. 6,153). */
-export const formatNumber = ({ value }: { value: number }): string =>
-    NUMBER_FORMAT.format(value)
-
-/** Picks the singular or plural word for `count`. */
-export const plural = ({
-    count,
-    one,
-    many,
-}: {
-    count: number
-    one: string
-    many: string
-}): string => (count === 1 ? one : many)
-
-/** True when at least one stop is to walk and every stop to walk is done. */
-export const isAllWalked = ({ state }: { state: MapWalkState }): boolean => {
-    if (state.to_walk_stop_ids.length === 0) return false
-    const done = new Set(state.done_stop_ids)
-    return state.to_walk_stop_ids.every((id) => done.has(id))
-}
-
-/** Computes each stop's visual state (`current`, `done`, `unchanged`, `left`). */
-export const stopStatesOf = ({
-    story,
-    state,
-}: {
-    story: Story
-    state: MapWalkState
-}): Map<string, MapStopState> => {
-    const to_walk = new Set(state.to_walk_stop_ids)
-    const done = new Set(state.done_stop_ids)
-    const no_current =
-        isAllWalked({ state }) || state.to_walk_stop_ids.length === 0
-    const states = new Map<string, MapStopState>()
-    for (const stop of story.stops) {
-        if (!no_current && state.current_stop_id === stop.id) {
-            states.set(stop.id, 'current')
-        } else if (done.has(stop.id)) {
-            states.set(stop.id, 'done')
-        } else if (!to_walk.has(stop.id)) {
-            states.set(stop.id, 'unchanged')
-        } else {
-            states.set(stop.id, 'left')
-        }
-    }
-    return states
-}
-
 /** Renders the Map panel's header and where-to-look callout. */
 export const mapHeaderHtml = ({
     story,
-    line_counts,
-    state,
-    stop_lines,
+    model,
     approved_files,
     drafts,
     github_threads,
 }: {
     story: Story
-    line_counts: LineCounts | null
-    state: MapWalkState
-    stop_lines: Map<string, number>
+    model: MapModel
     approved_files: string[]
     drafts: DraftComment[]
     github_threads: GitHubThread[]
 }): string => {
-    const to_walk_set = new Set(state.to_walk_stop_ids)
-    const done_set = new Set(state.done_stop_ids)
-    const all_walked = isAllWalked({ state })
-    const to_walk_stops = story.stops.filter((stop) => to_walk_set.has(stop.id))
-    const no_current = all_walked || to_walk_stops.length === 0
-    const effective_current_id = no_current ? null : state.current_stop_id
+    const {
+        has_line_counts,
+        all_walked,
+        effective_current_id,
+        to_walk_stops,
+        done_to_walk,
+        left_stops,
+        stop_lines,
+    } = model
     const current_index =
         effective_current_id === null
             ? -1
             : story.stops.findIndex((stop) => stop.id === effective_current_id)
 
-    const done_to_walk = to_walk_stops.filter(
-        (stop) => done_set.has(stop.id) && stop.id !== effective_current_id
-    ).length
-    const left_stops = to_walk_stops.filter(
-        (stop) => !done_set.has(stop.id) || stop.id === effective_current_id
-    )
-
-    const total_lines =
-        line_counts === null
-            ? 0
-            : to_walk_stops.reduce(
-                  (sum, stop) => sum + (stop_lines.get(stop.id) ?? 0),
-                  0
-              )
+    const total_lines = !has_line_counts
+        ? 0
+        : to_walk_stops.reduce(
+              (sum, stop) => sum + (stop_lines.get(stop.id) ?? 0),
+              0
+          )
     const minutesFor = ({ stops }: { stops: Story['stops'] }): number => {
-        if (line_counts !== null && total_lines > 0) {
+        if (has_line_counts && total_lines > 0) {
             const subset_lines = stops.reduce(
                 (sum, stop) => sum + (stop_lines.get(stop.id) ?? 0),
                 0

@@ -37,7 +37,7 @@ export const markStopLooksGood = async ({
     const parsed = StopArgSchema.safeParse(args[0])
     const stop_id = parsed.success
         ? parsed.data.stop_id
-        : now.walk.currentStopId()
+        : now.walk.state().current_stop_id
     if (stop_id === null) {
         await host.showMessage({ kind: 'info', text: 'Start the walk first.' })
         return

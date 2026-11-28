@@ -111,45 +111,6 @@ describe('the @luca/walk package (#753)', () => {
         expect(importing.toSorted()).toEqual(WIRING.toSorted())
     })
 
-    test('the manifest contributes the 17 commands, the Stops and Context views, and onStartupFinished', async () => {
-        const manifest = await readManifest()
-        const declared = manifest.contributes.commands
-        const hidden = new Set(
-            (manifest.contributes.menus.commandPalette ?? [])
-                .filter(({ when }) => when === 'false')
-                .map(({ command }) => command)
-        )
-        const commands = declared.filter(({ command }) => !hidden.has(command))
-        const original = commands.filter(
-            ({ command }) => command !== 'lucaWalk.markStopLooksGood'
-        )
-        const original_expected = COMMANDS.filter(
-            ([command]) => command !== 'lucaWalk.markStopLooksGood'
-        )
-
-        expect(
-            original.map(({ command, title }) => [command, title]).toSorted()
-        ).toEqual(original_expected.toSorted())
-        expect(commands.every(({ category }) => category === 'Luca Walk')).toBe(
-            true
-        )
-        const declaredIds = new Set(declared.map(({ command }) => command))
-        const referenced = Object.values(manifest.contributes.menus)
-            .flat()
-            .map(({ command }) => command)
-        expect(referenced.filter((id) => !declaredIds.has(id))).toEqual([])
-        expect(
-            viewsUnder(manifest, 'activitybar').map(({ id }) => id)
-        ).toContain('lucaWalk.stops')
-        expect([
-            ...viewsUnder(manifest, 'activitybar'),
-            ...viewsUnder(manifest, 'secondarySidebar'),
-        ]).toContainEqual(
-            expect.objectContaining({ id: 'lucaWalk.context', type: 'webview' })
-        )
-        expect(manifest.activationEvents).toContain('onStartupFinished')
-    })
-
     test('the manifest contributes the 18 commands, the Stops and Context views, and onStartupFinished', async () => {
         const manifest = await readManifest()
         const declared = manifest.contributes.commands
@@ -177,10 +138,7 @@ describe('the @luca/walk package (#753)', () => {
         expect(
             viewsUnder(manifest, 'activitybar').map(({ id }) => id)
         ).toContain('lucaWalk.stops')
-        expect([
-            ...viewsUnder(manifest, 'activitybar'),
-            ...viewsUnder(manifest, 'secondarySidebar'),
-        ]).toContainEqual(
+        expect(viewsUnder(manifest, 'activitybar')).toContainEqual(
             expect.objectContaining({ id: 'lucaWalk.context', type: 'webview' })
         )
         expect(manifest.activationEvents).toContain('onStartupFinished')

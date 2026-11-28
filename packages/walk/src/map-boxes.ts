@@ -3,11 +3,11 @@ import type { GitHubThread } from './github-conversation'
 import type { LineCounts } from './load-pull-request'
 import {
     formatNumber,
+    linkLine,
     plural,
-    stopStatesOf,
-    type MapStopState,
-    type MapWalkState,
-} from './map-header'
+    stopFilesOf,
+    type MapModel,
+} from './map-model'
 import { escapeHtml } from './webview-html'
 
 import type {
@@ -17,152 +17,9 @@ import type {
 import type { Story } from '../../engine/src/story/story-schema'
 
 /**
- * Lanes, stop boxes, walk-line/link data, off-canvas links, and side
- * panels for the flow Map panel (#776, section 4).
+ * Lanes, stop boxes, inline SVG walk-line/link layer, off-canvas links,
+ * and per-stop side panels for the flow Map panel (#776, section 4).
  */
-
-type MapLink = Story['map']['links'][number]
-
-const LOCKFILE_NAMES = new Set([
-    'bun.lock',
-    'bun.lockb',
-    'package-lock.json',
-    'yarn.lock',
-    'pnpm-lock.yaml',
-    'Cargo.lock',
-    'poetry.lock',
-    'Gemfile.lock',
-    'go.sum',
-])
-
-/**
- * A link as one line.
- *
- * @example
- * linkLine({ link }) // 'src/a.ts calls src/b.ts - on every ticket'
- */
-export const linkLine = ({ link }: { link: MapLink }): string => {
-    const line = `${link.from_path} ${link.kind} ${link.to_path}`
-    return link.note === null ? line : `${line} - ${link.note}`
-}
-
-const noiseKindOf = ({
-    file,
-}: {
-    file: Story['map']['files'][number]
-}): StoryNoiseKind | null => {
-    if (file.noise != null) return file.noise
-    const name = file.path.split('/').at(-1) ?? file.path
-    return LOCKFILE_NAMES.has(name) ? 'lockfile' : null
-}
-
-const stopFilesOf = ({ stop }: { stop: StoryStop }): string[] => [
-    ...new Set(stop.changes.map(({ path }) => path)),
-]
-
-type ResolvedLink = {
-    link: MapLink
-    lit_stop_ids: string[]
-    from_first: string | null
-    to_first: string | null
-    outside: boolean
-    on_canvas: boolean
-}
-
-export type MapModel = {
-    stop_states: Map<string, MapStopState>
-    stop_lines: Map<string, number>
-    max_lines: number
-    first_stop_by_path: Map<string, string>
-    noise_by_path: Map<string, StoryNoiseKind | null>
-    stop_by_change_id: Map<string, { stop: StoryStop; index: number }>
-    resolved_links: ResolvedLink[]
-}
-
-/** Precomputes line counts, states, noise kinds, and link endpoints for `story`. */
-export const buildMapModel = ({
-    story,
-    line_counts,
-    state,
-}: {
-    story: Story
-    line_counts: LineCounts | null
-    state: MapWalkState
-}): MapModel => {
-    const stop_states = stopStatesOf({ story, state })
-    const noise_by_path = new Map<string, StoryNoiseKind | null>()
-    for (const file of story.map.files) {
-        noise_by_path.set(file.path, noiseKindOf({ file }))
-    }
-
-    const first_stop_by_path = new Map<string, string>()
-    const stops_by_path = new Map<string, string[]>()
-    const stop_by_change_id = new Map<
-        string,
-        { stop: StoryStop; index: number }
-    >()
-    story.stops.forEach((stop, index) => {
-        for (const change of stop.changes) {
-            stop_by_change_id.set(change.id, { stop, index })
-            if (!first_stop_by_path.has(change.path)) {
-                first_stop_by_path.set(change.path, stop.id)
-            }
-            const list = stops_by_path.get(change.path) ?? []
-            if (!list.includes(stop.id)) list.push(stop.id)
-            stops_by_path.set(change.path, list)
-        }
-    })
-
-    const stop_lines = new Map<string, number>()
-    let max_lines = 0
-    for (const stop of story.stops) {
-        let lines = 0
-        if (line_counts !== null) {
-            for (const path of stopFilesOf({ stop })) {
-                if (first_stop_by_path.get(path) !== stop.id) continue
-                if ((noise_by_path.get(path) ?? null) !== null) continue
-                lines += line_counts[path]?.added ?? 0
-            }
-        }
-        stop_lines.set(stop.id, lines)
-        if (lines > max_lines) max_lines = lines
-    }
-
-    const stop_order = new Map<string, number>()
-    story.stops.forEach((stop, index) => stop_order.set(stop.id, index))
-
-    const resolved_links: ResolvedLink[] = story.map.links.map((link) => {
-        const from_stops = stops_by_path.get(link.from_path) ?? []
-        const to_stops = stops_by_path.get(link.to_path) ?? []
-        const lit_stop_ids = [
-            ...new Set([...from_stops, ...to_stops]),
-        ].toSorted(
-            (a, b) => (stop_order.get(a) ?? 0) - (stop_order.get(b) ?? 0)
-        )
-        const from_first = first_stop_by_path.get(link.from_path) ?? null
-        const to_first = first_stop_by_path.get(link.to_path) ?? null
-        const outside = from_first === null || to_first === null
-        const same_box = from_first !== null && from_first === to_first
-        return {
-            link,
-            lit_stop_ids,
-            from_first,
-            to_first,
-            outside,
-            on_canvas: !outside && !same_box,
-        }
-    })
-
-    return {
-        stop_states,
-        stop_lines,
-        max_lines,
-        first_stop_by_path,
-        noise_by_path,
-        stop_by_change_id,
-        resolved_links,
-    }
-}
 
 const renderBox = ({
     stop,

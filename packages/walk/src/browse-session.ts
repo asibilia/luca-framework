@@ -214,7 +214,6 @@ export const createBrowseSession = async ({
             goToFile(fileOf({ path: stop_id })),
         /** The plain diff has no story, so no map. */
         story: null,
-        currentStopId: (): string | null => place.current()?.id ?? null,
         state: place.state,
         filesOf: ({ stop_id }: { stop_id: string }): string[] | null =>
             fileOf({ path: stop_id }) === null ? null : [stop_id],

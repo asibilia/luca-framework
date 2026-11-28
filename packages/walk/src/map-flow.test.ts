@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import type { DraftComment } from './drafts-file'
 import type { GitHubThread } from './github-conversation'
-import { mapHtml } from './map-html'
+import { mapHtml, type MapWalkState } from './map-html'
 import { groupedLineCounts } from './testing/grouped-line-counts'
 import { htmlButtons, htmlText } from './testing/html-text'
 import {
@@ -20,12 +20,6 @@ import { story as smallStory } from '../../engine/src/story/testing/story-fixtur
  * The flow Map panel (#800, spec #776 section 4): lanes, stop boxes, walk
  * line, links, side panels, noise folding, header states, and old stories.
  */
-
-type MapWalkState = {
-    current_stop_id: string | null
-    done_stop_ids: string[]
-    to_walk_stop_ids: string[]
-}
 
 const renderGrouped = ({
     state,
