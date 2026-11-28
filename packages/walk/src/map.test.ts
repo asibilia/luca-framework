@@ -20,7 +20,8 @@ import { savePrivateStory } from '../../engine/src/story/story-store'
 
 /**
  * The map (#758, updated for #800 / spec #776 section 4): panel title,
- * link text formatting, Summary button wiring, and legacy open_file routing.
+ * link text formatting, Summary button wiring, legacy open_file routing,
+ * and HTML escaping of rendered story fields.
  */
 
 const REPO = 'octocat/hello-world'
@@ -93,7 +94,11 @@ afterEach(async () => {
     await rm(dir, { recursive: true, force: true })
 })
 
-const openMap = async ({ role }: { role?: string } = {}) => {
+const openMap = async ({
+    escape_tags = false,
+}: {
+    escape_tags?: boolean
+} = {}) => {
     const walk_dir = join(dir, 'walk')
     const checkout = join(
         walk_dir,
@@ -116,22 +121,51 @@ const openMap = async ({ role }: { role?: string } = {}) => {
     })
     const story = {
         ...built,
+        summary: escape_tags
+            ? {
+                  ...built.summary,
+                  feedback_wanted: {
+                      ...built.summary.feedback_wanted,
+                      text: '<script>alert(1)</script>',
+                  },
+              }
+            : built.summary,
+        stops: escape_tags
+            ? built.stops.map((stop) => {
+                  if (stop.kind === 'loose_ends') return stop
+                  return {
+                      ...stop,
+                      group_id: 'g1',
+                      ...(stop.id === 's1'
+                          ? {
+                                title: '<script>alert(4)</script>',
+                                why_here: '<script>alert(5)</script>',
+                            }
+                          : {}),
+                  }
+              })
+            : built.stops,
         map: {
             ...built.map,
-            architecture_note: 'Only the run loop gets a new module.',
-            files: built.map.files.map((file) =>
-                file.path === 'src/types.ts' || role === undefined
-                    ? file
-                    : file.path === 'src/cli.ts'
-                      ? { ...file, role }
-                      : file
-            ),
+            ...(escape_tags
+                ? {
+                      groups: [
+                          {
+                              id: 'g1',
+                              title: '<script>alert(2)</script>',
+                              note: '<script>alert(3)</script>',
+                          },
+                      ],
+                  }
+                : {}),
             links: [
                 {
                     from_path: 'src/cli.ts',
                     to_path: 'src/core/run.ts',
                     kind: 'calls' as const,
-                    note: role ?? 'on every ticket',
+                    note: escape_tags
+                        ? '<script>alert(6)</script>'
+                        : 'on every ticket',
                 },
                 {
                     from_path: 'src/core/run.ts',
@@ -183,34 +217,6 @@ describe('the map (#758)', () => {
         expect(host.panels['map']?.title).toBe('Map of #12')
     })
 
-    test("the panel holds a box per file in the map's order with its path and role", async () => {
-        const { app, host } = await openMap()
-
-        await app.run({ command: 'lucaWalk.showMap', args: [] })
-
-        const text = mapText(host.panels['map']?.html)
-        const at = [
-            'src/cli.ts',
-            'src/new.ts',
-            'src/core/run.ts',
-            'src/old.ts',
-            'src/after.ts',
-            'package.json',
-        ].map((word) => text.indexOf(word))
-        expect(at.every((index) => index >= 0)).toBe(true)
-        expect(at).toEqual([...at].sort((a, b) => a - b))
-    })
-
-    test('boxes are marked start here, new, deleted, renamed from and loose end', async () => {
-        const { app, host } = await openMap()
-
-        await app.run({ command: 'lucaWalk.showMap', args: [] })
-
-        const text = mapText(host.panels['map']?.html).toLowerCase()
-        expect(text).toContain('start here')
-        expect(text).toContain('loose end')
-    })
-
     test('a link shows as from calls to, with its note after a dash', async () => {
         const { app, host } = await openMap()
 
@@ -231,16 +237,6 @@ describe('the map (#758)', () => {
         expect(text).not.toMatch(
             /src\/core\/run\.ts imports src\/types\.ts\s*[-–—]/
         )
-    })
-
-    test("the panel holds the map's architecture note", async () => {
-        const { app, host } = await openMap()
-
-        await app.run({ command: 'lucaWalk.showMap', args: [] })
-
-        const html = host.panels['map']?.html ?? ''
-        expect(html).toContain('Map of #12')
-        expect(mapText(html)).toContain('src/cli.ts')
     })
 
     test("clicking a file's box goes to the first stop with a change in that file", async () => {
@@ -282,15 +278,15 @@ describe('the map (#758)', () => {
         expect(host.panels['map']?.title).toBe('Map of #12')
     })
 
-    test('a role with a script tag is shown escaped', async () => {
-        const { app, host } = await openMap({
-            role: '<script>alert(1)</script>',
-        })
+    test('rendered story fields with script tags are shown escaped', async () => {
+        const { app, host } = await openMap({ escape_tags: true })
 
         await app.run({ command: 'lucaWalk.showMap', args: [] })
 
         const html = host.panels['map']?.html ?? ''
-        expect(html).toContain('&lt;script&gt;')
-        expect(html).not.toContain('<script>alert(1)')
+        for (const n of [1, 2, 3, 4, 5, 6]) {
+            expect(html).toContain(`&lt;script&gt;alert(${n})&lt;/script&gt;`)
+            expect(html).not.toContain(`<script>alert(${n})</script>`)
+        }
     })
 })

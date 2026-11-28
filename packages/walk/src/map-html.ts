@@ -41,17 +41,17 @@ body { margin: 0; padding: 12px; font-family: var(--vscode-font-family, sans-ser
 .where-to-look { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
 .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; align-items: start; }
 .canvas-stage { position: relative; }
-.flow-svg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.flow-svg { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
 .walk-seg { fill: none; stroke: var(--vscode-textLink-foreground, #3794ff); stroke-width: 2; }
 .walk-seg[data-walked="false"] { stroke-dasharray: 4 4; opacity: 0.65; }
 .link-edge { fill: none; stroke: var(--vscode-descriptionForeground, #888); stroke-width: 1.5; opacity: 0.2; }
 .link-edge.lit { stroke: var(--vscode-focusBorder, #007acc); stroke-width: 2; opacity: 0.9; }
-.lanes { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(var(--lane-count, 1), minmax(0, 1fr)); gap: 12px; align-items: start; }
+.lanes { position: relative; display: grid; grid-template-columns: repeat(var(--lane-count, 1), minmax(0, 1fr)); gap: 12px; align-items: start; }
 .lane { border: 1px solid var(--vscode-panel-border, #666); border-radius: 6px; padding: 8px; background: var(--vscode-sideBar-background, transparent); }
-.lane-title { margin: 0 0 4px; font-size: 1em; }
-.lane-note { margin: 0 0 8px; opacity: 0.8; font-size: 0.9em; }
+.lane-title { position: relative; z-index: 2; margin: 0 0 4px; font-size: 1em; }
+.lane-note { position: relative; z-index: 2; margin: 0 0 8px; opacity: 0.8; font-size: 0.9em; }
 .lane-boxes { display: flex; flex-direction: column; gap: 8px; }
-.stop-box { border: 1px solid var(--vscode-panel-border, #666); border-radius: 5px; padding: 8px; cursor: pointer; background: var(--vscode-editor-background); }
+.stop-box { position: relative; z-index: 2; border: 1px solid var(--vscode-panel-border, #666); border-radius: 5px; padding: 8px; cursor: pointer; background: var(--vscode-editor-background); }
 .stop-box[data-state="current"] { border-color: var(--vscode-focusBorder, #007acc); box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc); }
 .stop-box[data-state="done"] { opacity: 0.8; }
 .stop-box[data-state="unchanged"] { opacity: 0.55; }

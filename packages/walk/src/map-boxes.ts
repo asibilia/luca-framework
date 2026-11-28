@@ -422,7 +422,7 @@ export const mapSvgHtml = ({
             from_state === 'done' &&
             (to_state === 'done' || to_state === 'current')
         segments.push(
-            `<path class="walk-seg" data-segment="${escapeHtml({ text: `${from.id}-${to.id}` })}" data-walked="${walked ? 'true' : 'false'}" d=""></path>`
+            `<path class="walk-seg" data-segment="${escapeHtml({ text: `${from.id}-${to.id}` })}" data-from-stop="${escapeHtml({ text: from.id })}" data-to-stop="${escapeHtml({ text: to.id })}" data-walked="${walked ? 'true' : 'false'}" d=""></path>`
         )
     }
 

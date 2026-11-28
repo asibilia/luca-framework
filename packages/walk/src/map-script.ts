@@ -52,9 +52,8 @@ export const MAP_SCRIPT = `
         }
 
         for (const seg of document.querySelectorAll('[data-segment]')) {
-            const pair = (seg.getAttribute('data-segment') || '').split('-')
-            const from = centers.get(pair[0])
-            const to = centers.get(pair[1])
+            const from = centers.get(seg.getAttribute('data-from-stop'))
+            const to = centers.get(seg.getAttribute('data-to-stop'))
             seg.setAttribute('d', from && to ? curve(from, to) : '')
         }
 
@@ -82,7 +81,9 @@ export const MAP_SCRIPT = `
             const stopId = selectBtn.getAttribute('data-select-stop')
             if (stopId) {
                 selectStop(stopId)
-                const box = document.querySelector('[data-stop-id="' + stopId + '"][data-state]')
+                const box = boxes().find(
+                    (item) => item.getAttribute('data-stop-id') === stopId
+                )
                 if (box && typeof box.scrollIntoView === 'function') {
                     box.scrollIntoView({ block: 'nearest', inline: 'nearest' })
                 }
