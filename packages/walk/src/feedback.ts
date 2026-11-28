@@ -39,6 +39,7 @@ export const createFeedback = async ({
     head_sha,
     github_threads,
     onApprovedChanged,
+    onDraftsChanged = async () => undefined,
 }: {
     host: WalkHost
     /** Reads the checkout's committed files, for suggested changes. */
@@ -51,6 +52,8 @@ export const createFeedback = async ({
     head_sha: string | null
     github_threads: GitHubThread[]
     onApprovedChanged: () => Promise<void>
+    /** Runs whenever drafts are added, edited, deleted, or cleared after send. */
+    onDraftsChanged?: () => Promise<void>
 }) => {
     const error = (text: string) => host.showMessage({ kind: 'error', text })
 
@@ -129,6 +132,7 @@ export const createFeedback = async ({
             ],
         }))
         await showThreads()
+        await onDraftsChanged()
     }
 
     /** The open editor's file and side, or null after saying why not. */
@@ -199,6 +203,7 @@ export const createFeedback = async ({
                 comments: now.comments.filter(({ id }) => !ids.includes(id)),
             }))
             await showThreads()
+            await onDraftsChanged()
         },
 
         /** A comment typed in VS Code's comment box on `uri`. */
@@ -252,6 +257,7 @@ export const createFeedback = async ({
                 ),
             }))
             await showThreads()
+            await onDraftsChanged()
         },
 
         draftDeleted: async ({ draft_id }: { draft_id: string }) => {
@@ -260,6 +266,7 @@ export const createFeedback = async ({
                 comments: now.comments.filter(({ id }) => id !== draft_id),
             }))
             await showThreads()
+            await onDraftsChanged()
         },
 
         /** A range comment holding the selected lines as a suggested change. */

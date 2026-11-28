@@ -78,7 +78,7 @@ Tests:
 
 ## The map
 
-`Show the map` opens the Map panel: one box per file on the story's map (marked `start here`, `new`, `deleted`, `renamed from`, `loose end`), the links between files, and the architecture note. Clicking a box goes to the first stop with a change in that file.
+`Show the map` opens the Map panel as a flow: a "you are here" header (stops walked, stops and minutes left, progress counts, and the pinned "where to look" callout), lanes per story group (or `Changed files` when ungrouped) plus `Loose ends`, stop boxes with line counts from `git diff --numstat`, size bars, blast radius, untested/flag/draft/thread counts, folded noise files, a solid/dotted walk line, lit links with off-canvas links in a closed details list, and a per-stop side panel with `Reached from`, `Connections`, changes, and stop action buttons. While the map is open, it redraws in place via `refreshPanel` on walk moves, "looks good" changes, draft changes, and pull request loads.
 
 Reached by: `Luca Walk: Show the map`, and the Summary panel's `Show the map` button.
 

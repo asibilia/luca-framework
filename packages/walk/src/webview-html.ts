@@ -62,13 +62,24 @@ document.addEventListener('click', (event) => {
 `
 
 /**
- * A whole page: `body` is HTML the caller already escaped.
+ * A whole page: `body` is HTML the caller already escaped. Optional
+ * `script` runs under the same nonce after the shared script and shares
+ * its `vscode` handle.
  *
  * @example
  * page({ title: 'Summary of #12', body: paragraph({ text: 'Hello' }) })
  */
-export const page = ({ title, body }: { title: string; body: string }) => {
+export const page = ({
+    title,
+    body,
+    script,
+}: {
+    title: string
+    body: string
+    script?: string
+}) => {
     const nonce = randomBytes(16).toString('base64')
+    const full_script = script === undefined ? SCRIPT : `${SCRIPT}\n${script}`
     return [
         '<!DOCTYPE html>',
         '<html lang="en">',
@@ -79,7 +90,7 @@ export const page = ({ title, body }: { title: string; body: string }) => {
         '</head>',
         '<body>',
         body,
-        `<script nonce="${nonce}">${SCRIPT}</script>`,
+        `<script nonce="${nonce}">${full_script}</script>`,
         '</body>',
         '</html>',
     ].join('\n')

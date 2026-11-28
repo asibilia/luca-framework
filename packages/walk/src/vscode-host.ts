@@ -259,6 +259,10 @@ export const createVscodeHost = ({
             made.onDidDispose(() => panels.delete(id))
             panels.set(id, made)
         },
+        refreshPanel: async ({ id, html }) => {
+            const open = panels.get(id)
+            if (open !== undefined) open.webview.html = html
+        },
         showContext: async ({ html }) => contextBox.show(html),
         showStops: async ({ items }) => stops.show(items),
         openDiff: async ({

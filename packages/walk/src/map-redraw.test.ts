@@ -70,6 +70,10 @@ const setUpApp = async ({
     let remote = join(dir, 'no-origin')
     if (with_origin) {
         await testGit({ args: ['branch', '-M', 'main'], cwd: checkout })
+        await testGit({
+            args: ['update-ref', 'refs/pull/12/head', 'HEAD'],
+            cwd: checkout,
+        })
         remote = checkout
     }
     const built = storyOf({
@@ -222,11 +226,13 @@ describe('the flow map redraws and line counts (#800)', () => {
             stops: [
                 {
                     id: 's1',
-                    title: 'Code and binary',
-                    changes: [
-                        { id: 'c1', path: 'src/a.ts', line: 1 },
-                        { id: 'c2', path: 'logo.bin', line: 1 },
-                    ],
+                    title: 'Code',
+                    changes: [{ id: 'c1', path: 'src/a.ts', line: 1 }],
+                },
+                {
+                    id: 's2',
+                    title: 'Binary asset',
+                    changes: [{ id: 'c2', path: 'logo.bin', line: 1 }],
                 },
             ],
         })

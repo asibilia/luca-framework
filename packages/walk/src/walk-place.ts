@@ -25,6 +25,13 @@ const NO_PLACE: WalkPlace = {
 /** A stop as the place sees it: its id, its changes' ids, and whether it is to walk. */
 export type PlaceStop = { id: string; change_ids: string[]; to_walk: boolean }
 
+/** Snapshot of the walk's progress for the Map panel. */
+export type WalkState = {
+    current_stop_id: string | null
+    done_stop_ids: string[]
+    to_walk_stop_ids: string[]
+}
+
 /**
  * The place in a walk of `stops`, in walk order, back where the drafts
  * file left it when it was made under the same last review.
@@ -84,6 +91,15 @@ export const createWalkPlace = async <Stop extends PlaceStop>({
 
         /** The change the owner was last on in the current stop. */
         lastChangeId: (): string | null => place.last_change_id,
+
+        /** Snapshot of the current stop, done stops, and stops to walk. */
+        state: (): WalkState => ({
+            current_stop_id: place.current_stop_id,
+            done_stop_ids: [...place.done_stop_ids],
+            to_walk_stop_ids: stops
+                .filter(({ to_walk }) => to_walk)
+                .map(({ id }) => id),
+        }),
 
         /**
          * The Stops view's description of stop `id`: `current`, `done` or

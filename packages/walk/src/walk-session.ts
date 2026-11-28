@@ -259,6 +259,9 @@ export const createWalkSession = async ({
         /** The current stop's id, or null before the walk starts. */
         currentStopId: (): string | null => currentStop()?.id ?? null,
 
+        /** Snapshot of the walk's current, done, and to-walk stops. */
+        state: place.state,
+
         /** The files of stop `stop_id`, or null when the id is unknown. */
         filesOf: ({ stop_id }: { stop_id: string }): string[] | null => {
             const stop = stops.find(({ id }) => id === stop_id)

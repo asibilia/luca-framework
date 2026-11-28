@@ -58,6 +58,8 @@ export type WalkHost = {
         title: string
         html: string
     }) => Promise<void>
+    /** Updates an already-open webview panel without revealing it; no-op when closed. */
+    refreshPanel: (panel: { id: string; html: string }) => Promise<void>
     showContext: (view: { html: string }) => Promise<void>
     showStops: (view: { items: WalkStopItem[] }) => Promise<void>
     openDiff: (diff: WalkDiff) => Promise<void>
