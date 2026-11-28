@@ -43,6 +43,13 @@ export type FakeThread = {
 
 export type FakeBadge = { text: string; tooltip: string }
 
+export type FakeStatusAction = {
+    id: string
+    text: string
+    tooltip: string
+    command: string
+}
+
 export type FakeHost = {
     /** The window's workspace folder; the test sets it. */
     workspace_folder: string | null
@@ -73,6 +80,8 @@ export type FakeHost = {
     confirms: string[]
     /** The status bar badge shown now, or null. */
     badge: FakeBadge | null
+    /** The status bar quick actions shown now. */
+    status_actions: FakeStatusAction[]
     /** What the app last put on the clipboard. */
     clipboard: string
 
@@ -102,6 +111,7 @@ export type FakeHost = {
     /** A modal question: yes when the next answer is `confirm_label`. */
     confirm: (ask: { text: string; confirm_label: string }) => Promise<boolean>
     showBadge: (badge: FakeBadge | null) => Promise<void>
+    showStatusActions: (actions: { items: FakeStatusAction[] }) => Promise<void>
     copyText: (copy: { text: string }) => Promise<void>
 }
 
@@ -140,6 +150,7 @@ export const createFakeHost = ({
         opened_urls: [],
         confirms: [],
         badge: null,
+        status_actions: [],
         clipboard: '',
 
         workspaceFolder: async () => host.workspace_folder,
@@ -201,6 +212,9 @@ export const createFakeHost = ({
         },
         showBadge: async (badge) => {
             host.badge = badge === null ? null : { ...badge }
+        },
+        showStatusActions: async ({ items }) => {
+            host.status_actions = items.map((item) => ({ ...item }))
         },
         copyText: async ({ text }) => {
             host.clipboard = text

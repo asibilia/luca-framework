@@ -55,11 +55,13 @@ const ContainerSchema = z.object({ id: z.string() })
 const ManifestSchema = z.object({
     activationEvents: z.array(z.string()),
     contributes: z.object({
+        configurationDefaults: z.record(z.string(), z.unknown()).optional(),
         commands: z.array(
             z.object({
                 command: z.string(),
                 title: z.string(),
                 category: z.string().optional(),
+                icon: z.string().optional(),
             })
         ),
         viewsContainers: z.record(z.string(), z.array(ContainerSchema)),
@@ -67,7 +69,11 @@ const ManifestSchema = z.object({
         menus: z.record(
             z.string(),
             z.array(
-                z.object({ command: z.string(), when: z.string().optional() })
+                z.object({
+                    command: z.string(),
+                    group: z.string().optional(),
+                    when: z.string().optional(),
+                })
             )
         ),
     }),
@@ -135,7 +141,10 @@ describe('the @luca/walk package (#753)', () => {
         expect(
             viewsUnder(manifest, 'activitybar').map(({ id }) => id)
         ).toContain('lucaWalk.stops')
-        expect(viewsUnder(manifest, 'secondarySidebar')).toContainEqual(
+        expect([
+            ...viewsUnder(manifest, 'activitybar'),
+            ...viewsUnder(manifest, 'secondarySidebar'),
+        ]).toContainEqual(
             expect.objectContaining({ id: 'lucaWalk.context', type: 'webview' })
         )
         expect(manifest.activationEvents).toContain('onStartupFinished')
@@ -168,10 +177,62 @@ describe('the @luca/walk package (#753)', () => {
         expect(
             viewsUnder(manifest, 'activitybar').map(({ id }) => id)
         ).toContain('lucaWalk.stops')
-        expect(viewsUnder(manifest, 'secondarySidebar')).toContainEqual(
+        expect([
+            ...viewsUnder(manifest, 'activitybar'),
+            ...viewsUnder(manifest, 'secondarySidebar'),
+        ]).toContainEqual(
             expect.objectContaining({ id: 'lucaWalk.context', type: 'webview' })
         )
         expect(manifest.activationEvents).toContain('onStartupFinished')
+    })
+
+    test('the manifest sets configurationDefaults for single-file full-file inline diffs', async () => {
+        const manifest = await readManifest()
+
+        expect(manifest.contributes.configurationDefaults).toEqual({
+            'diffEditor.renderSideBySide': false,
+            'diffEditor.hideUnchangedRegions.enabled': false,
+        })
+    })
+
+    test('the manifest places Context under Stops in the left lucaWalk sidebar and removes secondarySidebar', async () => {
+        const manifest = await readManifest()
+
+        expect(manifest.contributes.viewsContainers.activitybar).toContainEqual(
+            expect.objectContaining({ id: 'lucaWalk' })
+        )
+        expect(manifest.contributes.views.lucaWalk).toEqual([
+            expect.objectContaining({ id: 'lucaWalk.stops' }),
+            expect.objectContaining({
+                id: 'lucaWalk.context',
+                type: 'webview',
+            }),
+        ])
+        expect(
+            manifest.contributes.viewsContainers.secondarySidebar
+        ).toBeUndefined()
+        expect(manifest.contributes.views.lucaWalkContext).toBeUndefined()
+    })
+
+    test('the manifest contributes an inline This stop looks good button on Stops items and vscode-host sets stop contextValue', async () => {
+        const manifest = await readManifest()
+        const vscode_host = await readFile(
+            join(PACKAGE, 'src/vscode-host.ts'),
+            'utf8'
+        )
+
+        expect(manifest.contributes.commands).toContainEqual(
+            expect.objectContaining({
+                command: 'lucaWalk.markStopLooksGood',
+                icon: '$(check)',
+            })
+        )
+        expect(manifest.contributes.menus['view/item/context']).toContainEqual({
+            command: 'lucaWalk.markStopLooksGood',
+            group: 'inline',
+            when: 'view == lucaWalk.stops && viewItem == stop',
+        })
+        expect(vscode_host).toMatch(/\.contextValue\s*=\s*['"]stop['"]/)
     })
 
     test('the glossary has a Luca Walk entry', async () => {

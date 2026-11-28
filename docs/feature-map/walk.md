@@ -65,6 +65,7 @@ Reached by: `Luca Walk: Start the walk` (and the Summary panel's button), `Next 
 Tests:
 
 - `packages/walk/src/walk-stops.test.ts`
+- `packages/walk/src/status-bar.test.ts`
 
 ## The context box
 
