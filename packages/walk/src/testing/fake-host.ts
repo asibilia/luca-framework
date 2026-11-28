@@ -56,6 +56,8 @@ export type FakeHost = {
     picks: { label: string; description: string }[][]
     /** The open webview panels by id (`summary`, `map`). */
     panels: Record<string, FakePanel>
+    /** Every `refreshPanel` call that hit an open panel, in order. */
+    refreshed: { id: string; html: string }[]
     /** The Context view's last HTML. */
     context_html: string
     /** Every HTML the app gave any webview, panel or view, in order. */
@@ -88,6 +90,7 @@ export type FakeHost = {
         title: string
         html: string
     }) => Promise<void>
+    refreshPanel: (panel: { id: string; html: string }) => Promise<void>
     showContext: (view: { html: string }) => Promise<void>
     showStops: (view: { items: FakeStopItem[] }) => Promise<void>
     openDiff: (diff: FakeDiff) => Promise<void>
@@ -125,6 +128,7 @@ export const createFakeHost = ({
         prompts: [],
         picks: [],
         panels: {},
+        refreshed: [],
         context_html: '',
         all_html: [],
         stops: [],
@@ -157,6 +161,13 @@ export const createFakeHost = ({
         },
         showPanel: async ({ id, title, html }) => {
             host.panels[id] = { title, html }
+            host.all_html.push(html)
+        },
+        refreshPanel: async ({ id, html }) => {
+            const open = host.panels[id]
+            if (open === undefined) return
+            host.refreshed.push({ id, html })
+            open.html = html
             host.all_html.push(html)
         },
         showContext: async ({ html }) => {

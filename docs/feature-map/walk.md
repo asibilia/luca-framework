@@ -85,6 +85,8 @@ Reached by: `Luca Walk: Show the map`, and the Summary panel's `Show the map` bu
 Tests:
 
 - `packages/walk/src/map.test.ts`
+- `packages/walk/src/map-flow.test.ts`
+- `packages/walk/src/map-redraw.test.ts`
 
 ## Review threads and /luca-pr-address's replies
 
